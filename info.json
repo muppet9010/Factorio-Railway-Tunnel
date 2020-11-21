@@ -1,10 +1,10 @@
 {
-    "name": "grade_seperated_rail_junction",
+    "name": "grade_separated_rail_junction",
     "version": "1.0.0",
-    "title": "Grade Seperated Rail Junction",
+    "title": "Grade Separated Rail Junction",
     "author": "Muppet9010",
     "contact": "",
-    "homepage": "https://mods.factorio.com/mod/grade_seperated_rail_junction",
+    "homepage": "https://mods.factorio.com/mod/grade_separated_rail_junction",
     "factorio_version": "1.0",
     "dependencies": [
         "base >= 1.0"
