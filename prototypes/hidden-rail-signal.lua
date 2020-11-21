@@ -2,7 +2,7 @@ local Utils = require("utility/utils")
 
 --TODO: replace with custom entity later
 local hiddenRailSignal = Utils.DeepCopy(data.raw["rail-signal"]["rail-signal"])
-hiddenRailSignal.name = "grade_separated_rail_junction-hidden_rail_signal"
+hiddenRailSignal.name = "railway_tunnel-hidden_rail_signal"
 --hiddenRailSignal.selection_box = nil -- TODO: Just make selectable for while testing.
 hiddenRailSignal.collision_mask = {"layer-13"}
 hiddenRailSignal.fast_replaceable_group = nil

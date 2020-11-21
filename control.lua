@@ -1,13 +1,13 @@
-local GradedArea = require("scripts/graded-area")
+local Tunnel = require("scripts/tunnel")
 local EventScheduler = require("utility/event-scheduler")
 
 local function CreateGlobals()
-    GradedArea.CreateGlobals()
+    Tunnel.CreateGlobals()
 end
 
 local function OnLoad()
     --Any Remote Interface registration calls can go in here or in root of control.lua
-    GradedArea.OnLoad()
+    Tunnel.OnLoad()
 end
 
 local function OnSettingChanged(event)

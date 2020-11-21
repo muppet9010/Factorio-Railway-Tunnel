@@ -1,13 +1,13 @@
 {
-    "name": "grade_separated_rail_junction",
+    "name": "railway_tunnel",
     "version": "1.0.0",
-    "title": "Grade Separated Rail Junction",
+    "title": "Railway Tunnel",
     "author": "Muppet9010",
     "contact": "",
-    "homepage": "https://mods.factorio.com/mod/grade_separated_rail_junction",
+    "homepage": "https://mods.factorio.com/mod/railway_tunnel",
     "factorio_version": "1.0",
     "dependencies": [
         "base >= 1.0"
     ],
-    "description": "A grade separated rail junction so trains can cross each other."
+    "description": "A railway tunnel so trains can cross under each other."
 }
