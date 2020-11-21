@@ -1226,4 +1226,11 @@ Utils.StringTrim = function(text)
     return string.match(text, "^()%s*$") and "" or string.match(text, "^%s*(.*%S)")
 end
 
+Utils.PushToList = function(list, itemsToPush)
+    -- Adds the items to the end of a list (table). Ignoring their keys.
+    for _, item in pairs(itemsToPush) do
+        table.insert(list, item)
+    end
+end
+
 return Utils
