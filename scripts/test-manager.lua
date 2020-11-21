@@ -27,7 +27,7 @@ TestManager.OnStartup = function()
         nauvisSurface.delete_chunk({x = chunk.x, y = chunk.y})
     end
 
-    EventScheduler.ScheduleEvent(game.tick + 1, "TestManager.RunTests")
+    EventScheduler.ScheduleEvent(game.tick + 30, "TestManager.RunTests")
 end
 
 TestManager.RunTests = function()

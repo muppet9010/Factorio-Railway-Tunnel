@@ -5,9 +5,6 @@ local Tunnel = {}
 Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
     global.tunnel.entrySignals = global.tunnel.entrySignals or {}
-
-    -- Test Data
-    global.tunnel.entrySignals[492] = game.surfaces[1].find_entity("rail-signal", {x = 168.5, y = -42.5})
 end
 
 Tunnel.OnLoad = function()

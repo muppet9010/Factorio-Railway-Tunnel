@@ -15,8 +15,8 @@ TrainManager.OnLoad = function()
 end
 
 TrainManager.TrainEnteringInterface = function(train, signal)
-    global.tunnel.trains[#global.tunnel.trains] = {id = #global.tunnel.trains, enteringTrain = train, enteringSignal = signal}
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringScheduledEvent", #global.tunnel.trains)
+    global.trainManager.trains[#global.trainManager.trains] = {id = #global.trainManager.trains, enteringTrain = train, enteringSignal = signal}
+    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringScheduledEvent", #global.trainManager.trains)
 end
 
 TrainManager.TrainEnteringScheduledEvent = function(event)
