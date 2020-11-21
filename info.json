@@ -1,0 +1,13 @@
+{
+    "name": "grade_seperated_rail_junction",
+    "version": "1.0.0",
+    "title": "Grade Seperated Rail Junction",
+    "author": "Muppet9010",
+    "contact": "",
+    "homepage": "https://mods.factorio.com/mod/grade_seperated_rail_junction",
+    "factorio_version": "1.0",
+    "dependencies": [
+        "base >= 1.0"
+    ],
+    "description": "A grade separated rail junction so trains can cross each other."
+}
