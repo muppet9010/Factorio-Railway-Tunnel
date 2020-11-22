@@ -1,7 +1,4 @@
 local Underground = {}
-local Events = require("utility/events")
-local EventScheduler = require("utility/event-scheduler")
-local Interfaces = require("utility/interfaces")
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
@@ -21,6 +18,8 @@ Underground.CreateSurface = function(surfaceName)
     surface.freeze_daytime = true
     surface.show_clouds = false
     global.underground[surfaceName] = surface
+
+    surface.request_to_generate_chunks({0, 0}, 10)
 end
 
 return Underground

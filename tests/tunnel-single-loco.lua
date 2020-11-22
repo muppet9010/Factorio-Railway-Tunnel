@@ -1,5 +1,5 @@
 local Test = {}
-local Utils = require("utility/utils")
+local Interfaces = require("utility/interfaces")
 
 local function SetRailSignalRed(signal)
     local controlBehavour = signal.get_or_create_control_behavior()
@@ -16,17 +16,14 @@ Test.Start = function()
     for x = -100, 100, 2 do
         table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x, 0}, direction = defines.direction.west})
     end
-    --[[Utils.PushToList(
-        nauvisEntitiesToPlace,
-        {
-
-        }
-    )]]
+    for x = -18, 18, 2 do
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-hidden_rail_signal", position = {x, -0.5}, direction = defines.direction.east})
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-hidden_rail_signal", position = {x, 2.5}, direction = defines.direction.west})
+    end
     for _, details in pairs(nauvisEntitiesToPlace) do
         nauvisSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
     end
 
-    -- This should be part of placing a tunnel.
     local tiles = {}
     for x = -70, -20 do
         for y = -1, 2 do
@@ -45,16 +42,14 @@ Test.Start = function()
     end
     nauvisSurface.set_tiles(tiles)
 
-    -- This should be part of placing a tunnel.
     local easternEntrySignals = {
-        east = nauvisSurface.create_entity {name = "rail-signal", position = {50, -0.5}, direction = defines.direction.east},
-        west = nauvisSurface.create_entity {name = "rail-signal", position = {50, 2.5}, direction = defines.direction.west}
+        east = nauvisSurface.create_entity {name = "rail-signal", position = {70, -0.5}, direction = defines.direction.east},
+        west = nauvisSurface.create_entity {name = "rail-signal", position = {70, 2.5}, direction = defines.direction.west}
     }
     local easternEndSignals = {
         east = nauvisSurface.create_entity {name = "rail-signal", position = {20, -0.5}, direction = defines.direction.east},
         west = nauvisSurface.create_entity {name = "rail-signal", position = {20, 2.5}, direction = defines.direction.west}
     }
-    global.tunnel.entrySignals[easternEndSignals.east.unit_number] = easternEndSignals.east
     easternEndSignals.east.connect_neighbour {wire = defines.wire_type.red, target_entity = easternEndSignals.west}
     SetRailSignalRed(easternEndSignals.east)
     SetRailSignalRed(easternEndSignals.west)
@@ -63,14 +58,15 @@ Test.Start = function()
         east = nauvisSurface.create_entity {name = "rail-signal", position = {-20, -0.5}, direction = defines.direction.east},
         west = nauvisSurface.create_entity {name = "rail-signal", position = {-20, 2.5}, direction = defines.direction.west}
     }
-    global.tunnel.entrySignals[westernEndSignals.west.unit_number] = westernEndSignals.west
     westernEndSignals.east.connect_neighbour {wire = defines.wire_type.red, target_entity = westernEndSignals.west}
     SetRailSignalRed(westernEndSignals.east)
     SetRailSignalRed(westernEndSignals.west)
     local westernEntrySignals = {
-        east = nauvisSurface.create_entity {name = "rail-signal", position = {-50, -0.5}, direction = defines.direction.east},
-        west = nauvisSurface.create_entity {name = "rail-signal", position = {-50, 2.5}, direction = defines.direction.west}
+        east = nauvisSurface.create_entity {name = "rail-signal", position = {-70, -0.5}, direction = defines.direction.east},
+        west = nauvisSurface.create_entity {name = "rail-signal", position = {-70, 2.5}, direction = defines.direction.west}
     }
+
+    local tunnel = Interfaces.Call("Tunnel.RegisterTunnel", nauvisSurface, "horizontal", {eastern = easternEndSignals, western = westernEndSignals}, {eastern = easternEntrySignals, western = westernEntrySignals})
 
     local trainStop = nauvisSurface.create_entity {name = "train-stop", position = {-95, -1}, direction = defines.direction.west}
 
@@ -85,6 +81,15 @@ Test.Start = function()
         }
     }
     loco.train.manual_mode = false
+
+    local undergroundSurface = tunnel.undergroundSurface
+    local undergroundEntitiesToPlace = {}
+    for x = -100, 100, 2 do
+        table.insert(undergroundEntitiesToPlace, {name = "straight-rail", position = {x, 0}, direction = defines.direction.west})
+    end
+    for _, details in pairs(undergroundEntitiesToPlace) do
+        undergroundSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
+    end
 end
 
 return Test

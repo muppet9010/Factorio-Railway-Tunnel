@@ -4,7 +4,9 @@ local EventScheduler = require("utility/event-scheduler")
 
 local doTests = true
 local testsToDo = {
-    singleLoco = {enabled = true, testScript = require("tests/single-loco")}
+    tunnelSingleLoco = {enabled = true, testScript = require("tests/tunnel-single-loco")},
+    surfaceSingleLoop = {enabled = true, testScript = require("tests/surface-single-loop")},
+    surfaceMiddleLine = {enabled = true, testScript = require("tests/surface-middle-line")}
 }
 
 TestManager.OnLoad = function()
@@ -31,13 +33,10 @@ TestManager.OnStartup = function()
 end
 
 TestManager.RunTests = function()
-    -- Only supports doing 1 test per run.
     game.tick_paused = true
-    for testName, test in pairs(testsToDo) do
+    for _, test in pairs(testsToDo) do
         if test.enabled then
-            game.print("Doing Test: " .. testName)
             test.testScript.Start()
-            return
         end
     end
 end
