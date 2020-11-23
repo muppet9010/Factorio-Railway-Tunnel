@@ -15,9 +15,10 @@ TestManager.OnLoad = function()
 end
 
 TestManager.OnStartup = function()
-    if not doTests then
+    if not doTests or global.testsRun then
         return
     end
+    global.testsRun = true
 
     local nauvisSurface = game.surfaces[1]
     nauvisSurface.generate_with_lab_tiles = true

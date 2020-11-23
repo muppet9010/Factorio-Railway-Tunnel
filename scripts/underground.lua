@@ -17,9 +17,8 @@ Underground.CreateSurface = function(surfaceName)
     surface.always_day = true
     surface.freeze_daytime = true
     surface.show_clouds = false
-    global.underground[surfaceName] = surface
-
     surface.request_to_generate_chunks({0, 0}, 10)
+    return surface
 end
 
 return Underground
