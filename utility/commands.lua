@@ -24,7 +24,7 @@ Commands.Register = function(name, helpText, commandFunction, adminOnly)
     commands.add_command(name, helpText, handlerFunction)
 end
 
--- Supports multiple string arguments separated by a space as a commands parameter. Can use pairs of single or double quotes to define the start and end of an argument string with spaces in it. Supports JSON array [] and dictionary {} of N depth and content characters.
+-- Supports multiple string arguments seperated by a space as a commands parameter. Can use pairs of single or double quotes to define the start and end of an argument string with spaces in it. Supports JSON array [] and dictionary {} of N depth and content characters.
 -- String quotes can be escaped by "\"" within their own quote type, ie: 'don\'t' will come out as "don't". Note the same quote type rule, i.e. "don\'t" will come out as "don\'t" . Otherwise the escape character \ wil be passed through as regular text.
 -- Returns a table of sequentially indexed arguments
 Commands.GetArgumentsFromCommand = function(parameterString)

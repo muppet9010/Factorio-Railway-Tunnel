@@ -1,0 +1,2 @@
+rails need new default when set of collision mask 'rail-layer'.
+some new shared function to get a free custom collision mask?

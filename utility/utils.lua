@@ -400,7 +400,6 @@ function Utils.CalculateTilesUnderPositionedBoundingBox(positionedBoundingBox)
 end
 
 function Utils.GetDistance(pos1, pos2)
-    pos1, pos2 = Utils.TableToProperPosition(pos1), Utils.TableToProperPosition(pos2)
     local dx = pos1.x - pos2.x
     local dy = pos1.y - pos2.y
     return math.sqrt(dx * dx + dy * dy)
@@ -437,6 +436,38 @@ function Utils.TableKeyToArray(aTable)
         table.insert(newArray, key)
     end
     return newArray
+end
+
+function Utils.TableKeyToCommaString(aTable)
+    -- Doesn't support commas in values or nested tables. Really for logging.
+    local newString = ""
+    if Utils.IsTableEmpty(aTable) then
+        return newString
+    end
+    for key in pairs(aTable) do
+        if newString == "" then
+            newString = key
+        else
+            newString = newString .. ", " .. tostring(key)
+        end
+    end
+    return newString
+end
+
+function Utils.TableValueToCommaString(aTable)
+    -- Doesn't support commas in values or nested tables. Really for logging.
+    local newString = ""
+    if Utils.IsTableEmpty(aTable) then
+        return newString
+    end
+    for _, value in pairs(aTable) do
+        if newString == "" then
+            newString = value
+        else
+            newString = newString .. ", " .. tostring(value)
+        end
+    end
+    return newString
 end
 
 function Utils.TableContentsToJSON(targetTable, name, singleLineOutput)
@@ -540,6 +571,17 @@ function Utils.GetTableKeyWithInnerKeyValue(theTable, key, value)
     return nil
 end
 
+function Utils.TableValuesToKey(tableWithValues)
+    if tableWithValues == nil then
+        return nil
+    end
+    local newTable = {}
+    for _, value in pairs(tableWithValues) do
+        newTable[value] = value
+    end
+    return newTable
+end
+
 function Utils.GetRandomFloatInRange(lower, upper)
     return lower + math.random() * (upper - lower)
 end
@@ -581,17 +623,6 @@ function Utils.GetRandomEntryFromNormalisedDataSet(dataSet, chancePropertyName)
         chanceRangeLow = chanceRangeHigh
     end
     return nil
-end
-
-function Utils.DisableSiloScript()
-    -- OnLoad
-    if remote.interfaces["silo_script"] == nil then
-        return
-    end
-    local items = remote.call("silo_script", "get_tracked_items")
-    for itemName in pairs(items) do
-        remote.call("silo_script", "remove_tracked_item", itemName)
-    end
 end
 
 function Utils.DisableWinOnRocket()
@@ -1225,17 +1256,6 @@ end
 Utils.StringTrim = function(text)
     -- trim6 from http://lua-users.org/wiki/StringTrim
     return string.match(text, "^()%s*$") and "" or string.match(text, "^%s*(.*%S)")
-end
-
-Utils.OrientationToDirection = function(orientation)
-    return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
-end
-
-Utils.PushToList = function(list, itemsToPush)
-    -- Adds the items to the end of a list (table). Ignoring their keys.
-    for _, item in pairs(itemsToPush) do
-        table.insert(list, item)
-    end
 end
 
 return Utils
