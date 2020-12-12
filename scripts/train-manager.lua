@@ -55,7 +55,7 @@ TrainManager.TrainFirstLeaving = function(event)
 end
 
 TrainManager.CloneEnteringTrainToUnderground = function(trainManagerEntry)
-    local undergroundTrain = TrainManager.CloneTrain(trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel.undergroundSurface)
+    local undergroundTrain = TrainManager.CloneTrain(trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel.undergroundSurface, true)
     trainManagerEntry.undergroundTrain = undergroundTrain
     undergroundTrain.schedule = {
         current = 1,
@@ -68,13 +68,18 @@ TrainManager.CloneEnteringTrainToUnderground = function(trainManagerEntry)
     undergroundTrain.manual_mode = false
 end
 
-TrainManager.CloneTrain = function(refTrain, targetSurface)
-    local newTrainEntities = {}
-    for _, carriage in pairs(refTrain.carriages) do
-        table.insert(newTrainEntities, targetSurface.create_entity {name = carriage.name, position = carriage.position, force = carriage.force, direction = Utils.OrientationToDirection(carriage.orientation)})
+TrainManager.CloneTrain = function(refTrain, targetSurface, includeRails)
+    local oldTrainEntities = refTrain.carriages
+    local refTrainCarriage1 = oldTrainEntities[1]
+    if includeRails then
+        local rails = refTrain.get_rails()
+        refTrainCarriage1.surface.clone_entities {entities = rails, destination_offset = {0, 0}, destination_surface = targetSurface}
     end
-    newTrainEntities[1].insert("rocket-fuel")
-    local newTrain = newTrainEntities[1].train
+
+    refTrainCarriage1.surface.clone_entities {entities = oldTrainEntities, destination_offset = {0, 0}, destination_surface = targetSurface}
+
+    local trains = refTrainCarriage1.force.get_trains(targetSurface)
+    local newTrain = trains[#trains]
     newTrain.speed = refTrain.speed
     return newTrain
 end
