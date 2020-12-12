@@ -1,3 +1,6 @@
+local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
+local hiddenSignalCollisionLayer = CollisionMaskUtil.get_first_unused_layer()
+
 data:extend(
     {
         {
@@ -8,7 +11,7 @@ data:extend(
                 filename = "__core__/graphics/empty.png",
                 size = 1
             },
-            collision_mask = {"layer-14"},
+            collision_mask = {hiddenSignalCollisionLayer},
             collision_box = {{-0.2, -0.2}, {0.2, 0.2}}
             --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
         }
@@ -16,9 +19,10 @@ data:extend(
 )
 
 -- Add our hidden rail signal collision mask to all other rail signals
-for _, prototypeType in pairs({"rail-signal", "rail-chain-signal"}) do
-    for _, prototype in pairs(data.raw[prototypeType]) do
-        prototype.collision_mask = prototype.collision_mask or {"item-layer", "floor-layer"} -- Default - 1.1 needs additional rail-layer
-        table.insert(prototype.collision_mask, "layer-14")
+for _, prototypeTypeName in pairs({"rail-signal", "rail-chain-signal"}) do
+    for _, prototype in pairs(data.raw[prototypeTypeName]) do
+        local newMask = CollisionMaskUtil.get_mask(prototype)
+        CollisionMaskUtil.add_layer(newMask, hiddenSignalCollisionLayer)
+        prototype.collision_mask = newMask
     end
 end

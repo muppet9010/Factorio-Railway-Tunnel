@@ -1,33 +1,18 @@
 local Utils = require("utility/utils")
+local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
+local tunnelPortalCollisionLayer = CollisionMaskUtil.get_first_unused_layer()
 
 local giantTrainStop = Utils.DeepCopy(data.raw["train-stop"]["train-stop"])
 giantTrainStop.name = "railway_tunnel-tunnel_portal_surface"
 giantTrainStop.collision_box = {{-4, 0}, {0, 50}}
-giantTrainStop.collision_mask = {"player-layer", "layer-15"}
+giantTrainStop.collision_mask = {"player-layer", tunnelPortalCollisionLayer}
 data:extend({giantTrainStop})
 
 -- Add our tunnel portal collision mask to all other things we should conflict with
-for _, prototypeType in pairs({"rail-signal", "rail-chain-signal"}) do
-    for _, prototype in pairs(data.raw[prototypeType]) do
-        prototype.collision_mask = prototype.collision_mask or {"item-layer", "floor-layer"} -- Default - 1.1 needs additional rail-layer
-        table.insert(prototype.collision_mask, "layer-15")
-    end
-end
-for _, prototypeType in pairs({"splitter", "underground-belt", "loader-1x1", "loader"}) do
-    for _, prototype in pairs(data.raw[prototypeType]) do
-        prototype.collision_mask = prototype.collision_mask or {"object-layer", "item-layer", "water-tile"}
-        table.insert(prototype.collision_mask, "layer-15")
-    end
-end
-for _, prototypeType in pairs({"transport-belt", "heat-pipe"}) do
-    for _, prototype in pairs(data.raw[prototypeType]) do
-        prototype.collision_mask = prototype.collision_mask or {"object-layer", "floor-layer", "water-tile"}
-        table.insert(prototype.collision_mask, "layer-15")
-    end
-end
-for _, prototypeType in pairs({"land-mine"}) do
-    for _, prototype in pairs(data.raw[prototypeType]) do
-        prototype.collision_mask = prototype.collision_mask or {"object-layer", "water-tile"}
-        table.insert(prototype.collision_mask, "layer-15")
+for _, prototypeTypeName in pairs({"rail-signal", "rail-chain-signal", "loader-1x1", "loader", "splitter", "underground-belt", "transport-belt", "heat-pipe", "land-mine"}) do
+    for _, prototype in pairs(data.raw[prototypeTypeName]) do
+        local newMask = CollisionMaskUtil.get_mask(prototype)
+        CollisionMaskUtil.add_layer(newMask, tunnelPortalCollisionLayer)
+        prototype.collision_mask = newMask
     end
 end
