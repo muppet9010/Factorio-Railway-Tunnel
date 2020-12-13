@@ -4,7 +4,8 @@ local EventScheduler = require("utility/event-scheduler")
 
 local doTests = true
 local testsToDo = {
-    tunnelSingleLoco = {enabled = true, testScript = require("tests/tunnel-single-loco")},
+    tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
+    tunnelMultiWagon = {enabled = true, testScript = require("tests/tunnel-multi-wagon")},
     surfaceSingleLoop = {enabled = true, testScript = require("tests/surface-single-loop")},
     surfaceMiddleLine = {enabled = true, testScript = require("tests/surface-middle-line")}
 }
