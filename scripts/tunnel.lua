@@ -18,7 +18,6 @@ end
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.RegisterTunnel", Tunnel.RegisterTunnel)
-    Interfaces.RegisterInterface("Tunnel.GetTunnelBySignalId", Tunnel.GetTunnelBySignalId)
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -40,17 +39,9 @@ Tunnel.RegisterTunnel = function(aboveSurface, direction, aboveEndSignals, above
     local tunnel = {id = tunnelId, direction = direction, aboveSurface = aboveSurface, undergroundSurface = undergroundSurface, aboveEndSignals = aboveEndSignals, aboveEntrySignals = aboveEntrySignals}
     global.tunnel.tunnels[tunnelId] = tunnel
 
-    global.tunnel.endSignals[aboveEndSignals.eastern.east.unit_number] = {signal = aboveEndSignals.eastern.east, tunnel = tunnel}
+    global.tunnel.endSignals[aboveEndSignals.eastern[defines.direction.east].unit_number] = {signal = aboveEndSignals.eastern[defines.direction.east], tunnel = tunnel}
 
     return tunnel
-end
-
-Tunnel.GetTunnelBySignalId = function(signalId)
-    if global.tunnel.endSignals[signalId] ~= nil then
-        return global.tunnel.endSignals[signalId].tunnel
-    else
-        return nil
-    end
 end
 
 return Tunnel

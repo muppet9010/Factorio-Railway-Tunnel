@@ -1,6 +1,8 @@
 local Test = {}
 local Utils = require("utility/utils")
 
+-- OLD TUNNEL CODE - NO LONGER WORKS
+
 Test.Start = function()
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]

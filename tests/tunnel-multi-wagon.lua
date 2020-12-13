@@ -43,27 +43,27 @@ Test.Start = function()
     nauvisSurface.set_tiles(tiles)
 
     local easternEntrySignals = {
-        east = nauvisSurface.create_entity {name = "rail-signal", position = {70, -0.5}, direction = defines.direction.east},
-        west = nauvisSurface.create_entity {name = "rail-signal", position = {70, 2.5}, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {70, -0.5}, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {70, 2.5}, direction = defines.direction.west}
     }
     local easternEndSignals = {
-        east = nauvisSurface.create_entity {name = "rail-signal", position = {20, -0.5}, direction = defines.direction.east},
-        west = nauvisSurface.create_entity {name = "rail-signal", position = {20, 2.5}, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {20, -0.5}, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {20, 2.5}, direction = defines.direction.west}
     }
-    easternEndSignals.east.connect_neighbour {wire = defines.wire_type.red, target_entity = easternEndSignals.west}
-    SetRailSignalRed(easternEndSignals.east)
-    SetRailSignalRed(easternEndSignals.west)
+    easternEndSignals[defines.direction.east].connect_neighbour {wire = defines.wire_type.red, target_entity = easternEndSignals[defines.direction.west]}
+    SetRailSignalRed(easternEndSignals[defines.direction.east])
+    SetRailSignalRed(easternEndSignals[defines.direction.west])
 
     local westernEndSignals = {
-        east = nauvisSurface.create_entity {name = "rail-signal", position = {-20, -0.5}, direction = defines.direction.east},
-        west = nauvisSurface.create_entity {name = "rail-signal", position = {-20, 2.5}, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {-20, -0.5}, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {-20, 2.5}, direction = defines.direction.west}
     }
-    westernEndSignals.east.connect_neighbour {wire = defines.wire_type.red, target_entity = westernEndSignals.west}
-    SetRailSignalRed(westernEndSignals.east)
-    SetRailSignalRed(westernEndSignals.west)
+    westernEndSignals[defines.direction.east].connect_neighbour {wire = defines.wire_type.red, target_entity = westernEndSignals[defines.direction.west]}
+    SetRailSignalRed(westernEndSignals[defines.direction.east])
+    SetRailSignalRed(westernEndSignals[defines.direction.west])
     local westernEntrySignals = {
-        east = nauvisSurface.create_entity {name = "rail-signal", position = {-70, -0.5}, direction = defines.direction.east},
-        west = nauvisSurface.create_entity {name = "rail-signal", position = {-70, 2.5}, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {-70, -0.5}, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {-70, 2.5}, direction = defines.direction.west}
     }
 
     local tunnel = Interfaces.Call("Tunnel.RegisterTunnel", nauvisSurface, "horizontal", {eastern = easternEndSignals, western = westernEndSignals}, {eastern = easternEntrySignals, western = westernEntrySignals})
