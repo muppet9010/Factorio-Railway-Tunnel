@@ -117,7 +117,37 @@ function Utils.TableToProperPosition(thing)
     end
 end
 
+function Utils.IsTableValidBoundingBox(thing)
+    if thing.left_top ~= nil and thing.right_bottom ~= nil then
+        if Utils.IsTableValidPosition(thing.left_top) and Utils.IsTableValidPosition(thing.right_bottom) then
+            return true
+        else
+            return false
+        end
+    end
+    if #thing ~= 2 then
+        return false
+    end
+    if Utils.IsTableValidPosition(thing[1]) and Utils.IsTableValidPosition(thing[2]) then
+        return true
+    else
+        return false
+    end
+end
+
+function Utils.TableToProperBoundingBox(thing)
+    if not Utils.IsTableValidBoundingBox(thing) then
+        return nil
+    elseif thing.left_top ~= nil and thing.right_bottom ~= nil then
+        return {left_top = Utils.TableToProperPosition(thing.left_top), right_bottom = Utils.TableToProperPosition(thing.right_bottom)}
+    else
+        return {left_top = Utils.TableToProperPosition(thing[1]), right_bottom = Utils.TableToProperPosition(thing[2])}
+    end
+end
+
 function Utils.ApplyBoundingBoxToPosition(centrePos, boundingBox, orientation)
+    centrePos = Utils.TableToProperPosition(centrePos)
+    boundingBox = Utils.TableToProperBoundingBox(boundingBox)
     if orientation == nil or orientation == 0 or orientation == 1 then
         return {
             left_top = {
@@ -143,8 +173,6 @@ function Utils.ApplyBoundingBoxToPosition(centrePos, boundingBox, orientation)
                 y = centrePos.y + rotatedBoundingBox.right_bottom.y
             }
         }
-    else
-        game.print("Error: Diagonal orientations not supported by Utils.ApplyBoundingBoxToPosition()")
     end
 end
 
@@ -1268,6 +1296,11 @@ Utils.PushToList = function(list, itemsToPush)
     for _, item in pairs(itemsToPush) do
         table.insert(list, item)
     end
+end
+
+Utils.DirectionValueToName = function(directionValue)
+    local names = {[0] = "north", [1] = "northeast", [2] = "east", [3] = "southeast", [4] = "south", [5] = "southwest", [6] = "west", [7] = "northwest"}
+    return names[directionValue]
 end
 
 return Utils
