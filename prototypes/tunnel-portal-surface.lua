@@ -2,7 +2,7 @@ local Utils = require("utility/utils")
 
 local tunnelPortalSurfacePlacement = {
     type = "furnace",
-    name = "railway_tunnel-tunnel_portal_surface_placement",
+    name = "railway_tunnel-tunnel_portal_surface-placement",
     collision_box = {{-2, -25}, {2, 25}},
     collision_mask = {"item-layer", "object-layer", "player-layer", "water-tile"},
     idle_animation = data.raw["pump"]["pump"].animations,
@@ -21,7 +21,7 @@ local function MakeTunnelPortalSurfacePlaced(direction, orientation)
         {
             {
                 type = "simple-entity",
-                name = "railway_tunnel-tunnel_portal_surface_placed_" .. direction,
+                name = "railway_tunnel-tunnel_portal_surface-placed-" .. direction,
                 collision_box = rotatedCollisionBox,
                 collision_mask = tunnelPortalSurfacePlacement.collision_mask,
                 selection_box = rotatedCollisionBox,

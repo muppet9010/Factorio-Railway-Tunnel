@@ -17,8 +17,8 @@ Test.Start = function()
         table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x, 0}, direction = defines.direction.west})
     end
     for x = -18, 18, 2 do
-        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-hidden_rail_signal", position = {x, -0.5}, direction = defines.direction.east})
-        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-hidden_rail_signal", position = {x, 2.5}, direction = defines.direction.west})
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_rail_signal_surface", position = {x, -0.5}, direction = defines.direction.east})
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_rail_signal_surface", position = {x, 2.5}, direction = defines.direction.west})
     end
     for _, details in pairs(nauvisEntitiesToPlace) do
         nauvisSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
