@@ -55,6 +55,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, entryEndSignal, tunn
 
     local sourceTrain = trainManagerEntry.aboveTrainEntering
     local oldTrainEntities = sourceTrain.carriages
+    --TODO: don't place the wagons on corners, place them straight - need to work out their real directionto the train, etc. Just extend the rails under the wagons if neeeded. Placing on corners leads them to not all be joined in to the same train on the underground.
     local rails = sourceTrain.get_rails()
     trainManagerEntry.aboveSurface.clone_entities {entities = rails, destination_offset = {0, 0}, destination_surface = trainManagerEntry.undergroundSurface}
     trainManagerEntry.aboveSurface.clone_entities {entities = oldTrainEntities, destination_offset = {0, 0}, destination_surface = trainManagerEntry.undergroundSurface}

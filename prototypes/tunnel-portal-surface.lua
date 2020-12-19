@@ -1,11 +1,18 @@
 local Utils = require("utility/utils")
-local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
-local tunnelPortalCollisionLayer = CollisionMaskUtil.get_first_unused_layer()
 
-local tunnelPortalSurfacePlacement = Utils.DeepCopy(data.raw["train-stop"]["train-stop"])
-tunnelPortalSurfacePlacement.name = "railway_tunnel-tunnel_portal_surface_placement"
-tunnelPortalSurfacePlacement.collision_box = {{-4, -49}, {0, 1}}
-tunnelPortalSurfacePlacement.collision_mask = {"player-layer", tunnelPortalCollisionLayer}
+local tunnelPortalSurfacePlacement = {
+    type = "furnace",
+    name = "railway_tunnel-tunnel_portal_surface_placement",
+    collision_box = {{-2, -25}, {2, 25}},
+    collision_mask = {"item-layer", "object-layer", "player-layer", "water-tile"},
+    idle_animation = data.raw["pump"]["pump"].animations,
+    crafting_categories = {"crafting"},
+    crafting_speed = 1,
+    energy_source = {type = "void"},
+    energy_usage = "1W",
+    result_inventory_size = 0,
+    source_inventory_size = 0
+}
 data:extend({tunnelPortalSurfacePlacement})
 
 local function MakeTunnelPortalSurfacePlaced(direction, orientation)
@@ -16,7 +23,7 @@ local function MakeTunnelPortalSurfacePlaced(direction, orientation)
                 type = "simple-entity",
                 name = "railway_tunnel-tunnel_portal_surface_placed_" .. direction,
                 collision_box = rotatedCollisionBox,
-                collision_mask = CollisionMaskUtil.get_default_mask("straight-rail"),
+                collision_mask = tunnelPortalSurfacePlacement.collision_mask,
                 selection_box = rotatedCollisionBox,
                 flags = {},
                 picture = {
@@ -32,12 +39,3 @@ MakeTunnelPortalSurfacePlaced("north", 0)
 MakeTunnelPortalSurfacePlaced("east", 0.25)
 MakeTunnelPortalSurfacePlaced("south", 0.5)
 MakeTunnelPortalSurfacePlaced("west", 0.75)
-
--- Add our tunnel portal collision mask to all other things we should conflict with
-for _, prototypeTypeName in pairs({"rail-signal", "rail-chain-signal", "loader-1x1", "loader", "splitter", "underground-belt", "transport-belt", "heat-pipe", "land-mine"}) do
-    for _, prototype in pairs(data.raw[prototypeTypeName]) do
-        local newMask = CollisionMaskUtil.get_mask(prototype)
-        CollisionMaskUtil.add_layer(newMask, tunnelPortalCollisionLayer)
-        prototype.collision_mask = newMask
-    end
-end
