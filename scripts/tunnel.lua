@@ -3,6 +3,13 @@ local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local Tunnel = {}
 
+Tunnel.tunnelSetup = {
+    --Tunnels distance starts from the first entrace tile.
+    lengthFromCenter = 25,
+    entrySignalsDistance = 0,
+    endSignalsDistance = 50
+}
+
 Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
     global.tunnel.endSignals = global.tunnel.endSignals or {}
@@ -19,7 +26,10 @@ end
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.RegisterTunnel", Tunnel.RegisterTunnel)
+
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.PlacementTunnelBuilt_OnBuiltEntity", Tunnel.PlacementTunnelBuilt_OnBuiltEntity, "Tunnel.PlacementTunnelBuilt_OnBuiltEntity", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.PlacementTunnelBuilt_OnRobotBuiltEntity", Tunnel.PlacementTunnelBuilt_OnRobotBuiltEntity, "Tunnel.PlacementTunnelBuilt_OnRobotBuiltEntity", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.PlacementTunnelBuilt_ScriptRaisedBuilt", Tunnel.PlacementTunnelBuilt_ScriptRaisedBuilt, "Tunnel.PlacementTunnelBuilt_ScriptRaisedBuilt", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -51,6 +61,26 @@ Tunnel.PlacementTunnelBuilt_OnBuiltEntity = function(event)
     if createdEntity.name ~= "railway_tunnel-tunnel_portal_surface-placement" then
         return
     end
+    Tunnel.PlacementTunnelBuilt(createdEntity)
+end
+
+Tunnel.PlacementTunnelBuilt_OnRobotBuiltEntity = function(event)
+    local createdEntity = event.entity
+    if createdEntity.name ~= "railway_tunnel-tunnel_portal_surface-placement" then
+        return
+    end
+    Tunnel.PlacementTunnelBuilt(createdEntity)
+end
+
+Tunnel.PlacementTunnelBuilt_ScriptRaisedBuilt = function(event)
+    local createdEntity = event.entity
+    if createdEntity.name ~= "railway_tunnel-tunnel_portal_surface-placement" then
+        return
+    end
+    Tunnel.PlacementTunnelBuilt(createdEntity)
+end
+
+Tunnel.PlacementTunnelBuilt = function(createdEntity)
     createdEntity.surface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placed-" .. Utils.DirectionValueToName(createdEntity.direction), position = createdEntity.position, force = createdEntity.force, player = createdEntity.last_user, raise_built = true}
     createdEntity.destroy()
 end

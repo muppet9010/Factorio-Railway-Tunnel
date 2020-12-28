@@ -39,10 +39,10 @@ Test.Start = function()
         nauvisSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
     end
 
-    local trainStop1 = nauvisSurface.create_entity {name = "train-stop", position = {-9, -19}, direction = defines.direction.north}
-    local trainStop2 = nauvisSurface.create_entity {name = "train-stop", position = {9, 19}, direction = defines.direction.south}
+    local trainStop1 = nauvisSurface.create_entity {name = "train-stop", position = {-9, -19}, force = playerForce, direction = defines.direction.north}
+    local trainStop2 = nauvisSurface.create_entity {name = "train-stop", position = {9, 19}, force = playerForce, direction = defines.direction.south}
 
-    local loco = nauvisSurface.create_entity {name = "locomotive", position = {-11, -16}, direction = defines.direction.north}
+    local loco = nauvisSurface.create_entity {name = "locomotive", position = {-11, -16}, force = playerForce, direction = defines.direction.north}
     loco.insert("rocket-fuel")
     loco.train.schedule = {
         current = 1,

@@ -3,9 +3,30 @@ local Utils = require("utility/utils")
 local tunnelPortalSurfacePlacement = {
     type = "furnace",
     name = "railway_tunnel-tunnel_portal_surface-placement",
-    collision_box = {{-2, -25}, {2, 25}},
+    collision_box = {{-1.9, -24.9}, {1.9, 24.9}},
     collision_mask = {"item-layer", "object-layer", "player-layer", "water-tile"},
-    idle_animation = data.raw["pump"]["pump"].animations,
+    idle_animation = {
+        north = {
+            filename = "__railway_tunnel__/graphics/tunnel_portal_surface/tunnel_portal_surface-placement-north.png",
+            height = 1600,
+            width = 128
+        },
+        east = {
+            filename = "__railway_tunnel__/graphics/tunnel_portal_surface/tunnel_portal_surface-placement-east.png",
+            height = 128,
+            width = 1600
+        },
+        south = {
+            filename = "__railway_tunnel__/graphics/tunnel_portal_surface/tunnel_portal_surface-placement-south.png",
+            height = 1600,
+            width = 128
+        },
+        west = {
+            filename = "__railway_tunnel__/graphics/tunnel_portal_surface/tunnel_portal_surface-placement-west.png",
+            height = 128,
+            width = 1600
+        }
+    },
     crafting_categories = {"crafting"},
     crafting_speed = 1,
     energy_source = {type = "void"},
@@ -17,6 +38,16 @@ data:extend({tunnelPortalSurfacePlacement})
 
 local function MakeTunnelPortalSurfacePlaced(direction, orientation)
     local rotatedCollisionBox = Utils.ApplyBoundingBoxToPosition({x = 0, y = 0}, Utils.DeepCopy(tunnelPortalSurfacePlacement.collision_box), orientation)
+    local filenameDirection, height, width
+    if direction == "north" or direction == "south" then
+        filenameDirection = "northsouth"
+        height = 1600
+        width = 128
+    else
+        filenameDirection = "eastwest"
+        height = 128
+        width = 1600
+    end
     data:extend(
         {
             {
@@ -27,10 +58,11 @@ local function MakeTunnelPortalSurfacePlaced(direction, orientation)
                 selection_box = rotatedCollisionBox,
                 flags = {},
                 picture = {
-                    filename = "__base__/graphics/terrain/stone-path/stone-path-4.png",
-                    count = 16,
-                    size = 4
-                }
+                    filename = "__railway_tunnel__/graphics/tunnel_portal_surface/tunnel_portal_surface-base-" .. filenameDirection .. ".png",
+                    height = height,
+                    width = width
+                },
+                render_layer = "floor"
             }
         }
     )
