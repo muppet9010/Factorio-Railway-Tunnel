@@ -43,8 +43,8 @@ data:extend(
             draw_circuit_wires = false,
             circuit_wire_max_distance = 10,
             circuit_wire_connection_points = GetBlankCircuitWireConnectionPoints(),
-            circuit_connector_sprites = GetBlankCircuitConnectorSprites()
-            --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
+            circuit_connector_sprites = GetBlankCircuitConnectorSprites(),
+            selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
         }
     }
 )
