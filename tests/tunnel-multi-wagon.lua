@@ -13,48 +13,51 @@ Test.Start = function()
     local playerForce = game.forces["player"]
 
     local nauvisEntitiesToPlace = {}
-    for x = -121, -31, 2 do
+    for x = -121, -71, 2 do
         table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x, 1}, direction = defines.direction.west})
     end
-    for x = -29, 29, 2 do
-        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-invisible_rail", position = {x, 1}, direction = defines.direction.west})
-    end
-    for x = 31, 121, 2 do
-        table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x, 1}, direction = defines.direction.west})
-    end
-    for x = -18, 18, 2 do
-        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_rail_signal_surface", position = {x, -0.5}, direction = defines.direction.east})
-        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_rail_signal_surface", position = {x, 2.5}, direction = defines.direction.west})
-    end
-    for _, details in pairs(nauvisEntitiesToPlace) do
-        nauvisSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
-    end
+    nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placement", position = {-45, 1}, force = playerForce, direction = defines.direction.west, raise_built = true}
 
-    nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placement", position = {45, 1}, force = playerForce, direction = defines.direction.east, raise_built = true}
     local tiles = {}
-    for x = -20, 20 do
+    for x = -20, 19 do
         for y = -1, 2 do
             table.insert(tiles, {name = "hazard-concrete-left", position = {x, y}})
         end
     end
     nauvisSurface.set_tiles(tiles)
-    nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placement", position = {-45, 1}, force = playerForce, direction = defines.direction.west, raise_built = true}
+    for x = -19, 19, 2 do
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-invisible_rail", position = {x, 1}, direction = defines.direction.west})
+    end
+
+    nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placement", position = {45, 1}, force = playerForce, direction = defines.direction.east, raise_built = true}
+    for x = 71, 121, 2 do
+        table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x, 1}, direction = defines.direction.west})
+    end
+
+    for x = -18, 18, 2 do
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_rail_signal_surface", position = {x, -0.5}, direction = defines.direction.east})
+        table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_rail_signal_surface", position = {x, 2.5}, direction = defines.direction.west})
+    end
+
+    for _, details in pairs(nauvisEntitiesToPlace) do
+        nauvisSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
+    end
 
     local easternEntrySignals = {
-        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {70, -0.5}, force = playerForce, direction = defines.direction.east},
-        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {70, 2.5}, force = playerForce, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {69.5, -0.5}, force = playerForce, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {69.5, 2.5}, force = playerForce, direction = defines.direction.west}
     }
     local easternEndSignals = {
-        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {20, -0.5}, force = playerForce, direction = defines.direction.east},
-        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {20, 2.5}, force = playerForce, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_end_rail_signal", position = {20.5, -0.5}, force = playerForce, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_end_rail_signal", position = {20.5, 2.5}, force = playerForce, direction = defines.direction.west}
     }
     easternEndSignals[defines.direction.east].connect_neighbour {wire = defines.wire_type.red, target_entity = easternEndSignals[defines.direction.west]}
     SetRailSignalRed(easternEndSignals[defines.direction.east])
     SetRailSignalRed(easternEndSignals[defines.direction.west])
 
     local westernEndSignals = {
-        [defines.direction.east] = nauvisSurface.create_entity {name = "rail-signal", position = {-20, -0.5}, force = playerForce, direction = defines.direction.east},
-        [defines.direction.west] = nauvisSurface.create_entity {name = "rail-signal", position = {-20, 2.5}, force = playerForce, direction = defines.direction.west}
+        [defines.direction.east] = nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_end_rail_signal", position = {-20.5, -0.5}, force = playerForce, direction = defines.direction.east},
+        [defines.direction.west] = nauvisSurface.create_entity {name = "railway_tunnel-tunnel_portal_end_rail_signal", position = {-20.5, 2.5}, force = playerForce, direction = defines.direction.west}
     }
     westernEndSignals[defines.direction.east].connect_neighbour {wire = defines.wire_type.red, target_entity = westernEndSignals[defines.direction.west]}
     SetRailSignalRed(westernEndSignals[defines.direction.east])

@@ -62,7 +62,7 @@ local function MakeTunnelPortalSurfacePlaced(direction, orientation)
                     height = height,
                     width = width
                 },
-                render_layer = "floor"
+                render_layer = "ground-tile"
             }
         }
     )
