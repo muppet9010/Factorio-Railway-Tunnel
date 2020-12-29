@@ -5,10 +5,10 @@ local Tunnel = {}
 
 Tunnel.tunnelSetup = {
     --Tunnels distance starts from the first entrace tile.
-    lengthFromCenter = 25,
+    entranceFromCenter = 25,
     entrySignalsDistance = 0,
-    endSignalsDistance = 50,
-    straightRailCountFromEntrance = 22,
+    endSignalsDistance = 49,
+    straightRailCountFromEntrance = 21,
     invisibleRailCountFromEntrance = 3
 }
 
@@ -39,9 +39,9 @@ Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.RegisterTunnel", Tunnel.RegisterTunnel)
 
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.PlacementTunnelPortalBuilt_OnBuiltEntity", Tunnel.PlacementTunnelPortalBuilt_OnBuiltEntity, "Tunnel.PlacementTunnelPortalBuilt_OnBuiltEntity", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.PlacementTunnelPortalBuilt_OnRobotBuiltEntity", Tunnel.PlacementTunnelPortalBuilt_OnRobotBuiltEntity, "Tunnel.PlacementTunnelPortalBuilt_OnRobotBuiltEntity", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.PlacementTunnelPortalBuilt_ScriptRaisedBuilt", Tunnel.PlacementTunnelPortalBuilt_ScriptRaisedBuilt, "Tunnel.PlacementTunnelPortalBuilt_ScriptRaisedBuilt", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.PlacementTunnelPortalBuilt_OnBuiltEnOnBuiltEntitytity", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnRobotBuiltEntity", Tunnel.OnRobotBuiltEntity, "Tunnel.OnRobotBuiltEntity", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.ScriptRaisedBuilt", Tunnel.ScriptRaisedBuilt, "Tunnel.ScriptRaisedBuilt", {{filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"}})
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -68,34 +68,36 @@ Tunnel.RegisterTunnel = function(aboveSurface, alignment, aboveEndSignals, above
     return tunnel
 end
 
-Tunnel.PlacementTunnelPortalBuilt_OnBuiltEntity = function(event)
+Tunnel.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity
-    if createdEntity.name ~= "railway_tunnel-tunnel_portal_surface-placement" then
-        return
+    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
+        Tunnel.PlacementTunnelPortalBuilt(createdEntity, game.get_player(event.player_index))
     end
-    Tunnel.PlacementTunnelPortalBuilt(createdEntity)
 end
 
-Tunnel.PlacementTunnelPortalBuilt_OnRobotBuiltEntity = function(event)
+Tunnel.OnRobotBuiltEntity = function(event)
     local createdEntity = event.entity
-    if createdEntity.name ~= "railway_tunnel-tunnel_portal_surface-placement" then
-        return
+    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
+        Tunnel.PlacementTunnelPortalBuilt(createdEntity, event.robot)
     end
-    Tunnel.PlacementTunnelPortalBuilt(createdEntity)
 end
 
-Tunnel.PlacementTunnelPortalBuilt_ScriptRaisedBuilt = function(event)
+Tunnel.ScriptRaisedBuilt = function(event)
     local createdEntity = event.entity
-    if createdEntity.name ~= "railway_tunnel-tunnel_portal_surface-placement" then
-        return
+    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
+        Tunnel.PlacementTunnelPortalBuilt(createdEntity, nil)
     end
-    Tunnel.PlacementTunnelPortalBuilt(createdEntity)
 end
 
-Tunnel.PlacementTunnelPortalBuilt = function(placementEntity)
+Tunnel.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, directionName, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, Utils.DirectionValueToName(placementEntity.direction), placementEntity.surface
     local orientation = directionValue / 8
-    local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - Tunnel.tunnelSetup.lengthFromCenter}))
+    local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - Tunnel.tunnelSetup.entranceFromCenter}))
+
+    if not Tunnel.TunnelPortalPlacementValid(placementEntity) then
+        --TODO: mine the placement entity back to the placer and show a message. May be no placer so just lose the item as script created.
+        return
+    end
     placementEntity.destroy()
 
     local abovePlacedPortal = aboveSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placed-" .. directionName, position = centerPos, force = force, player = lastUser}
@@ -157,6 +159,11 @@ Tunnel.SetRailSignalRed = function(signal)
     controlBehavour.read_signal = false
     controlBehavour.close_signal = true
     controlBehavour.circuit_condition = {condition = {first_signal = {type = "virtual", name = "signal-red"}, comparator = "="}, constant = 0}
+end
+
+Tunnel.TunnelPortalPlacementValid = function(placementEntity)
+    --TODO: check that the entrance of the tunnel portal is aligned to the rail grid correctly.
+    return true
 end
 
 return Tunnel

@@ -34,11 +34,6 @@ Test.Start = function()
         nauvisSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
     end
 
-    return
-    UP TO HERE
-    --[[
-    local tunnel = Interfaces.Call("Tunnel.RegisterTunnel", nauvisSurface, "horizontal", {eastern = easternEndSignals, western = westernEndSignals}, {eastern = easternEntrySignals, western = westernEntrySignals})
-
     local trainStop = nauvisSurface.create_entity {name = "train-stop", position = {-95, -1}, force = playerForce, direction = defines.direction.west}
 
     local loco1 = nauvisSurface.create_entity {name = "locomotive", position = {95, 1}, force = playerForce, direction = defines.direction.west}
@@ -57,6 +52,8 @@ Test.Start = function()
     }
     loco1.train.manual_mode = false
 
+    --[[
+    local tunnel = Interfaces.Call("Tunnel.RegisterTunnel", nauvisSurface, "horizontal", {eastern = easternEndSignals, western = westernEndSignals}, {eastern = easternEntrySignals, western = westernEntrySignals})
     local undergroundSurface = tunnel.undergroundSurface
     local undergroundEntitiesToPlace = {}
     for x = -100, 100, 2 do
@@ -64,7 +61,8 @@ Test.Start = function()
     end
     for _, details in pairs(undergroundEntitiesToPlace) do
         undergroundSurface.create_entity {name = details.name, position = details.position, force = playerForce, direction = details.direction}
-    end]]
+    end
+    ]]
 end
 
 return Test
