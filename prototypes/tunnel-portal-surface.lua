@@ -1,4 +1,6 @@
 local Utils = require("utility/utils")
+local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
+local tunnelRailSurfacePlacementCollisionLayer = CollisionMaskUtil.get_first_unused_layer()
 
 -- The tunnel portal goes up to the end of the entry rail, but stops mid tunnel end rail. This is to stop regualr track being connected and the tunnel rail surface when placed next to a tunnel portal will detect it and place the overlapping rail.
 -- Temp graphics are from when the portal was 50 tiles long, so end 1 tile (32 pixels) are chopped off by design and shifted.
@@ -92,3 +94,28 @@ MakeTunnelPortalSurfacePlaced("north", 0)
 MakeTunnelPortalSurfacePlaced("east", 0.25)
 MakeTunnelPortalSurfacePlaced("south", 0.5)
 MakeTunnelPortalSurfacePlaced("west", 0.75)
+
+data:extend(
+    {
+        {
+            type = "tile",
+            name = "railway_tunnel-tunnel_surface_rail_end_connection_tile",
+            collision_mask = {tunnelRailSurfacePlacementCollisionLayer, "ground-tile"},
+            needs_correction = false,
+            layer = 64,
+            map_color = {r = 0, g = 0, b = 0, a = 0},
+            pollution_absorption_per_second = 0,
+            variants = {
+                main = {
+                    {
+                        picture = "__core__/graphics/editor-selection.png", -- is a 32 pixel white square
+                        count = 1,
+                        size = 1
+                    }
+                },
+                empty_transitions = true
+            },
+            can_be_part_of_blueprint = false
+        }
+    }
+)

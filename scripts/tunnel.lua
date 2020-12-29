@@ -152,6 +152,13 @@ Tunnel.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     portal.endSignals["in"].connect_neighbour {wire = defines.wire_type.red, target_entity = portal.endSignals["out"]}
     Tunnel.SetRailSignalRed(portal.endSignals["in"])
     Tunnel.SetRailSignalRed(portal.endSignals["out"])
+
+    aboveSurface.set_tiles(
+        {
+            {name = "railway_tunnel-tunnel_surface_rail_end_connection_tile", position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = -0.5, y = -0.5 + Tunnel.tunnelSetup.endSignalsDistance}))},
+            {name = "railway_tunnel-tunnel_surface_rail_end_connection_tile", position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 0.5, y = -0.5 + Tunnel.tunnelSetup.endSignalsDistance}))}
+        }
+    )
 end
 
 Tunnel.SetRailSignalRed = function(signal)
