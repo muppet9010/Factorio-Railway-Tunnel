@@ -1,6 +1,7 @@
 local Utils = require("utility/utils")
 
 -- Have to do this 4 rotations to keep it happy and avoid crashing on connecting rail signals via wires.
+-- This bug causes the need of 4 rotations: https://forums.factorio.com/viewtopic.php?f=30&t=93681
 
 local GetBlankAnimations = function()
     local animation = {
