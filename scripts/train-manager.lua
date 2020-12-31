@@ -13,8 +13,8 @@ TrainManager.CreateGlobals = function()
         aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
         aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
         trainDirection = defines.direction the train is heading in.
-        entryEndSignal = LuaEntity of the rail signal at the end of the tunnel entrance track (forced closed signal).
-        exitEndSignal = LuaEntity of the rail signal at the end of the tunnel exit track (forced closed signal).
+        entryEndSignal = the endSignal global object of the rail signal at the end of the tunnel entrance track (forced closed signal).
+        exitEndSignal = the endSignal global object of the rail signal at the end of the tunnel exit track (forced closed signal).
         tunnel = ref to the global tunnel object.
         origTrainSchedule = copy of the origional train schedule table made when triggered the managed train process.
         undergroundTrain = LuaTrain of the train created in the underground surface.
@@ -37,23 +37,33 @@ TrainManager.OnLoad = function()
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, entryEndSignal)
-    local trainManagerId = #global.trainManager.managedTrains + 1
-    global.trainManager.managedTrains[trainManagerId] = {id = trainManagerId, aboveTrainEntering = trainEntering, aboveTrainEnteringId = trainEntering.id, entryEndSignal = entryEndSignal, tunnel = entryEndSignal.portal.tunnel, origTrainSchedule = Utils.DeepCopy(trainEntering.schedule), trainDirection = Utils.LoopDirectionValue(entryEndSignal.direction + 4)}
+    local trainManagerId = #global.trainManager.managedTrains
+    global.trainManager.managedTrains[trainManagerId] = {
+        id = trainManagerId,
+        aboveTrainEntering = trainEntering,
+        aboveTrainEnteringId = trainEntering.id,
+        entryEndSignal = entryEndSignal,
+        tunnel = entryEndSignal.portal.tunnel,
+        origTrainSchedule = Utils.DeepCopy(trainEntering.schedule),
+        trainDirection = Utils.LoopDirectionValue(entryEndSignal.entity.direction + 4)
+    }
     local trainManagerEntry = global.trainManager.managedTrains[trainManagerId]
-
-    -- Get the exit end signal on the other portal so we know when to bring the train back in.
-UP TO HERE - CHANGES IN TUNNEL UNTESTD
-    --TODO: only handles single direction on the horizontal
-    local exitEndSignal = tunnel.aboveEndSignals["eastern"][entryEndSignal.direction]
-    if exitEndSignal.unit_number == entryEndSignal.unit_number then
-        -- This should probably be done from the trains direction to track or some such thing?
-        exitEndSignal = tunnel.aboveEndSignals["western"][entryEndSignal.direction]
-    end
-    trainManagerEntry.exitEndSignal = exitEndSignal
-
     trainManagerEntry.aboveSurface = trainManagerEntry.tunnel.aboveSurface
     trainManagerEntry.undergroundSurface = trainManagerEntry.tunnel.undergroundSurface
     global.trainManager.enteringTrainIdToManagedTrain[trainEntering.id] = trainManagerEntry
+
+    -- Get the exit end signal on the other portal so we know when to bring the train back in.
+    for _, portal in pairs(trainManagerEntry.tunnel.portals) do
+        if portal.id ~= entryEndSignal.portal.id then
+            for _, endSignal in pairs(portal.endSignals) do
+                if endSignal.entity.direction ~= entryEndSignal.entity.direction then
+                    trainManagerEntry.exitEndSignal = endSignal
+                    break
+                end
+            end
+            break
+        end
+    end
 
     local sourceTrain = trainManagerEntry.aboveTrainEntering
     local oldTrainEntities = sourceTrain.carriages
@@ -61,8 +71,8 @@ UP TO HERE - CHANGES IN TUNNEL UNTESTD
     trainManagerEntry.aboveSurface.clone_entities {entities = oldTrainEntities, destination_offset = {0, 0}, destination_surface = trainManagerEntry.undergroundSurface}
     local trains = oldTrainEntities[1].force.get_trains(trainManagerEntry.undergroundSurface)
     local undergroundTrain = trains[#trains]
-    undergroundTrain.speed = sourceTrain.speed
 
+    undergroundTrain.speed = sourceTrain.speed
     trainManagerEntry.undergroundTrain = undergroundTrain
     undergroundTrain.schedule = {
         current = 1,
@@ -184,7 +194,7 @@ TrainManager.TrainLeavingOngoing = function(event)
         trainManagerEntry.undergroundTrain = nil
         return
     end
-    if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.exitEndSignal.position) > 15 then
+    if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.exitEndSignal.entity.position) > 15 then
         --TODO: this is hard coded in direction and distance
         local nextCarriagePosition = Utils.ApplyOffsetToPosition(currentSourceCarriageEntity.position, {x = 7, y = 0})
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}

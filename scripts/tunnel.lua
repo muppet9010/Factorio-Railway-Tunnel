@@ -48,6 +48,7 @@ Tunnel.CreateGlobals = function()
             aboveEntrySignalEntities = table of LuaEntity for the entry signals of this tunnel. These are the outer ones that detect a train approaching the tunnel train path.
             portals = table of the 2 portal global objects that make up this tunnel.
             segments = table of the tunnel segment global objects on the surface.
+            undergroundRailEntities = table of rail LuaEntity.
         }
         --TODO: maybe remove references to things within a portal, like the signals.
     ]]
@@ -145,6 +146,7 @@ Tunnel.CheckProcessTunnelPortalComplete = function(startingTunnelPortal)
     local orientation = directionValue / 8
     local exitPos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1 + TunnelSetup.entranceFromCenter}))
 
+    --TODO: check they all have the same of either x or y, then we know they are aligned.
     local continueChecking, nextCheckingPos, completeTunnel, tunnelPortals, tunnelSegments = true, exitPos, false, {startingTunnelPortal}, {}
     while continueChecking do
         local connectedTunnelEntities = aboveSurface.find_entities_filtered {position = nextCheckingPos, name = TunnelSegmentAndPortalEntityNames, force = force, limit = 1}
@@ -211,12 +213,13 @@ Tunnel.CheckProcessTunnelSegmentComplete = function(startingTunnelSegment)
 end
 
 Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
-    local tunnelPortals, tunnelSegments = {}, {}
+    local tunnelPortals, tunnelSegments, refTunnelPortalEntity = {}, {}, tunnelPortalEntities[1]
+    local force, aboveSurface = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface
 
     for _, portalEntity in pairs(tunnelPortalEntities) do
         local portal = global.tunnel.portals[portalEntity.unit_number]
         table.insert(tunnelPortals, portal)
-        local centerPos, force, directionValue, aboveSurface = portalEntity.position, portalEntity.force, portalEntity.direction, portalEntity.surface
+        local centerPos, directionValue = portalEntity.position, portalEntity.direction
         local orientation = directionValue / 8
         local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - TunnelSetup.entranceFromCenter}))
 
@@ -266,7 +269,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
             entity = endSignalOutEntity,
             portal = portal
         }
-        portal.endSignals = {["in"] = endSignalInEntity, ["out"] = endSignalOutEntity}
+        portal.endSignals = {["in"] = global.tunnel.endSignals[endSignalInEntity.unit_number], ["out"] = global.tunnel.endSignals[endSignalOutEntity.unit_number]}
         endSignalInEntity.connect_neighbour {wire = defines.wire_type.red, target_entity = endSignalOutEntity}
         Tunnel.SetRailSignalRed(endSignalInEntity)
         Tunnel.SetRailSignalRed(endSignalOutEntity)
@@ -275,7 +278,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     for _, tunnelSegmentEntity in pairs(tunnelSegmentEntities) do
         local tunnelSegment = global.tunnel.tunnelSegments[tunnelSegmentEntity.unit_number]
         table.insert(tunnelSegments, tunnelSegment)
-        local centerPos, force, directionValue, aboveSurface = tunnelSegmentEntity.position, tunnelSegmentEntity.force, tunnelSegmentEntity.direction, tunnelSegmentEntity.surface
+        local centerPos, directionValue, aboveSurface = tunnelSegmentEntity.position, tunnelSegmentEntity.direction, tunnelSegmentEntity.surface
 
         tunnelSegment.railEntities = {}
         local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail", position = centerPos, force = force, direction = directionValue}
@@ -291,7 +294,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
         end
     end
 
-    local tunnelId, alignment, undergroundSurface, refTunnelPortalEntity, aboveEndSignals, aboveEntrySignalEntities = #global.tunnel.tunnels, "vertical", global.underground.verticalSurface, tunnelPortals[1].entity, {}, {}
+    local tunnelId, alignment, undergroundSurface, aboveEndSignals, aboveEntrySignalEntities = #global.tunnel.tunnels, "vertical", global.underground.verticalSurface, {}, {}
     if refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
         alignment = "horizontal"
         undergroundSurface = global.underground.horizontalSurface
@@ -318,6 +321,20 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     end
     for _, segment in pairs(tunnelSegments) do
         segment.tunnel = tunnel
+    end
+
+    --TODO: make this be centered on 0 and store the offset for the train manager to use later. Currently hardcoded to match aboveSurface placement.
+    tunnel.undergroundRailEntities = {}
+    --[[local axisVariation, axisStatic
+    if alignment == "vertical" then
+        axisVariation = "y"
+        axisStatic = "x"
+    else
+        axisVariation = "x"
+        axisStatic = "y"
+    end]]
+    for x = -100, 100, 2 do
+        table.insert(tunnel.undergroundRailEntities, tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {x, 0}, force = force, direction = defines.direction.west})
     end
 end
 
