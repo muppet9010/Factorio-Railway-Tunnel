@@ -2,7 +2,8 @@ local Underground = {}
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
-    global.underground.horizontalSurface = global.underground.horizontalSurface or Underground.CreateSurface("railway_tunnel-undeground-horizontal_surface")
+    global.underground.horizontalSurface = global.underground.horizontalSurface or Underground.CreateSurface("railway_tunnel-undeground-horizontal")
+    global.underground.verticalSurface = global.underground.horizontalSurface or Underground.CreateSurface("railway_tunnel-undeground-vertical")
 end
 
 Underground.OnLoad = function()

@@ -36,11 +36,13 @@ TrainManager.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainLeavingOngoing_OnTrainCreated", TrainManager.TrainLeavingOngoing_OnTrainCreated)
 end
 
-TrainManager.TrainEnteringInitial = function(trainEntering, entryEndSignal, tunnel)
+TrainManager.TrainEnteringInitial = function(trainEntering, entryEndSignal)
     local trainManagerId = #global.trainManager.managedTrains + 1
-    global.trainManager.managedTrains[trainManagerId] = {id = trainManagerId, aboveTrainEntering = trainEntering, aboveTrainEnteringId = trainEntering.id, entryEndSignal = entryEndSignal, tunnel = tunnel, origTrainSchedule = Utils.DeepCopy(trainEntering.schedule), trainDirection = Utils.LoopIntValueWithinRange(entryEndSignal.direction + 4, 0, 7)}
+    global.trainManager.managedTrains[trainManagerId] = {id = trainManagerId, aboveTrainEntering = trainEntering, aboveTrainEnteringId = trainEntering.id, entryEndSignal = entryEndSignal, tunnel = entryEndSignal.portal.tunnel, origTrainSchedule = Utils.DeepCopy(trainEntering.schedule), trainDirection = Utils.LoopDirectionValue(entryEndSignal.direction + 4)}
     local trainManagerEntry = global.trainManager.managedTrains[trainManagerId]
 
+    -- Get the exit end signal on the other portal so we know when to bring the train back in.
+UP TO HERE - CHANGES IN TUNNEL UNTESTD
     --TODO: only handles single direction on the horizontal
     local exitEndSignal = tunnel.aboveEndSignals["eastern"][entryEndSignal.direction]
     if exitEndSignal.unit_number == entryEndSignal.unit_number then
@@ -88,7 +90,7 @@ TrainManager.TrainEnteringOngoing = function(event)
         nextStockAttributeName = "back_stock"
     end
 
-    if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.entryEndSignal.position) < 10 then
+    if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.entryEndSignal.entity.position) < 10 then
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
     if trainManagerEntry.aboveTrainEntering ~= nil and trainManagerEntry.aboveTrainEntering.valid and #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] ~= nil then

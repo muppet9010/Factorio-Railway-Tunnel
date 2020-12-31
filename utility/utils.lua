@@ -1303,4 +1303,8 @@ Utils.DirectionValueToName = function(directionValue)
     return names[directionValue]
 end
 
+Utils.LoopDirectionValue = function(inputValue)
+    return Utils.LoopIntValueWithinRange(inputValue, 0, 7)
+end
+
 return Utils
