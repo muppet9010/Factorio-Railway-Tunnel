@@ -7,8 +7,8 @@ local Tunnel = {}
 Tunnel.setupValues = {
     --Tunnels distance starts from the first entrace tile.
     entranceFromCenter = 25,
-    entrySignalsDistance = 0,
-    endSignalsDistance = 50,
+    entrySignalsDistance = 1,
+    endSignalsDistance = 49,
     straightRailCountFromEntrance = 21,
     invisibleRailCountFromEntrance = 4,
     undergroundLeadInTiles = 100 -- hard coded for now just cos
@@ -249,13 +249,13 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
         portal.entrySignalEntities = {
             ["in"] = aboveSurface.create_entity {
                 name = "rail-signal",
-                position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0.5})),
+                position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
                 force = force,
                 direction = directionValue
             },
             ["out"] = aboveSurface.create_entity {
                 name = "rail-signal",
-                position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 1.5, y = 0.5})),
+                position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
                 force = force,
                 direction = Utils.LoopDirectionValue(directionValue + 4)
             }

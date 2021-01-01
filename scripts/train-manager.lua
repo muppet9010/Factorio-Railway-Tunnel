@@ -227,6 +227,7 @@ end
 
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
+    --TODO: set dynamic distance check - 1
     if Utils.GetDistance(trainManagerEntry.undergroundTrain.front_stock.position, {-40, 1}) > 10 then
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
     else
@@ -264,33 +265,24 @@ end
 
 TrainManager.TrainLeavingOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
-    local aboveTrainLeaving, sourceTrain, nextSourceTrainCarriageIndex, currentSourceTrainCarriageIndex, speed = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain
-    if (trainManagerEntry.undergroundTrain.speed > 0 and aboveTrainLeaving.speed > 0) or (trainManagerEntry.undergroundTrain.speed < 0 and aboveTrainLeaving.speed < 0) then
-        speed = trainManagerEntry.undergroundTrain.speed
-        currentSourceTrainCarriageIndex = trainManagerEntry.aboveTrainLeavingCarriagesPlaced
-        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
-    else
-        speed = 0 - trainManagerEntry.undergroundTrain.speed
-        currentSourceTrainCarriageIndex = #sourceTrain.carraiges - trainManagerEntry.aboveTrainLeavingCarriagesPlaced
-        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex - 1
+    local aboveTrainLeaving, sourceTrain = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain
+
+    local currentSourceTrainCarriageIndex = trainManagerEntry.aboveTrainLeavingCarriagesPlaced
+    local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
+    if (sourceTrain.speed < 0) then
+        currentSourceTrainCarriageIndex = #sourceTrain.carriages - trainManagerEntry.aboveTrainLeavingCarriagesPlaced
+        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
     end
 
     local currentSourceCarriageEntity, nextSourceCarriageEntity = sourceTrain.carriages[currentSourceTrainCarriageIndex], sourceTrain.carriages[nextSourceTrainCarriageIndex]
     if nextSourceCarriageEntity == nil then
-        -- All wagons placed so remove the underground train
-
-        -- TODO: This won't handle long trains or ones with wrong facing loco's, etc.
-        aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
-        aboveTrainLeaving.manual_mode = false
-
-        for _, carriage in pairs(trainManagerEntry.undergroundTrain.carriages) do
-            carriage.destroy()
-        end
-        trainManagerEntry.undergroundTrain = nil
+        -- All wagons placed so tidy up
+        TrainManager.TrainLeavingCompleted(trainManagerEntry)
         return
     end
+    --TODO: set dynamic distance check - 2
     if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 15 then
-        -- TODO: we assume all carriages are to be palced 7 tiles apart.
+        -- TODO: we assume all carriages are to be placed 7 tiles apart.
         local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.undergroundOffsetFromSurface)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
@@ -298,8 +290,12 @@ TrainManager.TrainLeavingOngoing = function(event)
         -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
         aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
     end
-    aboveTrainLeaving.speed = speed
 
+    if (sourceTrain.speed > 0 and aboveTrainLeaving.speed > 0) or (sourceTrain.speed < 0 and aboveTrainLeaving.speed < 0) then
+        aboveTrainLeaving.speed = sourceTrain.speed
+    else
+        aboveTrainLeaving.speed = 0 - sourceTrain.speed
+    end
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
@@ -320,6 +316,19 @@ TrainManager.TrainLeavingOngoing_OnTrainCreated = function(event)
         global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_2] = nil
     end
     global.trainManager.leavingTrainIdToManagedTrain[event.train.id] = managedTrain
+end
+
+TrainManager.TrainLeavingCompleted = function(trainManagerEntry)
+    trainManagerEntry.aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
+    trainManagerEntry.aboveTrainLeaving.manual_mode = false
+
+    for _, carriage in pairs(trainManagerEntry.undergroundTrain.carriages) do
+        carriage.destroy()
+    end
+    trainManagerEntry.undergroundTrain = nil
+
+    global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeaving.id] = nil
+    global.trainManager.managedTrains[trainManagerEntry.id] = nil
 end
 
 return TrainManager
