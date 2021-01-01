@@ -434,6 +434,11 @@ function Utils.GetDistance(pos1, pos2)
     return math.sqrt(dx * dx + dy * dy)
 end
 
+function Utils.GetDistanceSingleAxis(pos1, pos2, axis)
+    pos1, pos2 = Utils.TableToProperPosition(pos1), Utils.TableToProperPosition(pos2)
+    return math.abs(pos1[axis] - pos2[axis])
+end
+
 function Utils.IsPositionInBoundingBox(position, boundingBox, safeTiling)
     -- safeTiling option means that the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
     if safeTiling == nil or not safeTiling then
