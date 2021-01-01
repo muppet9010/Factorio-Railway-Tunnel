@@ -13,6 +13,7 @@ TrainManager.CreateGlobals = function()
         aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
         aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
         trainTravelDirection = defines.direction the train is heading in.
+        trainTravelOrientation = the orientation of the trainTravelDirection.
         trainTravellingForwards = boolean if the train is moving forwards or backwards from its viewpoint.
         surfaceEntrancePortalEndSignal = the endSignal global object of the rail signal at the end of the entrance portal track (forced closed signal).
         surfaceExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
@@ -22,6 +23,7 @@ TrainManager.CreateGlobals = function()
         aboveSurface = LuaSurface of the main world surface.
         undergroundSurface = LuaSurface of the specific underground surface.
         aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
+        undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
@@ -57,6 +59,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     else
         trainManagerEntry.trainTravellingForwards = false
     end
+    trainManagerEntry.trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
     global.trainManager.enteringTrainIdToManagedTrain[trainEntering.id] = trainManagerEntry
 
     -- Get the exit end signal on the other portal so we know when to bring the train back in.
@@ -78,7 +81,6 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     undergroundTrain.speed = sourceTrain.speed
     trainManagerEntry.undergroundTrain = undergroundTrain
     local tunnelSetupValues = Interfaces.Call("Tunnel.GetSetupValues")
-    local trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
     local undergroundTrainEndScheduleTargetPos =
         Utils.ApplyOffsetToPosition(
         Utils.RotatePositionAround0(
@@ -89,7 +91,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
             }
         ),
         Utils.RotatePositionAround0(
-            trainTravelOrientation,
+            trainManagerEntry.trainTravelOrientation,
             {
                 x = 0,
                 y = 0 - (tunnelSetupValues.undergroundLeadInTiles - 1)
@@ -115,9 +117,9 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
 
     --TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track. At higher speeds with long trains going backwards the front of the train could be a long way from the portal.
     local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, refTrain.front_stock.position, undergroundModifiers.railAlignmentAxis)
-    local trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
-    local nextCarriagePosition = Utils.RotatePositionAround0(trainTravelOrientation, {x = 1, y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal})
-    local carriageIteractionOrientation = trainTravelOrientation
+    local nextCarriagePosition = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = -1, y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal})
+    trainManagerEntry.undergroundOffsetFromSurface = Utils.GetPositionOffsetFromPosition(nextCarriagePosition, refTrain.front_stock.position)
+    local carriageIteractionOrientation = trainManagerEntry.trainTravelOrientation
     if not trainManagerEntry.trainTravellingForwards then
         carriageIteractionOrientation = Utils.LoopDirectionValue(trainManagerEntry.trainTravelDirection + 4) / 8
     end
@@ -127,6 +129,7 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
         -- TODO: Just extend the rails under the wagons if needed. Record to the tunnel object rail list of so.
         placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, Utils.OrientationToDirection(refCarriage.orientation))
 
+        -- TODO: we assume all carriages are to be placed 7 tiles apart.
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, Utils.RotatePositionAround0(carriageIteractionOrientation, {x = 0, y = 7}))
     end
     return placedCarriage.train
@@ -182,16 +185,16 @@ end
 TrainManager.TrainEnteringOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
     trainManagerEntry.aboveTrainEntering.manual_mode = true
-    local nextStockAttributeName
-    if (trainManagerEntry.undergroundTrain.speed > 0 and trainManagerEntry.aboveTrainEntering.speed > 0) or (trainManagerEntry.undergroundTrain.speed < 0 and trainManagerEntry.aboveTrainEntering.speed < 0) then
-        trainManagerEntry.aboveTrainEntering.speed = trainManagerEntry.undergroundTrain.speed
-        nextStockAttributeName = "front_stock"
-    else
-        trainManagerEntry.aboveTrainEntering.speed = 0 - trainManagerEntry.undergroundTrain.speed
+    local nextStockAttributeName = "front_stock"
+    if (trainManagerEntry.aboveTrainEntering.speed < 0) then
         nextStockAttributeName = "back_stock"
     end
+    if (trainManagerEntry.undergroundTrain.speed > 0 and trainManagerEntry.aboveTrainEntering.speed > 0) or (trainManagerEntry.undergroundTrain.speed < 0 and trainManagerEntry.aboveTrainEntering.speed < 0) then
+        trainManagerEntry.aboveTrainEntering.speed = trainManagerEntry.undergroundTrain.speed
+    else
+        trainManagerEntry.aboveTrainEntering.speed = 0 - trainManagerEntry.undergroundTrain.speed
+    end
 
-    --TODO: Needs to get the leading carriage.
     if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 10 then
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
@@ -241,11 +244,11 @@ TrainManager.TrainLeavingInitial = function(event)
         nextStockAttributeName = "back_stock"
     end
 
-    trainManagerEntry.undergroundSurface.clone_entities {entities = {sourceTrain[nextStockAttributeName]}, destination_offset = {0, 0}, destination_surface = trainManagerEntry.aboveSurface}
+    local refCarriage = sourceTrain[nextStockAttributeName]
+    local placedCarriage = refCarriage.clone {position = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.undergroundOffsetFromSurface), surface = trainManagerEntry.aboveSurface}
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
-    local trains = sourceTrain[nextStockAttributeName].force.get_trains(trainManagerEntry.aboveSurface)
-    local aboveTrainLeaving, speed = trains[#trains]
+    local aboveTrainLeaving, speed = placedCarriage.train
     trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId = aboveTrainLeaving, aboveTrainLeaving.id
     global.trainManager.leavingTrainIdToManagedTrain[aboveTrainLeaving.id] = trainManagerEntry
     if aboveTrainLeaving[nextStockAttributeName].orientation == trainManagerEntry.trainTravelDirection * (1 / 8) then
@@ -253,10 +256,9 @@ TrainManager.TrainLeavingInitial = function(event)
     else
         speed = 0 - sourceTrain.speed
     end
+    aboveTrainLeaving.manual_mode = false
     aboveTrainLeaving.speed = speed
     aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
-    aboveTrainLeaving.manual_mode = false
-
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
@@ -288,12 +290,12 @@ TrainManager.TrainLeavingOngoing = function(event)
         return
     end
     if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 15 then
-        --TODO: this is hard coded in direction and distance
-        local nextCarriagePosition = Utils.ApplyOffsetToPosition(currentSourceCarriageEntity.position, {x = 7, y = 0})
+        -- TODO: we assume all carriages are to be palced 7 tiles apart.
+        local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.undergroundOffsetFromSurface)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
 
-        -- LuaTrain has been replaced and updated by adding a wagon, so obtain it again.
+        -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
         aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
     end
     aboveTrainLeaving.speed = speed
