@@ -43,6 +43,7 @@ Tunnel.CreateGlobals = function()
         [id] = {
             id = unqiue id of the tunnel.
             alignment = either "horizontal" or "vertical".
+            alignmentOrientation = the orientation value of either 0.25 (horizontal) or 0 (vertical), no concept of direction though.
             aboveSurface = LuaSurface of the main world surface.
             undergroundSurface = LuaSurface of the underground surface for this tunnel.
             portals = table of the 2 portal global objects that make up this tunnel.
@@ -310,14 +311,16 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     end
 
     -- Create the tunnel global object.
-    local tunnelId, alignment, undergroundSurface = #global.tunnel.tunnels, "vertical", global.underground.verticalSurface
+    local tunnelId, alignment, alignmentOrientation, undergroundSurface = #global.tunnel.tunnels, "vertical", 0, global.underground.verticalSurface
     if refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
         alignment = "horizontal"
+        alignmentOrientation = 0.25
         undergroundSurface = global.underground.horizontalSurface
     end
     local tunnel = {
         id = tunnelId,
         alignment = alignment,
+        alignmentOrientation = alignmentOrientation,
         aboveSurface = refTunnelPortalEntity.surface,
         undergroundSurface = undergroundSurface,
         portals = tunnelPortals,
@@ -350,13 +353,6 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     for valueVariation = -offsetTrackDistance, offsetTrackDistance, 2 do
         table.insert(tunnel.undergroundRailEntities, tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {[tunnel.undergroundModifiers.railAlignmentAxis] = valueVariation, [tunnel.undergroundModifiers.tunnelInstanceAxis] = tunnel.undergroundModifiers.tunnelInstanceValue}, force = force, direction = refTunnelPortalEntity.direction})
     end
-    -- Place the tracks underground that the train will be cloned on to (stationary). -- TODO: not needed any more???
-    --[[for valueVariation = -tunnel.undergroundModifiers.distanceFromCenterToPortalEntrySignals, tunnel.undergroundModifiers.distanceFromCenterToPortalEntrySignals, 2 do
-        table.insert(
-            tunnel.undergroundRailEntities,
-            tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {[tunnel.undergroundModifiers.railAlignmentAxis] = valueVariation, [tunnel.undergroundModifiers.tunnelInstanceAxis] = tunnel.undergroundModifiers.tunnelInstanceClonedTrainValue}, force = force, direction = refTunnelPortalEntity.direction}
-        )
-    end]]
 end
 
 Tunnel.SetRailSignalRed = function(signal)

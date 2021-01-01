@@ -49,8 +49,9 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         trainTravelDirection = Utils.LoopDirectionValue(surfaceEntrancePortalEndSignal.entity.direction + 4)
     }
     local trainManagerEntry = global.trainManager.managedTrains[trainManagerId]
-    trainManagerEntry.aboveSurface = trainManagerEntry.tunnel.aboveSurface
-    trainManagerEntry.undergroundSurface = trainManagerEntry.tunnel.undergroundSurface
+    local tunnel = trainManagerEntry.tunnel
+    trainManagerEntry.aboveSurface = tunnel.aboveSurface
+    trainManagerEntry.undergroundSurface = tunnel.undergroundSurface
     if trainManagerEntry.aboveTrainEntering.speed > 0 then
         trainManagerEntry.trainTravellingForwards = true
     else
@@ -59,7 +60,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     global.trainManager.enteringTrainIdToManagedTrain[trainEntering.id] = trainManagerEntry
 
     -- Get the exit end signal on the other portal so we know when to bring the train back in.
-    for _, portal in pairs(trainManagerEntry.tunnel.portals) do
+    for _, portal in pairs(tunnel.portals) do
         if portal.id ~= surfaceEntrancePortalEndSignal.portal.id then
             for _, endSignal in pairs(portal.endSignals) do
                 if endSignal.entity.direction ~= surfaceEntrancePortalEndSignal.entity.direction then
@@ -71,85 +72,111 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         end
     end
 
-    -- Copy the train initially to the underground and run it to the end of the underground track. As each carriage dissapears we can clone the carriage while its straight in the portal to be stationary in the underground and then clone this back to the surface. Means we don;t have to worry about part fuel, health, etc being lost by the copy process.
-    --TODO: may not need to clone as I can do te exact partial fuel in the burners.
+    -- Copy the above train underground and set it running.
     local sourceTrain = trainManagerEntry.aboveTrainEntering
     local undergroundTrain = TrainManager.CopyTrainToUnderground(trainManagerEntry)
     undergroundTrain.speed = sourceTrain.speed
     trainManagerEntry.undergroundTrain = undergroundTrain
     local tunnelSetupValues = Interfaces.Call("Tunnel.GetSetupValues")
+    local trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
+    local undergroundTrainEndScheduleTargetPos =
+        Utils.ApplyOffsetToPosition(
+        Utils.RotatePositionAround0(
+            tunnel.alignmentOrientation,
+            {
+                x = tunnel.undergroundModifiers.tunnelInstanceValue + 1,
+                y = 0
+            }
+        ),
+        Utils.RotatePositionAround0(
+            trainTravelOrientation,
+            {
+                x = 0,
+                y = 0 - (tunnelSetupValues.undergroundLeadInTiles - 1)
+            }
+        )
+    )
     undergroundTrain.schedule = {
         current = 1,
         records = {
             {
-                --TODO: needs to handle orientation.
-                rail = trainManagerEntry.tunnel.undergroundSurface.find_entity("straight-rail", {x = 0 - (tunnelSetupValues.undergroundLeadInTiles - 1), y = trainManagerEntry.tunnel.undergroundModifiers.tunnelInstanceValue + 1})
+                rail = tunnel.undergroundSurface.find_entity("straight-rail", undergroundTrainEndScheduleTargetPos)
             }
         }
     }
     undergroundTrain.manual_mode = false
 
-    --EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
-    --EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
+    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
+    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
 end
 
 TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     local placedCarriage, refTrain, tunnel, targetSurface, undergroundModifiers = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface, trainManagerEntry.tunnel.undergroundModifiers
 
-    --TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track.
+    --TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track. At higher speeds with long trains going backwards the front of the train could be a long way from the portal.
     local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, refTrain.front_stock.position, undergroundModifiers.railAlignmentAxis)
-    local firstCarriageDistanceFrom0
-    if trainManagerEntry.trainTravelDirection == defines.direction.north or trainManagerEntry.trainTravelDirection == defines.direction.west then
-        firstCarriageDistanceFrom0 = 0 + (tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal)
-    else
-        firstCarriageDistanceFrom0 = 0 - (tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal)
-    end
-    --TODO: this may not handle all orientations correctly
-    local firstCarriagePosition = {
-        [undergroundModifiers.tunnelInstanceAxis] = undergroundModifiers.tunnelInstanceValue,
-        [undergroundModifiers.railAlignmentAxis] = firstCarriageDistanceFrom0
-    }
-
-    local carraigeRailAlignmentIteratorManipulator
-    if trainManagerEntry.trainTravelDirection == defines.direction.north or trainManagerEntry.trainTravelDirection == defines.direction.west then
-        if trainManagerEntry.trainTravellingForwards then
-            carraigeRailAlignmentIteratorManipulator = 1
-        else
-            carraigeRailAlignmentIteratorManipulator = -1
-        end
-    else
-        if trainManagerEntry.trainTravellingForwards then
-            carraigeRailAlignmentIteratorManipulator = -1
-        else
-            carraigeRailAlignmentIteratorManipulator = 1
-        end
+    local trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
+    local nextCarriagePosition = Utils.RotatePositionAround0(trainTravelOrientation, {x = 1, y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal})
+    local carriageIteractionOrientation = trainTravelOrientation
+    if not trainManagerEntry.trainTravellingForwards then
+        carriageIteractionOrientation = Utils.LoopDirectionValue(trainManagerEntry.trainTravelDirection + 4) / 8
     end
 
-    local position = firstCarriagePosition
     for _, refCarriage in pairs(refTrain.carriages) do
-        -- TODO: placed direction needs to be calculated from the wagons direction in relation to the overall train. Train being copied may be on a loop back or similar when referenced, but we need it all placed straight to make sure it joins up. Just extend the rails under the wagons if neeeded.
-        placedCarriage = targetSurface.create_entity {name = refCarriage.name, position = position, force = refCarriage.force, direction = Utils.OrientationToDirection(refCarriage.orientation)}
+        -- TODO: placed direction needs to be calculated from the wagons direction in relation to the overall train. Train being copied may be on a loop back or similar when referenced, but we need it all placed straight to make sure it joins up.
+        -- TODO: Just extend the rails under the wagons if needed. Record to the tunnel object rail list of so.
+        placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, Utils.OrientationToDirection(refCarriage.orientation))
 
-        local refFuelInventory = refCarriage.get_fuel_inventory()
-        if refFuelInventory ~= nil then
-            local placedFuelInventory = placedCarriage.get_fuel_inventory()
-            for fuelName, fuelCount in pairs(refFuelInventory.get_contents()) do
-                placedFuelInventory.insert({name = fuelName, count = fuelCount})
-            end
-        --TODO: do the burner contents copy as well.
-        end
-
-        -- TODO: hard coded for carriages to be placed 7 tiles apart.
-        position =
-            Utils.ApplyOffsetToPosition(
-            position,
-            {
-                [undergroundModifiers.tunnelInstanceAxis] = 0,
-                [undergroundModifiers.railAlignmentAxis] = 7 * carraigeRailAlignmentIteratorManipulator
-            }
-        )
+        nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, Utils.RotatePositionAround0(carriageIteractionOrientation, {x = 0, y = 7}))
     end
     return placedCarriage.train
+end
+
+TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection)
+    local placedCarriage = targetSurface.create_entity {name = refCarriage.name, position = newPosition, force = refCarriage.force, direction = newDirection}
+
+    local refBurner = refCarriage.burner
+    if refBurner ~= nil then
+        local placedBurner = placedCarriage.burner
+        for fuelName, fuelCount in pairs(refBurner.burnt_result_inventory.get_contents()) do
+            placedBurner.burnt_result_inventory.insert({name = fuelName, count = fuelCount})
+        end
+        placedBurner.heat = refBurner.heat
+        placedBurner.currently_burning = refBurner.currently_burning
+        placedBurner.remaining_burning_fuel = refBurner.remaining_burning_fuel
+    end
+
+    if refCarriage.backer_name ~= nil then
+        placedCarriage.backer_name = refCarriage.backer_name
+    end
+    placedCarriage.health = refCarriage.health
+    if refCarriage.color ~= nil then
+        placedCarriage.color = refCarriage.color
+    end
+
+    -- Finds cargo wagon and locomotives main inventories.
+    local refCargoWagonInventory = refCarriage.get_inventory(defines.inventory.cargo_wagon)
+    if refCargoWagonInventory ~= nil then
+        local placedCargoWagonInventory, refCargoWagonInventoryIsFiltered = placedCarriage.get_inventory(defines.inventory.cargo_wagon), refCargoWagonInventory.is_filtered()
+        for i = 1, #refCargoWagonInventory do
+            if refCargoWagonInventory[i].valid_for_read then
+                placedCargoWagonInventory[i].set_stack(refCargoWagonInventory[i])
+            end
+            if refCargoWagonInventoryIsFiltered then
+                local filter = refCargoWagonInventory.get_filter(i)
+                if filter ~= nil then
+                    placedCargoWagonInventory.set_filter(i, filter)
+                end
+            end
+        end
+        if refCargoWagonInventory.supports_bar() then
+            placedCargoWagonInventory.set_bar(refCargoWagonInventory.get_bar())
+        end
+    end
+
+    --TODO: handle equipments grids.
+
+    return placedCarriage
 end
 
 TrainManager.TrainEnteringOngoing = function(event)
@@ -164,8 +191,8 @@ TrainManager.TrainEnteringOngoing = function(event)
         nextStockAttributeName = "back_stock"
     end
 
+    --TODO: Needs to get the leading carriage.
     if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 10 then
-        --TODO: clone the wagon about to be destoryed to the underground on the second track.
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
     if trainManagerEntry.aboveTrainEntering ~= nil and trainManagerEntry.aboveTrainEntering.valid and #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] ~= nil then
@@ -214,7 +241,6 @@ TrainManager.TrainLeavingInitial = function(event)
         nextStockAttributeName = "back_stock"
     end
 
-    --TODO: clone the stationary wagon from the cloned train, not the copied train.
     trainManagerEntry.undergroundSurface.clone_entities {entities = {sourceTrain[nextStockAttributeName]}, destination_offset = {0, 0}, destination_surface = trainManagerEntry.aboveSurface}
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
@@ -264,7 +290,6 @@ TrainManager.TrainLeavingOngoing = function(event)
     if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 15 then
         --TODO: this is hard coded in direction and distance
         local nextCarriagePosition = Utils.ApplyOffsetToPosition(currentSourceCarriageEntity.position, {x = 7, y = 0})
-        --TODO: clone the stationary wagon from the cloned train, not the copied train.
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
 
