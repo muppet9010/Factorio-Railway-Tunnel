@@ -1,12 +1,11 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
---local Logging = require("utility/logging")
 local Tunnel = {}
 
 Tunnel.setupValues = {
-    --Tunnels distance starts from the first entrace tile.
     entranceFromCenter = 25,
+    --Tunnels distance starts from the first entrace tile.
     entrySignalsDistance = 1,
     endSignalsDistance = 49,
     straightRailCountFromEntrance = 21,
@@ -27,13 +26,21 @@ Tunnel.CreateGlobals = function()
             portal = the portal global object this signal is part of.
         }
     ]]
+    global.tunnel.entrySignals = global.tunnel.entrySignals or {}
+    --[[
+        [unit_number] = {
+            id = unit_number of this signal.
+            entity = signal entity.
+            portal = the portal global object this signal is part of.
+        }
+    ]]
     global.tunnel.portals = global.tunnel.portals or {}
     --[[
         [unit_number] = {
             id = unit_number of the placed tunnel portal entity.
             entity = ref to the entity of the placed main tunnel portal entity.
-            endSignals = table of endSignal global objects for the end signals of this portal. These are the inner locked red signals.
-            entrySignalEntities = table of LuaEntity for the entry signals of this portal. These are the outer ones that detect a train approaching the tunnel train path.
+            endSignals = table of endSignal global objects for the end signals of this portal. These are the inner locked red signals. Key'd as "in" and "out".
+            entrySignals = table of entrySignal global objects for the entry signals of this portal. These are the outer ones that detect a train approaching the tunnel train path. Key'd as "in" and "out".
             tunnel = the tunnel global object this portal is part of.
             railEntities = table of the rail entities within the portal. key'd by the rail unit_number.
         }
@@ -246,20 +253,32 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
             nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntrancePos)
         end
 
-        portal.entrySignalEntities = {
-            ["in"] = aboveSurface.create_entity {
-                name = "rail-signal",
-                position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
-                force = force,
-                direction = directionValue
-            },
-            ["out"] = aboveSurface.create_entity {
-                name = "rail-signal",
-                position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
-                force = force,
-                direction = Utils.LoopDirectionValue(directionValue + 4)
-            }
+        local entrySignalInEntity =
+            aboveSurface.create_entity {
+            name = "rail-signal",
+            position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
+            force = force,
+            direction = directionValue
         }
+        global.tunnel.entrySignals[entrySignalInEntity.unit_number] = {
+            id = entrySignalInEntity.unit_number,
+            entity = entrySignalInEntity,
+            portal = portal
+        }
+        local entrySignalOutEntity =
+            aboveSurface.create_entity {
+            name = "rail-signal",
+            position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
+            force = force,
+            direction = Utils.LoopDirectionValue(directionValue + 4)
+        }
+        global.tunnel.entrySignals[entrySignalOutEntity.unit_number] = {
+            id = entrySignalOutEntity.unit_number,
+            entity = entrySignalOutEntity,
+            portal = portal
+        }
+        portal.entrySignals = {["in"] = global.tunnel.entrySignals[entrySignalInEntity.unit_number], ["out"] = global.tunnel.entrySignals[entrySignalOutEntity.unit_number]}
+
         local endSignalInEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-tunnel_portal_end_rail_signal",
@@ -294,7 +313,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     for _, tunnelSegmentEntity in pairs(tunnelSegmentEntities) do
         local tunnelSegment = global.tunnel.tunnelSegments[tunnelSegmentEntity.unit_number]
         table.insert(tunnelSegments, tunnelSegment)
-        local centerPos, directionValue, aboveSurface = tunnelSegmentEntity.position, tunnelSegmentEntity.direction, tunnelSegmentEntity.surface
+        local centerPos, directionValue = tunnelSegmentEntity.position, tunnelSegmentEntity.direction
 
         tunnelSegment.railEntities = {}
         local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail", position = centerPos, force = force, direction = directionValue}
@@ -346,7 +365,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
         tunnel.undergroundModifiers.tunnelInstanceValue = tunnel.id * 10
     end
     tunnel.undergroundModifiers.tunnelInstanceClonedTrainValue = tunnel.undergroundModifiers.tunnelInstanceValue + 4
-    tunnel.undergroundModifiers.distanceFromCenterToPortalEntrySignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].entrySignalEntities["in"].position, tunnel.portals[2].entrySignalEntities["in"].position, tunnel.undergroundModifiers.railAlignmentAxis) / 2
+    tunnel.undergroundModifiers.distanceFromCenterToPortalEntrySignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].entrySignals["in"].entity.position, tunnel.portals[2].entrySignals["in"].entity.position, tunnel.undergroundModifiers.railAlignmentAxis) / 2
     tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].endSignals["in"].entity.position, tunnel.portals[2].endSignals["in"].entity.position, tunnel.undergroundModifiers.railAlignmentAxis) / 2
     local offsetTrackDistance = tunnel.undergroundModifiers.distanceFromCenterToPortalEntrySignals + Tunnel.setupValues.undergroundLeadInTiles
     -- Place the tracks underground that the train will be copied on to and run on.
