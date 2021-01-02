@@ -12,22 +12,22 @@ local tunnelSegmentSurfacePlacement = {
     collision_mask = {"item-layer", "object-layer", "water-tile"},
     picture = {
         north = {
-            filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-placement-northsouth.png",
             height = 64,
             width = 192
         },
         east = {
-            filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-placement-eastwest.png",
             height = 192,
             width = 64
         },
         south = {
-            filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-placement-northsouth.png",
             height = 64,
             width = 192
         },
         west = {
-            filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-placement-eastwest.png",
             height = 192,
             width = 64
         }
@@ -39,22 +39,22 @@ local tunnelSegmentSurfacePlaced = Utils.DeepCopy(tunnelSegmentSurfacePlacement)
 tunnelSegmentSurfacePlaced.name = "railway_tunnel-tunnel_segment_surface-placed"
 tunnelSegmentSurfacePlaced.picture = {
     north = {
-        filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-base-northsouth.png",
+        filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-base-northsouth.png",
         height = 64,
         width = 192
     },
     east = {
-        filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-base-eastwest.png",
+        filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-base-eastwest.png",
         height = 192,
         width = 64
     },
     south = {
-        filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-base-northsouth.png",
+        filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-base-northsouth.png",
         height = 64,
         width = 192
     },
     west = {
-        filename = "__railway_tunnel__/graphics/tunnel_segment_surface/tunnel_segment_surface-base-eastwest.png",
+        filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-base-eastwest.png",
         height = 192,
         width = 64
     }

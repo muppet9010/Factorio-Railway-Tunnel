@@ -1,6 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
+local Logging = require("utility/logging")
 local Tunnel = {}
 
 Tunnel.setupValues = {
@@ -138,7 +139,20 @@ Tunnel.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - Tunnel.setupValues.entranceFromCenter}))
 
     if not Tunnel.TunnelPortalPlacementValid(placementEntity) then
-        --TODO: mine the placement entity back to the placer and show a message. May be nil placer, if so just lose the item as script created.
+        if placer ~= nil then
+            local result
+            if placer.is_player() then
+                rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = aboveSurface, target = placementEntity.position, time_to_live = 180, players = {placer}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                result = placer.mine_entity(placementEntity, true) -- TODO: Shows text when item is mined to player, find route to not show text.
+            else
+                -- Is construction bot
+                rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = aboveSurface, target = placementEntity.position, time_to_live = 180, forces = {placer.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+            end
+            if result ~= true then
+                Logging.ThrowError("couldn't mine invalidly placed tunnel placement entity")
+            end
+        end
         return
     end
 
@@ -198,13 +212,19 @@ Tunnel.CheckProcessTunnelPortalComplete = function(startingTunnelPortal)
 end
 
 Tunnel.TunnelPortalPlacementValid = function(placementEntity)
-    --TODO: check that the entrance of the tunnel portal is aligned to the rail grid correctly.
-    return true
+    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
+        return false
+    else
+        return true
+    end
 end
 
 Tunnel.TunnelSegmentPlacementValid = function(placementEntity)
-    --TODO: check that the tunnel rail is aligned to the rail grid correctly.
-    return true
+    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
+        return false
+    else
+        return true
+    end
 end
 
 Tunnel.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity)

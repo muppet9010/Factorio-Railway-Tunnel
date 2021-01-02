@@ -42,4 +42,8 @@ Logging.LogPrint = function(text, enabled)
     Logging.Log(text)
 end
 
+Logging.ThrowErrorLog = function(text)
+    error(text)
+end
+
 return Logging
