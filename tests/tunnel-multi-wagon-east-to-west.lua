@@ -32,15 +32,15 @@ Test.Start = function()
     -- Place Train and setup
     local trainStopWest = nauvisSurface.create_entity {name = "train-stop", position = {-95, yRailValue - 2}, force = playerForce, direction = defines.direction.west}
     local trainStopEast = nauvisSurface.create_entity {name = "train-stop", position = {130, yRailValue + 2}, force = playerForce, direction = defines.direction.east}
+    local loco1 = nauvisSurface.create_entity {name = "locomotive", position = {95, yRailValue}, force = playerForce, direction = defines.direction.west}
+    loco1.insert("rocket-fuel")
+    local wagon1 = nauvisSurface.create_entity {name = "cargo-wagon", position = {102, yRailValue}, force = playerForce, direction = defines.direction.west}
+    wagon1.insert("iron-plate")
     local loco2 = nauvisSurface.create_entity {name = "locomotive", position = {109, yRailValue}, force = playerForce, direction = defines.direction.east}
     loco2.insert("coal")
     -- Loco3 makes the train face backwards and so it drives backwards on its orders.
     local loco3 = nauvisSurface.create_entity {name = "locomotive", position = {116, yRailValue}, force = playerForce, direction = defines.direction.east}
     loco3.insert("coal")
-    local wagon1 = nauvisSurface.create_entity {name = "cargo-wagon", position = {102, yRailValue}, force = playerForce, direction = defines.direction.west}
-    wagon1.insert("iron-plate")
-    local loco1 = nauvisSurface.create_entity {name = "locomotive", position = {95, yRailValue}, force = playerForce, direction = defines.direction.west}
-    loco1.insert("rocket-fuel")
     loco1.train.schedule = {
         current = 1,
         records = {

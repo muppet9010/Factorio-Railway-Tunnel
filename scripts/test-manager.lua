@@ -5,9 +5,10 @@ local EventScheduler = require("utility/event-scheduler")
 local doTests = true
 local testsToDo = {
     tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
-    tunnelMultiWagon = {enabled = true, testScript = require("tests/tunnel-multi-wagon")},
-    surfaceSingleLoop = {enabled = true, testScript = require("tests/surface-single-loop")},
-    surfaceMiddleLine = {enabled = true, testScript = require("tests/surface-middle-line")}
+    tunnelMultiWagonEastToWest = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
+    tunnelMultiWagonWestToEast = {enabled = true, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
+    surfaceSingleLoop = {enabled = false, testScript = require("tests/surface-single-loop")},
+    surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")}
 }
 
 TestManager.OnLoad = function()
