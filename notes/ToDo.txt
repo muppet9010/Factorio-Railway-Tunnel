@@ -18,6 +18,8 @@ FUTURE:
     - Train copying to underground:
         - Missing equipments grids.
     - Minimap colored lines for tunnels.
+    - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
+    - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains.
 
 NICE TO HAVE:
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.

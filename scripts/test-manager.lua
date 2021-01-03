@@ -6,9 +6,10 @@ local doTests = true
 local testsToDo = {
     tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
     tunnelMultiWagonEastToWest = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
-    tunnelMultiWagonWestToEast = {enabled = true, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
+    tunnelMultiWagonWestToEast = {enabled = false, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
     surfaceSingleLoop = {enabled = false, testScript = require("tests/surface-single-loop")},
-    surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")}
+    surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")},
+    demo = {enabled = true, testScript = require("tests/demo")}
 }
 
 TestManager.OnLoad = function()
