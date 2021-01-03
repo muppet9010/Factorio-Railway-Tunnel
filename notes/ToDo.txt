@@ -1,2 +1,25 @@
-rails need new default when set of collision mask 'rail-layer'.
-some new shared function to get a free custom collision mask?
+TODO:
+    - Check bots can place entities.
+    - Check blueprints work ok out of the box - need to make non-blueprintable entity versions.
+
+FUTURE:
+    - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
+    - Decide on tunnel removal process and impliment. If selectable entities are removed need to destory the tunnel and remove all the specially placed entities. Need to handle trains in the tunnel and also entering and leaving.
+    - Lock tunnel when its in use by closing both entry signals.
+    - Handle players being in a train going through the tunnel.
+    - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
+    - Handle 2 trains both entering the tunnel at once.
+    - Handle long trains:
+        - Place rails under the underground train carraiges if its a very long train.
+        - When they leave they need to path when a single wagon is out. At present they are shoved out entirely and then path. Maybe use of hidden loco or miroring signals on to underground would help.
+        - Confirm that if a train leaving is slowed and it is still entering that the entering train keeps in sync correctly. Should just work.
+    - Make recipes, techs and item & entities localisations.
+    - We assume all train carriages are 7 tiles apart, check thier prototypes.
+    - Train copying to underground:
+        - Missing equipments grids.
+    - Minimap colored lines for tunnels.
+
+NICE TO HAVE:
+    - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.
+    - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
+    - Graphics: icons, ingame entities, placement entities.

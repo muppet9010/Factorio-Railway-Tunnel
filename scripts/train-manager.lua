@@ -141,7 +141,7 @@ end
 
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
-    --TODO: set dynamic distance check - 1
+    -- TODO: set dynamic distance check - 1 of 2
     local startingLeavingPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.undergroundOffsetFromSurface)
     local nextStockAttributeName = "front_stock"
     if (trainManagerEntry.undergroundTrain.speed < 0) then
@@ -197,15 +197,12 @@ TrainManager.TrainLeavingOngoing = function(event)
         TrainManager.TrainLeavingCompleted(trainManagerEntry)
         return
     end
-    --TODO: set dynamic distance check - 2
+    -- TODO: set dynamic distance check - 2 of 2
     if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 15 then
-        -- TODO: we assume all carriages are to be placed 7 tiles apart.
         local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.undergroundOffsetFromSurface)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
-
-        -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
-        aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
+        aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
     end
 
     if (sourceTrain.speed > 0 and aboveTrainLeaving.speed > 0) or (sourceTrain.speed < 0 and aboveTrainLeaving.speed < 0) then
@@ -270,7 +267,7 @@ end
 TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     local placedCarriage, refTrain, tunnel, targetSurface, undergroundModifiers = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface, trainManagerEntry.tunnel.undergroundModifiers
 
-    --TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track. At higher speeds with long trains going backwards the front of the train could be a long way from the portal.
+    -- TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track. At higher speeds with long trains going backwards the front of the train could be a long way from the portal. May be easiest to get the leading wagon and then copy from there, possibly in reverse of the carriage list.
     local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, refTrain.front_stock.position, undergroundModifiers.railAlignmentAxis)
     local nextCarriagePosition = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = -1, y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal})
     trainManagerEntry.undergroundOffsetFromSurface = Utils.GetPositionOffsetFromPosition(nextCarriagePosition, refTrain.front_stock.position)
@@ -281,10 +278,8 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
 
     for _, refCarriage in pairs(refTrain.carriages) do
         -- TODO: placed direction needs to be calculated from the wagons direction in relation to the overall train. Train being copied may be on a loop back or similar when referenced, but we need it all placed straight to make sure it joins up.
-        -- TODO: Just extend the rails under the wagons if needed. Record to the tunnel object rail list of so.
         placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, Utils.OrientationToDirection(refCarriage.orientation))
 
-        -- TODO: we assume all carriages are to be placed 7 tiles apart.
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, Utils.RotatePositionAround0(carriageIteractionOrientation, {x = 0, y = 7}))
     end
     return placedCarriage.train
@@ -331,8 +326,6 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, ne
             placedCargoWagonInventory.set_bar(refCargoWagonInventory.get_bar())
         end
     end
-
-    --TODO: handle equipments grids.
 
     return placedCarriage
 end
