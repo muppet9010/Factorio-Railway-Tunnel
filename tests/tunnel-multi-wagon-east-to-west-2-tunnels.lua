@@ -1,10 +1,13 @@
 local Test = {}
 
 Test.Start = function()
+    Test.AddTunnel(5)
+    Test.AddTunnel(27)
+end
+
+Test.AddTunnel = function(yRailValue)
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
-
-    local yRailValue = 201
 
     -- West side
     local nauvisEntitiesToPlace = {}
@@ -31,7 +34,7 @@ Test.Start = function()
 
     -- Place Train and setup
     local trainStopWest = nauvisSurface.create_entity {name = "train-stop", position = {-95, yRailValue - 2}, force = playerForce, direction = defines.direction.west}
-    local trainStopEast = nauvisSurface.create_entity {name = "train-stop", position = {130, yRailValue + 2}, force = playerForce, direction = defines.direction.east}
+    local trainStopEast = nauvisSurface.create_entity {name = "train-stop", position = {131, yRailValue + 2}, force = playerForce, direction = defines.direction.east}
     local loco1 = nauvisSurface.create_entity {name = "locomotive", position = {95, yRailValue}, force = playerForce, direction = defines.direction.west}
     loco1.insert("rocket-fuel")
     local wagon1 = nauvisSurface.create_entity {name = "cargo-wagon", position = {102, yRailValue}, force = playerForce, direction = defines.direction.west}

@@ -41,7 +41,7 @@ TrainManager.OnLoad = function()
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
-    local trainManagerId = #global.trainManager.managedTrains
+    local trainManagerId = #global.trainManager.managedTrains + 1
     global.trainManager.managedTrains[trainManagerId] = {
         id = trainManagerId,
         aboveTrainEntering = trainEntering,
@@ -142,6 +142,7 @@ end
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
     -- TODO: set dynamic distance check - 1 of 2
+    -- TODO: this is very wrong on a track 200 tiles from 0,0. Affects both horizontal and vertical.
     local startingLeavingPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.undergroundOffsetFromSurface)
     local nextStockAttributeName = "front_stock"
     if (trainManagerEntry.undergroundTrain.speed < 0) then
@@ -269,7 +270,25 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
 
     -- TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track. At higher speeds with long trains going backwards the front of the train could be a long way from the portal. May be easiest to get the leading wagon and then copy from there, possibly in reverse of the carriage list.
     local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, refTrain.front_stock.position, undergroundModifiers.railAlignmentAxis)
-    local nextCarriagePosition = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = -1, y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal})
+    local tunnelInitialPosition =
+        Utils.RotatePositionAround0(
+        tunnel.alignmentOrientation,
+        {
+            x = 1 + tunnel.undergroundModifiers.tunnelInstanceValue,
+            y = 0
+        }
+    )
+    local nextCarriagePosition =
+        Utils.ApplyOffsetToPosition(
+        tunnelInitialPosition,
+        Utils.RotatePositionAround0(
+            trainManagerEntry.trainTravelOrientation,
+            {
+                x = 0,
+                y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal
+            }
+        )
+    )
     trainManagerEntry.undergroundOffsetFromSurface = Utils.GetPositionOffsetFromPosition(nextCarriagePosition, refTrain.front_stock.position)
     local carriageIteractionOrientation = trainManagerEntry.trainTravelOrientation
     if not trainManagerEntry.trainTravellingForwards then

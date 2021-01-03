@@ -452,7 +452,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     end
 
     -- Create the tunnel global object.
-    local tunnelId, alignment, alignmentOrientation, undergroundSurface = #global.tunnel.tunnels, "vertical", 0, global.underground.verticalSurface
+    local tunnelId, alignment, alignmentOrientation, undergroundSurface = #global.tunnel.tunnels + 1, "vertical", 0, global.underground.verticalSurface
     if refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
         alignment = "horizontal"
         alignmentOrientation = 0.25

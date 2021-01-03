@@ -3,14 +3,20 @@ local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 
 local doTests = true
-local testsToDo = {
-    tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
-    tunnelMultiWagonEastToWest = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
-    tunnelMultiWagonWestToEast = {enabled = false, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
-    surfaceSingleLoop = {enabled = false, testScript = require("tests/surface-single-loop")},
-    surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")},
-    demo = {enabled = true, testScript = require("tests/demo")}
-}
+
+local testsToDo
+if doTests then
+    testsToDo = {
+        tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
+        tunnelMultiWagonEastToWest = {enabled = true, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
+        tunnelMultiWagonWestToEast = {enabled = false, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
+        surfaceSingleLoop = {enabled = false, testScript = require("tests/surface-single-loop")},
+        surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")},
+        demo = {enabled = false, testScript = require("tests/demo")},
+        tunnelMultiWagonEastToWest2Tunnels = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west-2-tunnels")},
+        tunnelMultiWagonNorthToSouth = {enabled = false, testScript = require("tests/tunnel-multi-wagon-north-to-south")}
+    }
+end
 
 TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
@@ -38,6 +44,7 @@ end
 
 TestManager.RunTests = function()
     game.tick_paused = true
+
     for _, test in pairs(testsToDo) do
         if test.enabled then
             test.testScript.Start()
