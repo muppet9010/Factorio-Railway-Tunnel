@@ -1,7 +1,6 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
-local Logging = require("utility/logging")
 local Tunnel = {}
 
 Tunnel.setupValues = {
@@ -111,7 +110,7 @@ Tunnel.OnBuiltEntity = function(event)
     if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
         Tunnel.PlacementTunnelPortalBuilt(createdEntity, game.get_player(event.player_index))
     elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" then
-        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity)
+        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, game.get_player(event.player_index))
     end
 end
 
@@ -120,7 +119,7 @@ Tunnel.OnRobotBuiltEntity = function(event)
     if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
         Tunnel.PlacementTunnelPortalBuilt(createdEntity, event.robot)
     elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" then
-        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity)
+        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, event.robot)
     end
 end
 
@@ -129,7 +128,7 @@ Tunnel.ScriptRaisedBuilt = function(event)
     if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
         Tunnel.PlacementTunnelPortalBuilt(createdEntity, nil)
     elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" then
-        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity)
+        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, nil)
     end
 end
 
@@ -139,20 +138,7 @@ Tunnel.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - Tunnel.setupValues.entranceFromCenter}))
 
     if not Tunnel.TunnelPortalPlacementValid(placementEntity) then
-        if placer ~= nil then
-            local result
-            if placer.is_player() then
-                rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = aboveSurface, target = placementEntity.position, time_to_live = 180, players = {placer}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-                result = placer.mine_entity(placementEntity, true) -- TODO: Shows text when item is mined to player, find route to not show text.
-            else
-                -- Is construction bot
-                rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = aboveSurface, target = placementEntity.position, time_to_live = 180, forces = {placer.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-                result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
-            end
-            if result ~= true then
-                Logging.ThrowError("couldn't mine invalidly placed tunnel placement entity")
-            end
-        end
+        Tunnel.UndoInvalidPlacement(placementEntity, placer)
         return
     end
 
@@ -173,39 +159,8 @@ Tunnel.PlacementTunnelPortalBuilt = function(placementEntity, placer)
         nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntrancePos)
     end
 
-    Tunnel.CheckProcessTunnelPortalComplete(abovePlacedPortal)
-end
-
-Tunnel.CheckProcessTunnelPortalComplete = function(startingTunnelPortal)
-    local centerPos, force, directionValue, aboveSurface = startingTunnelPortal.position, startingTunnelPortal.force, startingTunnelPortal.direction, startingTunnelPortal.surface
-    local orientation = directionValue / 8
-    local exitPos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1 + Tunnel.setupValues.entranceFromCenter}))
-
-    --TODO: check they all have the same of either x or y, then we know they are aligned.
-    local continueChecking, nextCheckingPos, completeTunnel, tunnelPortals, tunnelSegments = true, exitPos, false, {startingTunnelPortal}, {}
-    while continueChecking do
-        local connectedTunnelEntities = aboveSurface.find_entities_filtered {position = nextCheckingPos, name = TunnelSegmentAndPortalEntityNames, force = force, limit = 1}
-        if #connectedTunnelEntities == 0 then
-            continueChecking = false
-        else
-            local connectedTunnelEntity = connectedTunnelEntities[1]
-            if TunnelSegmentEntityNames[connectedTunnelEntity.name] then
-                if connectedTunnelEntity.direction == startingTunnelPortal.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPortal.direction + 4) then
-                    nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
-                    table.insert(tunnelSegments, connectedTunnelEntity)
-                else
-                    continueChecking = false
-                end
-            elseif TunnelPortalEntityNames[connectedTunnelEntity.name] then
-                continueChecking = false
-                if connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPortal.direction + 4) then
-                    completeTunnel = true
-                    table.insert(tunnelPortals, connectedTunnelEntity)
-                end
-            end
-        end
-    end
-    if not completeTunnel then
+    local tunnelComplete, tunnelPortals, tunnelSegments = Tunnel.CheckTunnelCompleteFromPortal(abovePlacedPortal, placer)
+    if not tunnelComplete then
         return false
     end
     Tunnel.TunnelCompleted(tunnelPortals, tunnelSegments)
@@ -219,19 +174,17 @@ Tunnel.TunnelPortalPlacementValid = function(placementEntity)
     end
 end
 
-Tunnel.TunnelSegmentPlacementValid = function(placementEntity)
-    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
-        return false
-    else
-        return true
-    end
+Tunnel.CheckTunnelCompleteFromPortal = function(startingTunnelPortal, placer)
+    local tunnelPortals, tunnelSegments, directionValue, orientation = {startingTunnelPortal}, {}, startingTunnelPortal.direction, startingTunnelPortal.direction / 8
+    local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortal.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + Tunnel.setupValues.entranceFromCenter}))
+    return Tunnel.CheckTunnelPartsInDirection(startingTunnelPortal, startingTunnelPartPoint, tunnelPortals, tunnelSegments, directionValue, placer), tunnelPortals, tunnelSegments
 end
 
-Tunnel.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity)
+Tunnel.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
 
     if not Tunnel.TunnelSegmentPlacementValid(placementEntity) then
-        --TODO: mine the placement entity back to the placer and show a message. May be nil placer, if so just lose the item as script created.
+        Tunnel.UndoInvalidPlacement(placementEntity, placer)
         return
     end
 
@@ -246,11 +199,93 @@ Tunnel.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity)
         entity = tunnelSegment
     }
 
-    Tunnel.CheckProcessTunnelSegmentComplete(abovePlacedTunnelSegment)
+    local tunnelComplete, tunnelPortals, tunnelSegments = Tunnel.CheckTunnelCompleteFromSegment(abovePlacedTunnelSegment, placer)
+    if not tunnelComplete then
+        return false
+    end
+    Tunnel.TunnelCompleted(tunnelPortals, tunnelSegments)
 end
 
-Tunnel.CheckProcessTunnelSegmentComplete = function(startingTunnelSegment)
-    --TODO - similar to Tunnel.CheckProcessTunnelPortalComplete
+Tunnel.TunnelSegmentPlacementValid = function(placementEntity)
+    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
+        return false
+    else
+        return true
+    end
+end
+
+Tunnel.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, placer)
+    local directionComplete
+    local tunnelPortals, tunnelSegments, directionValue = {}, {startingTunnelSegment}, startingTunnelSegment.direction
+    for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
+        -- Check "forwards" and then "backwards".
+        directionComplete = Tunnel.CheckTunnelPartsInDirection(startingTunnelSegment, startingTunnelSegment.position, tunnelPortals, tunnelSegments, checkingDirection, placer)
+        if not directionComplete then
+            break
+        end
+    end
+    if not directionComplete then
+        -- If last direction checked was good then tunnel is complete, as we reset it each loop.
+        return false, tunnelPortals, tunnelSegments
+    end
+    return true, tunnelPortals, tunnelSegments
+end
+
+Tunnel.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnelPartPoint, tunnelPortals, tunnelSegments, checkingDirection, placer)
+    local orientation = checkingDirection / 8
+    local continueChecking = true
+    local nextCheckingPos = startingTunnelPartPoint
+    while continueChecking do
+        nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
+        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelSegmentAndPortalEntityNames, force = startingTunnelPart.force, limit = 1}
+        if #connectedTunnelEntities == 0 then
+            continueChecking = false
+        else
+            local connectedTunnelEntity = connectedTunnelEntities[1]
+            if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
+                local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
+                rendering.draw_text {text = "Tunnel parts must be in a straight line", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                continueChecking = false
+            elseif TunnelSegmentEntityNames[connectedTunnelEntity.name] then
+                if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
+                    table.insert(tunnelSegments, connectedTunnelEntity)
+                else
+                    local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
+                    rendering.draw_text {text = "Tunnel segments must be in the same direction; horizontal or vertical", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                    continueChecking = false
+                end
+            elseif TunnelPortalEntityNames[connectedTunnelEntity.name] then
+                continueChecking = false
+                if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
+                    table.insert(tunnelPortals, connectedTunnelEntity)
+                    return true
+                else
+                    local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
+                    rendering.draw_text {text = "Tunnel portal facing wrong direction", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                end
+            else
+                error("unhandled railway_tunnel entity type")
+            end
+        end
+    end
+    return false
+end
+
+Tunnel.UndoInvalidPlacement = function(placementEntity, placer)
+    if placer ~= nil then
+        local result
+        if placer.is_player() then
+            rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, players = {placer}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+            result = placer.mine_entity(placementEntity, true) -- TODO: Shows text when item is mined to player, find route to not show text.
+        else
+            -- Is construction bot
+            rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, forces = {placer.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+            result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+        end
+        if result ~= true then
+            error("couldn't mine invalidly placed tunnel placement entity")
+        end
+    end
 end
 
 Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)

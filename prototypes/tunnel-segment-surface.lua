@@ -31,6 +31,11 @@ local tunnelSegmentSurfacePlacement = {
             height = 192,
             width = 64
         }
+    },
+    minable = {
+        mining_time = 5,
+        result = "railway_tunnel-tunnel_segment_surface-placement",
+        count = 1
     }
 }
 data:extend({tunnelSegmentSurfacePlacement})
@@ -62,3 +67,16 @@ tunnelSegmentSurfacePlaced.picture = {
 tunnelSegmentSurfacePlaced.render_layer = "ground-tile"
 tunnelSegmentSurfacePlaced.selection_box = tunnelSegmentSurfacePlaced.collision_box
 data:extend({tunnelSegmentSurfacePlaced})
+
+data:extend(
+    {
+        {
+            type = "item",
+            name = "railway_tunnel-tunnel_segment_surface-placement",
+            icon = "__railway_tunnel__/graphics/icon/tunnel_segment_surface/railway_tunnel-tunnel_segment_surface-placement.png",
+            icon_size = 32,
+            stack_size = 50,
+            place_result = "railway_tunnel-tunnel_segment_surface-placement"
+        }
+    }
+)

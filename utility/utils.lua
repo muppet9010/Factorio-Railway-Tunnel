@@ -1068,6 +1068,15 @@ Utils.GetBuilderInventory = function(builder)
     end
 end
 
+Utils.GetRenderPlayersForcesFromActioner = function(actioner)
+    if actioner.is_player() then
+        return {players = {actioner}, forces = nil}
+    else
+        -- Is construction bot
+        return {players = nil, forces = actioner.force}
+    end
+end
+
 Utils.EmptyRotatedSprite = function()
     return {
         direction_count = 1,
