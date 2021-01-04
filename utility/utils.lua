@@ -439,8 +439,9 @@ function Utils.GetDistanceSingleAxis(pos1, pos2, axis)
     return math.abs(pos1[axis] - pos2[axis])
 end
 
-function Utils.GetPositionOffsetFromPosition(newPosition, basePosition)
-    return {x = basePosition.x - newPosition.x, y = basePosition.y - newPosition.y}
+function Utils.GetOffsetForPositionFromPosition(newPosition, basePosition)
+    -- Returns the offset for the first position in relation to the second position.
+    return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
 end
 
 function Utils.IsPositionInBoundingBox(position, boundingBox, safeTiling)

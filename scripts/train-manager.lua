@@ -26,6 +26,7 @@ TrainManager.CreateGlobals = function()
         undergroundSurface = LuaSurface of the specific underground surface.
         aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
         undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
+        surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
@@ -141,8 +142,7 @@ end
 
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
-    -- TODO: set dynamic distance check - 1 of 2
-    -- TODO: this is very wrong on a track 200 tiles from 0,0. Affects both horizontal and vertical.
+    -- TODO: this isn't perfect, but pretty good and supports orientations.
     local startingLeavingPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.undergroundOffsetFromSurface)
     local nextStockAttributeName = "front_stock"
     if (trainManagerEntry.undergroundTrain.speed < 0) then
@@ -164,7 +164,7 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     end
 
     local refCarriage = sourceTrain[nextStockAttributeName]
-    local placedCarriage = refCarriage.clone {position = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.undergroundOffsetFromSurface), surface = trainManagerEntry.aboveSurface}
+    local placedCarriage = refCarriage.clone {position = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.surfaceOffsetFromUnderground), surface = trainManagerEntry.aboveSurface}
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
     local aboveTrainLeaving, speed = placedCarriage.train
@@ -198,9 +198,9 @@ TrainManager.TrainLeavingOngoing = function(event)
         TrainManager.TrainLeavingCompleted(trainManagerEntry)
         return
     end
-    -- TODO: set dynamic distance check - 2 of 2
-    if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 15 then
-        local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.undergroundOffsetFromSurface)
+    -- TODO: this isn't perfect, but pretty good and supports orientations.
+    if Utils.GetDistance(currentSourceCarriageEntity.position, Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortalEndSignal.entity.position, trainManagerEntry.undergroundOffsetFromSurface)) > 10 then
+        local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.surfaceOffsetFromUnderground)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
         aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
@@ -289,7 +289,8 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
             }
         )
     )
-    trainManagerEntry.undergroundOffsetFromSurface = Utils.GetPositionOffsetFromPosition(nextCarriagePosition, refTrain.front_stock.position)
+    trainManagerEntry.undergroundOffsetFromSurface = Utils.GetOffsetForPositionFromPosition(nextCarriagePosition, refTrain.front_stock.position)
+    trainManagerEntry.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, trainManagerEntry.undergroundOffsetFromSurface)
     local carriageIteractionOrientation = trainManagerEntry.trainTravelOrientation
     if not trainManagerEntry.trainTravellingForwards then
         carriageIteractionOrientation = Utils.LoopDirectionValue(trainManagerEntry.trainTravelDirection + 4) / 8
