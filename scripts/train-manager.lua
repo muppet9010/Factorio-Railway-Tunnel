@@ -82,7 +82,14 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     -- Copy the above train underground and set it running.
     local sourceTrain = trainManagerEntry.aboveTrainEntering
     local undergroundTrain = TrainManager.CopyTrainToUnderground(trainManagerEntry)
-    undergroundTrain.speed = sourceTrain.speed
+
+    --Have to work out if the copied train to underground is facing the same way as the above train. This is random for all purposes by the Facotrio engine. Setting speed aginst the path gives 0 starting speed and a jolt on surface train next tick when speeds swapped.
+    if sourceTrain.rail_direction_from_front_rail == undergroundTrain.rail_direction_from_front_rail then
+        undergroundTrain.speed = sourceTrain.speed
+    else
+        undergroundTrain.speed = 0 - sourceTrain.speed
+    end
+
     trainManagerEntry.undergroundTrain = undergroundTrain
     local tunnelSetupValues = Interfaces.Call("Tunnel.GetSetupValues")
     local undergroundTrainEndScheduleTargetPos =
@@ -137,6 +144,7 @@ TrainManager.TrainEnteringOngoing = function(event)
     else
         global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
         trainManagerEntry.aboveTrainEntering = nil
+        trainManagerEntry.aboveTrainEnteringId = nil
     end
 end
 
