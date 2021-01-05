@@ -1,27 +1,34 @@
 TODO:
-    - Check bots can place entities.
-    - Check blueprints work ok out of the box - need to make non-blueprintable entity versions.
+	- Make ghost placement flag invalid placements just like main entities, but not return any item, just remove the ghost.
+    - Check bots can place entities. - aaa1 save errors.
+    - Check blueprints work ok out of the box - need to make non-blueprintable entity versions of regualr visbile track and signals for portal.
+	- Editor pipete goes wierd and desn't get the right entity when in entity mode?
 
 FUTURE:
-    - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
-    - Decide on tunnel removal process and impliment. If selectable entities are removed need to destory the tunnel and remove all the specially placed entities. Need to handle trains in the tunnel and also entering and leaving.
+    - Tunnel removal process:
+		- If a player tries to mine a tunnel piece while its in use the mine should be "undone". Just like with regular track it should say ingame: "This cannot be mined". 
+		- If a robot tries to mine a tunnel piece while its in use the mine should be "undone". Just like with regular track it should say ingame: "This cannot be mined". The deconstruciton order will be removed by this process.
+		- A killed tunnel piece will destroy the tunnel. Any train wagons inside it are lost and removed. Just like if a train or chest is killed.
+		- If you succeed in mining/removing a tunnel piece all hidden entities are destroyed and the tunnel removed. This will stop any trains appraoching.
     - Lock tunnel when its in use by closing both entry signals.
     - Handle players being in a train going through the tunnel.
     - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
     - Handle 2 trains both entering the tunnel at once.
+    - When tains are leaveing they need to path when the first wagon is out. At present they are shoved out entirely and then path. Maybe use of hidden loco or miroring signals on to underground would help.
     - Handle long trains:
         - Place rails under the underground train carraiges if its a very long train.
-        - When they leave they need to path when a single wagon is out. At present they are shoved out entirely and then path. Maybe use of hidden loco or miroring signals on to underground would help.
         - Confirm that if a train leaving is slowed and it is still entering that the entering train keeps in sync correctly. Should just work.
     - Make recipes, techs and item & entities localisations.
-    - We assume all train carriages are 7 tiles apart, check thier prototypes.
-    - Train copying to underground:
-        - Missing equipments grids.
     - Minimap colored lines for tunnels.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
-    - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains.
+	- Handle trains being destroyed as they go in/come out of the tunnel. The forceing in and out process should prevent players from controlling them as every tick we reapply our control.
 
 NICE TO HAVE:
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Graphics: icons, ingame entities, placement entities.
+    - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing.
+    - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
+    - We assume all train carriages are 7 tiles apart, check thier prototypes.
+	- When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carraiges, fuel, cargo items, equipment grids.
+    - When copying above train to underground handle equipments grids. At present they are lost by the process.
