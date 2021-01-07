@@ -1,13 +1,12 @@
 TODO:
 	- Make ghost placement flag invalid placements just like main entities, but not return any item, just remove the ghost.
-    - Check bots can place entities. - aaa1 save errors.
-    - Check blueprints work ok out of the box - need to make non-blueprintable entity versions of regualr visbile track and signals for portal.
-	- Editor pipete goes wierd and desn't get the right entity when in entity mode?
+    - Blueprints get the wrong entity, or we need to make them handle placing the "placed" versions and treat like doing the placement ones (but with graphics missing).
+	- Editor pipete goes wierd and desn't get the right entity when in entity mode. But in standard player mode pipete works as expected.
 
 FUTURE:
     - Tunnel removal process:
-		- If a player tries to mine a tunnel piece while its in use the mine should be "undone". Just like with regular track it should say ingame: "This cannot be mined". 
-		- If a robot tries to mine a tunnel piece while its in use the mine should be "undone". Just like with regular track it should say ingame: "This cannot be mined". The deconstruciton order will be removed by this process.
+		- If a player tries to mine a tunnel piece while its in use the mine entity should be replaced. An ingame message should say: "This cannot be mined while tunnel in use".
+		- If a robot tries to mine a tunnel piece while its in use the mined entity should be replaced. An ingame message should say: "This cannot be mined while tunnel in use". The deconstruciton order will be removed by this process.
 		- A killed tunnel piece will destroy the tunnel. Any train wagons inside it are lost and removed. Just like if a train or chest is killed.
 		- If you succeed in mining/removing a tunnel piece all hidden entities are destroyed and the tunnel removed. This will stop any trains appraoching.
     - Lock tunnel when its in use by closing both entry signals.
@@ -32,3 +31,5 @@ NICE TO HAVE:
     - We assume all train carriages are 7 tiles apart, check thier prototypes.
 	- When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carraiges, fuel, cargo items, equipment grids.
     - When copying above train to underground handle equipments grids. At present they are lost by the process.
+    - Look at train speed and how long until the train, carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from ever second and lower UPS.
+    - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, like: https://mods.factorio.com/mod/fast_trans. Either block or force to slow down for tunnels on approach?

@@ -231,17 +231,10 @@ function Utils.CalculateBoundingBoxFrom2Points(point1, point2)
 end
 
 function Utils.ApplyOffsetToPosition(position, offset)
-    position = Utils.DeepCopy(position)
-    if offset == nil then
-        return position
-    end
-    if offset.x ~= nil then
-        position.x = position.x + offset.x
-    end
-    if offset.y ~= nil then
-        position.y = position.y + offset.y
-    end
-    return position
+    return {
+        x = position.x + (offset.x or 0),
+        y = position.y + (offset.y or 0)
+    }
 end
 
 function Utils.GrowBoundingBox(boundingBox, growthX, growthY)

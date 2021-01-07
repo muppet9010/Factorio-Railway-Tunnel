@@ -12,6 +12,7 @@ end
 
 require("prototypes/internal-rail-on-map")
 require("prototypes/invisible-rail")
+require("prototypes/internal-signal-on-map")(tunnelSignalSurfaceCollisionLayer)
 
 require("prototypes/tunnel-portal-surface")
 require("prototypes/tunnel-portal-end-rail-signal")(tunnelSignalSurfaceCollisionLayer)

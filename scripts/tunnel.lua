@@ -130,7 +130,7 @@ Tunnel.OnBuiltEntity = function(event)
 end
 
 Tunnel.OnRobotBuiltEntity = function(event)
-    local createdEntity = event.entity
+    local createdEntity = event.created_entity
     if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
         Tunnel.PlacementTunnelPortalBuilt(createdEntity, event.robot)
     elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or createdEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" then
@@ -377,7 +377,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
 
         local entrySignalInEntity =
             aboveSurface.create_entity {
-            name = "rail-signal",
+            name = "railway_tunnel-internal_signal-on_map",
             position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
             force = force,
             direction = directionValue
@@ -389,7 +389,7 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
         }
         local entrySignalOutEntity =
             aboveSurface.create_entity {
-            name = "rail-signal",
+            name = "railway_tunnel-internal_signal-on_map",
             position = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 1.5, y = 0.5 + Tunnel.setupValues.entrySignalsDistance})),
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
