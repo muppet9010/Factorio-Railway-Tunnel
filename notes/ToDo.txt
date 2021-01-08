@@ -1,7 +1,4 @@
 TODO:
-	- Make ghost placement flag invalid placements just like main entities, but not return any item, just remove the ghost.
-    - Blueprints get the wrong entity, or we need to make them handle placing the "placed" versions and treat like doing the placement ones (but with graphics missing).
-	- Editor pipete goes wierd and desn't get the right entity when in entity mode. But in standard player mode pipete works as expected.
 
 FUTURE:
     - Tunnel removal process:

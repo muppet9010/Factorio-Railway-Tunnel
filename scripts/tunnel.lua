@@ -3,6 +3,9 @@ local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local Tunnel = {}
 
+--[[
+    Notes: We have to handle the "placed" versions being built as this is what blueprints get and when player is in the editor in "entity" mode and pipette's a placed entity. All other player modes select the placement item with pipette.
+]]
 Tunnel.setupValues = {
     entranceFromCenter = 25,
     --Tunnels distance starts from the first entrace tile.
@@ -92,13 +95,27 @@ Tunnel.OnLoad = function()
 
     local tunnelSegmentAndPortalEntityNames_Filter = {
         {filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"},
+        {filter = "name", name = "railway_tunnel-tunnel_portal_surface-placed"},
         {filter = "name", name = "railway_tunnel-tunnel_segment_surface-placement"},
-        {filter = "name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement"}
+        {filter = "name", name = "railway_tunnel-tunnel_segment_surface-placed"},
+        {filter = "name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement"},
+        {filter = "name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"}
     }
-
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnRobotBuiltEntity", Tunnel.OnRobotBuiltEntity, "Tunnel.OnRobotBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.ScriptRaisedBuilt", Tunnel.ScriptRaisedBuilt, "Tunnel.ScriptRaisedBuilt", tunnelSegmentAndPortalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
+
+    local tunnelSegmentAndPortalEntityGhostNames_Filter = {
+        {filter = "ghost_name", name = "railway_tunnel-tunnel_portal_surface-placement"},
+        {filter = "ghost_name", name = "railway_tunnel-tunnel_portal_surface-placed"},
+        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface-placement"},
+        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface-placed"},
+        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement"},
+        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"}
+    }
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntityGhost", Tunnel.OnBuiltEntityGhost, "Tunnel.OnBuiltEntityGhost", tunnelSegmentAndPortalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntityGhost", Tunnel.OnBuiltEntityGhost, "Tunnel.OnBuiltEntityGhost", tunnelSegmentAndPortalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntityGhost", Tunnel.OnBuiltEntityGhost, "Tunnel.OnBuiltEntityGhost", tunnelSegmentAndPortalEntityGhostNames_Filter)
 
     Interfaces.RegisterInterface(
         "Tunnel.GetSetupValues",
@@ -121,29 +138,18 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
 end
 
 Tunnel.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity
-    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
-        Tunnel.PlacementTunnelPortalBuilt(createdEntity, game.get_player(event.player_index))
-    elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or createdEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" then
-        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, game.get_player(event.player_index))
+    local createdEntity = event.created_entity or event.entity
+    if not createdEntity.valid then
+        return
     end
-end
-
-Tunnel.OnRobotBuiltEntity = function(event)
-    local createdEntity = event.created_entity
-    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
-        Tunnel.PlacementTunnelPortalBuilt(createdEntity, event.robot)
-    elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or createdEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" then
-        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, event.robot)
+    local placer = event.robot -- Will be nil for player or script placed.
+    if placer == nil and event.player_index ~= nil then
+        placer = game.get_player(event.player_index)
     end
-end
-
-Tunnel.ScriptRaisedBuilt = function(event)
-    local createdEntity = event.entity
-    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" then
-        Tunnel.PlacementTunnelPortalBuilt(createdEntity, nil)
-    elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or createdEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" then
-        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, nil)
+    if createdEntity.name == "railway_tunnel-tunnel_portal_surface-placement" or createdEntity.name == "railway_tunnel-tunnel_portal_surface-placed" then
+        Tunnel.PlacementTunnelPortalBuilt(createdEntity, placer)
+    elseif createdEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or createdEntity.name == "railway_tunnel-tunnel_segment_surface-placed" or createdEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" or createdEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placed" then
+        Tunnel.PlacementTunnelSegmentSurfaceBuilt(createdEntity, placer)
     end
 end
 
@@ -153,7 +159,7 @@ Tunnel.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - Tunnel.setupValues.entranceFromCenter}))
 
     if not Tunnel.TunnelPortalPlacementValid(placementEntity) then
-        Tunnel.UndoInvalidPlacement(placementEntity, placer)
+        Tunnel.UndoInvalidPlacement(placementEntity, placer, true)
         return
     end
 
@@ -199,15 +205,15 @@ Tunnel.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
 
     if not Tunnel.TunnelSegmentPlacementValid(placementEntity) then
-        Tunnel.UndoInvalidPlacement(placementEntity, placer)
+        Tunnel.UndoInvalidPlacement(placementEntity, placer, true)
         return
     end
 
     local placedEntityName, placeCrossignRails
-    if placementEntity.name == "railway_tunnel-tunnel_segment_surface-placement" then
+    if placementEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or placementEntity.name == "railway_tunnel-tunnel_segment_surface-placed" then
         placedEntityName = "railway_tunnel-tunnel_segment_surface-placed"
         placeCrossignRails = false
-    elseif placementEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" then
+    elseif placementEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" or placementEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placed" then
         placedEntityName = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"
         placeCrossignRails = true
     end
@@ -338,16 +344,24 @@ Tunnel.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnel
     return false
 end
 
-Tunnel.UndoInvalidPlacement = function(placementEntity, placer)
+Tunnel.UndoInvalidPlacement = function(placementEntity, placer, mine)
     if placer ~= nil then
         local result
         if placer.is_player() then
             rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, players = {placer}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-            result = placer.mine_entity(placementEntity, true)
+            if mine then
+                result = placer.mine_entity(placementEntity, true)
+            else
+                result = true
+            end
         else
             -- Is construction bot
             rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, forces = {placer.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-            result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+            if mine then
+                result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+            else
+                result = true
+            end
         end
         if result ~= true then
             error("couldn't mine invalidly placed tunnel placement entity")
@@ -501,6 +515,30 @@ Tunnel.SetRailSignalRed = function(signal)
     controlBehavour.read_signal = false
     controlBehavour.close_signal = true
     controlBehavour.circuit_condition = {condition = {first_signal = {type = "virtual", name = "signal-red"}, comparator = "="}, constant = 0}
+end
+
+Tunnel.OnBuiltEntityGhost = function(event)
+    local createdEntity = event.created_entity or event.entity
+    if not createdEntity.valid then
+        return
+    end
+    local placer = event.robot -- Will be nil for player or script placed.
+    if placer == nil and event.player_index ~= nil then
+        placer = game.get_player(event.player_index)
+    end
+    if createdEntity.ghost_name == "railway_tunnel-tunnel_portal_surface-placement" or createdEntity.ghost_name == "railway_tunnel-tunnel_portal_surface-placed" then
+        if not Tunnel.TunnelPortalPlacementValid(createdEntity) then
+            Tunnel.UndoInvalidPlacement(createdEntity, placer, false)
+            createdEntity.destroy()
+            return
+        end
+    elseif createdEntity.ghost_name == "railway_tunnel-tunnel_segment_surface-placement" or createdEntity.ghost_name == "railway_tunnel-tunnel_segment_surface-placed" or createdEntity.ghost_name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" or createdEntity.ghost_name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placed" then
+        if not Tunnel.TunnelSegmentPlacementValid(createdEntity) then
+            Tunnel.UndoInvalidPlacement(createdEntity, placer, false)
+            createdEntity.destroy()
+            return
+        end
+    end
 end
 
 return Tunnel
