@@ -8,16 +8,26 @@ local Tunnel = {}
 ]]
 Tunnel.setupValues = {
     entranceFromCenter = 25,
-    --Tunnels distance starts from the first entrace tile.
+    -- Tunnels distance starts from the first entrace tile.
     entrySignalsDistance = 1,
     endSignalsDistance = 49,
     straightRailCountFromEntrance = 21,
     invisibleRailCountFromEntrance = 4,
     undergroundLeadInTiles = 100 -- hard coded for now just cos
 }
-local TunnelSegmentEntityNames = {["railway_tunnel-tunnel_segment_surface-placed"] = "railway_tunnel-tunnel_segment_surface-placed", ["railway_tunnel-tunnel_segment_surface_rail_crossing-placed"] = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"}
-local TunnelPortalEntityNames = {["railway_tunnel-tunnel_portal_surface-placed"] = "railway_tunnel-tunnel_portal_surface-placed"}
-local TunnelSegmentAndPortalEntityNames = Utils.TableMerge({TunnelSegmentEntityNames, TunnelPortalEntityNames})
+
+-- Make the entity lists.
+local TunnelSegmentPlacedEntityNames, TunnelSegmentPlacementEntityNames, TunnelPortalPlacedEntityNames, TunnelPortalPlacementEntityNames = {}, {}, {}, {}
+for _, coreName in pairs({"railway_tunnel-tunnel_segment_surface", "railway_tunnel-tunnel_segment_surface_rail_crossing"}) do
+    TunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
+    TunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
+end
+for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
+    TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
+    TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
+end
+local TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelSegmentPlacedEntityNames, TunnelPortalPlacedEntityNames})
+local TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelSegmentPlacedEntityNames, TunnelSegmentPlacementEntityNames, TunnelPortalPlacedEntityNames, TunnelPortalPlacementEntityNames})
 
 Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
@@ -48,6 +58,25 @@ Tunnel.CreateGlobals = function()
             railEntities = table of the rail entities within the portal. key'd by the rail unit_number.
         }
     ]]
+    global.tunnel.tunnelSegments = global.tunnel.tunnelSegments or {}
+    --[[
+        [unit_number] = {
+            id = unit_number of the placed segment entity.
+            entity = ref to the placed entity
+            railEntities = table of the rail entities within the tunnel segment. Key'd by the rail unit_number.
+            signalEntities = table of the hidden signal entities within the tunnel segment. Key'd by the signal unit_number.
+            tunnel = the tunnel this portal is part of.
+            crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
+            positionString = the entities position as a string. used to back match to tunnelSegmentPositions global object.
+        }
+    ]]
+    global.tunnel.tunnelSegmentPositions = global.tunnel.tunnelSegmentPositions or {}
+    --[[
+        [id] = {
+            id = the position of the segment as a string
+            tunnelSegments = ref to the tunnelSegment global object
+        }
+    ]]
     global.tunnel.tunnels = global.tunnel.tunnels or {}
     --[[
         [id] = {
@@ -69,50 +98,25 @@ Tunnel.CreateGlobals = function()
             }
         }
     ]]
-    global.tunnel.tunnelSegments = global.tunnel.tunnelSegments or {}
-    --[[
-        [unit_number] = {
-            id = unit_number of the placed segment entity.
-            entity = ref to the placed entity
-            railEntities = table of the rail entities within the tunnel segment. Key'd by the rail unit_number.
-            signalEntities = table of the hidden signal entities within the tunnel segment. Key'd by the signal unit_number.
-            tunnel = the tunnel this portal is part of.
-            crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
-            positionString = the entities position as a string. used to back match to tunnelSegmentPositions global object.
-        }
-    ]]
-    global.tunnel.tunnelSegmentPositions = global.tunnel.tunnelSegmentPositions or {}
-    --[[
-        [id] = {
-            id = the position of the segment as a string
-            tunnelSegments = ref to the tunnelSegment global object
-        }
-    ]]
 end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
 
-    local tunnelSegmentAndPortalEntityNames_Filter = {
-        {filter = "name", name = "railway_tunnel-tunnel_portal_surface-placement"},
-        {filter = "name", name = "railway_tunnel-tunnel_portal_surface-placed"},
-        {filter = "name", name = "railway_tunnel-tunnel_segment_surface-placement"},
-        {filter = "name", name = "railway_tunnel-tunnel_segment_surface-placed"},
-        {filter = "name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement"},
-        {filter = "name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"}
-    }
+    local tunnelSegmentAndPortalEntityNames_Filter = {}
+    for _, name in pairs(TunnelSegmentAndPortalPlacedPlacementEntityNames) do
+        table.insert(tunnelSegmentAndPortalEntityNames_Filter, {filter = "name", name = name})
+    end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", tunnelSegmentAndPortalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Tunnel.OnPreMinedEntity", Tunnel.OnPreMinedEntity, "Tunnel.OnPreMinedEntity", tunnelSegmentAndPortalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Tunnel.OnPreMinedEntity", Tunnel.OnPreMinedEntity, "Tunnel.OnPreMinedEntity", tunnelSegmentAndPortalEntityNames_Filter)
 
-    local tunnelSegmentAndPortalEntityGhostNames_Filter = {
-        {filter = "ghost_name", name = "railway_tunnel-tunnel_portal_surface-placement"},
-        {filter = "ghost_name", name = "railway_tunnel-tunnel_portal_surface-placed"},
-        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface-placement"},
-        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface-placed"},
-        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement"},
-        {filter = "ghost_name", name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"}
-    }
+    local tunnelSegmentAndPortalEntityGhostNames_Filter = {}
+    for _, name in pairs(TunnelSegmentAndPortalPlacedPlacementEntityNames) do
+        table.insert(tunnelSegmentAndPortalEntityNames_Filter, {filter = "ghost_name", name = name})
+    end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntityGhost", Tunnel.OnBuiltEntityGhost, "Tunnel.OnBuiltEntityGhost", tunnelSegmentAndPortalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntityGhost", Tunnel.OnBuiltEntityGhost, "Tunnel.OnBuiltEntityGhost", tunnelSegmentAndPortalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntityGhost", Tunnel.OnBuiltEntityGhost, "Tunnel.OnBuiltEntityGhost", tunnelSegmentAndPortalEntityGhostNames_Filter)
@@ -259,14 +263,15 @@ Tunnel.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
         tunnelSegment = tunnelSegment
     }
     if fastReplacedSegment ~= nil then
-        --TODO: if go from crossing back remove the crossing rails.
         tunnelSegment.railEntities = fastReplacedSegment.railEntities
         tunnelSegment.signalEntities = fastReplacedSegment.signalEntities
         tunnelSegment.tunnel = fastReplacedSegment.tunnel
-        for i, checkSegment in pairs(tunnelSegment.tunnel.segments) do
-            if checkSegment.id == fastReplacedSegment.id then
-                tunnelSegment.tunnel.segments[i] = tunnelSegment
-                break
+        if tunnelSegment.tunnel ~= nil then
+            for i, checkSegment in pairs(tunnelSegment.tunnel.segments) do
+                if checkSegment.id == fastReplacedSegment.id then
+                    tunnelSegment.tunnel.segments[i] = tunnelSegment
+                    break
+                end
             end
         end
         global.tunnel.tunnelSegments[fastReplacedSegment.id] = nil
@@ -310,7 +315,7 @@ Tunnel.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnel
     local nextCheckingPos = startingTunnelPartPoint
     while continueChecking do
         nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
-        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelSegmentAndPortalEntityNames, force = startingTunnelPart.force, limit = 1}
+        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
@@ -319,7 +324,7 @@ Tunnel.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnel
                 local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
                 rendering.draw_text {text = "Tunnel parts must be in a straight line", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
                 continueChecking = false
-            elseif TunnelSegmentEntityNames[connectedTunnelEntity.name] then
+            elseif TunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
                     table.insert(tunnelSegments, connectedTunnelEntity)
                 else
@@ -327,7 +332,7 @@ Tunnel.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnel
                     rendering.draw_text {text = "Tunnel segments must be in the same direction; horizontal or vertical", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
                     continueChecking = false
                 end
-            elseif TunnelPortalEntityNames[connectedTunnelEntity.name] then
+            elseif TunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
                 continueChecking = false
                 if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
                     table.insert(tunnelPortals, connectedTunnelEntity)
@@ -350,7 +355,7 @@ Tunnel.UndoInvalidPlacement = function(placementEntity, placer, mine)
         if placer.is_player() then
             rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, players = {placer}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
             if mine then
-                result = placer.mine_entity(placementEntity, true)
+                result = placer.mine_entity(placementEntity, true) --TODO: this triggers the on mined event. This may be bad????
             else
                 result = true
             end
@@ -537,6 +542,26 @@ Tunnel.OnBuiltEntityGhost = function(event)
             Tunnel.UndoInvalidPlacement(createdEntity, placer, false)
             createdEntity.destroy()
             return
+        end
+    end
+end
+
+Tunnel.OnPreMinedEntity = function(event)
+    local minedEntity = event.entity
+    if not minedEntity.valid then
+        return
+    end
+    local miner = event.robot -- Will be nil for player mined.
+    if miner == nil and event.player_index ~= nil then
+        miner = game.get_player(event.player_index)
+    end
+
+    local existingObject = global.tunnel.portals[minedEntity.unit_number] or global.tunnel.tunnelSegment[minedEntity.unit_number]
+    if existingObject.tunnel == nil then
+        -- Just do removed entity tidyup and let mine happen naturatly.
+    else
+        if Interfaces.Call("TrainManager.IsTunnelIdInUse", existingObject.tunnel.id) then
+        -- TODO: Tunnel in use, prevent this.
         end
     end
 end

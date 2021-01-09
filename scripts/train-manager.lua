@@ -39,6 +39,7 @@ TrainManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainLeavingOngoing", TrainManager.TrainLeavingOngoing)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainEnteringOngoing_OnTrainCreated", TrainManager.TrainEnteringOngoing_OnTrainCreated)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainLeavingOngoing_OnTrainCreated", TrainManager.TrainLeavingOngoing_OnTrainCreated)
+    Interfaces.RegisterInterface("TrainManager.IsTunnelIdInUse", TrainManager.IsTunnelIdInUse)
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
@@ -356,6 +357,15 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, ne
     end
 
     return placedCarriage
+end
+
+TrainManager.IsTunnelIdInUse = function(tunnelId)
+    for _, managedTrain in pairs(global.trainManager.managedTrains) do
+        if managedTrain.tunnel.id == tunnelId then
+            return true
+        end
+    end
+    return false
 end
 
 return TrainManager
