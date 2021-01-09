@@ -3,6 +3,7 @@ local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
+local TunnelCommon = require("scripts/tunnel-common")
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -92,7 +93,6 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     end
 
     trainManagerEntry.undergroundTrain = undergroundTrain
-    local tunnelSetupValues = Interfaces.Call("Tunnel.GetSetupValues")
     local undergroundTrainEndScheduleTargetPos =
         Utils.ApplyOffsetToPosition(
         Utils.RotatePositionAround0(
@@ -106,7 +106,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
             trainManagerEntry.trainTravelOrientation,
             {
                 x = 0,
-                y = 0 - (tunnelSetupValues.undergroundLeadInTiles - 1)
+                y = 0 - (TunnelCommon.setupValues.undergroundLeadInTiles - 1)
             }
         )
     )
