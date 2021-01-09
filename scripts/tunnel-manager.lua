@@ -1,7 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 --local Utils = require("utility/utils")
---local TunnelCommon = require("scripts/tunnel-common")
+--local TunnelCommon = require("scripts/common/tunnel-common")
 local Tunnel = {}
 
 --[[
@@ -51,6 +51,8 @@ end
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.TunnelCompleted", Tunnel.TunnelCompleted)
+    Interfaces.RegisterInterface("Tunnel.RegisterEntrySignal", Tunnel.RegisterEntrySignal)
+    Interfaces.RegisterInterface("Tunnel.RegisterEndSiganl", Tunnel.RegisterEndSiganl)
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -96,6 +98,24 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     end
 
     tunnel.undergroundRailEntities, tunnel.undergroundModifiers = Interfaces.Call("Underground.TunnelCompleted", tunnel, refTunnelPortalEntity)
+end
+
+Tunnel.RegisterEntrySignal = function(entrySignalEntity, portal)
+    global.tunnel.entrySignals[entrySignalEntity.unit_number] = {
+        id = entrySignalEntity.unit_number,
+        entity = entrySignalEntity,
+        portal = portal
+    }
+    return global.tunnel.entrySignals[entrySignalEntity.unit_number]
+end
+
+Tunnel.RegisterEndSiganl = function(endSignalEntity, portal)
+    global.tunnel.endSignals[endSignalEntity.unit_number] = {
+        id = endSignalEntity.unit_number,
+        entity = endSignalEntity,
+        portal = portal
+    }
+    return global.tunnel.endSignals[endSignalEntity.unit_number]
 end
 
 return Tunnel

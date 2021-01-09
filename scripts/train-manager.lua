@@ -3,7 +3,7 @@ local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/tunnel-common")
+local TunnelCommon = require("scripts/common/tunnel-common")
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}

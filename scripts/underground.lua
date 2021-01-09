@@ -1,6 +1,6 @@
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
-local TunnelCommon = require("scripts/tunnel-common")
+local TunnelCommon = require("scripts/common/tunnel-common")
 local Underground = {}
 
 Underground.CreateGlobals = function()

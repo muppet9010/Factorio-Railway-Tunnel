@@ -1,7 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/tunnel-common")
+local TunnelCommon = require("scripts/common/tunnel-common")
 local TunnelSegments = {}
 
 TunnelSegments.CreateGlobals = function()
@@ -208,23 +208,7 @@ TunnelSegments.OnBuiltEntityGhost = function(event)
 end
 
 TunnelSegments.OnPreMinedEntity = function(event)
-    local minedEntity = event.entity
-    if not minedEntity.valid then
-        return
-    end
-    local miner = event.robot -- Will be nil for player mined.
-    if miner == nil and event.player_index ~= nil then
-        miner = game.get_player(event.player_index)
-    end
-
-    local existingObject = global.tunnel.portals[minedEntity.unit_number] or global.tunnel.tunnelSegment[minedEntity.unit_number]
-    if existingObject.tunnel == nil then
-        -- Just do removed entity tidyup and let mine happen naturatly.
-    else
-        if Interfaces.Call("TrainManager.IsTunnelIdInUse", existingObject.tunnel.id) then
-        -- TODO: Tunnel in use, prevent this.
-        end
-    end
+    --TODO
 end
 
 return TunnelSegments

@@ -1,7 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/tunnel-common")
+local TunnelCommon = require("scripts/common/tunnel-common")
 local TunnelPortals = {}
 
 TunnelPortals.CreateGlobals = function()
@@ -126,11 +126,7 @@ TunnelPortals.TunnelCompleted = function(tunnelPortalEntities, force, aboveSurfa
             force = force,
             direction = directionValue
         }
-        global.tunnel.entrySignals[entrySignalInEntity.unit_number] = {
-            id = entrySignalInEntity.unit_number,
-            entity = entrySignalInEntity,
-            portal = portal
-        }
+        local entrySignalIn = Interfaces.Call("Tunnel.RegisterEntrySignal", entrySignalInEntity, portal)
         local entrySignalOutEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-internal_signal-on_map",
@@ -138,12 +134,8 @@ TunnelPortals.TunnelCompleted = function(tunnelPortalEntities, force, aboveSurfa
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
         }
-        global.tunnel.entrySignals[entrySignalOutEntity.unit_number] = {
-            id = entrySignalOutEntity.unit_number,
-            entity = entrySignalOutEntity,
-            portal = portal
-        }
-        portal.entrySignals = {["in"] = global.tunnel.entrySignals[entrySignalInEntity.unit_number], ["out"] = global.tunnel.entrySignals[entrySignalOutEntity.unit_number]}
+        local entrySignalOut = Interfaces.Call("Tunnel.RegisterEntrySignal", entrySignalOutEntity, portal)
+        portal.entrySignals = {["in"] = entrySignalIn, ["out"] = entrySignalOut}
 
         local endSignalInEntity =
             aboveSurface.create_entity {
@@ -152,11 +144,7 @@ TunnelPortals.TunnelCompleted = function(tunnelPortalEntities, force, aboveSurfa
             force = force,
             direction = directionValue
         }
-        global.tunnel.endSignals[endSignalInEntity.unit_number] = {
-            id = endSignalInEntity.unit_number,
-            entity = endSignalInEntity,
-            portal = portal
-        }
+        local endSignalIn = Interfaces.Call("Tunnel.RegisterEndSiganl", endSignalInEntity, portal)
         local endSignalOutEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-tunnel_portal_end_rail_signal",
@@ -164,12 +152,8 @@ TunnelPortals.TunnelCompleted = function(tunnelPortalEntities, force, aboveSurfa
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
         }
-        global.tunnel.endSignals[endSignalOutEntity.unit_number] = {
-            id = endSignalOutEntity.unit_number,
-            entity = endSignalOutEntity,
-            portal = portal
-        }
-        portal.endSignals = {["in"] = global.tunnel.endSignals[endSignalInEntity.unit_number], ["out"] = global.tunnel.endSignals[endSignalOutEntity.unit_number]}
+        local endSignalOut = Interfaces.Call("Tunnel.RegisterEndSiganl", endSignalOutEntity, portal)
+        portal.endSignals = {["in"] = endSignalIn, ["out"] = endSignalOut}
         endSignalInEntity.connect_neighbour {wire = defines.wire_type.red, target_entity = endSignalOutEntity}
         TunnelPortals.SetRailSignalRed(endSignalInEntity)
         TunnelPortals.SetRailSignalRed(endSignalOutEntity)
@@ -203,6 +187,7 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
 end
 
 TunnelPortals.OnPreMinedEntity = function(event)
+    -- TODO HERE
     local minedEntity = event.entity
     if not minedEntity.valid then
         return
@@ -212,7 +197,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
         miner = game.get_player(event.player_index)
     end
 
-    local existingObject = global.tunnel.portals[minedEntity.unit_number] or global.tunnel.tunnelSegment[minedEntity.unit_number]
+    local existingObject = global.tunnelPortals.portals[minedEntity.unit_number]
     if existingObject.tunnel == nil then
         -- Just do removed entity tidyup and let mine happen naturatly.
     else
