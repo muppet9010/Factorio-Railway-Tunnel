@@ -18,7 +18,7 @@ Tunnel.CreateGlobals = function()
             aboveSurface = LuaSurface of the main world surface.
             undergroundSurface = LuaSurface of the underground surface for this tunnel.
             portals = table of the 2 portal global objects that make up this tunnel.
-            segments = table of the tunnelSegments global objects on the surface.
+            segments = table of the segment global objects on the surface.
             undergroundRailEntities = table of rail LuaEntity.
             undergroundModifiers = {
                 railAlignmentAxis = the "x" or "y" axis that the tunnels underground rails are aligned along.
@@ -50,9 +50,12 @@ end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
-    Interfaces.RegisterInterface("Tunnel.TunnelCompleted", Tunnel.TunnelCompleted)
-    Interfaces.RegisterInterface("Tunnel.RegisterEntrySignal", Tunnel.RegisterEntrySignal)
-    Interfaces.RegisterInterface("Tunnel.RegisterEndSiganl", Tunnel.RegisterEndSiganl)
+    Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
+    Interfaces.RegisterInterface("Tunnel.RegisterEntrySignalEntity", Tunnel.RegisterEntrySignalEntity)
+    Interfaces.RegisterInterface("Tunnel.DeregisterEntrySignal", Tunnel.DeregisterEntrySignal)
+    Interfaces.RegisterInterface("Tunnel.RegisterEndSiganlEntity", Tunnel.RegisterEndSiganlEntity)
+    Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
+    Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -67,7 +70,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     Interfaces.Call("TrainManager.TrainEnteringInitial", train, global.tunnel.endSignals[signal.unit_number])
 end
 
-Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
+Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
 
     local tunnelPortals = Interfaces.Call("TunnelPortals.TunnelCompleted", tunnelPortalEntities, force, aboveSurface)
@@ -100,7 +103,21 @@ Tunnel.TunnelCompleted = function(tunnelPortalEntities, tunnelSegmentEntities)
     tunnel.undergroundRailEntities, tunnel.undergroundModifiers = Interfaces.Call("Underground.TunnelCompleted", tunnel, refTunnelPortalEntity)
 end
 
-Tunnel.RegisterEntrySignal = function(entrySignalEntity, portal)
+Tunnel.RemoveTunnel = function(tunnel)
+    --TODO: tell train manager to destroy any train wagons travelling underground and stop events.
+    for _, portal in pairs(tunnel.portals) do
+        Interfaces.Call("TunnelPortals.TunnelRemoved", portal)
+    end
+    for _, segment in pairs(tunnel.segments) do
+        Interfaces.Call("TunnelSegments.TunnelRemoved", segment)
+    end
+    for _, undergroundRailEntity in pairs(tunnel.undergroundRailEntities) do
+        undergroundRailEntity.destroy()
+    end
+    global.tunnel.tunnels[tunnel.id] = nil
+end
+
+Tunnel.RegisterEntrySignalEntity = function(entrySignalEntity, portal)
     global.tunnel.entrySignals[entrySignalEntity.unit_number] = {
         id = entrySignalEntity.unit_number,
         entity = entrySignalEntity,
@@ -109,13 +126,21 @@ Tunnel.RegisterEntrySignal = function(entrySignalEntity, portal)
     return global.tunnel.entrySignals[entrySignalEntity.unit_number]
 end
 
-Tunnel.RegisterEndSiganl = function(endSignalEntity, portal)
+Tunnel.DeregisterEntrySignal = function(entrySignal)
+    global.tunnel.entrySignals[entrySignal.entity.unit_number] = nil
+end
+
+Tunnel.RegisterEndSiganlEntity = function(endSignalEntity, portal)
     global.tunnel.endSignals[endSignalEntity.unit_number] = {
         id = endSignalEntity.unit_number,
         entity = endSignalEntity,
         portal = portal
     }
     return global.tunnel.endSignals[endSignalEntity.unit_number]
+end
+
+Tunnel.DeregisterEndSignal = function(endSignal)
+    global.tunnel.endSignals[endSignal.entity.unit_number] = nil
 end
 
 return Tunnel

@@ -27,6 +27,7 @@ Underground.CreateSurface = function(surfaceName)
 end
 
 Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
+    -- This will liekly become more complicated later on and then become a self contain object. Deal with at that point.
     local undergroundRailEntities, undergroundModifiers = {}, {}
     if tunnel.alignment == "vertical" then
         undergroundModifiers.railAlignmentAxis = "y"

@@ -1,9 +1,6 @@
 TODO:
     - Tunnel removal process:
-		- If a player tries to mine a tunnel piece while its in use the mine entity should be replaced. An ingame message should say: "This cannot be mined while tunnel in use".
-		- If a robot tries to mine a tunnel piece while its in use the mined entity should be replaced. An ingame message should say: "This cannot be mined while tunnel in use". The deconstruciton order will be removed by this process.
 		- A killed tunnel piece will destroy the tunnel. Any train wagons inside it are lost and removed. Just like if a train or chest is killed.
-		- If you succeed in mining/removing a tunnel piece all hidden entities are destroyed and the tunnel removed. This will stop any trains appraoching.
 FUTURE:
     - Lock tunnel when its in use by closing both entry signals.
     - Handle players being in a train going through the tunnel.

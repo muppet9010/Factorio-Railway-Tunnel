@@ -40,15 +40,13 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
         else
             local connectedTunnelEntity = connectedTunnelEntities[1]
             if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
-                local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
-                rendering.draw_text {text = "Tunnel parts must be in a straight line", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity)
                 continueChecking = false
             elseif TunnelCommon.tunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
                     table.insert(tunnelSegments, connectedTunnelEntity)
                 else
-                    local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
-                    rendering.draw_text {text = "Tunnel segments must be in the same direction; horizontal or vertical", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                    TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity)
                     continueChecking = false
                 end
             elseif TunnelCommon.tunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
@@ -57,8 +55,7 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
                     table.insert(tunnelPortals, connectedTunnelEntity)
                     return true
                 else
-                    local textAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
-                    rendering.draw_text {text = "Tunnel portal facing wrong direction", surface = connectedTunnelEntity.surface, target = connectedTunnelEntity.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+                    TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity)
                 end
             else
                 error("unhandled railway_tunnel entity type")
@@ -70,27 +67,27 @@ end
 
 TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
     if placer ~= nil then
-        local result
-        if placer.is_player() then
-            rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, players = {placer}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-            if mine then
+        TunnelCommon.EntityErrorMessage(placer, "Tunnel must be placed on the rail grid", placementEntity)
+        if mine then
+            local result
+            if placer.is_player() then
                 result = placer.mine_entity(placementEntity, true) --TODO: this triggers the on mined event. This may be bad????
             else
-                result = true
+                -- Is construction bot
+                result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+            end
+            if result ~= true then
+                error("couldn't mine invalidly placed tunnel placement entity")
             end
         else
-            -- Is construction bot
-            rendering.draw_text {text = "Tunnel must be placed on the rail grid", surface = placementEntity.surface, target = placementEntity.position, time_to_live = 180, forces = {placer.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-            if mine then
-                result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
-            else
-                result = true
-            end
-        end
-        if result ~= true then
-            error("couldn't mine invalidly placed tunnel placement entity")
+            placementEntity.destroy()
         end
     end
+end
+
+TunnelCommon.EntityErrorMessage = function(entityDoingInteraction, text, entityErrored)
+    local textAudience = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
+    rendering.draw_text {text = text, surface = entityErrored.surface, target = entityErrored.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
 return TunnelCommon

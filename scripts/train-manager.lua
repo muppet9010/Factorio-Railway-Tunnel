@@ -40,7 +40,7 @@ TrainManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainLeavingOngoing", TrainManager.TrainLeavingOngoing)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainEnteringOngoing_OnTrainCreated", TrainManager.TrainEnteringOngoing_OnTrainCreated)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainLeavingOngoing_OnTrainCreated", TrainManager.TrainLeavingOngoing_OnTrainCreated)
-    Interfaces.RegisterInterface("TrainManager.IsTunnelIdInUse", TrainManager.IsTunnelIdInUse)
+    Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
@@ -359,7 +359,9 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, ne
     return placedCarriage
 end
 
-TrainManager.IsTunnelIdInUse = function(tunnelId)
+TrainManager.IsTunnelInUse = function(tunnel)
+    --TODO: this needs to check for wagons also on the invisible rails of each portal. As they will be removed with the tunnel.
+    local tunnelId = tunnel.id
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelId then
             return true
