@@ -54,6 +54,7 @@ function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionB
 end
 
 function Utils.KillAllKillableObjectsInArea(surface, positionedBoundingBox, killerEntity, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
+    --TODO: these should all support killing force being passed in.
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
         if killerEntity ~= nil then
             entity.die("neutral", killerEntity)
@@ -199,10 +200,7 @@ function Utils.RotatePositionAround0(orientation, position)
 end
 
 function Utils.CalculateBoundingBoxFrom2Points(point1, point2)
-    local minX = nil
-    local maxX = nil
-    local minY = nil
-    local maxY = nil
+    local minX, maxX, minY, maxY = nil, nil, nil, nil
     if minX == nil or point1.x < minX then
         minX = point1.x
     end
@@ -226,6 +224,27 @@ function Utils.CalculateBoundingBoxFrom2Points(point1, point2)
     end
     if maxY == nil or point2.y > maxY then
         maxY = point2.y
+    end
+    return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
+end
+
+function Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs(listOfBoundingBoxs)
+    local minX, maxX, minY, maxY = nil, nil, nil, nil
+    for _, boundingBox in pairs(listOfBoundingBoxs) do
+        for _, point in pairs({boundingBox.left_top, boundingBox.right_bottom}) do
+            if minX == nil or point.x < minX then
+                minX = point.x
+            end
+            if maxX == nil or point.x > maxX then
+                maxX = point.x
+            end
+            if minY == nil or point.y < minY then
+                minY = point.y
+            end
+            if maxY == nil or point.y > maxY then
+                maxY = point.y
+            end
+        end
     end
     return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
 end
@@ -1317,6 +1336,14 @@ end
 
 Utils.LoopDirectionValue = function(inputValue)
     return Utils.LoopIntValueWithinRange(inputValue, 0, 7)
+end
+
+Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
+    if killerCauseEntity ~= nil then
+        entity.die(killerForce, killerCauseEntity)
+    else
+        entity.die(killerForce)
+    end
 end
 
 return Utils

@@ -360,13 +360,21 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, ne
 end
 
 TrainManager.IsTunnelInUse = function(tunnel)
-    --TODO: this needs to check for wagons also on the invisible rails of each portal. As they will be removed with the tunnel.
     local tunnelId = tunnel.id
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelId then
             return true
         end
     end
+
+    for _, portal in pairs(tunnel.portals) do
+        for _, railEntity in pairs(portal.portalRailEntities) do
+            if not railEntity.can_be_destroyed() then
+                return true
+            end
+        end
+    end
+
     return false
 end
 

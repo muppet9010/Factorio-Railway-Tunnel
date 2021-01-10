@@ -90,4 +90,19 @@ TunnelCommon.EntityErrorMessage = function(entityDoingInteraction, text, entityE
     rendering.draw_text {text = text, surface = entityErrored.surface, target = entityErrored.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
+TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, killerCauseEntity)
+    if Utils.IsTableEmpty(railEntityList) then
+        return
+    end
+    local refEntity, railEntityCollisionBoxList = Utils.GetFirstTableValue(railEntityList), {}
+    for _, railEntity in pairs(railEntityList) do
+        table.insert(railEntityCollisionBoxList, railEntity.bounding_box) -- Only supports straight track by design.
+    end
+    local searchArea = Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs(railEntityCollisionBoxList)
+    local carriagesFound = refEntity.surface.find_entities_filtered {area = searchArea, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+    for _, carriage in pairs(carriagesFound) do
+        Utils.EntityDie(carriage, killForce, killerCauseEntity)
+    end
+end
+
 return TunnelCommon

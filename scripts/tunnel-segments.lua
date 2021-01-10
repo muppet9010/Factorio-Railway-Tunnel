@@ -238,14 +238,23 @@ TunnelSegments.OnPreMinedEntity = function(event)
         end
     end
 
+    local miner = event.robot -- Will be nil for player mined.
+    if miner == nil and event.player_index ~= nil then
+        miner = game.get_player(event.player_index)
+    end
+    if segment.crossingRailEntities ~= nil then
+        for _, railEntity in pairs(segment.crossingRailEntities) do
+            if not railEntity.can_be_destroyed() then
+                TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is on crossing track", minedEntity)
+                TunnelSegments.ReplaceSegmentEntity(segment)
+                return
+            end
+        end
+    end
     if segment.tunnel == nil then
         TunnelSegments.EntityRemoved(segment)
     else
         if Interfaces.Call("TrainManager.IsTunnelInUse", segment.tunnel) then
-            local miner = event.robot -- Will be nil for player mined.
-            if miner == nil and event.player_index ~= nil then
-                miner = game.get_player(event.player_index)
-            end
             TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is using tunnel", minedEntity)
             TunnelSegments.ReplaceSegmentEntity(segment)
         else
@@ -259,29 +268,32 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
     local centerPos, force, lastUser, directionValue, aboveSurface, entityName = oldSegment.entity.position, oldSegment.entity.force, oldSegment.entity.last_user, oldSegment.entity.direction, oldSegment.entity.surface, oldSegment.entity.name
     oldSegment.entity.destroy()
 
-    local newTunnelSegmentEntity = aboveSurface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
-    local newTunnelSegment = {
-        id = newTunnelSegmentEntity.unit_number,
-        entity = newTunnelSegmentEntity,
+    local newSegmentEntity = aboveSurface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
+    local newSegment = {
+        id = newSegmentEntity.unit_number,
+        entity = newSegmentEntity,
         railEntities = oldSegment.railEntities,
         signalEntities = oldSegment.signalEntities,
         tunnel = oldSegment.tunnel,
         crossingRailEntities = oldSegment.crossingRailEntities,
-        positionString = Utils.FormatPositionTableToString(newTunnelSegmentEntity.position)
+        positionString = Utils.FormatPositionTableToString(newSegmentEntity.position)
     }
-    global.tunnelSegments.segments[newTunnelSegment.id] = newTunnelSegment
-    global.tunnelSegments.segmentPositions[newTunnelSegment.positionString].segment = newTunnelSegment
-    for i, segment in pairs(newTunnelSegment.tunnel.segments) do
-        if segment.id == oldSegment.id then
-            segment.tunnel.segments[i] = newTunnelSegment
-            break
+    global.tunnelSegments.segments[newSegment.id] = newSegment
+    global.tunnelSegments.segmentPositions[newSegment.positionString].segment = newSegment
+    if newSegment.tunnel ~= nil then
+        for i, segment in pairs(newSegment.tunnel.segments) do
+            if segment.id == oldSegment.id then
+                segment.tunnel.segments[i] = newSegment
+                break
+            end
         end
     end
     global.tunnelSegments.segments[oldSegment.id] = nil
 end
 
-TunnelSegments.EntityRemoved = function(segment)
+TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.crossingRailEntities ~= nil then
+        TunnelCommon.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
         for _, crossingRailEntity in pairs(segment.crossingRailEntities) do
             crossingRailEntity.destroy()
         end

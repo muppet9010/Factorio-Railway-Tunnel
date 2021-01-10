@@ -198,15 +198,22 @@ TunnelPortals.OnPreMinedEntity = function(event)
         return
     end
 
+    local miner = event.robot -- Will be nil for player mined.
+    if miner == nil and event.player_index ~= nil then
+        miner = game.get_player(event.player_index)
+    end
+
+    for _, railEntity in pairs(portal.portalRailEntities) do
+        if not railEntity.can_be_destroyed() then
+            TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel portal while train is on tunnel track", minedEntity)
+            TunnelPortals.ReplacePortalEntity(portal)
+            return
+        end
+    end
     if portal.tunnel == nil then
-        --TODO: check that no train is on top of the visible rails for this portal.
         TunnelPortals.EntityRemoved(portal)
     else
         if Interfaces.Call("TrainManager.IsTunnelInUse", portal.tunnel) then
-            local miner = event.robot -- Will be nil for player mined.
-            if miner == nil and event.player_index ~= nil then
-                miner = game.get_player(event.player_index)
-            end
             TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity)
             TunnelPortals.ReplacePortalEntity(portal)
         else
@@ -231,25 +238,27 @@ TunnelPortals.ReplacePortalEntity = function(oldPortal)
         tunnelRailEntities = oldPortal.tunnelRailEntities
     }
     global.tunnelPortals.portals[newPortal.id] = newPortal
-    for i, portal in pairs(newPortal.tunnel.portals) do
-        if portal.id == oldPortal.id then
-            portal.tunnel.portals[i] = newPortal
-            break
+    if newPortal.tunnel ~= nil then
+        for i, portal in pairs(newPortal.tunnel.portals) do
+            if portal.id == oldPortal.id then
+                portal.tunnel.portals[i] = newPortal
+                break
+            end
         end
     end
     global.tunnelPortals.portals[oldPortal.id] = nil
 end
 
-TunnelPortals.EntityRemoved = function(portal)
-    -- TODO: Destroy any train wagons on top of the visible rails
+TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
+    TunnelCommon.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
     for _, railEntity in pairs(portal.portalRailEntities) do
         railEntity.destroy()
     end
     global.tunnelPortals.portals[portal.id] = nil
 end
 
-TunnelPortals.TunnelRemoved = function(portal)
-    -- TODO: Destroy any train wagons on top of the invisible rails
+TunnelPortals.TunnelRemoved = function(portal, killForce, killerCauseEntity)
+    TunnelCommon.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
     for _, railEntity in pairs(portal.tunnelRailEntities) do
         railEntity.destroy()
