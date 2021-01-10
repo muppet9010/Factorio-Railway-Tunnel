@@ -41,6 +41,7 @@ TrainManager.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainEnteringOngoing_OnTrainCreated", TrainManager.TrainEnteringOngoing_OnTrainCreated)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainLeavingOngoing_OnTrainCreated", TrainManager.TrainLeavingOngoing_OnTrainCreated)
     Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
+    Interfaces.RegisterInterface("TrainManager.TunnelRemoved", TrainManager.TunnelRemoved)
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
@@ -359,23 +360,46 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, ne
     return placedCarriage
 end
 
-TrainManager.IsTunnelInUse = function(tunnel)
-    local tunnelId = tunnel.id
+TrainManager.IsTunnelInUse = function(tunnelToCheck)
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if managedTrain.tunnel.id == tunnelId then
+        if managedTrain.tunnel.id == tunnelToCheck.id then
             return true
         end
     end
 
-    for _, portal in pairs(tunnel.portals) do
+    for _, portal in pairs(tunnelToCheck.portals) do
         for _, railEntity in pairs(portal.portalRailEntities) do
             if not railEntity.can_be_destroyed() then
+                --If the rail can't be destroyed then theres a train carriage on it.
                 return true
             end
         end
     end
 
     return false
+end
+
+TrainManager.TunnelRemoved = function(tunnelRemoved)
+    for _, managedTrain in pairs(global.trainManager.managedTrains) do
+        if managedTrain.tunnel.id == tunnelRemoved.id then
+            if managedTrain.aboveTrainEnteringId ~= nil then
+                global.trainManager.enteringTrainIdToManagedTrain[managedTrain.aboveTrainEnteringId] = nil
+                managedTrain.aboveTrainEntering.schedule = managedTrain.origTrainSchedule
+            end
+            if managedTrain.aboveTrainLeavingId ~= nil then
+                global.trainManager.leavingTrainIdToManagedTrain[managedTrain.aboveTrainLeavingId] = nil
+                managedTrain.aboveTrainLeaving.schedule = managedTrain.origTrainSchedule
+            end
+            local undergroundCarriages = Utils.DeepCopy(managedTrain.undergroundTrain.carriages)
+            for _, carriage in pairs(undergroundCarriages) do
+                carriage.destroy()
+            end
+            EventScheduler.RemoveScheduledEvents("TrainManager.TrainEnteringOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledEvents("TrainManager.TrainUndergroundOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingOngoing", managedTrain.id)
+            global.trainManager.managedTrains[managedTrain.id] = nil
+        end
+    end
 end
 
 return TrainManager

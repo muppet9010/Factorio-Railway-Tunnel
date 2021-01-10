@@ -104,7 +104,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
 end
 
 Tunnel.RemoveTunnel = function(tunnel)
-    --TODO: tell train manager to destroy any train wagons travelling underground and stop events.
+    Interfaces.Call("TrainManager.TunnelRemoved", tunnel)
     for _, portal in pairs(tunnel.portals) do
         Interfaces.Call("TunnelPortals.TunnelRemoved", portal)
     end

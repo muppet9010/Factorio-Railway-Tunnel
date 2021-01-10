@@ -71,7 +71,7 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
         if mine then
             local result
             if placer.is_player() then
-                result = placer.mine_entity(placementEntity, true) --TODO: this triggers the on mined event. This may be bad????
+                result = placer.mine_entity(placementEntity, true)
             else
                 -- Is construction bot
                 result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})

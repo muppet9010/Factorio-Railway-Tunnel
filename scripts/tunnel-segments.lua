@@ -39,6 +39,8 @@ TunnelSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, "TunnelSegments.OnPreMinedEntity", segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, "TunnelSegments.OnPreMinedEntity", segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_build, "TunnelSegments.OnPreBuild", TunnelSegments.OnPreBuild)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, "TunnelSegments.OnDiedEntity", segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, "TunnelSegments.OnDiedEntity", segmentEntityNames_Filter)
 
     local segmentEntityGhostNames_Filter = {}
     for _, name in pairs(TunnelCommon.tunnelSegmentPlacedPlacementEntityNames) do
@@ -309,6 +311,24 @@ TunnelSegments.TunnelRemoved = function(segment)
         signalEntity.destroy()
     end
     segment.signalEntities = nil
+end
+
+TunnelSegments.OnDiedEntity = function(event)
+    local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
+    if not diedEntity.valid or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[diedEntity.name] == nil then
+        return
+    end
+    local segment = global.tunnelSegments.segments[diedEntity.unit_number]
+    if segment == nil then
+        return
+    end
+
+    if segment.tunnel == nil then
+        TunnelSegments.EntityRemoved(segment, killerForce, killerCauseEntity)
+    else
+        Interfaces.Call("Tunnel.RemoveTunnel", segment.tunnel)
+        TunnelSegments.EntityRemoved(segment, killerForce, killerCauseEntity)
+    end
 end
 
 return TunnelSegments

@@ -30,6 +30,8 @@ TunnelPortals.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, "TunnelPortals.OnBuiltEntity", portalEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelPortals.OnPreMinedEntity", TunnelPortals.OnPreMinedEntity, "TunnelPortals.OnPreMinedEntity", portalEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelPortals.OnPreMinedEntity", TunnelPortals.OnPreMinedEntity, "TunnelPortals.OnPreMinedEntity", portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntity", TunnelPortals.OnDiedEntity, "TunnelPortals.OnDiedEntity", portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntity", TunnelPortals.OnDiedEntity, "TunnelPortals.OnDiedEntity", portalEntityNames_Filter)
 
     local portalEntityGhostNames_Filter = {}
     for _, name in pairs(TunnelCommon.tunnelPortalPlacedPlacementEntityNames) do
@@ -274,6 +276,24 @@ TunnelPortals.TunnelRemoved = function(portal, killForce, killerCauseEntity)
         endSignal.entity.destroy()
     end
     portal.endSignals = nil
+end
+
+TunnelPortals.OnDiedEntity = function(event)
+    local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
+    if not diedEntity.valid or TunnelCommon.tunnelPortalPlacedPlacementEntityNames[diedEntity.name] == nil then
+        return
+    end
+    local portal = global.tunnelPortals.portals[diedEntity.unit_number]
+    if portal == nil then
+        return
+    end
+
+    if portal.tunnel == nil then
+        TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
+    else
+        Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
+        TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
+    end
 end
 
 return TunnelPortals
