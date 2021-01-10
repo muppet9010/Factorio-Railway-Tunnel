@@ -16,6 +16,7 @@ TunnelSegments.CreateGlobals = function()
             tunnel = the tunnel this portal is part of.
             crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
             positionString = the entities position as a string. used to back match to segmentPositions global object.
+            beingFastReplacedTick = the tick the segment was marked as potentially being fast replaced. This event doesn't support surface identification, so not guarenteed its the entity on this surface. But we check tick on each limited use.
         }
     ]]
     global.tunnelSegments.segmentPositions = global.tunnelSegments.segmentPositions or {} --TODO - needs to include surface id in string.
@@ -37,6 +38,7 @@ TunnelSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, "TunnelSegments.OnBuiltEntity", segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, "TunnelSegments.OnPreMinedEntity", segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, "TunnelSegments.OnPreMinedEntity", segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_pre_build, "TunnelSegments.OnPreBuild", TunnelSegments.OnPreBuild)
 
     local segmentEntityGhostNames_Filter = {}
     for _, name in pairs(TunnelCommon.tunnelSegmentPlacedPlacementEntityNames) do
@@ -207,6 +209,16 @@ TunnelSegments.OnBuiltEntityGhost = function(event)
     end
 end
 
+TunnelSegments.OnPreBuild = function(event)
+    -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
+    local positionString = Utils.FormatPositionTableToString(event.position)
+    local segmentPositionObject = global.tunnelSegments.segmentPositions[positionString]
+    if segmentPositionObject == nil then
+        return
+    end
+    segmentPositionObject.segment.beingFastReplacedTick = event.tick
+end
+
 TunnelSegments.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
     if not minedEntity.valid or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[minedEntity.name] == nil then
@@ -215,6 +227,15 @@ TunnelSegments.OnPreMinedEntity = function(event)
     local segment = global.tunnelSegments.segments[minedEntity.unit_number]
     if segment == nil then
         return
+    end
+
+    local beingFastReplacedTick = segment.beingFastReplacedTick
+    if beingFastReplacedTick ~= nil then
+        segment.beingFastReplacedTick = nil
+        if segment.beingFastReplacedTick == event.tick then
+            -- Detected that the player has pre_placed an entity at the same spot, so likly this entity is being fast replaced.
+            return
+        end
     end
 
     if segment.tunnel == nil then
