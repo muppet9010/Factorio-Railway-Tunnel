@@ -26,3 +26,4 @@ NICE TO HAVE:
     - When copying above train to underground handle equipments grids. At present they are lost by the process.
     - Look at train speed and how long until the train, carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from ever second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, like: https://mods.factorio.com/mod/fast_trans. Either block or force to slow down for tunnels on approach?
+    - Block train wagons being placed on invisible rails.

@@ -16,7 +16,7 @@ TunnelSegments.CreateGlobals = function()
             tunnel = the tunnel this portal is part of.
             crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
             positionString = the entities position as a string. used to back match to segmentPositions global object.
-            beingFastReplacedTick = the tick the segment was marked as potentially being fast replaced. This event doesn't support surface identification, so not guarenteed its the entity on this surface. But we check tick on each limited use.
+            beingFastReplacedTick = the tick the segment was marked as being fast replaced.
         }
     ]]
     global.tunnelSegments.segmentPositions = global.tunnelSegments.segmentPositions or {} --TODO - needs to include surface id in string.
@@ -232,8 +232,8 @@ TunnelSegments.OnPreMinedEntity = function(event)
     local beingFastReplacedTick = segment.beingFastReplacedTick
     if beingFastReplacedTick ~= nil then
         segment.beingFastReplacedTick = nil
-        if segment.beingFastReplacedTick == event.tick then
-            -- Detected that the player has pre_placed an entity at the same spot, so likly this entity is being fast replaced.
+        if beingFastReplacedTick == event.tick then
+            -- Detected that the player has pre_placed an entity at the same spot in the same tick, so almost certainly the entity is being fast replaced. --TODO: this isn't truely safe and will cause error if an entity on anoter surface in the same position is marked as quick swapped at the same tick that this one is mined.
             return
         end
     end
