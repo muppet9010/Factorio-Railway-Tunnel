@@ -604,6 +604,10 @@ function Utils.FormatPositionTableToString(positionTable)
     return positionTable.x .. "," .. positionTable.y
 end
 
+function Utils.FormatSurfacePositionTableToString(surfaceId, positionTable)
+    return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
+end
+
 function Utils.GetTableKeyWithValue(theTable, value)
     for k, v in pairs(theTable) do
         if v == value then

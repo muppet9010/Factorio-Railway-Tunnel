@@ -8,21 +8,21 @@ TunnelSegments.CreateGlobals = function()
     global.tunnelSegments = global.tunnelSegments or {}
     global.tunnelSegments.segments = global.tunnelSegments.segments or {}
     --[[
-        [unit_number] = {
+        [id] = {
             id = unit_number of the placed segment entity.
             entity = ref to the placed entity
             railEntities = table of the rail entities within the tunnel segment. Key'd by the rail unit_number.
             signalEntities = table of the hidden signal entities within the tunnel segment. Key'd by the signal unit_number.
             tunnel = the tunnel this portal is part of.
             crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
-            positionString = the entities position as a string. used to back match to segmentPositions global object.
+            positionString = the entities position as a string with surface. Used to back match to segmentPositions global object.
             beingFastReplacedTick = the tick the segment was marked as being fast replaced.
         }
     ]]
-    global.tunnelSegments.segmentPositions = global.tunnelSegments.segmentPositions or {} --TODO - needs to include surface id in string.
+    global.tunnelSegments.segmentPositions = global.tunnelSegments.segmentPositions or {}
     --[[
         [id] = {
-            id = the position of the segment as a string
+            id = the position of the segment as a string with surface
             segment = ref to the segment global object
         }
     ]]
@@ -86,7 +86,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
     local segment = {
         id = abovePlacedTunnelSegment.unit_number,
         entity = abovePlacedTunnelSegment,
-        positionString = Utils.FormatPositionTableToString(abovePlacedTunnelSegment.position)
+        positionString = Utils.FormatSurfacePositionTableToString(abovePlacedTunnelSegment.surface.index, abovePlacedTunnelSegment.position)
     }
     local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.segmentPositions[segment.positionString]
     if fastReplacedSegmentByPosition ~= nil then
@@ -211,7 +211,8 @@ end
 
 TunnelSegments.OnPreBuild = function(event)
     -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
-    local positionString = Utils.FormatPositionTableToString(event.position)
+    local surface = game.get_player(event.player_index).surface
+    local positionString = Utils.FormatSurfacePositionTableToString(surface.index, event.position)
     local segmentPositionObject = global.tunnelSegments.segmentPositions[positionString]
     if segmentPositionObject == nil then
         return
@@ -229,13 +230,9 @@ TunnelSegments.OnPreMinedEntity = function(event)
         return
     end
 
-    local beingFastReplacedTick = segment.beingFastReplacedTick
-    if beingFastReplacedTick ~= nil then
-        segment.beingFastReplacedTick = nil
-        if beingFastReplacedTick == event.tick then
-            -- Detected that the player has pre_placed an entity at the same spot in the same tick, so almost certainly the entity is being fast replaced. --TODO: this isn't truely safe and will cause error if an entity on anoter surface in the same position is marked as quick swapped at the same tick that this one is mined.
-            return
-        end
+    if segment.beingFastReplacedTick ~= nil and segment.beingFastReplacedTick == event.tick then
+        -- Detected that the player has pre_placed an entity at the same spot in the same tick, so almost certainly the entity is being fast replaced.
+        return
     end
 
     local miner = event.robot -- Will be nil for player mined.
@@ -276,7 +273,7 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
         signalEntities = oldSegment.signalEntities,
         tunnel = oldSegment.tunnel,
         crossingRailEntities = oldSegment.crossingRailEntities,
-        positionString = Utils.FormatPositionTableToString(newSegmentEntity.position)
+        positionString = Utils.FormatSurfacePositionTableToString(newSegmentEntity.surface.index, newSegmentEntity.position)
     }
     global.tunnelSegments.segments[newSegment.id] = newSegment
     global.tunnelSegments.segmentPositions[newSegment.positionString].segment = newSegment
