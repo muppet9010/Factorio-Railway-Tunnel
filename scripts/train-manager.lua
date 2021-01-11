@@ -385,10 +385,14 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
             if managedTrain.aboveTrainEnteringId ~= nil then
                 global.trainManager.enteringTrainIdToManagedTrain[managedTrain.aboveTrainEnteringId] = nil
                 managedTrain.aboveTrainEntering.schedule = managedTrain.origTrainSchedule
+                managedTrain.aboveTrainEntering.manual_mode = true
+                managedTrain.aboveTrainEntering.speed = 0
             end
             if managedTrain.aboveTrainLeavingId ~= nil then
                 global.trainManager.leavingTrainIdToManagedTrain[managedTrain.aboveTrainLeavingId] = nil
                 managedTrain.aboveTrainLeaving.schedule = managedTrain.origTrainSchedule
+                managedTrain.aboveTrainLeaving.manual_mode = true
+                managedTrain.aboveTrainLeaving.speed = 0
             end
             local undergroundCarriages = Utils.DeepCopy(managedTrain.undergroundTrain.carriages)
             for _, carriage in pairs(undergroundCarriages) do

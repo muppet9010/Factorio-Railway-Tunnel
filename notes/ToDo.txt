@@ -1,11 +1,17 @@
+Limitations (in addition to below tasks):
+    - Short trains (6 or less) carriages can go through a tunnel.
+    - Trains must be straight when they approach a tunnel portal.
+    - When trains are leaving a tunnel they will be pushed out at their full speed until they are fully out, then they will path normally. So no junctions straight after a tunnel portal.
+    - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
+
 TODO:
+    - Lock tunnel when its in use by closing both entry signals.
 
 FUTURE:
-    - Lock tunnel when its in use by closing both entry signals.
     - Handle players being in a train going through the tunnel.
     - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
     - Handle 2 trains both entering the tunnel at once.
-    - When trains are leaveing they need to path when the first wagon is out. At present they are shoved out entirely and then path. Maybe use of hidden loco or miroring signals on to underground would help.
+    - When trains are leaveing they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help.
     - Handle long trains:
         - Place rails under the underground train carraiges if its a very long train.
         - Confirm that if a train leaving is slowed and it is still entering that the entering train keeps in sync correctly. Should just work.
@@ -19,7 +25,7 @@ NICE TO HAVE:
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Graphics: icons, ingame entities, placement entities.
-    - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing.
+    - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing, but can be driven over.
     - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
     - We assume all train carriages are 7 tiles apart, check thier prototypes.
 	- When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carraiges, fuel, cargo items, equipment grids.
