@@ -67,35 +67,55 @@ TunnelSegments.OnBuiltEntity = function(event)
 end
 
 TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
-    local centerPos, force, lastUser, directionValue, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
+    local centerPos, force, lastUser, directionValue, aboveSurface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
 
     if not TunnelSegments.TunnelSegmentPlacementValid(placementEntity) then
         TunnelCommon.UndoInvalidPlacement(placementEntity, placer, true)
         return
     end
-
-    local placedEntityName, placeCrossignRails
-    if placementEntity.name == "railway_tunnel-tunnel_segment_surface-placement" or placementEntity.name == "railway_tunnel-tunnel_segment_surface-placed" then
-        placedEntityName = "railway_tunnel-tunnel_segment_surface-placed"
-        placeCrossignRails = false
-    elseif placementEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" or placementEntity.name == "railway_tunnel-tunnel_segment_surface_rail_crossing-placed" then
-        placedEntityName = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"
-        placeCrossignRails = true
-    end
     placementEntity.destroy()
+
+    local placedEntityName, placeCrossingRails
+    if placementEntityName == "railway_tunnel-tunnel_segment_surface-placement" or placementEntityName == "railway_tunnel-tunnel_segment_surface-placed" then
+        placedEntityName = "railway_tunnel-tunnel_segment_surface-placed"
+        placeCrossingRails = false
+    elseif placementEntityName == "railway_tunnel-tunnel_segment_surface_rail_crossing-placement" or placementEntityName == "railway_tunnel-tunnel_segment_surface_rail_crossing-placed" then
+        placedEntityName = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed"
+        placeCrossingRails = true
+    end
+
+    local positionString = Utils.FormatSurfacePositionTableToString(aboveSurface.index, centerPos)
+    local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.segmentPositions[positionString]
+    if fastReplacedSegmentByPosition ~= nil then
+        fastReplacedSegment = fastReplacedSegmentByPosition.segment
+    end
+    if not placeCrossingRails and fastReplacedSegment ~= nil then
+        -- Is a downgrade from crossing rails to non crossing rails, so remove them. The old global segment object referencing them will be removed later in this function.
+        for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
+            if not railCrossingTrackEntity.can_be_destroyed() then
+                -- Put the old correct entity back and correct whats been done.
+                TunnelCommon.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", aboveSurface, centerPos)
+                local oldId = fastReplacedSegment.id
+                fastReplacedSegment.entity = aboveSurface.create_entity {name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
+                local newId = fastReplacedSegment.entity.unit_number
+                fastReplacedSegment.id = newId
+                global.tunnelSegments.segments[newId] = fastReplacedSegment
+                global.tunnelSegments.segments[oldId] = nil
+                Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement", count = 1})
+                Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-tunnel_segment_surface-placement", count = 1})
+                return
+            end
+        end
+    end
 
     local abovePlacedTunnelSegment = aboveSurface.create_entity {name = placedEntityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
     local segment = {
         id = abovePlacedTunnelSegment.unit_number,
         entity = abovePlacedTunnelSegment,
-        positionString = Utils.FormatSurfacePositionTableToString(abovePlacedTunnelSegment.surface.index, abovePlacedTunnelSegment.position)
+        positionString = positionString
     }
-    local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.segmentPositions[segment.positionString]
-    if fastReplacedSegmentByPosition ~= nil then
-        fastReplacedSegment = fastReplacedSegmentByPosition.segment
-    end
 
-    if placeCrossignRails then
+    if placeCrossingRails then
         segment.crossingRailEntities = {}
         local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), directionValue / 8
         for _, nextRailPos in pairs(
@@ -108,14 +128,10 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
             local placedRail = aboveSurface.create_entity {name = "railway_tunnel-internal_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
             segment.crossingRailEntities[placedRail.unit_number] = placedRail
         end
-    elseif not placeCrossignRails and fastReplacedSegment ~= nil then
-        --Is a downgrade from crossing rails to non crossing rails, so remove them. Their references will be removed with the old global segment later.
-        for _, entity in pairs(fastReplacedSegment.crossingRailEntities) do
-            local result = entity.destroy()
-            if not result then
-                game.print("couldn't remove track as train blocking it - TODO")
-            end
-            --TODO: check that we can remove the rail before doing it. If it can't be removed show text to user and revert switch or something safe...
+    elseif not placeCrossingRails and fastReplacedSegment ~= nil then
+        -- Is a downgrade from crossing rails to non crossing rails, so remove them. The old global segment object referencing them will be removed later in this function.
+        for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
+            railCrossingTrackEntity.destroy()
         end
     end
     global.tunnelSegments.segments[segment.id] = segment
@@ -244,7 +260,7 @@ TunnelSegments.OnPreMinedEntity = function(event)
     if segment.crossingRailEntities ~= nil then
         for _, railEntity in pairs(segment.crossingRailEntities) do
             if not railEntity.can_be_destroyed() then
-                TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is on crossing track", minedEntity)
+                TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is on crossing track", minedEntity.surface, minedEntity.position)
                 TunnelSegments.ReplaceSegmentEntity(segment)
                 return
             end
@@ -254,7 +270,7 @@ TunnelSegments.OnPreMinedEntity = function(event)
         TunnelSegments.EntityRemoved(segment)
     else
         if Interfaces.Call("TrainManager.IsTunnelInUse", segment.tunnel) then
-            TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is using tunnel", minedEntity)
+            TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is using tunnel", minedEntity.surface, minedEntity.position)
             TunnelSegments.ReplaceSegmentEntity(segment)
         else
             Interfaces.Call("Tunnel.RemoveTunnel", segment.tunnel)

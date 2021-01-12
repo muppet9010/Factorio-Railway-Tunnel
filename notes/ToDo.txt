@@ -5,7 +5,6 @@ Limitations (in addition to below tasks):
     - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
 
 TODO:
-    - Lock tunnel when its in use by closing both entry signals.
 
 FUTURE:
     - Handle players being in a train going through the tunnel.
@@ -20,6 +19,8 @@ FUTURE:
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
 	- Handle trains being destroyed as they go in/come out of the tunnel. The forceing in and out process should prevent players from controlling them as every tick we reapply our control.
     - Set entity resistences, health, destroyable.
+	- Trains are path finder weighted away from tunnels due to high pathing cost of circuit controlled END red signal. Trains in manual mode have high penalty also. But a train in automatic, but with no fuel seems to have a low penalty.
+    - Lock tunnel when its in use by closing both entry signals by using an invisible carriage like the End signal. Remove it when anything is approaching the signal its blocking. If something impacts it then give it 1 health and no kill, wreckage, etc.
 
 NICE TO HAVE:
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.

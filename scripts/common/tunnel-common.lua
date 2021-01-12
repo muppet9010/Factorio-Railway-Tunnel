@@ -40,13 +40,13 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
         else
             local connectedTunnelEntity = connectedTunnelEntities[1]
             if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
-                TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity)
+                TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, placementEntity.position)
                 continueChecking = false
             elseif TunnelCommon.tunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
                     table.insert(tunnelSegments, connectedTunnelEntity)
                 else
-                    TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity)
+                    TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, placementEntity.position)
                     continueChecking = false
                 end
             elseif TunnelCommon.tunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
@@ -55,7 +55,7 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
                     table.insert(tunnelPortals, connectedTunnelEntity)
                     return true
                 else
-                    TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity)
+                    TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, placementEntity.position)
                 end
             else
                 error("unhandled railway_tunnel entity type")
@@ -67,7 +67,7 @@ end
 
 TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
     if placer ~= nil then
-        TunnelCommon.EntityErrorMessage(placer, "Tunnel must be placed on the rail grid", placementEntity)
+        TunnelCommon.EntityErrorMessage(placer, "Tunnel must be placed on the rail grid", placementEntity.surface, placementEntity.position)
         if mine then
             local result
             if placer.is_player() then
@@ -77,7 +77,7 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
                 result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
             end
             if result ~= true then
-                error("couldn't mine invalidly placed tunnel placement entity")
+                error("couldn't mine invalidly placed tunnel entity")
             end
         else
             placementEntity.destroy()
@@ -85,9 +85,9 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
     end
 end
 
-TunnelCommon.EntityErrorMessage = function(entityDoingInteraction, text, entityErrored)
+TunnelCommon.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
     local textAudience = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
-    rendering.draw_text {text = text, surface = entityErrored.surface, target = entityErrored.position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+    rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
 TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, killerCauseEntity)
