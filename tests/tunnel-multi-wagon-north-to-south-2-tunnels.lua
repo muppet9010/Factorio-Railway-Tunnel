@@ -9,8 +9,9 @@ Test.AddTunnel = function(xRailValue)
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
 
-    -- north side
     local nauvisEntitiesToPlace = {}
+
+    -- north side
     for y = -140, -71, 2 do
         table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {xRailValue, y}, direction = defines.direction.north})
     end

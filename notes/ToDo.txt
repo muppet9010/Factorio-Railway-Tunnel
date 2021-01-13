@@ -1,9 +1,8 @@
 Limitations (in addition to below tasks):
     - Short trains (6 or less) carriages can go through a tunnel.
-    - Trains must be straight when they approach a tunnel portal.
     - When trains are leaving a tunnel they will be pushed out at their full speed until they are fully out, then they will path normally. So no junctions straight after a tunnel portal.
     - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
-
+    - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
 TODO:
 
 FUTURE:
@@ -34,3 +33,5 @@ NICE TO HAVE:
     - Look at train speed and how long until the train, carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from ever second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, like: https://mods.factorio.com/mod/fast_trans. Either block or force to slow down for tunnels on approach?
     - Block train wagons being placed on invisible rails.
+    - Have a temporary train in output portal to keep train stop requests happy. Will need to adjust train schedule of inbound train at this moment to avoid double counting.
+    - Look at TSM and LTN compatibility requirement.

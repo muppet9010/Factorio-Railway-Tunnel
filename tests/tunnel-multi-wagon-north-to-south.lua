@@ -5,9 +5,9 @@ Test.Start = function()
     local playerForce = game.forces["player"]
 
     local xRailValue = 201
+    local nauvisEntitiesToPlace = {}
 
     -- north side
-    local nauvisEntitiesToPlace = {}
     for y = -140, -71, 2 do
         table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {xRailValue, y}, direction = defines.direction.north})
     end

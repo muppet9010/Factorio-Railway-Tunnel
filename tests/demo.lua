@@ -12,8 +12,9 @@ Test.TunnelEastWest = function()
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
 
-    -- West side
     local nauvisEntitiesToPlace = {}
+
+    -- West side
     for x = -140, -71, 2 do
         table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x, yRailValue}, direction = defines.direction.west})
     end

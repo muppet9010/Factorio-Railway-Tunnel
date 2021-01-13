@@ -86,12 +86,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     local sourceTrain = trainManagerEntry.aboveTrainEntering
     local undergroundTrain = TrainManager.CopyTrainToUnderground(trainManagerEntry)
 
-    --Have to work out if the copied train to underground is facing the same way as the above train. This is random for all purposes by the Facotrio engine. Setting speed aginst the path gives 0 starting speed and a jolt on surface train next tick when speeds swapped.
-    if sourceTrain.rail_direction_from_front_rail == undergroundTrain.rail_direction_from_front_rail then
-        undergroundTrain.speed = sourceTrain.speed
-    else
-        undergroundTrain.speed = 0 - sourceTrain.speed
-    end
+    --Set the speed and correct if after setting the schedule if needed. Easier than trying to work out what way the trains are facing to each other.
+    undergroundTrain.speed = sourceTrain.speed
 
     trainManagerEntry.undergroundTrain = undergroundTrain
     local undergroundTrainEndScheduleTargetPos =
@@ -120,6 +116,9 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         }
     }
     undergroundTrain.manual_mode = false
+    if undergroundTrain.speed == 0 then
+        undergroundTrain.speed = 0 - sourceTrain.speed
+    end
 
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
@@ -174,7 +173,8 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     end
 
     local refCarriage = sourceTrain[nextStockAttributeName]
-    local placedCarriage = refCarriage.clone {position = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.surfaceOffsetFromUnderground), surface = trainManagerEntry.aboveSurface}
+    local placementPosition = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.surfaceOffsetFromUnderground)
+    local placedCarriage = refCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface}
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
     local aboveTrainLeaving, speed = placedCarriage.train
@@ -278,8 +278,13 @@ end
 TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     local placedCarriage, refTrain, tunnel, targetSurface, undergroundModifiers = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface, trainManagerEntry.tunnel.undergroundModifiers
 
-    -- TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track. At higher speeds with long trains going backwards the front of the train could be a long way from the portal. May be easiest to get the leading wagon and then copy from there, possibly in reverse of the carriage list.
-    local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, refTrain.front_stock.position, undergroundModifiers.railAlignmentAxis)
+    local minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #refTrain.carriages, 1
+    if (refTrain.speed < 0) then
+        minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrain.carriages, 1, -1
+    end
+    local currentSourceCarriageEntity = refTrain.carriages[minCarriageIndex]
+    -- TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track.
+    local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, currentSourceCarriageEntity.position, undergroundModifiers.railAlignmentAxis)
     local tunnelInitialPosition =
         Utils.RotatePositionAround0(
         tunnel.alignmentOrientation,
@@ -299,18 +304,24 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
             }
         )
     )
-    trainManagerEntry.undergroundOffsetFromSurface = Utils.GetOffsetForPositionFromPosition(nextCarriagePosition, refTrain.front_stock.position)
+    --HERE WHEN THE ABOVE TRAIN IS NOT IN LINE THESE OFFSETS DON'T HANDLE IT - THIS BREAKS LEAVING CODE WHEN THEY TRY TO BE APPLIED
+    trainManagerEntry.undergroundOffsetFromSurface = Utils.GetOffsetForPositionFromPosition(nextCarriagePosition, currentSourceCarriageEntity.position)
     trainManagerEntry.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, trainManagerEntry.undergroundOffsetFromSurface)
-    local carriageIteractionOrientation = trainManagerEntry.trainTravelOrientation
+    local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
+    local trainCarriagesOrientation = trainManagerEntry.trainTravelOrientation
     if not trainManagerEntry.trainTravellingForwards then
-        carriageIteractionOrientation = Utils.LoopDirectionValue(trainManagerEntry.trainTravelDirection + 4) / 8
+        trainCarriagesOrientation = Utils.LoopDirectionValue(trainManagerEntry.trainTravelOrientation + 4) / 8
     end
 
-    for _, refCarriage in pairs(refTrain.carriages) do
-        -- TODO: placed direction needs to be calculated from the wagons direction in relation to the overall train. Train being copied may be on a loop back or similar when referenced, but we need it all placed straight to make sure it joins up.
-        placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, Utils.OrientationToDirection(refCarriage.orientation))
+    for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
+        local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
+        local carriageDirection = Utils.OrientationToDirection(trainCarriagesOrientation)
+        if refCarriage.speed < 0 then
+            carriageDirection = Utils.LoopDirectionValue(carriageDirection + 4)
+        end
+        placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection)
 
-        nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, Utils.RotatePositionAround0(carriageIteractionOrientation, {x = 0, y = 7}))
+        nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
     end
     return placedCarriage.train
 end

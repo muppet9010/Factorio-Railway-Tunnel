@@ -90,7 +90,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
     end
     if not placeCrossingRails and fastReplacedSegment ~= nil then
-        -- Is a downgrade from crossing rails to non crossing rails, so remove them. The old global segment object referencing them will be removed later in this function.
+        -- Is an attempt at a downgrade from crossing rails to non crossing rails, so check crossign rails can be safely removed.
         for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
             if not railCrossingTrackEntity.can_be_destroyed() then
                 -- Put the old correct entity back and correct whats been done.
