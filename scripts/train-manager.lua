@@ -23,11 +23,11 @@ TrainManager.CreateGlobals = function()
         tunnel = ref to the global tunnel object.
         origTrainSchedule = copy of the origional train schedule table made when triggered the managed train process.
         undergroundTrain = LuaTrain of the train created in the underground surface.
+        undergroundTrainStartLeavingPosition = The underground position that the undrground train starts leaving at.
         aboveSurface = LuaSurface of the main world surface.
         undergroundSurface = LuaSurface of the specific underground surface.
         aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
-        undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
-        surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
+        aboveTrainLeavingNextCarriagePosition = The above ground position that the rear leaving carriage should trigger the next carriage at.
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
@@ -120,6 +120,9 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         undergroundTrain.speed = 0 - sourceTrain.speed
     end
 
+    -- TODO: this isn't perfect, but pretty good and supports orientations.
+    trainManagerEntry.undergroundTrainStartLeavingPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
+
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
 end
@@ -151,13 +154,11 @@ end
 
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
-    -- TODO: this isn't perfect, but pretty good and supports orientations.
-    local startingLeavingPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.undergroundOffsetFromSurface)
     local nextStockAttributeName = "front_stock"
     if (trainManagerEntry.undergroundTrain.speed < 0) then
         nextStockAttributeName = "back_stock"
     end
-    if Utils.GetDistance(trainManagerEntry.undergroundTrain[nextStockAttributeName].position, startingLeavingPosition) > 35 then
+    if Utils.GetDistance(trainManagerEntry.undergroundTrain[nextStockAttributeName].position, trainManagerEntry.undergroundTrainStartLeavingPosition) > 35 then
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
     else
         TrainManager.TrainLeavingInitial(trainManagerEntry)
@@ -173,7 +174,7 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     end
 
     local refCarriage = sourceTrain[nextStockAttributeName]
-    local placementPosition = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.surfaceOffsetFromUnderground)
+    local placementPosition = Utils.ApplyOffsetToPosition(refCarriage.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
     local placedCarriage = refCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface}
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
@@ -188,6 +189,8 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     aboveTrainLeaving.manual_mode = false
     aboveTrainLeaving.speed = speed
     aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
+
+    trainManagerEntry.aboveTrainLeavingNextCarriagePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortalEndSignal.entity.position, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
@@ -209,8 +212,8 @@ TrainManager.TrainLeavingOngoing = function(event)
         return
     end
     -- TODO: this isn't perfect, but pretty good and supports orientations.
-    if Utils.GetDistance(currentSourceCarriageEntity.position, Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortalEndSignal.entity.position, trainManagerEntry.undergroundOffsetFromSurface)) > 10 then
-        local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.surfaceOffsetFromUnderground)
+    if Utils.GetDistance(currentSourceCarriageEntity.position, trainManagerEntry.aboveTrainLeavingNextCarriagePosition) > 10 then
+        local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
         aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
@@ -304,9 +307,6 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
             }
         )
     )
-    --HERE WHEN THE ABOVE TRAIN IS NOT IN LINE THESE OFFSETS DON'T HANDLE IT - THIS BREAKS LEAVING CODE WHEN THEY TRY TO BE APPLIED
-    trainManagerEntry.undergroundOffsetFromSurface = Utils.GetOffsetForPositionFromPosition(nextCarriagePosition, currentSourceCarriageEntity.position)
-    trainManagerEntry.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, trainManagerEntry.undergroundOffsetFromSurface)
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
     local trainCarriagesOrientation = trainManagerEntry.trainTravelOrientation
     if not trainManagerEntry.trainTravellingForwards then

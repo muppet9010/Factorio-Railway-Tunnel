@@ -3,10 +3,10 @@ Version: 0.0.1
 Date: 2020-xx-xx
   Features:
     - Initial Release.
-    - Trains just work with tunnels, pathing through them. Set up a trains schedule to go to a point on the other side of a tunnel and it will be used automatically.
+    - Trains just work with tunnels, pathing through them. Set up a trains schedule to go to a point on the other side of a tunnel and it will be used automatically. Tunnels do have a high routing penalty and so trains will tend to choose other routes if they are available.
     - Buildable tunnel parts; portals (entrance/exit), underground segments and special tracks to cross underground segments. Regular and track crossing underground segments can be fast replaced.
-    - Tunnel parts can be mined and destroyed. Mining is blocked while a tunnel is in use. Destroying a tunnel part kills any train carriages in it.
-    - Unlimited tunnels on a map in horizontal and vertical orientations supported.
+    - Tunnel parts can be mined and destroyed. Mining is blocked while a tunnel is in use. Destroying a tunnel part kills any train carriages in the tunnel.
+    - Tunnels are built straight in a horizontal and vertical orientation.
     - Tunnel underground segments can be driven and walked over, but not built on.
     - Temporary graphics and icons that work from the editor (unsorted category).
   Changes:

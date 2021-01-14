@@ -46,6 +46,12 @@ Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
     for valueVariation = -offsetTrackDistance, offsetTrackDistance, 2 do
         table.insert(undergroundRailEntities, tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {[undergroundModifiers.railAlignmentAxis] = valueVariation, [undergroundModifiers.tunnelInstanceAxis] = undergroundModifiers.tunnelInstanceValue}, force = refTunnelPortalEntity.force, direction = refTunnelPortalEntity.direction})
     end
+
+    undergroundModifiers.undergroundOffsetFromSurface = {
+        [undergroundModifiers.railAlignmentAxis] = 0 - ((tunnel.portals[1].entity.position[undergroundModifiers.railAlignmentAxis] + tunnel.portals[2].entity.position[undergroundModifiers.railAlignmentAxis]) / 2),
+        [undergroundModifiers.tunnelInstanceAxis] = (0 - tunnel.portals[1].entity.position[undergroundModifiers.tunnelInstanceAxis]) + undergroundModifiers.tunnelInstanceValue
+    }
+    undergroundModifiers.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundModifiers.undergroundOffsetFromSurface)
     return undergroundRailEntities, undergroundModifiers
 end
 

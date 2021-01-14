@@ -10,7 +10,7 @@ TunnelCommon.setupValues = {
     endSignalsDistance = 49,
     straightRailCountFromEntrance = 21,
     invisibleRailCountFromEntrance = 4,
-    undergroundLeadInTiles = 100 -- hard coded for now just cos
+    undergroundLeadInTiles = 1000 -- TODO: hard coded for now - should be the tunnel length plus train length, plus more to avoid breaking slowdown.
 }
 
 -- Make the entity lists.
@@ -40,13 +40,13 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
         else
             local connectedTunnelEntity = connectedTunnelEntities[1]
             if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
-                TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, placementEntity.position)
+                TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 continueChecking = false
             elseif TunnelCommon.tunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
                     table.insert(tunnelSegments, connectedTunnelEntity)
                 else
-                    TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, placementEntity.position)
+                    TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                     continueChecking = false
                 end
             elseif TunnelCommon.tunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
@@ -55,7 +55,7 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
                     table.insert(tunnelPortals, connectedTunnelEntity)
                     return true
                 else
-                    TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, placementEntity.position)
+                    TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 end
             else
                 error("unhandled railway_tunnel entity type")

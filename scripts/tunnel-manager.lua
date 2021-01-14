@@ -27,6 +27,8 @@ Tunnel.CreateGlobals = function()
                 distanceFromCenterToPortalEntrySignals = the number of tiles between the centre of the underground and the portal entry signals.
                 distanceFromCenterToPortalEndSignals = the number of tiles between the centre of the underground and the portal end signals.
                 tunnelInstanceClonedTrainValue = this tunnels static value of the tunnelInstanceAxis for the cloned (stationary) train carriages.
+                undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
+                surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
             }
         }
     ]]

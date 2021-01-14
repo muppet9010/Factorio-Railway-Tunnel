@@ -4,7 +4,8 @@ Limitations (in addition to below tasks):
     - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
     - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
 TODO:
-
+    - Once we detect a train approaching the tunnel entrance only clone it when its about to vanish. Currently we force a very fast train to go straight on when its far from the tunnel and then never reaches the tunnel portal.
+    - On Example save one of the first trains gets mis rotated/placed when leaving. Suspect the leaving logic isn't very sound and has some TODO's around it.
 FUTURE:
     - Handle players being in a train going through the tunnel.
     - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
@@ -16,22 +17,22 @@ FUTURE:
     - Make recipes, techs and item & entities localisations.
     - Minimap colored lines for tunnels.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
-	- Handle trains being destroyed as they go in/come out of the tunnel. The forceing in and out process should prevent players from controlling them as every tick we reapply our control.
+	- Handle trains being destroyed as they go in/come out of the tunnel.
     - Set entity resistences, health, destroyable.
 	- Trains are path finder weighted away from tunnels due to high pathing cost of circuit controlled END red signal. Trains in manual mode have high penalty also. But a train in automatic, but with no fuel seems to have a low penalty.
     - Lock tunnel when its in use by closing both entry signals by using an invisible carriage like the End signal. Remove it when anything is approaching the signal its blocking. If something impacts it then give it 1 health and no kill, wreckage, etc.
+    - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
+    - When copying above train to underground handle equipments grids. At present they are lost by the process.
+    - Block train wagons being placed on invisible rails.
+    - Keep a fake train heading to target station to maintain station train counts.
+    - Look at TSM and LTN compatibility requirement.
 
 NICE TO HAVE:
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Graphics: icons, ingame entities, placement entities.
     - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing, but can be driven over.
-    - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
     - We assume all train carriages are 7 tiles apart, check thier prototypes.
 	- When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carraiges, fuel, cargo items, equipment grids.
-    - When copying above train to underground handle equipments grids. At present they are lost by the process.
     - Look at train speed and how long until the train, carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from ever second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, like: https://mods.factorio.com/mod/fast_trans. Either block or force to slow down for tunnels on approach?
-    - Block train wagons being placed on invisible rails.
-    - Have a temporary train in output portal to keep train stop requests happy. Will need to adjust train schedule of inbound train at this moment to avoid double counting.
-    - Look at TSM and LTN compatibility requirement.
