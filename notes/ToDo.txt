@@ -5,7 +5,7 @@ Limitations (in addition to below tasks):
     - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
 TODO:
     - Once we detect a train approaching the tunnel entrance only clone it when its about to vanish. Currently we force a very fast train to go straight on when its far from the tunnel and then never reaches the tunnel portal.
-    - On Example save one of the first trains gets mis rotated/placed when leaving. Suspect the leaving logic isn't very sound and has some TODO's around it.
+    - On Example save one of the first trains gets placed wrong and drives backwards due to train limits applying.
 FUTURE:
     - Handle players being in a train going through the tunnel.
     - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
@@ -26,6 +26,7 @@ FUTURE:
     - Block train wagons being placed on invisible rails.
     - Keep a fake train heading to target station to maintain station train counts.
     - Look at TSM and LTN compatibility requirement.
+	- Handle a train leaving a first tunnel and entering a second tunnel. Get by global trainID's tracked.
 
 NICE TO HAVE:
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.
