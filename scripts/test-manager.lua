@@ -2,7 +2,7 @@ local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 
-local doTests = false
+local doTests = true
 
 local testsToDo
 if doTests then

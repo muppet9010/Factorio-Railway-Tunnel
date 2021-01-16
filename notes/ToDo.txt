@@ -44,3 +44,4 @@ NICE TO HAVE:
 	- When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carraiges, fuel, cargo items, equipment grids.
     - Look at train speed and how long until the train, carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from ever second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, like: https://mods.factorio.com/mod/fast_trans. Either block or force to slow down for tunnels on approach?
+	- Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels.

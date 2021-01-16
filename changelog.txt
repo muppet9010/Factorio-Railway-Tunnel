@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.0.1
-Date: 2020-xx-xx
+Version: 0.0.2
+Date: 2021-xx-xx
   Features:
     - Initial Release.
     - Trains just work with tunnels, pathing through them. Set up a trains schedule to go to a point on the other side of a tunnel and it will be used automatically. Tunnels do have a high routing penalty and so trains will tend to choose other routes if they are available.
