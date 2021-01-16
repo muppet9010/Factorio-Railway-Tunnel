@@ -226,6 +226,9 @@ TrainManager.TrainLeavingOngoing = function(event)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
         trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
         aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
+        if #aboveTrainLeaving.carriages ~= trainManagerEntry.aboveTrainLeavingCarriagesPlaced then
+            error("Placed carriage not part of train with expected carriage count")
+        end
     end
 
     if (sourceTrain.speed > 0 and aboveTrainLeaving.speed > 0) or (sourceTrain.speed < 0 and aboveTrainLeaving.speed < 0) then
