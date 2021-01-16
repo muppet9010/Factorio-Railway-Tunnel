@@ -298,15 +298,22 @@ TrainManager.TrainLeavingOngoing_OnTrainCreated = function(event)
 end
 
 TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
-    local placedCarriage, refTrain, tunnel, targetSurface, undergroundModifiers = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface, trainManagerEntry.tunnel.undergroundModifiers
+    local placedCarriage, refTrain, tunnel, targetSurface = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface
 
-    local minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #refTrain.carriages, 1
-    if (refTrain.speed < 0) then
-        minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrain.carriages, 1, -1
+    local endSignalRailUnitNumber = trainManagerEntry.surfaceEntrancePortalEndSignal.entity.get_connected_rails()[1].unit_number
+    local firstCarriageDistanceFromEndSignal = 0
+    for _, railEntity in pairs(refTrain.path.rails) do
+        -- TODO: this doesn't account for where on the current rail entity the carriage is, but hopefully is accurate enough.
+        local thisRailLength = 2
+        if railEntity.type == "curved-rail" then
+            thisRailLength = 7 -- Estimate
+        end
+        firstCarriageDistanceFromEndSignal = firstCarriageDistanceFromEndSignal + thisRailLength
+        if railEntity.unit_number == endSignalRailUnitNumber then
+            break
+        end
     end
-    local currentSourceCarriageEntity = refTrain.carriages[minCarriageIndex]
-    -- TODO: this needs to calculate the start of the train the right distance from the entrance portal end signal if its on curved track.
-    local firstCarriageDistanceFromEndSignal = Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, currentSourceCarriageEntity.position, undergroundModifiers.railAlignmentAxis)
+
     local tunnelInitialPosition =
         Utils.RotatePositionAround0(
         tunnel.alignmentOrientation,
@@ -332,6 +339,10 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
         trainCarriagesForwardDirection = Utils.LoopDirectionValue(trainCarriagesForwardDirection + 4)
     end
 
+    local minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #refTrain.carriages, 1
+    if (refTrain.speed < 0) then
+        minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrain.carriages, 1, -1
+    end
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
         local carriageDirection = trainCarriagesForwardDirection
