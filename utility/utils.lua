@@ -1350,4 +1350,6 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     end
 end
 
+Utils.MaxTrainStopLimit = 4294967295 -- uint
+
 return Utils

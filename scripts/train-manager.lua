@@ -55,6 +55,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         surfaceEntrancePortal = surfaceEntrancePortalEndSignal.portal,
         tunnel = surfaceEntrancePortalEndSignal.portal.tunnel,
         origTrainSchedule = Utils.DeepCopy(trainEntering.schedule),
+        origTrainScheduleStopEntity = trainEntering.path_end_stop,
         trainTravelDirection = Utils.LoopDirectionValue(surfaceEntrancePortalEndSignal.entity.direction + 4)
     }
     local trainManagerEntry = global.trainManager.managedTrains[trainManagerId]
@@ -128,6 +129,7 @@ end
 
 TrainManager.TrainEnteringOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
+    --Need to create a dummy leaving train at this point to reserve the train limit.
     trainManagerEntry.aboveTrainEntering.manual_mode = true
     local nextStockAttributeName = "front_stock"
     if (trainManagerEntry.aboveTrainEntering.speed < 0) then
@@ -181,13 +183,21 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     local aboveTrainLeaving = placedCarriage.train
     trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId = aboveTrainLeaving, aboveTrainLeaving.id
     global.trainManager.leavingTrainIdToManagedTrain[aboveTrainLeaving.id] = trainManagerEntry
-    if aboveTrainLeaving[nextStockAttributeName].orientation == trainManagerEntry.trainTravelDirection / 8 then
-        aboveTrainLeaving.speed = sourceTrain.speed
-    else
-        aboveTrainLeaving.speed = 0 - sourceTrain.speed
-    end
     aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
     aboveTrainLeaving.manual_mode = false
+    if placedCarriage.orientation == refCarriage.orientation then
+        -- As theres only 1 placed carriage we can set the speed based on the refCarriage. New train will have a direciton that matches the single placed carriage.
+        aboveTrainLeaving.speed = refCarriage.speed
+    else
+        aboveTrainLeaving.speed = 0 - refCarriage.speed
+    end
+    if trainManagerEntry.origTrainScheduleStopEntity.trains_limit ~= Utils.MaxTrainStopLimit then
+        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit + 1
+        aboveTrainLeaving.recalculate_path()
+        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit - 1
+    else
+        aboveTrainLeaving.recalculate_path()
+    end
 
     trainManagerEntry.undergroundLeavingExitSignalPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortalEndSignal.entity.position, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
@@ -225,6 +235,14 @@ TrainManager.TrainLeavingOngoing = function(event)
     end
     aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
     aboveTrainLeaving.manual_mode = false
+    if trainManagerEntry.origTrainScheduleStopEntity.trains_limit ~= Utils.MaxTrainStopLimit then
+        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit + 1
+        aboveTrainLeaving.recalculate_path()
+        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit - 1
+    else
+        aboveTrainLeaving.recalculate_path()
+    end
+
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
@@ -309,17 +327,18 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
         )
     )
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
-    local trainCarriagesOrientation = trainManagerEntry.trainTravelOrientation
+    local trainCarriagesForwardDirection = trainManagerEntry.trainTravelDirection
     if not trainManagerEntry.trainTravellingForwards then
-        trainCarriagesOrientation = Utils.LoopDirectionValue(trainManagerEntry.trainTravelOrientation + 4) / 8
+        trainCarriagesForwardDirection = Utils.LoopDirectionValue(trainCarriagesForwardDirection + 4)
     end
 
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
-        local carriageDirection = Utils.OrientationToDirection(trainCarriagesOrientation)
-        if refCarriage.speed < 0 then
+        local carriageDirection = trainCarriagesForwardDirection
+        if refCarriage.speed ~= refTrain.speed then
             carriageDirection = Utils.LoopDirectionValue(carriageDirection + 4)
         end
+        --Utils.OrientationToDirection(refCarriage.orientation)
         placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection)
 
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
