@@ -242,6 +242,11 @@ TrainManager.TrainLeavingOngoing = function(event)
     end
 
     aboveTrainLeaving.speed = trainManagerEntry.aboveTrainLeavingSpeedSign * trainManagerEntry.speed
+    if aboveTrainLeaving.state == defines.train_state.on_the_path then
+        sourceTrain.manual_mode = false
+    else
+        sourceTrain.manual_mode = true
+    end
     sourceTrain.speed = trainManagerEntry.undergroundTrainSpeedSign * trainManagerEntry.speed
 
     aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
