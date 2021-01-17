@@ -7,16 +7,13 @@ local doTests = true
 local testsToDo
 if doTests then
     testsToDo = {
-        tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
-        tunnelMultiWagonEastToWest = {enabled = true, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
-        tunnelMultiWagonWestToEast = {enabled = true, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
-        surfaceSingleLoop = {enabled = false, testScript = require("tests/surface-single-loop")},
-        surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")},
         demo = {enabled = false, testScript = require("tests/demo")},
-        tunnelMultiWagonEastToWest2Tunnels = {enabled = true, testScript = require("tests/tunnel-multi-wagon-east-to-west-2-tunnels")},
-        tunnelMultiWagonNorthToSouth = {enabled = true, testScript = require("tests/tunnel-multi-wagon-north-to-south")},
-        tunnelMultiWagonNorthToSouth2Tunnels = {enabled = true, testScript = require("tests/tunnel-multi-wagon-north-to-south-2-tunnels")},
-        tunnelMultiWagonWestToEastCurvedApproach = {enabled = true, testScript = require("tests/tunnel-multi-wagon-west-to-east-curved-approach")}
+        shortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+        shortTunnelShortTrainEastToWest2Tunnels = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-2-tunnels")},
+        shortTunnelShortTrainWestToEast = {enabled = true, testScript = require("tests/short-tunnel-short-train-west-to-east")},
+        shortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+        shortTunnelShortTrainNorthToSouth2Tunnels = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-2-tunnels")},
+        shortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")}
     }
 end
 
