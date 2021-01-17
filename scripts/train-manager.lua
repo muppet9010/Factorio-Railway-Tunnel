@@ -140,7 +140,7 @@ TrainManager.TrainEnteringOngoing = function(event)
         trainManagerEntry.aboveTrainEntering.speed = 0 - trainManagerEntry.undergroundTrain.speed
     end
 
-    if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 10 then
+    if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 18 then
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
     if trainManagerEntry.aboveTrainEntering ~= nil and trainManagerEntry.aboveTrainEntering.valid and #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] ~= nil then
@@ -159,7 +159,7 @@ TrainManager.TrainUndergroundOngoing = function(event)
     else
         leadCarriage = trainManagerEntry.undergroundTrain["back_stock"]
     end
-    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingEntrySignalPosition) > 40 then
+    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingEntrySignalPosition) > 30 then
         --The lead carriage isn't close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
     else
@@ -225,7 +225,7 @@ TrainManager.TrainLeavingOngoing = function(event)
     else
         aboveTrainLeavingRearCarriage = aboveTrainLeaving["front_stock"]
     end
-    if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 15 then
+    if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 25 then
         local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
         local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
         nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
