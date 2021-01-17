@@ -109,12 +109,20 @@ function Utils.IsTableValidPosition(thing)
 end
 
 function Utils.TableToProperPosition(thing)
-    if not Utils.IsTableValidPosition(thing) then
+    if thing.x ~= nil and thing.y ~= nil then
+        if type(thing.x) == "number" and type(thing.y) == "number" then
+            return thing
+        else
+            return nil
+        end
+    end
+    if #thing ~= 2 then
         return nil
-    elseif thing.x ~= nil and thing.y ~= nil then
-        return {x = thing.x, y = thing.y}
-    else
+    end
+    if type(thing[1]) == "number" and type(thing[2]) == "number" then
         return {x = thing[1], y = thing[2]}
+    else
+        return nil
     end
 end
 
