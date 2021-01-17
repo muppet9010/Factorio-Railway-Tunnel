@@ -4,6 +4,7 @@ Limitations (in addition to below tasks):
     - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
     - Make a long lead up (50 tiles) where the train can only get to the tunnel. Can be bendy, but must have no junctions.
     - Currently limited to 500 tiles of tunnel and train each side from middle of tunnel - can run a 4-16-4 through a sensible tunnel fine.
+    - Trains must be lead by a locomotive facing forwards.
 
 Next:
     - Once we detect a train approaching the tunnel entrance don't force its path to manual. Currently we force a very fast train to go straight on when its far from the tunnel and then it misses its turn and never reaches the tunnel portal.
@@ -11,7 +12,8 @@ Next:
 
 Soon:
     - When trains are leaving they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help.
-	- Trains are path finder weighted away from tunnels due to high pathing cost of circuit controlled END red signal. Trains in manual mode have high penalty also. But a train in automatic, but with no fuel seems to have a low penalty.
+    - Handle wagons and loco's facing backwards being the first carriages out of a tunnel.
+	- Trains are path finder weighted away from tunnels due to high pathing cost of circuit controlled END red signal. Has to be a loco in automatic with a schedule to a pathable tile, with no fuel to have a low penalty. It should be in a segment block within the tunnel, beyond the End Signal. Set on neutral force so not in train list, but make unattackable, invisble, unselectable, not on map, no status message. End signal shouldn't be forced red as will be from our loco. Needs other signal beyond loco to not affect any first tunnel segment crossing tracks.
     - Lock tunnel when its in use by closing both entry signals by using an invisible carriage like the End signal. Remove it when anything is approaching the signal its blocking. If something impacts it then give it 1 health and no kill, wreckage, etc.
 
 Later:
