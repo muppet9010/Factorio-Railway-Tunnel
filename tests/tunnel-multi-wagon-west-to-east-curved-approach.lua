@@ -6,6 +6,7 @@ Test.Start = function()
 
     local yRailValue = -149
     local xRailValue = 8
+    local startRunUp = 100
     local nauvisEntitiesToPlace = {}
 
     -- NorthWest side
@@ -13,8 +14,24 @@ Test.Start = function()
     table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-76 + xRailValue, yRailValue - 1}, direction = defines.direction.northwest})
     table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-79 + xRailValue, yRailValue - 4}, direction = defines.direction.southwest})
     table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-82 + xRailValue, yRailValue - 7}, direction = defines.direction.south})
-    for y = -80, -12, 2 do
-        table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-83 + xRailValue, yRailValue + y}, direction = defines.direction.north})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-82 + xRailValue, yRailValue - 15}, direction = defines.direction.northeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-79 + xRailValue, yRailValue - 18}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-76 + xRailValue, yRailValue - 21}, direction = defines.direction.west})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-68 + xRailValue, yRailValue - 21}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-65 + xRailValue, yRailValue - 18}, direction = defines.direction.northeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-63 + xRailValue, yRailValue - 18}, direction = defines.direction.southwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-63 + xRailValue, yRailValue - 16}, direction = defines.direction.northeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-61 + xRailValue, yRailValue - 16}, direction = defines.direction.southwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-61 + xRailValue, yRailValue - 14}, direction = defines.direction.northeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-59 + xRailValue, yRailValue - 14}, direction = defines.direction.southwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-59 + xRailValue, yRailValue - 12}, direction = defines.direction.northeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-57 + xRailValue, yRailValue - 12}, direction = defines.direction.southwest})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-54 + xRailValue, yRailValue - 9}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-46 + xRailValue, yRailValue - 9}, direction = defines.direction.east})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-43 + xRailValue, yRailValue - 12}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {-40 + xRailValue, yRailValue - 15}, direction = defines.direction.southwest})
+    for y = (-188 - startRunUp), -20, 2 do
+        table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {-39 + xRailValue, yRailValue + y}, direction = defines.direction.north})
     end
     table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_portal_surface-placement", position = {-45 + xRailValue, yRailValue}, direction = defines.direction.west})
 
@@ -25,16 +42,29 @@ Test.Start = function()
 
     -- SouthEast Side
     table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {71 + xRailValue, yRailValue}, direction = defines.direction.west})
-    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {76 + xRailValue, yRailValue + 1}, direction = defines.direction.southeast})
-    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {79 + xRailValue, yRailValue + 4}, direction = defines.direction.northeast})
-    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {82 + xRailValue, yRailValue + 7}, direction = defines.direction.north})
-    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {82 + xRailValue, yRailValue + 15}, direction = defines.direction.southwest})
-    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {79 + xRailValue, yRailValue + 18}, direction = defines.direction.southeast})
-    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {76 + xRailValue, yRailValue + 21}, direction = defines.direction.east})
-    table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_portal_surface-placement", position = {45 + xRailValue, yRailValue}, direction = defines.direction.east})
-    for x = -107, 71, 2 do
-        table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {x + xRailValue, yRailValue + 22}, direction = defines.direction.west})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {76 + xRailValue, yRailValue - 1}, direction = defines.direction.east})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {79 + xRailValue, yRailValue - 4}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {82 + xRailValue, yRailValue - 7}, direction = defines.direction.southwest})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {82 + xRailValue, yRailValue - 15}, direction = defines.direction.north})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {79 + xRailValue, yRailValue - 18}, direction = defines.direction.northeast})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {76 + xRailValue, yRailValue - 21}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {68 + xRailValue, yRailValue - 21}, direction = defines.direction.west})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {65 + xRailValue, yRailValue - 18}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {63 + xRailValue, yRailValue - 18}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {63 + xRailValue, yRailValue - 16}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {61 + xRailValue, yRailValue - 16}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {61 + xRailValue, yRailValue - 14}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {59 + xRailValue, yRailValue - 14}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {59 + xRailValue, yRailValue - 12}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {57 + xRailValue, yRailValue - 12}, direction = defines.direction.southeast})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {54 + xRailValue, yRailValue - 9}, direction = defines.direction.east})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {46 + xRailValue, yRailValue - 9}, direction = defines.direction.northwest})
+    table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {43 + xRailValue, yRailValue - 12}, direction = defines.direction.southwest})
+    table.insert(nauvisEntitiesToPlace, {name = "curved-rail", position = {40 + xRailValue, yRailValue - 15}, direction = defines.direction.south})
+    for y = (-188 - startRunUp), -20, 2 do
+        table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {39 + xRailValue, yRailValue + y}, direction = defines.direction.north})
     end
+    table.insert(nauvisEntitiesToPlace, {name = "railway_tunnel-tunnel_portal_surface-placement", position = {45 + xRailValue, yRailValue}, direction = defines.direction.east})
 
     -- Place All track bis
     for _, details in pairs(nauvisEntitiesToPlace) do
@@ -42,18 +72,26 @@ Test.Start = function()
     end
 
     -- Place Train and setup
-    local trainStopNorthWest = nauvisSurface.create_entity {name = "train-stop", position = {-81 + xRailValue, yRailValue - 78}, force = playerForce, direction = defines.direction.north}
-    local trainStopSouthEast = nauvisSurface.create_entity {name = "train-stop", position = {-105 + xRailValue, yRailValue + 20}, force = playerForce, direction = defines.direction.west}
-    local loco1 = nauvisSurface.create_entity {name = "locomotive", position = {-83 + xRailValue, yRailValue - 75}, force = playerForce, direction = defines.direction.north}
-    loco1.insert("rocket-fuel")
-    local wagon1 = nauvisSurface.create_entity {name = "cargo-wagon", position = {-83 + xRailValue, yRailValue - 68}, force = playerForce, direction = defines.direction.north}
-    wagon1.insert("iron-plate")
-    local loco2 = nauvisSurface.create_entity {name = "locomotive", position = {-83 + xRailValue, yRailValue - 61}, force = playerForce, direction = defines.direction.south}
-    loco2.insert("coal")
-    -- Loco3 makes the train face backwards and so it drives backwards on its orders.
-    local loco3 = nauvisSurface.create_entity {name = "locomotive", position = {-83 + xRailValue, yRailValue - 54}, force = playerForce, direction = defines.direction.south}
-    loco3.insert("coal")
-    loco1.train.schedule = {
+    local trainStopNorthWest = nauvisSurface.create_entity {name = "train-stop", position = {-37 + xRailValue, yRailValue - 188}, force = playerForce, direction = defines.direction.north}
+    local trainStopSouthEast = nauvisSurface.create_entity {name = "train-stop", position = {41 + xRailValue, yRailValue - 188}, force = playerForce, direction = defines.direction.north}
+    local yPos, train = yRailValue - (185 + startRunUp)
+    for i = 1, 4 do
+        local loco = nauvisSurface.create_entity {name = "locomotive", position = {-39 + xRailValue, yPos}, force = playerForce, direction = defines.direction.north}
+        loco.insert("rocket-fuel")
+        yPos = yPos + 7
+    end
+    for i = 1, 16 do
+        local wagon = nauvisSurface.create_entity {name = "cargo-wagon", position = {-39 + xRailValue, yPos}, force = playerForce, direction = defines.direction.north}
+        wagon.insert("iron-plate")
+        yPos = yPos + 7
+    end
+    for i = 1, 4 do
+        local loco = nauvisSurface.create_entity {name = "locomotive", position = {-39 + xRailValue, yPos}, force = playerForce, direction = defines.direction.south}
+        loco.insert("coal")
+        yPos = yPos + 7
+        train = loco.train
+    end
+    train.schedule = {
         current = 1,
         records = {
             {
@@ -64,7 +102,7 @@ Test.Start = function()
             }
         }
     }
-    loco1.train.manual_mode = false
+    train.manual_mode = false
 end
 
 return Test

@@ -7,7 +7,7 @@ Limitations (in addition to below tasks):
 
 Next:
     - Once we detect a train approaching the tunnel entrance don't force its path to manual. Currently we force a very fast train to go straight on when its far from the tunnel and then it misses its turn and never reaches the tunnel portal.
-    - When trains are leaving they need to have their carriages placed on the last aboveground carriage, not the underground trains position. Should fix some oddness and will be needed for whe leaving trains path themselves.
+    - Replace trains entering/exiting with distances from tunnel entities and not hard coded values.
     - Handle train stop limits. Breaks trains leaving at present. Use a fake train, change train limits and revert and carefull schedule/manual timed changes.
 
 Soon:

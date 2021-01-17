@@ -14,7 +14,7 @@ if doTests then
         surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")},
         demo = {enabled = false, testScript = require("tests/demo")},
         tunnelMultiWagonEastToWest2Tunnels = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west-2-tunnels")},
-        tunnelMultiWagonNorthToSouth = {enabled = false, testScript = require("tests/tunnel-multi-wagon-north-to-south")},
+        tunnelMultiWagonNorthToSouth = {enabled = true, testScript = require("tests/tunnel-multi-wagon-north-to-south")},
         tunnelMultiWagonNorthToSouth2Tunnels = {enabled = false, testScript = require("tests/tunnel-multi-wagon-north-to-south-2-tunnels")},
         tunnelMultiWagonWestToEastCurvedApproach = {enabled = false, testScript = require("tests/tunnel-multi-wagon-west-to-east-curved-approach")}
     }
