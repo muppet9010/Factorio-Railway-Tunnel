@@ -8,8 +8,8 @@ TunnelCommon.setupValues = {
     -- Tunnels distance starts from the first entrace tile.
     entrySignalsDistance = 1,
     endSignalsDistance = 49,
-    straightRailCountFromEntrance = 21,
-    invisibleRailCountFromEntrance = 4,
+    straightRailCountFromEntrance = 17,
+    invisibleRailCountFromEntrance = 8,
     undergroundLeadInTiles = 1000 -- TODO: hard coded for now - should be the tunnel length plus train length, plus more to avoid breaking slowdown.
 }
 
