@@ -9,11 +9,11 @@ if doTests then
     testsToDo = {
         demo = {enabled = false, testScript = require("tests/demo")},
         shortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
-        shortTunnelShortTrainEastToWest2Tunnels = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-2-tunnels")},
-        shortTunnelShortTrainWestToEast = {enabled = true, testScript = require("tests/short-tunnel-short-train-west-to-east")},
-        shortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
-        shortTunnelShortTrainNorthToSouth2Tunnels = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-2-tunnels")},
-        shortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")}
+        shortTunnelShortTrainEastToWest2Tunnels = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-2-tunnels")},
+        shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
+        shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+        shortTunnelShortTrainNorthToSouth2Tunnels = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-2-tunnels")},
+        shortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")}
     }
 end
 
