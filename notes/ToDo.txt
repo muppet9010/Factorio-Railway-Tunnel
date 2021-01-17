@@ -1,4 +1,5 @@
 Limitations (in addition to below tasks):
+    - At the moment only trains with a locomotive up front can pass through the tunnel
     - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
     - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
     - Make a long lead up (50 tiles) where the train can only get to the tunnel. Can be bendy, but must have no junctions.
