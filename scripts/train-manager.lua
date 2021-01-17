@@ -13,9 +13,9 @@ TrainManager.CreateGlobals = function()
         aboveTrainEnteringId = The LuaTrain ID of the above Train Entering.
         aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
         aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
+        aboveTrainEnteringForwards = boolean if the train is moving forwards or backwards from its viewpoint.
         trainTravelDirection = defines.direction the train is heading in.
         trainTravelOrientation = the orientation of the trainTravelDirection.
-        trainTravellingForwards = boolean if the train is moving forwards or backwards from its viewpoint.
         surfaceEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
         surfaceEntrancePortalEndSignal = the endSignal global object of the rail signal at the end of the entrance portal track (forced closed signal).
         surfaceExitPortal = the portal global object of the exit portal for this tunnel usage instance.
@@ -62,9 +62,9 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     trainManagerEntry.aboveSurface = tunnel.aboveSurface
     trainManagerEntry.undergroundSurface = tunnel.undergroundSurface
     if trainManagerEntry.aboveTrainEntering.speed > 0 then
-        trainManagerEntry.trainTravellingForwards = true
+        trainManagerEntry.aboveTrainEnteringForwards = true
     else
-        trainManagerEntry.trainTravellingForwards = false
+        trainManagerEntry.aboveTrainEnteringForwards = false
     end
     trainManagerEntry.trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
     global.trainManager.enteringTrainIdToManagedTrain[trainEntering.id] = trainManagerEntry
@@ -87,8 +87,6 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     local sourceTrain = trainManagerEntry.aboveTrainEntering
     local undergroundTrain = TrainManager.CopyTrainToUnderground(trainManagerEntry)
 
-    --Set the speed and correct if after setting the schedule if needed. Easier than trying to work out what way the trains are facing to each other.
-    undergroundTrain.speed = sourceTrain.speed
     local undergroundTrainEndScheduleTargetPos =
         Utils.ApplyOffsetToPosition(
         Utils.RotatePositionAround0(
@@ -114,11 +112,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
             }
         }
     }
-    undergroundTrain.manual_mode = false
-    if undergroundTrain.speed == 0 then
-        undergroundTrain.speed = 0 - sourceTrain.speed
-    end
     trainManagerEntry.undergroundTrain = undergroundTrain
+    TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(sourceTrain.speed))
 
     trainManagerEntry.undergroundLeavingEntrySignalPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
 
@@ -130,14 +125,12 @@ TrainManager.TrainEnteringOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
     --Need to create a dummy leaving train at this point to reserve the train limit.
     trainManagerEntry.aboveTrainEntering.manual_mode = true
+    TrainManager.SetAboveTrainEnteringSpeed(trainManagerEntry, TrainManager.GetTrainSpeed(trainManagerEntry))
+
     local nextStockAttributeName = "front_stock"
-    if (trainManagerEntry.aboveTrainEntering.speed < 0) then
+    -- aboveTrainEnteringForwards has been updated for us by SetAboveTrainEnteringSpeed()
+    if not trainManagerEntry.aboveTrainEnteringForwards then
         nextStockAttributeName = "back_stock"
-    end
-    if (trainManagerEntry.undergroundTrain.speed > 0 and trainManagerEntry.aboveTrainEntering.speed > 0) or (trainManagerEntry.undergroundTrain.speed < 0 and trainManagerEntry.aboveTrainEntering.speed < 0) then
-        trainManagerEntry.aboveTrainEntering.speed = trainManagerEntry.undergroundTrain.speed
-    else
-        trainManagerEntry.aboveTrainEntering.speed = 0 - trainManagerEntry.undergroundTrain.speed
     end
 
     if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 18 then
@@ -204,59 +197,61 @@ end
 TrainManager.TrainLeavingOngoing = function(event)
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
     local aboveTrainLeaving, sourceTrain = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain
+    local desiredSpeed = TrainManager.GetTrainSpeed(trainManagerEntry)
 
-    local currentSourceTrainCarriageIndex = trainManagerEntry.aboveTrainLeavingCarriagesPlaced
-    local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
-    if (sourceTrain.speed < 0) then
-        currentSourceTrainCarriageIndex = #sourceTrain.carriages - trainManagerEntry.aboveTrainLeavingCarriagesPlaced
-        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
-    end
+    if sourceTrain.speed ~= 0 then
+        local currentSourceTrainCarriageIndex = trainManagerEntry.aboveTrainLeavingCarriagesPlaced
+        local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
+        if (sourceTrain.speed < 0) then
+            currentSourceTrainCarriageIndex = #sourceTrain.carriages - trainManagerEntry.aboveTrainLeavingCarriagesPlaced
+            nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
+        end
 
-    local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
-    if nextSourceCarriageEntity == nil then
-        -- All wagons placed so tidy up
-        TrainManager.TrainLeavingCompleted(trainManagerEntry)
-        return
-    end
+        local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
+        if nextSourceCarriageEntity == nil then
+            -- All wagons placed so tidy up
+            TrainManager.TrainLeavingCompleted(trainManagerEntry, desiredSpeed)
+            return
+        end
 
-    local aboveTrainLeavingRearCarriage
-    if (aboveTrainLeaving.speed > 0) then
-        aboveTrainLeavingRearCarriage = aboveTrainLeaving["back_stock"]
-    else
-        aboveTrainLeavingRearCarriage = aboveTrainLeaving["front_stock"]
-    end
-    if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 25 then
-        local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
-        local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
-        nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
-        trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
-        aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
-        if #aboveTrainLeaving.carriages ~= aboveTrainOldCarriageCount + 1 then
-            error("Placed carriage not part of train as expected carriage count not right")
+        local aboveTrainLeavingRearCarriage
+        if (aboveTrainLeaving.speed > 0) then
+            aboveTrainLeavingRearCarriage = aboveTrainLeaving["back_stock"]
+        else
+            aboveTrainLeavingRearCarriage = aboveTrainLeaving["front_stock"]
+        end
+        if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 25 then
+            local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
+            local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
+            nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
+            trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
+            aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
+            if #aboveTrainLeaving.carriages ~= aboveTrainOldCarriageCount + 1 then
+                error("Placed carriage not part of train as expected carriage count not right")
+            end
         end
     end
 
-    if (sourceTrain.speed > 0 and aboveTrainLeaving.speed > 0) or (sourceTrain.speed < 0 and aboveTrainLeaving.speed < 0) then
-        aboveTrainLeaving.speed = sourceTrain.speed
-    else
-        aboveTrainLeaving.speed = 0 - sourceTrain.speed
-    end
+    TrainManager.SetTrainAbsoluteSpeed(aboveTrainLeaving, desiredSpeed)
+    TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, desiredSpeed)
+
     aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
     aboveTrainLeaving.manual_mode = false
     if trainManagerEntry.origTrainScheduleStopEntity.trains_limit ~= Utils.MaxTrainStopLimit then
         trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit + 1
-        aboveTrainLeaving.recalculate_path()
+        aboveTrainLeaving.recalculate_path() -- TODO: Seem to be overally calling this since it was added.
         trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit - 1
     else
-        aboveTrainLeaving.recalculate_path()
+        aboveTrainLeaving.recalculate_path() -- TODO: Seem to be overally calling this since it was added.
     end
 
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
-TrainManager.TrainLeavingCompleted = function(trainManagerEntry)
+TrainManager.TrainLeavingCompleted = function(trainManagerEntry, speed)
     trainManagerEntry.aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
     trainManagerEntry.aboveTrainLeaving.manual_mode = false
+    TrainManager.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, speed)
 
     for _, carriage in pairs(trainManagerEntry.undergroundTrain.carriages) do
         carriage.destroy()
@@ -305,6 +300,79 @@ TrainManager.TrainLeavingOngoing_OnTrainCreated = function(event)
     global.trainManager.leavingTrainIdToManagedTrain[event.train.id] = managedTrain
 end
 
+TrainManager.SpeedGovernedByLeavingTrain = function(trainManagerEntry)
+    local train = trainManagerEntry.aboveTrainLeaving
+    if train and train.valid and train.state ~= defines.train_state.on_the_path then
+        return true
+    else
+        return false
+    end
+end
+
+-- determine the current speed of the train passing through the tunnel
+TrainManager.GetTrainSpeed = function(trainManagerEntry)
+    if TrainManager.SpeedGovernedByLeavingTrain(trainManagerEntry) then
+        return math.abs(trainManagerEntry.aboveTrainLeaving.speed)
+    else
+        return math.abs(trainManagerEntry.undergroundTrain.speed)
+    end
+end
+
+-- set speed of train while preserving direction
+TrainManager.SetTrainAbsoluteSpeed = function(train, speed)
+    if train.speed > 0 then
+        train.speed = speed
+    elseif train.speed < 0 then
+        train.speed = -1 * speed
+    elseif speed ~= 0 then
+        -- this shouldn't be possible to reach, so throw an error for now
+        error "unable to determine train direction"
+    end
+end
+
+TrainManager.SetAboveTrainEnteringSpeed = function(trainManagerEntry, speed)
+    local train = trainManagerEntry.aboveTrainEntering
+
+    -- for the entering train the direction needs to be preserved in
+    -- global data, because it would otherwise get lost when the train
+    -- stops while entering the tunnel
+    if train.speed > 0 then
+        trainManagerEntry.aboveTrainEnteringForwards = true
+    elseif train.speed < 0 then
+        trainManagerEntry.aboveTrainEnteringForwards = false
+    end
+
+    -- entering train always kept on manual while its speed is managed
+    train.manual_mode = true
+
+    if trainManagerEntry.aboveTrainEnteringForwards then
+        train.speed = speed
+    else
+        train.speed = -1 * speed
+    end
+end
+
+-- set the speed of the underground train
+-- train needs to be switched to manual if it is supposed to stop (speed=0)
+TrainManager.SetUndergroundTrainSpeed = function(trainManagerEntry, speed)
+    local train = trainManagerEntry.undergroundTrain
+
+    if speed ~= 0 or not TrainManager.SpeedGovernedByLeavingTrain(trainManagerEntry) then
+        if not train.manual_mode then
+            TrainManager.SetTrainAbsoluteSpeed(train, speed)
+        else
+            train.speed = speed
+            train.manual_mode = false
+            if train.speed == 0 then
+                train.speed = -1 * speed
+            end
+        end
+    else
+        train.manual_mode = true
+        train.speed = 0
+    end
+end
+
 TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     local placedCarriage, refTrain, tunnel, targetSurface = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface
 
@@ -343,7 +411,7 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     )
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
     local trainCarriagesForwardDirection = trainManagerEntry.trainTravelDirection
-    if not trainManagerEntry.trainTravellingForwards then
+    if not trainManagerEntry.aboveTrainEnteringForwards then
         trainCarriagesForwardDirection = Utils.LoopDirectionValue(trainCarriagesForwardDirection + 4)
     end
 

@@ -2,21 +2,21 @@ local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 
-local doTests = false
+local doTests = true
 
 local testsToDo
 if doTests then
     testsToDo = {
         tunnelSingleLoco = {enabled = false, testScript = require("tests/tunnel-single-loco")},
-        tunnelMultiWagonEastToWest = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
-        tunnelMultiWagonWestToEast = {enabled = false, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
+        tunnelMultiWagonEastToWest = {enabled = true, testScript = require("tests/tunnel-multi-wagon-east-to-west")},
+        tunnelMultiWagonWestToEast = {enabled = true, testScript = require("tests/tunnel-multi-wagon-west-to-east")},
         surfaceSingleLoop = {enabled = false, testScript = require("tests/surface-single-loop")},
         surfaceMiddleLine = {enabled = false, testScript = require("tests/surface-middle-line")},
         demo = {enabled = false, testScript = require("tests/demo")},
-        tunnelMultiWagonEastToWest2Tunnels = {enabled = false, testScript = require("tests/tunnel-multi-wagon-east-to-west-2-tunnels")},
+        tunnelMultiWagonEastToWest2Tunnels = {enabled = true, testScript = require("tests/tunnel-multi-wagon-east-to-west-2-tunnels")},
         tunnelMultiWagonNorthToSouth = {enabled = true, testScript = require("tests/tunnel-multi-wagon-north-to-south")},
-        tunnelMultiWagonNorthToSouth2Tunnels = {enabled = false, testScript = require("tests/tunnel-multi-wagon-north-to-south-2-tunnels")},
-        tunnelMultiWagonWestToEastCurvedApproach = {enabled = false, testScript = require("tests/tunnel-multi-wagon-west-to-east-curved-approach")}
+        tunnelMultiWagonNorthToSouth2Tunnels = {enabled = true, testScript = require("tests/tunnel-multi-wagon-north-to-south-2-tunnels")},
+        tunnelMultiWagonWestToEastCurvedApproach = {enabled = true, testScript = require("tests/tunnel-multi-wagon-west-to-east-curved-approach")}
     }
 end
 
