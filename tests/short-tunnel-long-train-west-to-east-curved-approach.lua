@@ -6,7 +6,7 @@ Test.Start = function()
 
     local yRailValue = -149
     local xRailValue = 8
-    local startRunUp = 100
+    local startRunUp = 200
     local nauvisEntitiesToPlace = {}
 
     -- NorthWest side
@@ -72,8 +72,8 @@ Test.Start = function()
     end
 
     -- Place Train and setup
-    local trainStopNorthWest = nauvisSurface.create_entity {name = "train-stop", position = {-37 + xRailValue, yRailValue - 188}, force = playerForce, direction = defines.direction.north}
-    local trainStopSouthEast = nauvisSurface.create_entity {name = "train-stop", position = {41 + xRailValue, yRailValue - 188}, force = playerForce, direction = defines.direction.north}
+    local trainStopNorthWest = nauvisSurface.create_entity {name = "train-stop", position = {-37 + xRailValue, yRailValue - (188 + startRunUp)}, force = playerForce, direction = defines.direction.north}
+    local trainStopSouthEast = nauvisSurface.create_entity {name = "train-stop", position = {41 + xRailValue, yRailValue - (188 + startRunUp)}, force = playerForce, direction = defines.direction.north}
     local yPos, train = yRailValue - (185 + startRunUp)
     for i = 1, 4 do
         local loco = nauvisSurface.create_entity {name = "locomotive", position = {-39 + xRailValue, yPos}, force = playerForce, direction = defines.direction.north}

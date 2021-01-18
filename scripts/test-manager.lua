@@ -13,7 +13,9 @@ if doTests then
         shortTunnelShortTrainWestToEast = {enabled = true, testScript = require("tests/short-tunnel-short-train-west-to-east")},
         shortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
         shortTunnelShortTrainNorthToSouth2Tunnels = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-2-tunnels")},
-        shortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")}
+        shortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
+        repathOnApproach = {enabled = true, testScript = require("tests/repath-on-approach")},
+        doubleRepathOnApproach = {enabled = true, testScript = require("tests/double-repath-on-approach")}
     }
 end
 
@@ -38,7 +40,7 @@ TestManager.OnStartup = function()
         nauvisSurface.delete_chunk({x = chunk.x, y = chunk.y})
     end
 
-    EventScheduler.ScheduleEvent(game.tick + 30, "TestManager.RunTests")
+    EventScheduler.ScheduleEvent(game.tick + 60, "TestManager.RunTests")
 end
 
 TestManager.RunTests = function()
@@ -46,7 +48,7 @@ TestManager.RunTests = function()
 
     for _, test in pairs(testsToDo) do
         if test.enabled then
-            test.testScript.Start()
+            test.testScript.Start(TestManager)
         end
     end
 end
@@ -58,6 +60,68 @@ TestManager.OnPlayerCreated = function(event)
     local player = game.get_player(event.player_index)
     player.exit_cutscene()
     player.set_controller {type = defines.controllers.editor}
+end
+
+-- Utility function to build a blueprint from a string on the test surface.
+-- Makes sure that trains in the blueprint are properly built, their
+-- fuel requests are fulfilled and the trains are set to automatic.
+TestManager.BuildBlueprintFromString = function(blueprintString, position)
+    local nauvisSurface = game.surfaces["nauvis"]
+    local playerForce = game.forces["player"]
+    local player
+    -- find first player
+    for _, p in pairs(game.players) do
+        player = p
+        break
+    end
+    local itemStack = player.cursor_stack
+
+    itemStack.clear()
+    if itemStack.import_stack(blueprintString) ~= 0 then
+        error "Error importing blueprint string"
+    end
+
+    local ghosts =
+        itemStack.build_blueprint {
+        surface = nauvisSurface,
+        force = playerForce,
+        position = position,
+        by_player = player
+    }
+    itemStack.clear()
+
+    local pass2Ghosts = {}
+    local fuelProxies = {}
+
+    for _, ghost in pairs(ghosts) do
+        local r, _, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
+        if r == nil then
+            -- train ghosts can't be revived before the rail underneath
+            -- them, so save failed ghosts for a second pass
+            table.insert(pass2Ghosts, ghost)
+        end
+        if fuelProxy ~= nil then
+            table.insert(fuelProxies, fuelProxy)
+        end
+    end
+
+    for _, ghost in pairs(pass2Ghosts) do
+        local r, _, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
+        if fuelProxy ~= nil then
+            table.insert(fuelProxies, fuelProxy)
+        end
+    end
+
+    for _, fuelProxy in pairs(fuelProxies) do
+        for item, count in pairs(fuelProxy.item_requests) do
+            fuelProxy.proxy_target.insert({name = item, count = count})
+        end
+        fuelProxy.destroy()
+    end
+
+    for _, train in pairs(nauvisSurface.get_trains()) do
+        train.manual_mode = false
+    end
 end
 
 return TestManager
