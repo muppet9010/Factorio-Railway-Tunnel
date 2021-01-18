@@ -3,7 +3,6 @@ local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/common/tunnel-common")
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -100,7 +99,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
             trainManagerEntry.trainTravelOrientation,
             {
                 x = 0,
-                y = 0 - (TunnelCommon.setupValues.undergroundLeadInTiles - 1)
+                y = 0 - (tunnel.undergroundModifiers.undergroundLeadInTiles - 1)
             }
         )
     )
@@ -133,6 +132,7 @@ TrainManager.TrainEnteringOngoing = function(event)
         nextStockAttributeName = "back_stock"
     end
 
+    --TODO: update all these distances as we moved the end signal forwards some tiles.
     if Utils.GetDistance(trainManagerEntry.aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 18 then
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end

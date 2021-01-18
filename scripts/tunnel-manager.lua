@@ -29,6 +29,7 @@ Tunnel.CreateGlobals = function()
                 tunnelInstanceClonedTrainValue = this tunnels static value of the tunnelInstanceAxis for the cloned (stationary) train carriages.
                 undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
                 surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
+                undergroundLeadInTiles = the tiles lead in of rail from 0
             }
         }
     ]]

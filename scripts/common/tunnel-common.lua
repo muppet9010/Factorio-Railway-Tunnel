@@ -3,16 +3,6 @@
 local Utils = require("utility/utils")
 local TunnelCommon = {}
 
-TunnelCommon.setupValues = {
-    entranceFromCenter = 25,
-    -- Tunnels distance starts from the first entrace tile.
-    entrySignalsDistance = 1,
-    endSignalsDistance = 49,
-    straightRailCountFromEntrance = 17,
-    invisibleRailCountFromEntrance = 8,
-    undergroundLeadInTiles = 1000 -- TODO: hard coded for now - should be the tunnel length plus train length, plus more to avoid breaking slowdown.
-}
-
 -- Make the entity lists.
 TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames = {}, {}, {}, {}
 for _, coreName in pairs({"railway_tunnel-tunnel_segment_surface", "railway_tunnel-tunnel_segment_surface_rail_crossing"}) do
