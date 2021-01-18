@@ -1,17 +1,15 @@
 Limitations (in addition to below tasks):
     - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
     - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
-    - Make a long lead up (50 tiles) where the train can only get to the tunnel. Can be bendy, but must have no junctions.
     - Currently limited to 500 tiles of tunnel and train each side from middle of tunnel - can run a 4-16-4 through a sensible tunnel fine.
     - Trains must be lead by a locomotive facing forwards, otherwise they will get stuck and error coming out of a tunnel.
 
 Next:
-    - Once we detect a train approaching the tunnel entrance don't force its path to manual. Currently we force a very fast train to go straight on when its far from the tunnel and then it misses its turn and never reaches the tunnel portal.
-    - Handle train stop limits. Breaks trains leaving at present. Use a fake train, change train limits and revert and carefull schedule/manual timed changes.
-
-Soon:
     - When trains are leaving they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help. This should handle wagons or loco's facing backwards being the first carriages out of a tunnel.
 	- Trains are path finder weighted away from tunnels due to high pathing cost of circuit controlled END red signal. Has to be a loco in automatic with a schedule to a pathable tile, with no fuel to have a low penalty. It should be in a segment block within the tunnel, beyond the End Signal. Set on neutral force so not in train list, but make unattackable, invisble, unselectable, not on map, no status message. End signal shouldn't be forced red as will be from our loco. Needs other signal beyond loco to not affect any first tunnel segment crossing tracks.
+
+Soon:
+    - Handle train stop limits. Breaks trains leaving at present. Use a fake train, change train limits and revert and carefull schedule/manual timed changes.
     - Lock tunnel when its in use by closing both entry signals by using an invisible carriage like the End signal. Remove it when anything is approaching the signal its blocking. If something impacts it then give it 1 health and no kill, wreckage, etc.
 
 Later:
@@ -27,7 +25,8 @@ Later:
     - Block train wagons being placed on invisible rails.
 	- Handle a train leaving a first tunnel and entering a second tunnel. Get by global trainID's tracked.
     - Handle players being in a train going through the tunnel.
-    - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
+    - Handle player driven trains approaching the tunnel (will go on auto through the tunnel).
+    - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
     - Check artillery trains paused going in to the tunnel as the head has stopped coming out.
 
 NICE TO HAVE:
