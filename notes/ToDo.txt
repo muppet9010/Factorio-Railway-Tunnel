@@ -25,8 +25,7 @@ Later:
     - Block train wagons being placed on invisible rails.
 	- Handle a train leaving a first tunnel and entering a second tunnel. Get by global trainID's tracked.
     - Handle players being in a train going through the tunnel.
-    - Handle player driven trains approaching the tunnel (will go on auto through the tunnel).
-	- Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
+    - Handle freely driven trains approaching the tunnel (will go on auto through the tunnel).
     - Check artillery trains paused going in to the tunnel as the head has stopped coming out.
 
 NICE TO HAVE:
