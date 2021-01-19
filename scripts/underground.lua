@@ -16,6 +16,9 @@ Underground.OnStartup = function()
 end
 
 Underground.CreateSurface = function(surfaceName)
+    if game.get_surface(surfaceName) ~= nil then
+        game.delete_surface(surfaceName) -- Mod has been removed and re-added so clean out the old tunnel surfaces.
+    end
     local surface = game.create_surface(surfaceName)
     surface.generate_with_lab_tiles = true
     surface.always_day = true
