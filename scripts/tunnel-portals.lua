@@ -127,8 +127,9 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         local orientation = directionValue / 8
         local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 0 - SetupValues.entranceFromCenter}))
 
+        -- Add the invisble rails to connect the tunnel portal's normal rails to the adjoining tunnel segment.
         local nextRailPos = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1 + (SetupValues.straightRailCountFromEntrance * 2)}))
-        local railOffsetFromEntrancePos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entrance position by rail placement
+        local railOffsetFromEntrancePos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entrance position by rail placement.
         portal.tunnelRailEntities = {}
         for count = 1, SetupValues.invisibleRailCountFromEntrance do
             local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail", position = nextRailPos, force = force, direction = directionValue}
@@ -136,6 +137,7 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
             nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntrancePos)
         end
 
+        -- Add the signals at the entrance to the tunnel.
         local entrySignalInEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-internal_signal-on_map",
@@ -154,6 +156,7 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         local entrySignalOut = Interfaces.Call("Tunnel.RegisterEntrySignalEntity", entrySignalOutEntity, portal)
         portal.entrySignals = {["in"] = entrySignalIn, ["out"] = entrySignalOut}
 
+        -- Add the signals that mark the end of the usable tunnel rails.
         local endSignalInEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-tunnel_portal_end_rail_signal",
@@ -172,7 +175,7 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         local endSignalOut = Interfaces.Call("Tunnel.RegisterEndSiganlEntity", endSignalOutEntity, portal)
         portal.endSignals = {["in"] = endSignalIn, ["out"] = endSignalOut}
 
-        -- Add the blocking loco and extra signals after where the offical END siganls are.
+        -- Add the blocking loco and extra signals after where the END siganls are. These make the END signals go red and stop paths reserving across the track.
         local farInvisibleSignalInEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-tunnel_portal_end_rail_signal",

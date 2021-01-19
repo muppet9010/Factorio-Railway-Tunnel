@@ -43,7 +43,7 @@ Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
     undergroundModifiers.tunnelInstanceClonedTrainValue = undergroundModifiers.tunnelInstanceValue + 4
     undergroundModifiers.distanceFromCenterToPortalEntrySignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].entrySignals["in"].entity.position, tunnel.portals[2].entrySignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
     undergroundModifiers.distanceFromCenterToPortalEndSignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].endSignals["in"].entity.position, tunnel.portals[2].endSignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
-    undergroundModifiers.undergroundLeadInTiles = 1000
+    undergroundModifiers.undergroundLeadInTiles = 1000 -- In a future task this will be extended based on train lenth.
     local offsetTrackDistance = undergroundModifiers.distanceFromCenterToPortalEntrySignals + undergroundModifiers.undergroundLeadInTiles
     -- Place the tracks underground that the train will be copied on to and run on.
     for valueVariation = -offsetTrackDistance, offsetTrackDistance, 2 do
