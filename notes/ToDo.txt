@@ -1,12 +1,10 @@
 Limitations (in addition to below tasks):
     - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
-    - Trains will avoid tunnels at present due to a pathing penalty. So either have no loops or force them to only choose between tunnels so they make the right choice.
     - Currently limited to 500 tiles of tunnel and train each side from middle of tunnel - can run a 4-16-4 through a sensible tunnel fine.
     - Trains must be lead by a locomotive facing forwards, otherwise they will get stuck and error coming out of a tunnel.
 
 Next:
     - When trains are leaving they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help. This should handle wagons or loco's facing backwards being the first carriages out of a tunnel.
-	- Trains are path finder weighted away from tunnels due to high pathing cost of circuit controlled END red signal. Has to be a loco in automatic with a schedule to a pathable tile, with no fuel to have a low penalty. It should be in a segment block within the tunnel, beyond the End Signal. Set on neutral force so not in train list, but make unattackable, invisble, unselectable, not on map, no status message. End signal shouldn't be forced red as will be from our loco. Needs other signal beyond loco to not affect any first tunnel segment crossing tracks.
 
 Soon:
     - Handle train stop limits. Breaks trains leaving at present. Use a fake train, change train limits and revert and carefull schedule/manual timed changes.

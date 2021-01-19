@@ -1,6 +1,5 @@
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
-local TunnelCommon = require("scripts/common/tunnel-common")
 local Underground = {}
 
 Underground.CreateGlobals = function()
@@ -17,6 +16,9 @@ Underground.OnStartup = function()
 end
 
 Underground.CreateSurface = function(surfaceName)
+    if game.get_surface(surfaceName) ~= nil then
+        game.delete_surface(surfaceName) -- Mod has been removed and re-added so clean out the old tunnel surfaces.
+    end
     local surface = game.create_surface(surfaceName)
     surface.generate_with_lab_tiles = true
     surface.always_day = true
@@ -27,7 +29,7 @@ Underground.CreateSurface = function(surfaceName)
 end
 
 Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
-    -- This will likely become more complicated later on and then become a self contain object. Deal with at that point.
+    -- TODO: Change this to become a self contain object. Possibly relocate some other bits of code here at the time.
     local undergroundRailEntities, undergroundModifiers = {}, {}
     if tunnel.alignment == "vertical" then
         undergroundModifiers.railAlignmentAxis = "y"
@@ -41,7 +43,8 @@ Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
     undergroundModifiers.tunnelInstanceClonedTrainValue = undergroundModifiers.tunnelInstanceValue + 4
     undergroundModifiers.distanceFromCenterToPortalEntrySignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].entrySignals["in"].entity.position, tunnel.portals[2].entrySignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
     undergroundModifiers.distanceFromCenterToPortalEndSignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].endSignals["in"].entity.position, tunnel.portals[2].endSignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
-    local offsetTrackDistance = undergroundModifiers.distanceFromCenterToPortalEntrySignals + TunnelCommon.setupValues.undergroundLeadInTiles
+    undergroundModifiers.undergroundLeadInTiles = 1000 -- In a future task this will be extended based on train lenth.
+    local offsetTrackDistance = undergroundModifiers.distanceFromCenterToPortalEntrySignals + undergroundModifiers.undergroundLeadInTiles
     -- Place the tracks underground that the train will be copied on to and run on.
     for valueVariation = -offsetTrackDistance, offsetTrackDistance, 2 do
         table.insert(undergroundRailEntities, tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {[undergroundModifiers.railAlignmentAxis] = valueVariation, [undergroundModifiers.tunnelInstanceAxis] = undergroundModifiers.tunnelInstanceValue}, force = refTunnelPortalEntity.force, direction = refTunnelPortalEntity.direction})

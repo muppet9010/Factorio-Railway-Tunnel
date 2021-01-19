@@ -3,7 +3,6 @@ local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/common/tunnel-common")
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -102,7 +101,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
             trainManagerEntry.trainTravelOrientation,
             {
                 x = 0,
-                y = 0 - (TunnelCommon.setupValues.undergroundLeadInTiles - 1)
+                y = 0 - (tunnel.undergroundModifiers.undergroundLeadInTiles - 1)
             }
         )
     )
@@ -146,7 +145,7 @@ TrainManager.TrainEnteringOngoing = function(event)
         nextStockAttributeName = "back_stock"
     end
 
-    if Utils.GetDistance(aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 18 then
+    if Utils.GetDistance(aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 14 then
         if not trainManagerEntry.committed then
             -- we now start destroying entering train carriages, so train can't be allowed to turn back from the tunnel now
             trainManagerEntry.committed = true
@@ -243,7 +242,7 @@ TrainManager.TrainLeavingOngoing = function(event)
         else
             aboveTrainLeavingRearCarriage = aboveTrainLeaving["front_stock"]
         end
-        if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 25 then
+        if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 20 then
             local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
             local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
             nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
