@@ -448,14 +448,14 @@ function Utils.CalculateTilesUnderPositionedBoundingBox(positionedBoundingBox)
 end
 
 function Utils.GetDistance(pos1, pos2)
-    pos1, pos2 = Utils.TableToProperPosition(pos1), Utils.TableToProperPosition(pos2)
+    --Don't do any valid checks as called so frequently, big UPS wastage.
     local dx = pos1.x - pos2.x
     local dy = pos1.y - pos2.y
     return math.sqrt(dx * dx + dy * dy)
 end
 
 function Utils.GetDistanceSingleAxis(pos1, pos2, axis)
-    pos1, pos2 = Utils.TableToProperPosition(pos1), Utils.TableToProperPosition(pos2)
+    --Don't do any valid checks as called so frequently, big UPS wastage.
     return math.abs(pos1[axis] - pos2[axis])
 end
 

@@ -5,15 +5,15 @@ Limitations (in addition to below tasks):
 
 Next:
     - When trains are leaving they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help. This should handle wagons or loco's facing backwards being the first carriages out of a tunnel.
-
-Soon:
     - Handle train stop limits. Breaks trains leaving at present. Use a fake train, change train limits and revert and carefull schedule/manual timed changes.
     - Lock tunnel when its in use by closing both entry signals by using an invisible carriage like the End signal. Remove it when anything is approaching the signal its blocking. If something impacts it then give it 1 health and no kill, wreckage, etc.
+
+Soon:
 
 Later:
     - Handle 2 trains both entering the tunnel at once.
     - Handle very very long trains:
-        - Place rails under the underground train carraiges if its a very long train.
+        - Place rails under the underground train carraiges if its a very long train. Maybe defualt 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag).
         - Confirm that if a train leaving is slowed and it is still entering that the entering train keeps in sync correctly. Should just work.
     - Make recipes, techs and item & entities localisations.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.

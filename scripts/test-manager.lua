@@ -68,12 +68,7 @@ end
 TestManager.BuildBlueprintFromString = function(blueprintString, position)
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
-    local player
-    -- find first player
-    for _, p in pairs(game.players) do
-        player = p
-        break
-    end
+    local player = game.connected_players[1]
     local itemStack = player.cursor_stack
 
     itemStack.clear()
@@ -107,6 +102,9 @@ TestManager.BuildBlueprintFromString = function(blueprintString, position)
 
     for _, ghost in pairs(pass2Ghosts) do
         local r, _, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
+        if r == nil then
+            error("only 2 rounds of ghost reviving supported")
+        end
         if fuelProxy ~= nil then
             table.insert(fuelProxies, fuelProxy)
         end

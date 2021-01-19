@@ -132,7 +132,7 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         local nextRailPos = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1 + (SetupValues.straightRailCountFromEntrance * 2)}))
         local railOffsetFromEntrancePos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entrance position by rail placement.
         portal.tunnelRailEntities = {}
-        for count = 1, SetupValues.invisibleRailCountFromEntrance do
+        for _ = 1, SetupValues.invisibleRailCountFromEntrance do
             local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail", position = nextRailPos, force = force, direction = directionValue}
             portal.tunnelRailEntities[placedRail.unit_number] = placedRail
             nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntrancePos)
