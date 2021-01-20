@@ -13,6 +13,7 @@ TrainManager.CreateGlobals = function()
         aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
         aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
         aboveTrainEnteringForwards = boolean if the train is moving forwards or backwards from its viewpoint.
+        dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive
         trainTravelDirection = defines.direction the train is heading in.
         trainTravelOrientation = the orientation of the trainTravelDirection.
         surfaceEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
@@ -20,7 +21,6 @@ TrainManager.CreateGlobals = function()
         surfaceExitPortal = the portal global object of the exit portal for this tunnel usage instance.
         surfaceExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
         tunnel = ref to the global tunnel object.
-        origTrainSchedule = copy of the origional train schedule table made when triggered the managed train process.
         undergroundTrain = LuaTrain of the train created in the underground surface.
         undergroundLeavingEntrySignalPosition = The underground position equivilent to the entry signal that the underground train starts leaving when it approaches.
         aboveSurface = LuaSurface of the main world surface.
@@ -53,8 +53,6 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         surfaceEntrancePortalEndSignal = surfaceEntrancePortalEndSignal,
         surfaceEntrancePortal = surfaceEntrancePortalEndSignal.portal,
         tunnel = surfaceEntrancePortalEndSignal.portal.tunnel,
-        origTrainSchedule = Utils.DeepCopy(trainEntering.schedule),
-        origTrainScheduleStopEntity = trainEntering.path_end_stop,
         trainTravelDirection = Utils.LoopDirectionValue(surfaceEntrancePortalEndSignal.entity.direction + 4),
         committed = false
     }
@@ -149,8 +147,10 @@ TrainManager.TrainEnteringOngoing = function(event)
         if not trainManagerEntry.committed then
             -- we now start destroying entering train carriages, so train can't be allowed to turn back from the tunnel now
             trainManagerEntry.committed = true
-            --Need to create a dummy leaving train at this point to reserve the train limit.
+            TrainManager.CreateDummyTrain(trainManagerEntry, aboveTrainEntering)
             aboveTrainEntering.manual_mode = true
+            -- schedule has been transferred to dummy train
+            aboveTrainEntering.schedule = nil
         end
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
@@ -183,6 +183,11 @@ TrainManager.TrainUndergroundOngoing = function(event)
 end
 
 TrainManager.TrainLeavingInitial = function(trainManagerEntry)
+    -- cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later
+    local schedule, isManual, targetStop = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.dummyTrain.path_end_stop
+    local dummyTrainState = trainManagerEntry.dummyTrain.state
+    TrainManager.DestroyDummyTrain(trainManagerEntry)
+
     local sourceTrain, leadCarriage = trainManagerEntry.undergroundTrain
     if (sourceTrain.speed > 0) then
         leadCarriage = sourceTrain["front_stock"]
@@ -197,20 +202,21 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     local aboveTrainLeaving = placedCarriage.train
     trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId = aboveTrainLeaving, aboveTrainLeaving.id
     global.trainManager.leavingTrainIdToManagedTrain[aboveTrainLeaving.id] = trainManagerEntry
-    aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
-    aboveTrainLeaving.manual_mode = false
+
+    -- restore train schedule
+    aboveTrainLeaving.schedule = schedule
+    if not isManual then
+        TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
+    end
+    if aboveTrainLeaving.state ~= dummyTrainState then
+        error "reemerging train should have same state as dummy train"
+    end
+
     if placedCarriage.orientation == leadCarriage.orientation then
         -- As theres only 1 placed carriage we can set the speed based on the refCarriage. New train will have a direciton that matches the single placed carriage.
         aboveTrainLeaving.speed = leadCarriage.speed
     else
         aboveTrainLeaving.speed = 0 - leadCarriage.speed
-    end
-    if trainManagerEntry.origTrainScheduleStopEntity.trains_limit ~= Utils.MaxTrainStopLimit then
-        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit + 1
-        aboveTrainLeaving.recalculate_path()
-        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit - 1
-    else
-        aboveTrainLeaving.recalculate_path()
     end
 
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
@@ -243,6 +249,9 @@ TrainManager.TrainLeavingOngoing = function(event)
             aboveTrainLeavingRearCarriage = aboveTrainLeaving["front_stock"]
         end
         if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 20 then
+            -- reattaching next carriage can clobber schedule and will set train to manual, so preserve state
+            local schedule, isManual, targetStop = aboveTrainLeaving.schedule, aboveTrainLeaving.manual_mode, aboveTrainLeaving.path_end_stop
+
             local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
             local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
             nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
@@ -251,28 +260,22 @@ TrainManager.TrainLeavingOngoing = function(event)
             if #aboveTrainLeaving.carriages ~= aboveTrainOldCarriageCount + 1 then
                 error("Placed carriage not part of train as expected carriage count not right")
             end
+
+            -- restore schedule and state
+            aboveTrainLeaving.schedule = schedule
+            if not isManual then
+                TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
+            end
         end
     end
 
     TrainManager.SetTrainAbsoluteSpeed(aboveTrainLeaving, desiredSpeed)
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, desiredSpeed)
 
-    aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
-    aboveTrainLeaving.manual_mode = false
-    if trainManagerEntry.origTrainScheduleStopEntity.trains_limit ~= Utils.MaxTrainStopLimit then
-        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit + 1
-        aboveTrainLeaving.recalculate_path() -- TODO: Seem to be overally calling this since it was added.
-        trainManagerEntry.origTrainScheduleStopEntity.trains_limit = trainManagerEntry.origTrainScheduleStopEntity.trains_limit - 1
-    else
-        aboveTrainLeaving.recalculate_path() -- TODO: Seem to be overally calling this since it was added.
-    end
-
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
 TrainManager.TrainLeavingCompleted = function(trainManagerEntry, speed)
-    trainManagerEntry.aboveTrainLeaving.schedule = trainManagerEntry.origTrainSchedule
-    trainManagerEntry.aboveTrainLeaving.manual_mode = false
     TrainManager.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, speed)
     TrainManager.TerminateTunnelTrip(trainManagerEntry)
 end
@@ -325,6 +328,53 @@ TrainManager.TrainLeavingOngoing_OnTrainCreated = function(event)
         global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_2] = nil
     end
     global.trainManager.leavingTrainIdToManagedTrain[event.train.id] = managedTrain
+end
+
+TrainManager.CreateDummyTrain = function(trainManagerEntry, sourceTrain)
+    local exitPortalEntity = trainManagerEntry.surfaceExitPortal.entity
+    local locomotive = exitPortalEntity.surface.create_entity{
+        name = "railway_tunnel-tunnel_exit_dummy_locomotive",
+        position = exitPortalEntity.position,
+        direction = exitPortalEntity.direction,
+        force = exitPortalEntity.force,
+        raise_built = false,
+        create_build_effect_smoke = false,
+    }
+    locomotive.burner.currently_burning = "coal"
+    locomotive.burner.remaining_burning_fuel = 4000000
+    trainManagerEntry.dummyTrain = locomotive.train
+    trainManagerEntry.dummyTrain.schedule = sourceTrain.schedule
+    TrainManager.SetTrainToAuto(trainManagerEntry.dummyTrain, sourceTrain.path_end_stop)
+    if (trainManagerEntry.dummyTrain.state == defines.train_state.path_lost
+        or trainManagerEntry.dummyTrain.state == defines.train_state.no_path
+        or trainManagerEntry.dummyTrain.state == defines.train_state.destination_full) then
+        -- If the train ends up in one of those states something has gone wrong.
+        error ("dummy train has unexpected state " .. tonumber(trainManagerEntry.dummyTrain.state))
+    end
+end
+
+TrainManager.DestroyDummyTrain = function(trainManagerEntry)
+    if trainManagerEntry.dummyTrain ~= nil and trainManagerEntry.dummyTrain.valid then
+        for _, carriage in pairs(trainManagerEntry.dummyTrain.carriages) do
+            carriage.destroy()
+        end
+    end
+    trainManagerEntry.dummyTrain = nil
+end
+
+TrainManager.SetTrainToAuto = function(train, targetStop)
+    if targetStop ~= nil and targetStop.valid then
+        -- Train limits on the original target train stop of the train going through the tunnel might prevent
+        -- the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop
+        -- has a slot open before setting the train to auto.
+        local oldLimit = targetStop.trains_limit
+        targetStop.trains_limit = targetStop.trains_count+1
+        train.manual_mode = false
+        targetStop.trains_limit = oldLimit
+    else
+        -- There was no target stop, so no special handling needed
+        train.manual_mode = false
+    end
 end
 
 TrainManager.SpeedGovernedByLeavingTrain = function(trainManagerEntry)
@@ -526,16 +576,20 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
         if managedTrain.tunnel.id == tunnelRemoved.id then
             if managedTrain.aboveTrainEnteringId ~= nil then
                 global.trainManager.enteringTrainIdToManagedTrain[managedTrain.aboveTrainEnteringId] = nil
-                managedTrain.aboveTrainEntering.schedule = managedTrain.origTrainSchedule
                 managedTrain.aboveTrainEntering.manual_mode = true
                 managedTrain.aboveTrainEntering.speed = 0
+                if managedTrain.dummyTrain ~= nil then
+                    managedTrain.aboveTrainEntering.schedule = managedTrain.dummyTrain.schedule
+                elseif managedTrain.aboveTrainLeaving ~= nil then
+                    managedTrain.aboveTrainEntering.schedule = managedTrain.aboveTrainLeaving.schedule
+                end
             end
             if managedTrain.aboveTrainLeavingId ~= nil then
                 global.trainManager.leavingTrainIdToManagedTrain[managedTrain.aboveTrainLeavingId] = nil
-                managedTrain.aboveTrainLeaving.schedule = managedTrain.origTrainSchedule
                 managedTrain.aboveTrainLeaving.manual_mode = true
                 managedTrain.aboveTrainLeaving.speed = 0
             end
+            TrainManager.DestroyDummyTrain(managedTrain)
             local undergroundCarriages = Utils.DeepCopy(managedTrain.undergroundTrain.carriages)
             for _, carriage in pairs(undergroundCarriages) do
                 carriage.destroy()

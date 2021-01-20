@@ -21,3 +21,5 @@ require("prototypes/tunnel-portal-red-signal-locomotive")
 require("prototypes/tunnel-segment-surface")
 require("prototypes/tunnel-segment-surface-rail-crossing")
 require("prototypes/tunnel-rail-signal-surface")(tunnelSignalSurfaceCollisionLayer)
+
+require("prototypes/tunnel-exit-dummy-locomotive")

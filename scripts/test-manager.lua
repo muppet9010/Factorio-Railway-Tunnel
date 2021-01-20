@@ -15,7 +15,9 @@ if doTests then
         shortTunnelShortTrainNorthToSouth2Tunnels = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-2-tunnels")},
         shortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         repathOnApproach = {enabled = true, testScript = require("tests/repath-on-approach")},
-        doubleRepathOnApproach = {enabled = true, testScript = require("tests/double-repath-on-approach")}
+        doubleRepathOnApproach = {enabled = true, testScript = require("tests/double-repath-on-approach")},
+        pathingKeepReservation = {enabled = true, testScript = require("tests/pathing-keep-reservation")},
+        pathingKeepReservationNoGap = {enabled = true, testScript = require("tests/pathing-keep-reservation-no-gap")}
     }
 end
 
