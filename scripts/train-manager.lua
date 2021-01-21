@@ -339,24 +339,23 @@ end
 
 TrainManager.CreateDummyTrain = function(trainManagerEntry, sourceTrain)
     local exitPortalEntity = trainManagerEntry.surfaceExitPortal.entity
-    local locomotive = exitPortalEntity.surface.create_entity{
+    local locomotive =
+        exitPortalEntity.surface.create_entity {
         name = "railway_tunnel-tunnel_exit_dummy_locomotive",
         position = exitPortalEntity.position,
         direction = exitPortalEntity.direction,
         force = exitPortalEntity.force,
         raise_built = false,
-        create_build_effect_smoke = false,
+        create_build_effect_smoke = false
     }
     locomotive.burner.currently_burning = "coal"
     locomotive.burner.remaining_burning_fuel = 4000000
     trainManagerEntry.dummyTrain = locomotive.train
     trainManagerEntry.dummyTrain.schedule = sourceTrain.schedule
     TrainManager.SetTrainToAuto(trainManagerEntry.dummyTrain, sourceTrain.path_end_stop)
-    if (trainManagerEntry.dummyTrain.state == defines.train_state.path_lost
-        or trainManagerEntry.dummyTrain.state == defines.train_state.no_path
-        or trainManagerEntry.dummyTrain.state == defines.train_state.destination_full) then
+    if (trainManagerEntry.dummyTrain.state == defines.train_state.path_lost or trainManagerEntry.dummyTrain.state == defines.train_state.no_path or trainManagerEntry.dummyTrain.state == defines.train_state.destination_full) then
         -- If the train ends up in one of those states something has gone wrong.
-        error ("dummy train has unexpected state " .. tonumber(trainManagerEntry.dummyTrain.state))
+        error("dummy train has unexpected state " .. tonumber(trainManagerEntry.dummyTrain.state))
     end
 end
 
@@ -375,7 +374,7 @@ TrainManager.SetTrainToAuto = function(train, targetStop)
         -- the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop
         -- has a slot open before setting the train to auto.
         local oldLimit = targetStop.trains_limit
-        targetStop.trains_limit = targetStop.trains_count+1
+        targetStop.trains_limit = targetStop.trains_count + 1
         train.manual_mode = false
         targetStop.trains_limit = oldLimit
     else

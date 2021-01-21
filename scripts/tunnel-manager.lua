@@ -56,7 +56,7 @@ Tunnel.OnLoad = function()
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
     Interfaces.RegisterInterface("Tunnel.RegisterEntrySignalEntity", Tunnel.RegisterEntrySignalEntity)
     Interfaces.RegisterInterface("Tunnel.DeregisterEntrySignal", Tunnel.DeregisterEntrySignal)
-    Interfaces.RegisterInterface("Tunnel.RegisterEndSiganlEntity", Tunnel.RegisterEndSiganlEntity)
+    Interfaces.RegisterInterface("Tunnel.RegisterEndSignalEntity", Tunnel.RegisterEndSignalEntity)
     Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
@@ -137,7 +137,7 @@ Tunnel.DeregisterEntrySignal = function(entrySignal)
     global.tunnel.entrySignals[entrySignal.entity.unit_number] = nil
 end
 
-Tunnel.RegisterEndSiganlEntity = function(endSignalEntity, portal)
+Tunnel.RegisterEndSignalEntity = function(endSignalEntity, portal)
     global.tunnel.endSignals[endSignalEntity.unit_number] = {
         id = endSignalEntity.unit_number,
         entity = endSignalEntity,
@@ -151,26 +151,18 @@ Tunnel.DeregisterEndSignal = function(endSignal)
 end
 
 Tunnel.TrainReservedTunnel = function(trainManagerEntry)
-    -- Close signals on the exit side
-    game.print("Train reserved tunnel - Close signals on the exit side")
     Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
 end
 
 Tunnel.TrainFinishedEnteringTunnel = function(trainManagerEntry)
-    -- Close signals on the entrance side
-    game.print("Train finsihed entering - Close signals on the entrance side")
     Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
 end
 
 Tunnel.TrainStartedExitingTunnel = function(trainManagerEntry)
-    -- Remove force closed signals on the exit side
-    game.print("Train started exiting - Remove force closed signals on the exit side")
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
 end
 
 Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
-    -- Remove force closed signals on the entrance side
-    game.print("Train finished with tunnel portals usage - Remove force closed signals on the entrance side")
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
 end
 

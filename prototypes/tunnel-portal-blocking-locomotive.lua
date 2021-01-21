@@ -5,7 +5,7 @@ data:extend(
     {
         {
             type = "locomotive",
-            name = "railway_tunnel-tunnel_portal_red_signal_locomotive",
+            name = "railway_tunnel-tunnel_portal_blocking_locomotive",
             collision_box = {{-0.3, -0.3}, {0.3, 0.3}},
             collision_mask = CollisionMaskUtil.get_default_mask("locomotive"),
             --selection_box = {{-1, -1}, {1, 1}}, -- For testing when we need to select them
