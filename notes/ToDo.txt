@@ -1,12 +1,10 @@
 Limitations (in addition to below tasks):
-    - Only try to send 1 train through a tunnel at once. It won't stop more, but will error if they can't come out smoothly.
     - Currently limited to 500 tiles of tunnel and train each side from middle of tunnel - can run a 4-16-4 through a sensible tunnel fine.
     - Trains must be lead by a locomotive facing forwards, otherwise they will get stuck and error coming out of a tunnel.
 
 Next:
     - When trains are leaving they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help. This should handle wagons or loco's facing backwards being the first carriages out of a tunnel.
     - Handle train stop limits. Breaks trains leaving at present. Use a fake train, change train limits and revert and carefull schedule/manual timed changes.
-    - Lock tunnel when its in use by closing both entry signals by using an invisible carriage like the End signal. Remove it when anything is approaching the signal its blocking. If something impacts it then give it 1 health and no kill, wreckage, etc.
 
 Soon:
 

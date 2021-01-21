@@ -59,6 +59,10 @@ Tunnel.OnLoad = function()
     Interfaces.RegisterInterface("Tunnel.RegisterEndSiganlEntity", Tunnel.RegisterEndSiganlEntity)
     Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
+    Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
+    Interfaces.RegisterInterface("Tunnel.TrainFinishedEnteringTunnel", Tunnel.TrainFinishedEnteringTunnel)
+    Interfaces.RegisterInterface("Tunnel.TrainStartedExitingTunnel", Tunnel.TrainStartedExitingTunnel)
+    Interfaces.RegisterInterface("Tunnel.TrainReleasedTunnel", Tunnel.TrainReleasedTunnel)
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -144,6 +148,30 @@ end
 
 Tunnel.DeregisterEndSignal = function(endSignal)
     global.tunnel.endSignals[endSignal.entity.unit_number] = nil
+end
+
+Tunnel.TrainReservedTunnel = function(trainManagerEntry)
+    -- Close signals on the exit side
+    game.print("Train reserved tunnel - Close signals on the exit side")
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+end
+
+Tunnel.TrainFinishedEnteringTunnel = function(trainManagerEntry)
+    -- Close signals on the entrance side
+    game.print("Train finsihed entering - Close signals on the entrance side")
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
+end
+
+Tunnel.TrainStartedExitingTunnel = function(trainManagerEntry)
+    -- Remove force closed signals on the exit side
+    game.print("Train started exiting - Remove force closed signals on the exit side")
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+end
+
+Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
+    -- Remove force closed signals on the entrance side
+    game.print("Train finished with tunnel portals usage - Remove force closed signals on the entrance side")
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
 end
 
 return Tunnel

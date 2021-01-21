@@ -117,6 +117,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(sourceTrain.speed))
 
     trainManagerEntry.undergroundLeavingEntrySignalPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
+    Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
 
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
@@ -130,6 +131,7 @@ TrainManager.TrainEnteringOngoing = function(event)
         -- check whether the train is still approaching the tunnel portal
         if aboveTrainEntering.state ~= defines.train_state.arrive_signal or aboveTrainEntering.signal ~= trainManagerEntry.surfaceEntrancePortalEndSignal.entity then
             TrainManager.TerminateTunnelTrip(trainManagerEntry)
+            Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
             return
         end
     else
@@ -155,11 +157,14 @@ TrainManager.TrainEnteringOngoing = function(event)
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
     if trainManagerEntry.aboveTrainEntering ~= nil and trainManagerEntry.aboveTrainEntering.valid and #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] ~= nil then
+        -- Train is still entering, continue loop.
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
     else
+        -- Train has completed entering.
         global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
         trainManagerEntry.aboveTrainEntering = nil
         trainManagerEntry.aboveTrainEnteringId = nil
+        Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", trainManagerEntry)
     end
 end
 
@@ -213,6 +218,7 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
         aboveTrainLeaving.recalculate_path()
     end
 
+    Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
@@ -275,6 +281,7 @@ TrainManager.TrainLeavingCompleted = function(trainManagerEntry, speed)
     trainManagerEntry.aboveTrainLeaving.manual_mode = false
     TrainManager.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, speed)
     TrainManager.TerminateTunnelTrip(trainManagerEntry)
+    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry) --TODO: this isn't truely correct as the train is still using the exit portal. We need to continue tracking the train until its last carriage is out of the exit protals signal block.
 end
 
 TrainManager.TerminateTunnelTrip = function(trainManagerEntry)

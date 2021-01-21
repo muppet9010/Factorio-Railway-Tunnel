@@ -28,6 +28,7 @@ TunnelPortals.CreateGlobals = function()
             portalRailEntities = table of the rail entities that are part of the portal itself. key'd by the rail unit_number.
             tunnelRailEntities = table of the rail entities that are part of the connected tunnel for the portal. key'd by the rail unit_number.
             tunnelOtherEntities = table of the non rail entities that are part of the connected tunnel for the portal. Will be deleted before the tunnelRailEntities. key'd by the entities unit_number.
+            trainManagersClosingEntranceSignal = table of TrainManager global objects that currently state this entrance should be closed. key'd by TrainManager id.
         }
     ]]
 end
@@ -56,6 +57,8 @@ TunnelPortals.OnLoad = function()
 
     Interfaces.RegisterInterface("TunnelPortals.TunnelCompleted", TunnelPortals.TunnelCompleted)
     Interfaces.RegisterInterface("TunnelPortals.TunnelRemoved", TunnelPortals.TunnelRemoved)
+    Interfaces.RegisterInterface("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", TunnelPortals.CloseEntranceSignalForTrainManagerEntry)
+    Interfaces.RegisterInterface("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", TunnelPortals.OpenEntranceSignalForTrainManagerEntry)
 end
 
 TunnelPortals.OnBuiltEntity = function(event)
@@ -342,6 +345,20 @@ TunnelPortals.OnDiedEntity = function(event)
         Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
         TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
     end
+end
+
+--TODO: need to detect if an entrance signal changes and mark it as an approaching unknown train. Happens if train is going slowly and the train is inside the portal signal block before it triggers the END signal.
+
+TunnelPortals.CloseEntranceSignalForTrainManagerEntry = function(portal, trainManagerEntry)
+    -- TODO: log and do if not already done
+    -- Log to trainManagersClosingEntranceSignal
+    game.print(trainManagerEntry.id .. " has closed entrance at: " .. Utils.FormatPositionTableToString(portal.entrySignals["in"].entity.position))
+end
+
+TunnelPortals.OpenEntranceSignalForTrainManagerEntry = function(portal, trainManagerEntry)
+    -- TODO: log and do if not already done
+    -- Log to trainManagersClosingEntranceSignal
+    game.print(trainManagerEntry.id .. " has opened entrance at: " .. Utils.FormatPositionTableToString(portal.entrySignals["in"].entity.position))
 end
 
 return TunnelPortals
