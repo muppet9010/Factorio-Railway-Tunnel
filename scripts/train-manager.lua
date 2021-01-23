@@ -28,9 +28,12 @@ TrainManager.CreateGlobals = function()
         aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
         aboveLeavingSignalPosition = The above ground position that the rear leaving carriage should trigger the next carriage at.
         committed = boolean if train is already fully committed to going through tunnel
+        aboveTrainLeavingTunnelRailSegment = LuaTrain of the train leaving the tunnel's exit portal rail segment on the world surface.
+        aboveTrainLeavingTunnelRailSegmentId= The LuaTrain ID of the above Train Leaving Tunnel Rail Segment.
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
+    global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain = global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain or {}
 end
 
 TrainManager.OnLoad = function()
@@ -38,8 +41,7 @@ TrainManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainEnteringOngoing", TrainManager.TrainEnteringOngoing)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundOngoing", TrainManager.TrainUndergroundOngoing)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainLeavingOngoing", TrainManager.TrainLeavingOngoing)
-    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainEnteringOngoing_OnTrainCreated", TrainManager.TrainEnteringOngoing_OnTrainCreated)
-    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainLeavingOngoing_OnTrainCreated", TrainManager.TrainLeavingOngoing_OnTrainCreated)
+    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManager.TrainTracking_OnTrainCreated)
     Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
     Interfaces.RegisterInterface("TrainManager.TunnelRemoved", TrainManager.TunnelRemoved)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainLeavingTunnelRailSegmentOngoing", TrainManager.TrainLeavingTunnelRailSegmentOngoing)
@@ -130,7 +132,6 @@ TrainManager.TrainEnteringOngoing = function(event)
         -- check whether the train is still approaching the tunnel portal
         if aboveTrainEntering.state ~= defines.train_state.arrive_signal or aboveTrainEntering.signal ~= trainManagerEntry.surfaceEntrancePortalEndSignal.entity then
             TrainManager.TerminateTunnelTrip(trainManagerEntry)
-            Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
             return
         end
     else
@@ -154,6 +155,12 @@ TrainManager.TrainEnteringOngoing = function(event)
             aboveTrainEntering.manual_mode = true
             -- schedule has been transferred to dummy train
             aboveTrainEntering.schedule = nil
+
+            -- Check if this train is alrady using the tunnel to leave. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
+            if global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[aboveTrainEntering.id] ~= nil then
+                -- Terminate the old tunnel usage that was delayed until this point.
+                TrainManager.TerminateTunnelTrip(global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[aboveTrainEntering.id])
+            end
         end
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
@@ -285,6 +292,16 @@ end
 TrainManager.TrainLeavingCompleted = function(trainManagerEntry, speed)
     TrainManager.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, speed)
     TrainManager.RemoveUndergroundTrain(trainManagerEntry)
+    TrainManager.TrainLeavingTunnelRailSegmentInitial(trainManagerEntry)
+
+    global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingId] = nil
+    trainManagerEntry.aboveTrainLeavingId = nil
+    trainManagerEntry.aboveTrainLeaving = nil
+end
+
+TrainManager.TrainLeavingTunnelRailSegmentInitial = function(trainManagerEntry)
+    trainManagerEntry.aboveTrainLeavingTunnelRailSegment, trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId
+    global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId] = trainManagerEntry
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
 end
 
@@ -298,7 +315,6 @@ TrainManager.TrainLeavingTunnelRailSegmentOngoing = function(event)
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
     else
         -- No train in the block so our one must have left.
-        Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
         TrainManager.TerminateTunnelTrip(trainManagerEntry)
     end
 end
@@ -314,48 +330,61 @@ end
 
 TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
     TrainManager.RemoveUndergroundTrain(trainManagerEntry)
-    if trainManagerEntry.aboveTrainLeaving then
-        global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeaving.id] = nil
+    if trainManagerEntry.aboveTrainEntering then
+        global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
     end
+    if trainManagerEntry.aboveTrainLeaving then
+        global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingId] = nil
+    end
+    if trainManagerEntry.aboveTrainLeavingTunnelRailSegment then
+        global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId] = nil
+        EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
+    end
+    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
 end
 
-TrainManager.TrainEnteringOngoing_OnTrainCreated = function(event)
+TrainManager.TrainTracking_OnTrainCreated = function(event)
     if event.old_train_id_1 == nil then
         return
     end
-    local managedTrain = global.trainManager.enteringTrainIdToManagedTrain[event.old_train_id_1] or global.trainManager.enteringTrainIdToManagedTrain[event.old_train_id_2]
-    if managedTrain == nil then
-        return
+    for _, trainTracking in pairs(
+        {
+            {
+                list = global.trainManager.enteringTrainIdToManagedTrain,
+                trainAttributeName = "aboveTrainEntering",
+                trainIdAttributeName = "aboveTrainEnteringId"
+            },
+            {
+                list = global.trainManager.leavingTrainIdToManagedTrain,
+                trainAttributeName = "aboveTrainLeaving",
+                trainIdAttributeName = "aboveTrainLeavingId"
+            },
+            {
+                list = global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain,
+                trainAttributeName = "aboveTrainLeavingTunnelRailSegment",
+                trainIdAttributeName = "aboveTrainLeavingTunnelRailSegmentId"
+            }
+        }
+    ) do
+        TrainManager.TrainTrackingCheckList(event, trainTracking.list, trainTracking.trainAttributeName, trainTracking.trainIdAttributeName)
     end
-    managedTrain.aboveTrainEntering = event.train
-    managedTrain.aboveTrainEnteringId = event.train.id
-    if global.trainManager.enteringTrainIdToManagedTrain[event.old_train_id_1] ~= nil then
-        global.trainManager.enteringTrainIdToManagedTrain[event.old_train_id_1] = nil
-    end
-    if global.trainManager.enteringTrainIdToManagedTrain[event.old_train_id_2] ~= nil then
-        global.trainManager.enteringTrainIdToManagedTrain[event.old_train_id_2] = nil
-    end
-    global.trainManager.enteringTrainIdToManagedTrain[event.train.id] = managedTrain
 end
 
-TrainManager.TrainLeavingOngoing_OnTrainCreated = function(event)
-    if event.old_train_id_1 == nil then
-        return
-    end
-    local managedTrain = global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_1] or global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_2]
+TrainManager.TrainTrackingCheckList = function(event, list, trainAttributeName, trainIdAttributeName)
+    local managedTrain = list[event.old_train_id_1] or list[event.old_train_id_2]
     if managedTrain == nil then
         return
     end
-    managedTrain.aboveTrainLeaving = event.train
-    managedTrain.aboveTrainLeavingId = event.train.id
-    if global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_1] ~= nil then
-        global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_1] = nil
+    managedTrain[trainAttributeName] = event.train
+    managedTrain[trainIdAttributeName] = event.train.id
+    if list[event.old_train_id_1] ~= nil then
+        list[event.old_train_id_1] = nil
     end
-    if global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_2] ~= nil then
-        global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_2] = nil
+    if list[event.old_train_id_2] ~= nil then
+        list[event.old_train_id_2] = nil
     end
-    global.trainManager.leavingTrainIdToManagedTrain[event.train.id] = managedTrain
+    list[event.train.id] = managedTrain
 end
 
 TrainManager.CreateDummyTrain = function(trainManagerEntry, sourceTrain)

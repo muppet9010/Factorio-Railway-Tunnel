@@ -164,6 +164,7 @@ end
 
 Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
 end
 
 return Tunnel
