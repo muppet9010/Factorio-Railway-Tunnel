@@ -4,8 +4,8 @@ local Underground = {}
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
-    global.underground.horizontalSurface = global.underground.horizontalSurface or Underground.CreateSurface("railway_tunnel-undeground-horizontal")
-    global.underground.verticalSurface = global.underground.verticalSurface or Underground.CreateSurface("railway_tunnel-undeground-vertical")
+    -- global.underground.horizontalSurface = The surface for horizontal tunnel underground bits.
+    -- global.underground.verticalSurface = The surface for vertical tunnel undergound bits.
 end
 
 Underground.OnLoad = function()
@@ -13,6 +13,12 @@ Underground.OnLoad = function()
 end
 
 Underground.OnStartup = function()
+    if global.underground.horizontalSurface == nil then
+        global.underground.horizontalSurface = Underground.CreateSurface("railway_tunnel-undeground-horizontal")
+    end
+    if global.underground.verticalSurface == nil then
+        global.underground.verticalSurface = Underground.CreateSurface("railway_tunnel-undeground-vertical")
+    end
 end
 
 Underground.CreateSurface = function(surfaceName)

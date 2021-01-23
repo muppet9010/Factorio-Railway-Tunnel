@@ -200,7 +200,7 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
             aboveSurface.create_entity {
             name = "railway_tunnel-tunnel_portal_blocking_locomotive",
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.endSignalBlockingLocomotiveDistance})),
-            force = "enemy",
+            force = global.force.tunnelForce,
             direction = Utils.LoopDirectionValue(directionValue + 2)
         }
         endSignalBlockingLocomotiveEntity.train.schedule = {
@@ -381,7 +381,7 @@ TunnelPortals.CloseEntranceSignalForTrainManagerEntry = function(portal, trainMa
         aboveSurface.create_entity {
         name = "railway_tunnel-tunnel_portal_blocking_locomotive",
         position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entrySignalBlockingLocomotiveDistance})),
-        force = "enemy", --TODO: create a force for these non player entities just to be safe.
+        force = global.force.tunnelForce,
         direction = Utils.LoopDirectionValue(directionValue + 4)
     }
     local pos = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entrySignalBlockingLocomotiveDistance + 1.5}))
@@ -394,7 +394,7 @@ TunnelPortals.CloseEntranceSignalForTrainManagerEntry = function(portal, trainMa
         }
     }
     entrySignalBlockingLocomotiveEntity.train.manual_mode = false
-    entrySignalBlockingLocomotiveEntity.destructible = false
+    entrySignalBlockingLocomotiveEntity.destructible = false -- This will stop unexpected trains entering the tunnel. Suitbale in the short term.
     portal.entranceSignalBlockingEntity = entrySignalBlockingLocomotiveEntity
 end
 

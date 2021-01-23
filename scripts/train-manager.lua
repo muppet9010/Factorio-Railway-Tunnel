@@ -42,6 +42,7 @@ TrainManager.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainLeavingOngoing_OnTrainCreated", TrainManager.TrainLeavingOngoing_OnTrainCreated)
     Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
     Interfaces.RegisterInterface("TrainManager.TunnelRemoved", TrainManager.TunnelRemoved)
+    EventScheduler.RegisterScheduledEventType("TrainManager.TrainLeavingTunnelRailSegmentOngoing", TrainManager.TrainLeavingTunnelRailSegmentOngoing)
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
@@ -283,16 +284,36 @@ end
 
 TrainManager.TrainLeavingCompleted = function(trainManagerEntry, speed)
     TrainManager.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, speed)
-    TrainManager.TerminateTunnelTrip(trainManagerEntry)
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry) --TODO: this isn't truely correct as the train is still using the exit portal. We need to continue tracking the train until its last carriage is out of the exit protals signal block.
+    TrainManager.RemoveUndergroundTrain(trainManagerEntry)
+    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
+end
+
+TrainManager.TrainLeavingTunnelRailSegmentOngoing = function(event)
+    -- Track the tunnel portal's entrance rail signal so we can mark the tunnel as open for the next train when the current train has left. -- We are assuming that no train gets in to the portal rail segment before our main train gets out.
+    -- This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one.
+    local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
+    local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entrySignals["in"].entity
+    if exitPortalEntranceSignalEntity.signal_state == defines.signal_state.closed then
+        -- A train is still in this block so check next tick.
+        EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
+    else
+        -- No train in the block so our one must have left.
+        Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
+        TrainManager.TerminateTunnelTrip(trainManagerEntry)
+    end
+end
+
+TrainManager.RemoveUndergroundTrain = function(trainManagerEntry)
+    if trainManagerEntry.undergroundTrain ~= nil then
+        for _, carriage in pairs(trainManagerEntry.undergroundTrain.carriages) do
+            carriage.destroy()
+        end
+        trainManagerEntry.undergroundTrain = nil
+    end
 end
 
 TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
-    for _, carriage in pairs(trainManagerEntry.undergroundTrain.carriages) do
-        carriage.destroy()
-    end
-    trainManagerEntry.undergroundTrain = nil
-
+    TrainManager.RemoveUndergroundTrain(trainManagerEntry)
     if trainManagerEntry.aboveTrainLeaving then
         global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeaving.id] = nil
     end
@@ -603,6 +624,7 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
             EventScheduler.RemoveScheduledEvents("TrainManager.TrainEnteringOngoing", managedTrain.id)
             EventScheduler.RemoveScheduledEvents("TrainManager.TrainUndergroundOngoing", managedTrain.id)
             EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", managedTrain.id)
             global.trainManager.managedTrains[managedTrain.id] = nil
         end
     end
