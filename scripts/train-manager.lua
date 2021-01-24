@@ -22,7 +22,7 @@ TrainManager.CreateGlobals = function()
         surfaceExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
         tunnel = ref to the global tunnel object.
         undergroundTrain = LuaTrain of the train created in the underground surface.
-        undergroundLeavingEntrySignalPosition = The underground position equivilent to the entry signal that the underground train starts leaving when it approaches.
+        undergroundLeavingPortalEntrancePosition = The underground position equivilent to the portal entrance that the underground train is measured against to decide when it starts leaving.
         aboveSurface = LuaSurface of the main world surface.
         undergroundSurface = LuaSurface of the specific underground surface.
         aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
@@ -117,9 +117,12 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     trainManagerEntry.undergroundTrain = undergroundTrain
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(sourceTrain.speed))
 
-    trainManagerEntry.undergroundLeavingEntrySignalPosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.position, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
-    Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
+    local exitPortalOrientation = Utils.DirectionToOrientation(trainManagerEntry.surfaceExitPortal.entity.direction)
+    local exitPortalEntranceOffset = Utils.RotatePositionAround0(exitPortalOrientation, {x = 0, y = 0 - trainManagerEntry.surfaceExitPortal.entranceDistanceFromCenter})
+    local exitPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entity.position, exitPortalEntranceOffset)
+    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(exitPortalEntrancePosition, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
 
+    Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
     EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
 end
@@ -187,7 +190,7 @@ TrainManager.TrainUndergroundOngoing = function(event)
     else
         leadCarriage = trainManagerEntry.undergroundTrain["back_stock"]
     end
-    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingEntrySignalPosition) > 30 then
+    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingPortalEntrancePosition) > 30 then
         --The lead carriage isn't close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
     else
@@ -309,7 +312,7 @@ TrainManager.TrainLeavingTunnelRailSegmentOngoing = function(event)
     -- Track the tunnel portal's entrance rail signal so we can mark the tunnel as open for the next train when the current train has left. -- We are assuming that no train gets in to the portal rail segment before our main train gets out.
     -- This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one.
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
-    local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entrySignals["in"].entity
+    local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entryOuterSignals["in"].entity
     if exitPortalEntranceSignalEntity.signal_state == defines.signal_state.closed then
         -- A train is still in this block so check next tick.
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
@@ -507,38 +510,22 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     local placedCarriage, refTrain, tunnel, targetSurface = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.tunnel, trainManagerEntry.tunnel.undergroundSurface
 
     local endSignalRailUnitNumber = trainManagerEntry.surfaceEntrancePortalEndSignal.entity.get_connected_rails()[1].unit_number
-    local firstCarriageDistanceFromEndSignal = 0
+    local firstCarriageDistanceFromPortalEntrance = 0
     for _, railEntity in pairs(refTrain.path.rails) do
         -- TODO: this doesn't account for where on the current rail entity the carriage is, but hopefully is accurate enough.
         local thisRailLength = 2
         if railEntity.type == "curved-rail" then
             thisRailLength = 7 -- Estimate
         end
-        firstCarriageDistanceFromEndSignal = firstCarriageDistanceFromEndSignal + thisRailLength
+        firstCarriageDistanceFromPortalEntrance = firstCarriageDistanceFromPortalEntrance + thisRailLength
         if railEntity.unit_number == endSignalRailUnitNumber then
             break
         end
     end
 
-    local tunnelInitialPosition =
-        Utils.RotatePositionAround0(
-        tunnel.alignmentOrientation,
-        {
-            x = 1 + tunnel.undergroundModifiers.tunnelInstanceValue,
-            y = 0
-        }
-    )
-    local nextCarriagePosition =
-        Utils.ApplyOffsetToPosition(
-        tunnelInitialPosition,
-        Utils.RotatePositionAround0(
-            trainManagerEntry.trainTravelOrientation,
-            {
-                x = 0,
-                y = tunnel.undergroundModifiers.distanceFromCenterToPortalEndSignals + firstCarriageDistanceFromEndSignal
-            }
-        )
-    )
+    local tunnelInitialPosition = Utils.RotatePositionAround0(tunnel.alignmentOrientation, {x = 1 + tunnel.undergroundModifiers.tunnelInstanceValue, y = 0})
+    local firstCarraigeDistanceFromPortalCenter = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEntrance + tunnel.portals[1].entranceDistanceFromCenter})
+    local nextCarriagePosition = Utils.ApplyOffsetToPosition(tunnelInitialPosition, firstCarraigeDistanceFromPortalCenter)
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
     local trainCarriagesForwardDirection = trainManagerEntry.trainTravelDirection
     if not trainManagerEntry.aboveTrainEnteringForwards then

@@ -24,8 +24,6 @@ Tunnel.CreateGlobals = function()
                 railAlignmentAxis = the "x" or "y" axis that the tunnels underground rails are aligned along.
                 tunnelInstanceAxis = the "x" or "y" that each tunnel instance is spaced out along.
                 tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
-                distanceFromCenterToPortalEntrySignals = the number of tiles between the centre of the underground and the portal entry signals.
-                distanceFromCenterToPortalEndSignals = the number of tiles between the centre of the underground and the portal end signals.
                 tunnelInstanceClonedTrainValue = this tunnels static value of the tunnelInstanceAxis for the cloned (stationary) train carriages.
                 undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
                 surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
@@ -41,7 +39,7 @@ Tunnel.CreateGlobals = function()
             portal = the portal global object this signal is part of.
         }
     ]]
-    global.tunnel.entrySignals = global.tunnel.entrySignals or {}
+    global.tunnel.entryInnerSignals = global.tunnel.entryInnerSignals or {}
     --[[
         [unit_number] = {
             id = unit_number of this signal.
@@ -54,8 +52,8 @@ end
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
-    Interfaces.RegisterInterface("Tunnel.RegisterEntrySignalEntity", Tunnel.RegisterEntrySignalEntity)
-    Interfaces.RegisterInterface("Tunnel.DeregisterEntrySignal", Tunnel.DeregisterEntrySignal)
+    Interfaces.RegisterInterface("Tunnel.RegisterEntryInnerSignalEntity", Tunnel.RegisterEntrySignalEntity)
+    Interfaces.RegisterInterface("Tunnel.DeregisterEntryInnerSignal", Tunnel.DeregisterEntrySignal)
     Interfaces.RegisterInterface("Tunnel.RegisterEndSignalEntity", Tunnel.RegisterEndSignalEntity)
     Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
@@ -124,17 +122,17 @@ Tunnel.RemoveTunnel = function(tunnel)
     global.tunnel.tunnels[tunnel.id] = nil
 end
 
-Tunnel.RegisterEntrySignalEntity = function(entrySignalEntity, portal)
-    global.tunnel.entrySignals[entrySignalEntity.unit_number] = {
-        id = entrySignalEntity.unit_number,
-        entity = entrySignalEntity,
+Tunnel.RegisterEntryInnerSignalEntity = function(entryInnerSignalEntity, portal)
+    global.tunnel.entryInnerSignals[entryInnerSignalEntity.unit_number] = {
+        id = entryInnerSignalEntity.unit_number,
+        entity = entryInnerSignalEntity,
         portal = portal
     }
-    return global.tunnel.entrySignals[entrySignalEntity.unit_number]
+    return global.tunnel.entryInnerSignals[entryInnerSignalEntity.unit_number]
 end
 
-Tunnel.DeregisterEntrySignal = function(entrySignal)
-    global.tunnel.entrySignals[entrySignal.entity.unit_number] = nil
+Tunnel.DeregisterEntryInnerSignal = function(entryInnerSignal)
+    global.tunnel.entryInnerSignals[entryInnerSignal.entity.unit_number] = nil
 end
 
 Tunnel.RegisterEndSignalEntity = function(endSignalEntity, portal)
