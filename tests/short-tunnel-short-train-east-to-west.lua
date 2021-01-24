@@ -4,7 +4,7 @@ Test.Start = function()
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
 
-    local yRailValue = 201
+    local yRailValue = 61
     local nauvisEntitiesToPlace = {}
 
     -- West side

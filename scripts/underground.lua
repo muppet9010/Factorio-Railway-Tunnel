@@ -4,8 +4,8 @@ local Underground = {}
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
-    global.underground.horizontalSurface = global.underground.horizontalSurface or Underground.CreateSurface("railway_tunnel-undeground-horizontal")
-    global.underground.verticalSurface = global.underground.verticalSurface or Underground.CreateSurface("railway_tunnel-undeground-vertical")
+    -- global.underground.horizontalSurface = The surface for horizontal tunnel underground bits.
+    -- global.underground.verticalSurface = The surface for vertical tunnel undergound bits.
 end
 
 Underground.OnLoad = function()
@@ -13,6 +13,12 @@ Underground.OnLoad = function()
 end
 
 Underground.OnStartup = function()
+    if global.underground.horizontalSurface == nil then
+        global.underground.horizontalSurface = Underground.CreateSurface("railway_tunnel-undeground-horizontal")
+    end
+    if global.underground.verticalSurface == nil then
+        global.underground.verticalSurface = Underground.CreateSurface("railway_tunnel-undeground-vertical")
+    end
 end
 
 Underground.CreateSurface = function(surfaceName)
@@ -41,10 +47,9 @@ Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
         undergroundModifiers.tunnelInstanceValue = tunnel.id * 10
     end
     undergroundModifiers.tunnelInstanceClonedTrainValue = undergroundModifiers.tunnelInstanceValue + 4
-    undergroundModifiers.distanceFromCenterToPortalEntrySignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].entrySignals["in"].entity.position, tunnel.portals[2].entrySignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
-    undergroundModifiers.distanceFromCenterToPortalEndSignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].endSignals["in"].entity.position, tunnel.portals[2].endSignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
+    local distanceFromCenterToPortalEntranceSignals = (Utils.GetDistanceSingleAxis(tunnel.portals[1].entity.position, tunnel.portals[2].entity.position, undergroundModifiers.railAlignmentAxis) / 2) + tunnel.portals[1].entranceDistanceFromCenter
     undergroundModifiers.undergroundLeadInTiles = 1000 -- In a future task this will be extended based on train lenth.
-    local offsetTrackDistance = undergroundModifiers.distanceFromCenterToPortalEntrySignals + undergroundModifiers.undergroundLeadInTiles
+    local offsetTrackDistance = distanceFromCenterToPortalEntranceSignals + undergroundModifiers.undergroundLeadInTiles
     -- Place the tracks underground that the train will be copied on to and run on.
     for valueVariation = -offsetTrackDistance, offsetTrackDistance, 2 do
         table.insert(undergroundRailEntities, tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {[undergroundModifiers.railAlignmentAxis] = valueVariation, [undergroundModifiers.tunnelInstanceAxis] = undergroundModifiers.tunnelInstanceValue}, force = refTunnelPortalEntity.force, direction = refTunnelPortalEntity.direction})
