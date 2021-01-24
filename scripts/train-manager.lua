@@ -74,14 +74,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     -- Get the exit end signal on the other portal so we know when to bring the train back in.
     for _, portal in pairs(tunnel.portals) do
         if portal.id ~= surfaceEntrancePortalEndSignal.portal.id then
-            for _, endSignal in pairs(portal.endSignals) do
-                if endSignal.entity.direction ~= surfaceEntrancePortalEndSignal.entity.direction then
-                    trainManagerEntry.surfaceExitPortalEndSignal = endSignal
-                    trainManagerEntry.surfaceExitPortal = endSignal.portal
-                    break
-                end
-            end
-            break
+            trainManagerEntry.surfaceExitPortalEndSignal = portal.endSignals["out"]
+            trainManagerEntry.surfaceExitPortal = portal
         end
     end
 
@@ -312,7 +306,7 @@ TrainManager.TrainLeavingTunnelRailSegmentOngoing = function(event)
     -- Track the tunnel portal's entrance rail signal so we can mark the tunnel as open for the next train when the current train has left. -- We are assuming that no train gets in to the portal rail segment before our main train gets out.
     -- This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one.
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
-    local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entryOuterSignals["in"].entity
+    local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entrySignals["in"].entity
     if exitPortalEntranceSignalEntity.signal_state == defines.signal_state.closed then
         -- A train is still in this block so check next tick.
         EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)

@@ -4,7 +4,7 @@ local EventScheduler = require("utility/event-scheduler")
 
 local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = false -- Does all the tests regardless of their enabled state below.
+local doAllTests = true -- Does all the tests regardless of their enabled state below.
 
 local testsToDo
 if doTests then
@@ -62,6 +62,10 @@ TestManager.RunTests = function()
             test.testScript.Start(TestManager)
         end
     end
+
+    local playerForce = game.forces["player"]
+    local nauvisSurface = game.surfaces["nauvis"]
+    playerForce.chart_all(nauvisSurface)
 end
 
 TestManager.OnPlayerCreated = function(event)

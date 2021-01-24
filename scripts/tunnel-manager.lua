@@ -31,30 +31,13 @@ Tunnel.CreateGlobals = function()
             }
         }
     ]]
-    global.tunnel.endSignals = global.tunnel.endSignals or {}
-    --[[
-        [unit_number] = {
-            id = unit_number of this signal.
-            entity = signal entity.
-            portal = the portal global object this signal is part of.
-        }
-    ]]
-    global.tunnel.entryInnerSignals = global.tunnel.entryInnerSignals or {}
-    --[[
-        [unit_number] = {
-            id = unit_number of this signal.
-            entity = signal entity.
-            portal = the portal global object this signal is part of.
-        }
-    ]]
+    global.tunnel.endSignals = global.tunnel.endSignals or {} --  Reference to the "in" endSignal object in global.tunnelPortals.portals[id].endSignals. Is used as a way to check for trains stopping at this signal.
 end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
-    Interfaces.RegisterInterface("Tunnel.RegisterEntryInnerSignalEntity", Tunnel.RegisterEntrySignalEntity)
-    Interfaces.RegisterInterface("Tunnel.DeregisterEntryInnerSignal", Tunnel.DeregisterEntrySignal)
-    Interfaces.RegisterInterface("Tunnel.RegisterEndSignalEntity", Tunnel.RegisterEndSignalEntity)
+    Interfaces.RegisterInterface("Tunnel.RegisterEndSignal", Tunnel.RegisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
@@ -122,26 +105,8 @@ Tunnel.RemoveTunnel = function(tunnel)
     global.tunnel.tunnels[tunnel.id] = nil
 end
 
-Tunnel.RegisterEntryInnerSignalEntity = function(entryInnerSignalEntity, portal)
-    global.tunnel.entryInnerSignals[entryInnerSignalEntity.unit_number] = {
-        id = entryInnerSignalEntity.unit_number,
-        entity = entryInnerSignalEntity,
-        portal = portal
-    }
-    return global.tunnel.entryInnerSignals[entryInnerSignalEntity.unit_number]
-end
-
-Tunnel.DeregisterEntryInnerSignal = function(entryInnerSignal)
-    global.tunnel.entryInnerSignals[entryInnerSignal.entity.unit_number] = nil
-end
-
-Tunnel.RegisterEndSignalEntity = function(endSignalEntity, portal)
-    global.tunnel.endSignals[endSignalEntity.unit_number] = {
-        id = endSignalEntity.unit_number,
-        entity = endSignalEntity,
-        portal = portal
-    }
-    return global.tunnel.endSignals[endSignalEntity.unit_number]
+Tunnel.RegisterEndSignal = function(endSignal)
+    global.tunnel.endSignals[endSignal.entity.unit_number] = endSignal
 end
 
 Tunnel.DeregisterEndSignal = function(endSignal)

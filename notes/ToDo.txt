@@ -1,5 +1,4 @@
 Limitations (in addition to below tasks):
-    - Currently limited to 500 tiles of tunnel and train each side from middle of tunnel - can run a 4-16-4 through a sensible tunnel fine.
     - Trains must be lead by a locomotive facing forwards, otherwise they will get stuck and error coming out of a tunnel.
 
 Next:
@@ -10,7 +9,7 @@ Soon:
 Later:
     - Handle 2 trains both entering the tunnel at once.
     - Handle very very long trains:
-        - Place rails under the underground train carraiges if its a very long train. Maybe defualt 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag).
+        - Place rails under the underground train carraiges if its a very long train, Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag).
         - Confirm that if a train leaving is slowed and it is still entering that the entering train keeps in sync correctly. Should just work.
     - Make recipes, techs and item & entities localisations.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
@@ -24,7 +23,6 @@ Later:
     - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
     - Check artillery trains paused going in to the tunnel as the head has stopped coming out.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Need to support a train being able to reverse while in the tunnel back out.
-    - Catch any attempt to connect a train to our invisible locos and stop the placement in the event. Confirm this doesnt affect our references to invisble loco trains.
 
 NICE TO HAVE:
     - Look at TSM and LTN compatibility requirement or block them.
