@@ -24,7 +24,6 @@ TunnelPortals.CreateGlobals = function()
             id = unit_number of the placed tunnel portal entity.
             entity = ref to the entity of the placed main tunnel portal entity.
             endSignals = table of endSignal global objects for the end signals of this portal. These are the inner locked red signals that a train paths at to enter the tunnel. Key'd as "in" and "out".
-            entryInnerSignals = table of entryInnerSignal global objects for the inner entry signals at the entrance of this portal. These are the inner ones that detect a train approaching the tunnel train path. Key'd as "in" and "out".
             entryOuterSignals = table of entryOuterSignal global objects for the outer entry signals at the entrance of this portal. These are the outer ones that are visible to the wider train network and player. Key'd as "in" and "out".
             tunnel = the tunnel global object this portal is part of.
             portalRailEntities = table of the rail entities that are part of the portal itself. key'd by the rail unit_number.
@@ -173,10 +172,6 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         }
         portal.entryOuterSignals = {["in"] = entryOuterSignalIn, ["out"] = entryOuterSignalOut}
 
-        --TODO: add the inner signals
-        --local entryInnerSignalIn = Interfaces.Call("Tunnel.RegisterEntryInnerSignalEntity", entryInnerSignalInnerEntity, portal)
-        --local entryInnerSignalOut = Interfaces.Call("Tunnel.RegisterEntryInnerSignalEntity", entryOuterSignalInnerEntity, portal)
-
         -- Add the signals that mark the end of the usable tunnel rails.
         local endSignalInEntity =
             aboveSurface.create_entity {
@@ -237,7 +232,20 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         portal.trainManagersClosingEntranceSignal = {}
     end
 
+    portals[1].entryOuterSignals["in"].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entryOuterSignals["in"].entity}
+    TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[1].entryOuterSignals["in"].entity, "signal-1", "signal-2")
+    TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[2].entryOuterSignals["in"].entity, "signal-2", "signal-1")
+
     return portals
+end
+
+TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen = function(railSignal, nonGreenSignalName, closeOnSignalName)
+    local controlBehavior = railSignal.get_or_create_control_behavior()
+    controlBehavior.read_signal = true
+    controlBehavior.red_signal = {type = "virtual", name = nonGreenSignalName}
+    controlBehavior.orange_signal = {type = "virtual", name = nonGreenSignalName}
+    controlBehavior.close_signal = true
+    controlBehavior.circuit_condition = {condition = {first_signal = {type = "virtual", name = closeOnSignalName}, comparator = ">", constant = 0}, fulfilled = true}
 end
 
 TunnelPortals.OnBuiltEntityGhost = function(event)

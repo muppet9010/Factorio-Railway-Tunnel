@@ -13,10 +13,10 @@ return function(tunnelSignalSurfaceCollisionLayer)
                 collision_mask = {tunnelSignalSurfaceCollisionLayer},
                 collision_box = {{-0.2, -0.2}, {0.2, 0.2}},
                 draw_circuit_wires = false,
-                circuit_wire_max_distance = 10,
+                circuit_wire_max_distance = 1000000,
                 circuit_wire_connection_points = CommonPrototypeFunctions.GetBlankCircuitWireConnectionPoints(8),
-                circuit_connector_sprites = CommonPrototypeFunctions.GetBlankCircuitConnectorSprites(8)
-                --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
+                circuit_connector_sprites = CommonPrototypeFunctions.GetBlankCircuitConnectorSprites(8),
+                selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
             }
         }
     )
