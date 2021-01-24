@@ -413,7 +413,7 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
         force = global.force.tunnelForce,
         direction = Utils.LoopDirectionValue(directionValue + 4)
     }
-    local pos = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entrySignalBlockingLocomotiveDistance + 3.5}))
+    local pos = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entrySignalBlockingLocomotiveDistance + 1.5}))
     entrySignalBlockingLocomotiveEntity.train.schedule = {
         current = 1,
         records = {
