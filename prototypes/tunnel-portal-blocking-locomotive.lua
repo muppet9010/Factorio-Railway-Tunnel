@@ -6,9 +6,9 @@ data:extend(
         {
             type = "locomotive",
             name = "railway_tunnel-tunnel_portal_blocking_locomotive",
-            collision_box = {{-0.3, -0.3}, {0.3, 0.3}},
+            collision_box = {{-0.3, -2}, {0.3, 2}},
             collision_mask = CollisionMaskUtil.get_default_mask("locomotive"),
-            --selection_box = {{-1, -1}, {1, 1}}, -- For testing when we need to select them
+            --selection_box = {{-1, -2}, {1, 2}}, -- For testing when we need to select them
             weight = 1,
             braking_force = 1,
             friction_force = 1,

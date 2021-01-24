@@ -24,8 +24,6 @@ Tunnel.CreateGlobals = function()
                 railAlignmentAxis = the "x" or "y" axis that the tunnels underground rails are aligned along.
                 tunnelInstanceAxis = the "x" or "y" that each tunnel instance is spaced out along.
                 tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
-                distanceFromCenterToPortalEntrySignals = the number of tiles between the centre of the underground and the portal entry signals.
-                distanceFromCenterToPortalEndSignals = the number of tiles between the centre of the underground and the portal end signals.
                 tunnelInstanceClonedTrainValue = this tunnels static value of the tunnelInstanceAxis for the cloned (stationary) train carriages.
                 undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
                 surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
@@ -33,30 +31,13 @@ Tunnel.CreateGlobals = function()
             }
         }
     ]]
-    global.tunnel.endSignals = global.tunnel.endSignals or {}
-    --[[
-        [unit_number] = {
-            id = unit_number of this signal.
-            entity = signal entity.
-            portal = the portal global object this signal is part of.
-        }
-    ]]
-    global.tunnel.entrySignals = global.tunnel.entrySignals or {}
-    --[[
-        [unit_number] = {
-            id = unit_number of this signal.
-            entity = signal entity.
-            portal = the portal global object this signal is part of.
-        }
-    ]]
+    global.tunnel.endSignals = global.tunnel.endSignals or {} --  Reference to the "in" endSignal object in global.tunnelPortals.portals[id].endSignals. Is used as a way to check for trains stopping at this signal.
 end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
-    Interfaces.RegisterInterface("Tunnel.RegisterEntrySignalEntity", Tunnel.RegisterEntrySignalEntity)
-    Interfaces.RegisterInterface("Tunnel.DeregisterEntrySignal", Tunnel.DeregisterEntrySignal)
-    Interfaces.RegisterInterface("Tunnel.RegisterEndSignalEntity", Tunnel.RegisterEndSignalEntity)
+    Interfaces.RegisterInterface("Tunnel.RegisterEndSignal", Tunnel.RegisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
@@ -124,26 +105,8 @@ Tunnel.RemoveTunnel = function(tunnel)
     global.tunnel.tunnels[tunnel.id] = nil
 end
 
-Tunnel.RegisterEntrySignalEntity = function(entrySignalEntity, portal)
-    global.tunnel.entrySignals[entrySignalEntity.unit_number] = {
-        id = entrySignalEntity.unit_number,
-        entity = entrySignalEntity,
-        portal = portal
-    }
-    return global.tunnel.entrySignals[entrySignalEntity.unit_number]
-end
-
-Tunnel.DeregisterEntrySignal = function(entrySignal)
-    global.tunnel.entrySignals[entrySignal.entity.unit_number] = nil
-end
-
-Tunnel.RegisterEndSignalEntity = function(endSignalEntity, portal)
-    global.tunnel.endSignals[endSignalEntity.unit_number] = {
-        id = endSignalEntity.unit_number,
-        entity = endSignalEntity,
-        portal = portal
-    }
-    return global.tunnel.endSignals[endSignalEntity.unit_number]
+Tunnel.RegisterEndSignal = function(endSignal)
+    global.tunnel.endSignals[endSignal.entity.unit_number] = endSignal
 end
 
 Tunnel.DeregisterEndSignal = function(endSignal)
@@ -164,6 +127,7 @@ end
 
 Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
 end
 
 return Tunnel

@@ -1334,6 +1334,10 @@ Utils.OrientationToDirection = function(orientation)
     return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
 end
 
+Utils.DirectionToOrientation = function(direction)
+    return direction / 8
+end
+
 Utils.PushToList = function(list, itemsToPush)
     -- Adds the items to the end of a list (table). Ignoring their keys.
     for _, item in pairs(itemsToPush) do

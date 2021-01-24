@@ -2,22 +2,24 @@ local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 
-local doTests = true
+local doDemo = false -- Does the demo rather than any enabled tests.
+local doTests = true -- Does the enabled tests below.
+local doAllTests = true -- Does all the tests regardless of their enabled state below.
 
 local testsToDo
 if doTests then
     testsToDo = {
-        demo = {enabled = false, testScript = require("tests/demo")},
-        shortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
-        shortTunnelShortTrainEastToWest2Tunnels = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-2-tunnels")},
+        shortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
         shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
-        shortTunnelShortTrainNorthToSouth2Tunnels = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-2-tunnels")},
         shortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
         doubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
         pathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
-        pathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")}
+        pathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
+        tunnelInUseNotLeavePortal = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal")},
+        tunnelInUseWaitingTrains = {enabled = true, testScript = require("tests/tunnel-in-use-waiting-trains")},
+        pathfinderWeightings = {enable = false, testScript = require("tests/pathfinder-weightings")}
     }
 end
 
@@ -27,7 +29,7 @@ TestManager.OnLoad = function()
 end
 
 TestManager.OnStartup = function()
-    if not doTests or global.testsRun then
+    if ((not doTests) and (not doDemo)) or global.testsRun then
         return
     end
     global.testsRun = true
@@ -48,15 +50,26 @@ end
 TestManager.RunTests = function()
     game.tick_paused = true
 
+    -- Do the demo and not any tests if it is enabled.
+    if doDemo then
+        testsToDo = {
+            demo = {enabled = true, testScript = require("tests/demo")}
+        }
+    end
+
     for _, test in pairs(testsToDo) do
-        if test.enabled then
+        if test.enabled or doAllTests then
             test.testScript.Start(TestManager)
         end
     end
+
+    local playerForce = game.forces["player"]
+    local nauvisSurface = game.surfaces["nauvis"]
+    playerForce.chart_all(nauvisSurface)
 end
 
 TestManager.OnPlayerCreated = function(event)
-    if not doTests then
+    if ((not doTests) and (not doDemo)) then
         return
     end
     local player = game.get_player(event.player_index)
@@ -64,10 +77,9 @@ TestManager.OnPlayerCreated = function(event)
     player.set_controller {type = defines.controllers.editor}
 end
 
--- Utility function to build a blueprint from a string on the test surface.
--- Makes sure that trains in the blueprint are properly built, their
--- fuel requests are fulfilled and the trains are set to automatic.
 TestManager.BuildBlueprintFromString = function(blueprintString, position)
+    -- Utility function to build a blueprint from a string on the test surface.
+    -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
     local player = game.connected_players[1]
