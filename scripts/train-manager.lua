@@ -206,7 +206,7 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     end
 
     local placementPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
-    local placedCarriage = leadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface}
+    local placedCarriage = leadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
     local aboveTrainLeaving = placedCarriage.train
@@ -265,7 +265,7 @@ TrainManager.TrainLeavingOngoing = function(event)
 
             local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
             local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
-            nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface}
+            nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
             trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
             aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
             if #aboveTrainLeaving.carriages ~= aboveTrainOldCarriageCount + 1 then
@@ -506,7 +506,7 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     local endSignalRailUnitNumber = trainManagerEntry.surfaceEntrancePortalEndSignal.entity.get_connected_rails()[1].unit_number
     local firstCarriageDistanceFromPortalEntrance = 0
     for _, railEntity in pairs(refTrain.path.rails) do
-        -- TODO: this doesn't account for where on the current rail entity the carriage is, but hopefully is accurate enough.
+        -- This doesn't account for where on the current rail entity the carriage is, but should be accurate enough. Does cause up to half a wcarriage difference in train on both sides of a tunnel.
         local thisRailLength = 2
         if railEntity.type == "curved-rail" then
             thisRailLength = 7 -- Estimate
@@ -536,56 +536,30 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
         if refCarriage.speed ~= refTrain.speed then
             carriageDirection = Utils.LoopDirectionValue(carriageDirection + 4)
         end
-        --Utils.OrientationToDirection(refCarriage.orientation)
-        placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection)
+        local refCarriageGoingForwards = true
+        if refCarriage.speed < 0 then
+            refCarriageGoingForwards = false
+        end
+        placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards)
 
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
     end
     return placedCarriage.train
 end
 
-TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection)
-    local placedCarriage = targetSurface.create_entity {name = refCarriage.name, position = newPosition, force = refCarriage.force, direction = newDirection}
-
-    local refBurner = refCarriage.burner
-    if refBurner ~= nil then
-        local placedBurner = placedCarriage.burner
-        for fuelName, fuelCount in pairs(refBurner.burnt_result_inventory.get_contents()) do
-            placedBurner.burnt_result_inventory.insert({name = fuelName, count = fuelCount})
+TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection, refCarriageGoingForwards)
+    local placedCarriage = refCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
+    if Utils.OrientationToDirection(placedCarriage.orientation) ~= newDirection then
+        local wrongFrontOfTrain, correctFrontOfTrain
+        if refCarriageGoingForwards then
+            wrongFrontOfTrain, correctFrontOfTrain = defines.rail_direction.back, defines.rail_direction.front
+        else
+            wrongFrontOfTrain, correctFrontOfTrain = defines.rail_direction.front, defines.rail_direction.back
         end
-        placedBurner.heat = refBurner.heat
-        placedBurner.currently_burning = refBurner.currently_burning
-        placedBurner.remaining_burning_fuel = refBurner.remaining_burning_fuel
+        placedCarriage.disconnect_rolling_stock(wrongFrontOfTrain)
+        placedCarriage.rotate()
+        placedCarriage.connect_rolling_stock(correctFrontOfTrain)
     end
-
-    if refCarriage.backer_name ~= nil then
-        placedCarriage.backer_name = refCarriage.backer_name
-    end
-    placedCarriage.health = refCarriage.health
-    if refCarriage.color ~= nil then
-        placedCarriage.color = refCarriage.color
-    end
-
-    -- Finds cargo wagon and locomotives main inventories.
-    local refCargoWagonInventory = refCarriage.get_inventory(defines.inventory.cargo_wagon)
-    if refCargoWagonInventory ~= nil then
-        local placedCargoWagonInventory, refCargoWagonInventoryIsFiltered = placedCarriage.get_inventory(defines.inventory.cargo_wagon), refCargoWagonInventory.is_filtered()
-        for i = 1, #refCargoWagonInventory do
-            if refCargoWagonInventory[i].valid_for_read then
-                placedCargoWagonInventory[i].set_stack(refCargoWagonInventory[i])
-            end
-            if refCargoWagonInventoryIsFiltered then
-                local filter = refCargoWagonInventory.get_filter(i)
-                if filter ~= nil then
-                    placedCargoWagonInventory.set_filter(i, filter)
-                end
-            end
-        end
-        if refCargoWagonInventory.supports_bar() then
-            placedCargoWagonInventory.set_bar(refCargoWagonInventory.get_bar())
-        end
-    end
-
     return placedCarriage
 end
 
