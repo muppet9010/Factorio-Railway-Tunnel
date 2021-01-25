@@ -40,11 +40,11 @@ Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
     if tunnel.alignment == "vertical" then
         undergroundModifiers.railAlignmentAxis = "y"
         undergroundModifiers.tunnelInstanceAxis = "x"
-        undergroundModifiers.tunnelInstanceValue = tunnel.id * 10
+        undergroundModifiers.tunnelInstanceValue = tunnel.id * 4
     else
         undergroundModifiers.railAlignmentAxis = "x"
         undergroundModifiers.tunnelInstanceAxis = "y"
-        undergroundModifiers.tunnelInstanceValue = tunnel.id * 10
+        undergroundModifiers.tunnelInstanceValue = tunnel.id * 4
     end
     undergroundModifiers.tunnelInstanceClonedTrainValue = undergroundModifiers.tunnelInstanceValue + 4
     local distanceFromCenterToPortalEntranceSignals = (Utils.GetDistanceSingleAxis(tunnel.portals[1].entity.position, tunnel.portals[2].entity.position, undergroundModifiers.railAlignmentAxis) / 2) + tunnel.portals[1].entranceDistanceFromCenter

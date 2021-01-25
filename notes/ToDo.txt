@@ -36,3 +36,4 @@ NICE TO HAVE:
     - Look at train speed and how long until the train, carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from ever second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach?
 	- Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels.
+    - When tunnels are removed have their underground rails kept and track the removed spacings. Then allow them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this.

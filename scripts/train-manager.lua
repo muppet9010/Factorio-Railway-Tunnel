@@ -6,6 +6,7 @@ local Utils = require("utility/utils")
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
+    global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1
     global.trainManager.managedTrains = global.trainManager.managedTrains or {} --[[
         id = uniqiue id of this managed train passing through the tunnel.
         aboveTrainEntering = LuaTrain of the entering train on the world surface.
@@ -48,9 +49,8 @@ TrainManager.OnLoad = function()
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
-    local trainManagerId = #global.trainManager.managedTrains + 1
-    global.trainManager.managedTrains[trainManagerId] = {
-        id = trainManagerId,
+    local trainManagerEntry = {
+        id = global.trainManager.nextManagedTrainId,
         aboveTrainEntering = trainEntering,
         aboveTrainEnteringId = trainEntering.id,
         surfaceEntrancePortalEndSignal = surfaceEntrancePortalEndSignal,
@@ -59,7 +59,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         trainTravelDirection = Utils.LoopDirectionValue(surfaceEntrancePortalEndSignal.entity.direction + 4),
         committed = false
     }
-    local trainManagerEntry = global.trainManager.managedTrains[trainManagerId]
+    global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1
+    global.trainManager.managedTrains[trainManagerEntry.id] = trainManagerEntry
     local tunnel = trainManagerEntry.tunnel
     trainManagerEntry.aboveSurface = tunnel.aboveSurface
     trainManagerEntry.undergroundSurface = tunnel.undergroundSurface
@@ -117,8 +118,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(exitPortalEntrancePosition, trainManagerEntry.tunnel.undergroundModifiers.undergroundOffsetFromSurface)
 
     Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerId)
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerId)
+    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
+    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
 end
 
 TrainManager.TrainEnteringOngoing = function(event)

@@ -1,7 +1,5 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
---local Utils = require("utility/utils")
---local TunnelCommon = require("scripts/common/tunnel-common")
 local Tunnel = {}
 
 --[[
@@ -9,6 +7,7 @@ local Tunnel = {}
 ]]
 Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
+    global.tunnel.nextTunnelId = global.tunnel.nextTunnelId or 1
     global.tunnel.tunnels = global.tunnel.tunnels or {}
     --[[
         [id] = {
@@ -65,14 +64,14 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local tunnelSegments = Interfaces.Call("TunnelSegments.TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
 
     -- Create the tunnel global object.
-    local tunnelId, alignment, alignmentOrientation, undergroundSurface = #global.tunnel.tunnels + 1, "vertical", 0, global.underground.verticalSurface
+    local alignment, alignmentOrientation, undergroundSurface = "vertical", 0, global.underground.verticalSurface
     if refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
         alignment = "horizontal"
         alignmentOrientation = 0.25
         undergroundSurface = global.underground.horizontalSurface
     end
     local tunnel = {
-        id = tunnelId,
+        id = global.tunnel.nextTunnelId,
         alignment = alignment,
         alignmentOrientation = alignmentOrientation,
         aboveSurface = refTunnelPortalEntity.surface,
@@ -80,7 +79,8 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         portals = tunnelPortals,
         segments = tunnelSegments
     }
-    global.tunnel.tunnels[tunnelId] = tunnel
+    global.tunnel.tunnels[tunnel.id] = tunnel
+    global.tunnel.nextTunnelId = global.tunnel.nextTunnelId + 1
     for _, portal in pairs(tunnelPortals) do
         portal.tunnel = tunnel
     end
@@ -103,6 +103,7 @@ Tunnel.RemoveTunnel = function(tunnel)
         undergroundRailEntity.destroy()
     end
     global.tunnel.tunnels[tunnel.id] = nil
+    table.insert(global.tunnel.removedTunnelIds, tunnel.id)
 end
 
 Tunnel.RegisterEndSignal = function(endSignal)

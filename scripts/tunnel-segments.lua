@@ -22,7 +22,7 @@ TunnelSegments.CreateGlobals = function()
     global.tunnelSegments.segmentPositions = global.tunnelSegments.segmentPositions or {}
     --[[
         [id] = {
-            id = the position of the segment as a string with surface
+            id = the Segment global object's positionString - used for looking up by this unique string.
             segment = ref to the segment global object
         }
     ]]
