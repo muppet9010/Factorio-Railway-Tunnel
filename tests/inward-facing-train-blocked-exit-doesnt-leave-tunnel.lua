@@ -1,0 +1,13 @@
+--[[
+    A train that has its locomotive facing inwards, so can't path on its own when it emerges from the tunnel. The entrance signal on the exit portal is blocked in the next rail segment. Long train so only partially left the tunnel before stopping.
+]]
+local Test = {}
+
+local blueprintString =
+    "0eNqtWstu2zAQ/JVCZzsQSfHlW0+991oEhuIwrhBZMiQ5qRP4z3rrj5WMgzhAxjGX4SWBbGlGHs6uuLt6Lm7andsOTTcVi+eiWfXdWCx+PRdjs+7qNnw27beuWBTN5DbFrOjqTTga6qZ9rPfLadd1rp0f/y23/TDV7XLcDXf1ys23rf+7cR76MCua7tb9KRbscD0r/EfN1Lgj08vBftntNjdu8Ce8cYyTZ1n/nuaBzFNv+9Ff1XfhpjwSr/yp+2IxZ0IcDrMPQPwNKOB083HqtwhFnFBmnrM+fll8H8am+/Zj+Pe3a9YFwBcJN8rQjVZ0IG4RkEwA0ghIJQBJBKQTgOBimgQgKLalAzEoNisTkKDaLMHyDMrNeAIS1JsluJtBwVmCvUuseIK/S6x4gsFLrHiCw0useILFS6w43eMWCs7pFrdQb35y+Koe1v38sV77az+BEVfSCi19Ru6HxqO9ZuUyPEce/HE/+NO6XdsiNnoUWLi4nB4EFj+K6DFg4dJyeggYvLT0CDB4aekBYLDYdP8bLDbd/gaKLej211BsQU/wGooteMIG7PYTGsl8hD3UQ/MaXwyRiguko1uHTV48K5cRrFV2VhHBKrOzxiiscrP6LctlVp2dVUewmuysMW6y2Vkj3FSV2Vkj3FSx3KwRZqp4btIIL1XZM1OElarsiSnGSdnzUoyRcqelGM7cSSlG3NwpKcZFuRNSRLjI3OkoIi/I3MkoJgPK3MkoJtlLkXdvJoK6t83gVscvq8t3QK4yFNyJS3KRoeBuVZJrDIXbWuQSQ8P9vCRXGBoWGJJcYGiosyLXF7gqUOTyApcp6hQ2bb/qN/3UPLjzIKa6qlCJfuXtE5rFYzh/6Ff3bprf7VwbWmaQllxl43JNke2P60dFtj8uaBXZ/rjCVprWPLHsk3W52DxR5CDBDQZFDhLc8dDkIMEtGE0OEtwT0py4GuYrq6HJsYEbcJocG7gjqMmxcaZHqRVNRlbKL+mo6feNbWToQNhHlg4El9aUdCC4tobYpGWM4yWJWRBD7tGeGS8YQQfCE6aKDgRX1kjSY5Qxe1ZGwlPUKPrtYz/RQwUPyAw9VPDIztBDBQ8RLT1U8FjTMjoQFNtGDqlD/+oF5WNRcJpY/2yenvp7NKq29CDBE2ZLDxI887b0B0mY8l/737v67W537evLA6cIC8d+B2vku3OObzIggc7O+a8Dx8u7Dot3r0b42sv588IF3LBKW6655YIJdTj8B/uoFjo="
+
+Test.Start = function(TestManager, testName)
+    TestManager.BuildBlueprintFromString(blueprintString, {x = 241, y = 0}, testName)
+end
+
+return Test

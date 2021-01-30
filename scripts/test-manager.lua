@@ -22,7 +22,8 @@ if doTests then
         tunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
         pathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
-        inwardFacingTrainBlockedExit = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit")}
+        inwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}
     }
 end
 

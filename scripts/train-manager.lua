@@ -225,6 +225,11 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     aboveTrainLeaving.schedule = schedule
     if not isManual then
         TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
+
+        -- Check that the train has an expected state
+        if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
+            error("reemerging train should have positive movement state")
+        end
     else
         if aboveTrainLeaving.state ~= dummyTrainState then
             error("manual reemerging train should have same state as dummy train")
@@ -299,6 +304,11 @@ TrainManager.TrainLeavingOngoing = function(event)
             aboveTrainLeaving.schedule = schedule
             if not isManual then
                 TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
+
+                -- Check that the train has an expected state
+                if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
+                    error("reemerging train should have positive movement state")
+                end
             end
         end
     end
@@ -450,11 +460,6 @@ TrainManager.SetTrainToAuto = function(train, targetStop)
     else
         -- There was no target stop, so no special handling needed
         train.manual_mode = false
-    end
-
-    -- Check that the train has an expected state
-    if train.state ~= defines.train_state.on_the_path and train.state ~= defines.train_state.arrive_signal and train.state ~= defines.train_state.arrive_station then
-        error("reemerging train should have positive movement state")
     end
 end
 
@@ -649,6 +654,15 @@ end
 TrainManager.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
     local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4}))
     return lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
+end
+
+-- Check a moving trains (non 0 speed) got a happy state. For use after manipulating the train and so assumes the train was in a happy state before we did this.
+TrainManager.ConfirmMovingLeavingTrainState = function(train)
+    if train.state == defines.train_state.on_the_path or train.state == defines.train_state.arrive_signal or train.state == defines.train_state.arrive_station or train.state == defines.train_state.wait_signal then
+        return true
+    else
+        return false
+    end
 end
 
 return TrainManager
