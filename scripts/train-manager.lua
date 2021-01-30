@@ -26,11 +26,12 @@ TrainManager.CreateGlobals = function()
         undergroundLeavingPortalEntrancePosition = The underground position equivilent to the portal entrance that the underground train is measured against to decide when it starts leaving.
         aboveSurface = LuaSurface of the main world surface.
         undergroundSurface = LuaSurface of the specific underground surface.
-        aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
         aboveLeavingSignalPosition = The above ground position that the rear leaving carriage should trigger the next carriage at.
-        committed = boolean if train is already fully committed to going through tunnel
+        aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
         aboveTrainLeavingTunnelRailSegment = LuaTrain of the train leaving the tunnel's exit portal rail segment on the world surface.
-        aboveTrainLeavingTunnelRailSegmentId= The LuaTrain ID of the above Train Leaving Tunnel Rail Segment.
+        aboveTrainLeavingTunnelRailSegmentId = The LuaTrain ID of the above Train Leaving Tunnel Rail Segment.
+        aboveTrainLeavingPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
+        committed = boolean if train is already fully committed to going through tunnel
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
@@ -69,7 +70,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     else
         trainManagerEntry.aboveTrainEnteringForwards = false
     end
-    trainManagerEntry.trainTravelOrientation = trainManagerEntry.trainTravelDirection / 8
+    trainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(trainManagerEntry.trainTravelDirection)
     global.trainManager.enteringTrainIdToManagedTrain[trainEntering.id] = trainManagerEntry
 
     -- Get the exit end signal on the other portal so we know when to bring the train back in.
@@ -208,26 +209,26 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
 
     local placementPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
     local placedCarriage = leadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
+    placedCarriage.train.speed = leadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
+
+    -- Add a pushing loco if needed.
+    if not TrainManager.CarriageIsAPushingLoco(placedCarriage, trainManagerEntry.trainTravelOrientation) then
+        trainManagerEntry.aboveTrainLeavingPushingLoco = TrainManager.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
+    end
 
     local aboveTrainLeaving = placedCarriage.train
     trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId = aboveTrainLeaving, aboveTrainLeaving.id
     global.trainManager.leavingTrainIdToManagedTrain[aboveTrainLeaving.id] = trainManagerEntry
 
-    -- restore train schedule
+    -- Restore train schedule
     aboveTrainLeaving.schedule = schedule
     if not isManual then
         TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
-    end
-    if aboveTrainLeaving.state ~= dummyTrainState then
-        error "reemerging train should have same state as dummy train"
-    end
-
-    if placedCarriage.orientation == leadCarriage.orientation then
-        -- As theres only 1 placed carriage we can set the speed based on the refCarriage. New train will have a direciton that matches the single placed carriage.
-        aboveTrainLeaving.speed = leadCarriage.speed
     else
-        aboveTrainLeaving.speed = 0 - leadCarriage.speed
+        if aboveTrainLeaving.state ~= dummyTrainState then
+            error("manual reemerging train should have same state as dummy train")
+        end
     end
 
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
@@ -249,31 +250,52 @@ TrainManager.TrainLeavingOngoing = function(event)
 
         local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
         if nextSourceCarriageEntity == nil then
-            -- All wagons placed so tidy up
+            -- All wagons placed so tidy up.
             TrainManager.TrainLeavingCompleted(trainManagerEntry, desiredSpeed)
             return
         end
 
-        local aboveTrainLeavingRearCarriage
+        local aboveTrainLeavingRearCarriage, aboveTrainLeavingRearCarriageIndex, aboveTrainLeavingRearCarriagePushingIndexMod
         if (aboveTrainLeaving.speed > 0) then
-            aboveTrainLeavingRearCarriage = aboveTrainLeaving["back_stock"]
+            aboveTrainLeavingRearCarriageIndex = #aboveTrainLeaving.carriages
+            aboveTrainLeavingRearCarriagePushingIndexMod = -1
         else
-            aboveTrainLeavingRearCarriage = aboveTrainLeaving["front_stock"]
+            aboveTrainLeavingRearCarriageIndex = 1
+            aboveTrainLeavingRearCarriagePushingIndexMod = 1
         end
+        if trainManagerEntry.aboveTrainLeavingPushingLoco ~= nil then
+            aboveTrainLeavingRearCarriageIndex = aboveTrainLeavingRearCarriageIndex + aboveTrainLeavingRearCarriagePushingIndexMod
+        end
+        aboveTrainLeavingRearCarriage = aboveTrainLeaving.carriages[aboveTrainLeavingRearCarriageIndex]
+
         if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 20 then
-            -- reattaching next carriage can clobber schedule and will set train to manual, so preserve state
+            -- Reattaching next carriage can clobber schedule and will set train to manual, so preserve state.
             local schedule, isManual, targetStop = aboveTrainLeaving.schedule, aboveTrainLeaving.manual_mode, aboveTrainLeaving.path_end_stop
 
-            local aboveTrainOldCarriageCount = #aboveTrainLeaving.carriages
+            -- Remove the pushing loco if present before the next carriage is placed.
+            local hadPushingLoco = trainManagerEntry.aboveTrainLeavingPushingLoco ~= nil
+            if trainManagerEntry.aboveTrainLeavingPushingLoco ~= nil then
+                trainManagerEntry.aboveTrainLeavingPushingLoco.destroy()
+                trainManagerEntry.aboveTrainLeavingPushingLoco = nil
+            end
+
+            local aboveTrainOldCarriageCount = #aboveTrainLeavingRearCarriage.train.carriages
             local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundModifiers.surfaceOffsetFromUnderground)
-            nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
+            local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
             trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
-            aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
-            if #aboveTrainLeaving.carriages ~= aboveTrainOldCarriageCount + 1 then
+            if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
                 error("Placed carriage not part of train as expected carriage count not right")
             end
 
-            -- restore schedule and state
+            -- If train had a pushing loco before and still needs one, add one back.
+            if hadPushingLoco and (not TrainManager.CarriageIsAPushingLoco(placedCarriage, trainManagerEntry.trainTravelOrientation)) then
+                trainManagerEntry.aboveTrainLeavingPushingLoco = TrainManager.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
+            end
+
+            -- LuaTrain has been replaced and updated by adding a wagon, so obtain a local reference to it again.
+            aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
+
+            -- Restore schedule and state.
             aboveTrainLeaving.schedule = schedule
             if not isManual then
                 TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
@@ -428,6 +450,11 @@ TrainManager.SetTrainToAuto = function(train, targetStop)
     else
         -- There was no target stop, so no special handling needed
         train.manual_mode = false
+    end
+
+    -- Check that the train has an expected state
+    if train.state ~= defines.train_state.on_the_path and train.state ~= defines.train_state.arrive_signal and train.state ~= defines.train_state.arrive_station then
+        error("reemerging train should have positive movement state")
     end
 end
 
@@ -613,6 +640,15 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
             global.trainManager.managedTrains[managedTrain.id] = nil
         end
     end
+end
+
+TrainManager.CarriageIsAPushingLoco = function(carriage, trainDirection)
+    return carriage.type == "locomotive" and carriage.orientation == trainDirection
+end
+
+TrainManager.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
+    local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4}))
+    return lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
 end
 
 return TrainManager

@@ -14,6 +14,8 @@ local function CreateGlobals()
     TunnelSegments.CreateGlobals()
     Underground.CreateGlobals()
     Force.CreateGlobals()
+
+    TestManager.CreateGlobals()
 end
 
 local function OnLoad()

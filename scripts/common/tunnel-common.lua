@@ -19,7 +19,7 @@ TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelC
 TunnelCommon.tunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
 
 TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnelPartPoint, tunnelPortals, tunnelSegments, checkingDirection, placer)
-    local orientation = checkingDirection / 8
+    local orientation = Utils.DirectionToOrientation(checkingDirection)
     local continueChecking = true
     local nextCheckingPos = startingTunnelPartPoint
     while continueChecking do

@@ -1,8 +1,5 @@
-Limitations (in addition to below tasks):
-    - Trains must be lead by a locomotive facing forwards, otherwise they will get stuck and error coming out of a tunnel.
 
 Next:
-    - When trains are leaving they need to path when the first wagon is out. Maybe use of hidden loco or miroring signals on to underground would help. This should handle wagons or loco's facing backwards being the first carriages out of a tunnel.
 
 Soon:
 
@@ -22,6 +19,7 @@ Later:
     - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
     - Check artillery trains paused going in to the tunnel as the head has stopped coming out.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Need to support a train being able to reverse while in the tunnel back out.
+    - Handle the target station or track in the path being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error.
 
 NICE TO HAVE:
     - Look at TSM and LTN compatibility requirement or block them.

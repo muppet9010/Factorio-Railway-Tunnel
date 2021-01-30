@@ -90,7 +90,7 @@ end
 
 TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
-    local orientation = directionValue / 8
+    local orientation = Utils.DirectionToOrientation(directionValue)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceFromCenter}))
 
     if not TunnelPortals.TunnelPortalPlacementValid(placementEntity) then
@@ -132,7 +132,7 @@ TunnelPortals.TunnelPortalPlacementValid = function(placementEntity)
 end
 
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortal, placer, portal)
-    local tunnelPortals, tunnelSegments, directionValue, orientation = {startingTunnelPortal}, {}, startingTunnelPortal.direction, startingTunnelPortal.direction / 8
+    local tunnelPortals, tunnelSegments, directionValue, orientation = {startingTunnelPortal}, {}, startingTunnelPortal.direction, Utils.DirectionToOrientation(startingTunnelPortal.direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortal.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
     return TunnelCommon.CheckTunnelPartsInDirection(startingTunnelPortal, startingTunnelPartPoint, tunnelPortals, tunnelSegments, directionValue, placer), tunnelPortals, tunnelSegments
 end
@@ -144,7 +144,7 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
         local portal = global.tunnelPortals.portals[portalEntity.unit_number]
         table.insert(portals, portal)
         local directionValue = portalEntity.direction
-        local orientation = directionValue / 8
+        local orientation = Utils.DirectionToOrientation(directionValue)
 
         -- Add the invisble rails to connect the tunnel portal's normal rails to the adjoining tunnel segment.
         local entracePos = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceFromCenter}))
@@ -405,7 +405,7 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
     -- Place a blocking loco just inside the portal. Have a valid path and without fuel to avoid path finding penalties.
     local portalEntity = portal.entity
     local aboveSurface, directionValue = portal.tunnel.aboveSurface, portalEntity.direction
-    local orientation = directionValue / 8
+    local orientation = Utils.DirectionToOrientation(directionValue)
     local entrySignalBlockingLocomotiveEntity =
         aboveSurface.create_entity {
         name = "railway_tunnel-tunnel_portal_blocking_locomotive",

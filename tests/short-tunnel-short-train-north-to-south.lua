@@ -30,8 +30,8 @@ Test.Start = function()
     end
 
     -- Place Train and setup
-    local trainStopNorth = nauvisSurface.create_entity {name = "train-stop", position = {xRailValue + 2, -95}, force = playerForce, direction = defines.direction.north}
-    local trainStopSouth = nauvisSurface.create_entity {name = "train-stop", position = {xRailValue - 2, 131}, force = playerForce, direction = defines.direction.south}
+    local trainStopNorth = nauvisSurface.create_entity {name = "train-stop", position = {xRailValue + 2, -135}, force = playerForce, direction = defines.direction.north}
+    local trainStopSouth = nauvisSurface.create_entity {name = "train-stop", position = {xRailValue - 2, 135}, force = playerForce, direction = defines.direction.south}
     local loco1 = nauvisSurface.create_entity {name = "locomotive", position = {xRailValue, 95}, force = playerForce, direction = defines.direction.north}
     loco1.insert("rocket-fuel")
     local wagon1 = nauvisSurface.create_entity {name = "cargo-wagon", position = {xRailValue, 102}, force = playerForce, direction = defines.direction.north}
