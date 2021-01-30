@@ -17,6 +17,7 @@ require("prototypes/internal-signal-on-map")(tunnelSignalSurfaceCollisionLayer)
 require("prototypes/tunnel-portal-surface")
 require("prototypes/tunnel-portal-end-rail-signal")(tunnelSignalSurfaceCollisionLayer)
 require("prototypes/tunnel-portal-blocking-locomotive")
+require("prototypes/tunnel-portal-pushing-locomotive")
 
 require("prototypes/tunnel-segment-surface")
 require("prototypes/tunnel-segment-surface-rail-crossing")

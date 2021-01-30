@@ -1,10 +1,11 @@
 local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
+local Utils = require("utility/utils")
 
 local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = true -- Does all the tests regardless of their enabled state below.
+local doAllTests = false -- Does all the tests regardless of their enabled state below.
 
 local testsToDo
 if doTests then
@@ -18,9 +19,18 @@ if doTests then
         pathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
         pathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
         tunnelInUseNotLeavePortal = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal")},
-        tunnelInUseWaitingTrains = {enabled = true, testScript = require("tests/tunnel-in-use-waiting-trains")},
-        pathfinderWeightings = {enable = false, testScript = require("tests/pathfinder-weightings")}
+        tunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+        pathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
+        inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
+        inwardFacingTrainBlockedExit = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit")}
     }
+end
+
+TestManager.CreateGlobals = function()
+    global.testManager = global.testManager or {}
+    global.testManager.testsRun = global.testManager.testsRun or false -- Used to flag when a save was started with tests already.
+    global.testManager.testSurface = global.testManager.testSurface or nil
+    global.testManager.playerForce = global.testManager.playerForce or nil
 end
 
 TestManager.OnLoad = function()
@@ -29,22 +39,26 @@ TestManager.OnLoad = function()
 end
 
 TestManager.OnStartup = function()
-    if ((not doTests) and (not doDemo)) or global.testsRun then
+    if ((not doTests) and (not doDemo)) or global.testManager.testsRun then
         return
     end
-    global.testsRun = true
+    global.testManager.testsRun = true
 
-    local nauvisSurface = game.surfaces[1]
-    nauvisSurface.generate_with_lab_tiles = true
-    nauvisSurface.always_day = true
-    nauvisSurface.freeze_daytime = true
-    nauvisSurface.show_clouds = false
+    global.testManager.testSurface = game.surfaces[1]
+    global.testManager.playerForce = game.forces["player"]
 
-    for chunk in nauvisSurface.get_chunks() do
-        nauvisSurface.delete_chunk({x = chunk.x, y = chunk.y})
+    local testSurface = global.testManager.testSurface
+    testSurface.generate_with_lab_tiles = true
+    testSurface.always_day = true
+    testSurface.freeze_daytime = true
+    testSurface.show_clouds = false
+
+    for chunk in testSurface.get_chunks() do
+        testSurface.delete_chunk({x = chunk.x, y = chunk.y})
     end
 
-    EventScheduler.ScheduleEvent(game.tick + 60, "TestManager.RunTests")
+    Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
+    EventScheduler.ScheduleEvent(game.tick + 120, "TestManager.RunTests") -- Have to give it time to chart the revealed area.
 end
 
 TestManager.RunTests = function()
@@ -57,15 +71,13 @@ TestManager.RunTests = function()
         }
     end
 
-    for _, test in pairs(testsToDo) do
+    for testName, test in pairs(testsToDo) do
         if test.enabled or doAllTests then
-            test.testScript.Start(TestManager)
+            test.testScript.Start(TestManager, testName)
         end
     end
 
-    local playerForce = game.forces["player"]
-    local nauvisSurface = game.surfaces["nauvis"]
-    playerForce.chart_all(nauvisSurface)
+    global.testManager.playerForce.chart_all(global.testManager.testSurface)
 end
 
 TestManager.OnPlayerCreated = function(event)
@@ -77,26 +89,31 @@ TestManager.OnPlayerCreated = function(event)
     player.set_controller {type = defines.controllers.editor}
 end
 
-TestManager.BuildBlueprintFromString = function(blueprintString, position)
+TestManager.BuildBlueprintFromString = function(blueprintString, position, testName)
     -- Utility function to build a blueprint from a string on the test surface.
     -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
-    local nauvisSurface = game.surfaces["nauvis"]
-    local playerForce = game.forces["player"]
+    local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]
     local itemStack = player.cursor_stack
 
     itemStack.clear()
     if itemStack.import_stack(blueprintString) ~= 0 then
-        error "Error importing blueprint string"
+        error("Error importing blueprint string for test: " .. testName)
+    end
+    if Utils.IsTableEmpty(itemStack.cost_to_build) then
+        error("Blank blueprint used in test: " .. testName)
     end
 
     local ghosts =
         itemStack.build_blueprint {
-        surface = nauvisSurface,
-        force = playerForce,
+        surface = testSurface,
+        force = global.testManager.playerForce,
         position = position,
         by_player = player
     }
+    if #ghosts == 0 then
+        error("Blueprint in test failed to place, likely outside of generated/revealed area. Test: " .. testName)
+    end
     itemStack.clear()
 
     local pass2Ghosts = {}
@@ -117,7 +134,7 @@ TestManager.BuildBlueprintFromString = function(blueprintString, position)
     for _, ghost in pairs(pass2Ghosts) do
         local r, _, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
         if r == nil then
-            error("only 2 rounds of ghost reviving supported")
+            error("only 2 rounds of ghost reviving supported. Test: " .. testName)
         end
         if fuelProxy ~= nil then
             table.insert(fuelProxies, fuelProxy)
@@ -131,7 +148,7 @@ TestManager.BuildBlueprintFromString = function(blueprintString, position)
         fuelProxy.destroy()
     end
 
-    for _, train in pairs(nauvisSurface.get_trains()) do
+    for _, train in pairs(testSurface.get_trains()) do
         train.manual_mode = false
     end
 end

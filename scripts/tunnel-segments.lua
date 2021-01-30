@@ -118,7 +118,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
 
     if placeCrossingRails then
         segment.crossingRailEntities = {}
-        local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), directionValue / 8
+        local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), Utils.DirectionToOrientation(directionValue)
         for _, nextRailPos in pairs(
             {
                 Utils.ApplyOffsetToPosition(abovePlacedTunnelSegment.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
@@ -202,7 +202,7 @@ TunnelSegments.TunnelCompleted = function(segmentEntities, force, aboveSurface)
         segment.signalEntities = {}
         for _, orientationModifier in pairs({0, 4}) do
             local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
-            local orientation = signalDirection / 8
+            local orientation = Utils.DirectionToOrientation(signalDirection)
             local position = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0}))
             local placedSignal = aboveSurface.create_entity {name = "railway_tunnel-tunnel_rail_signal_surface", position = position, force = force, direction = signalDirection}
             segment.signalEntities[placedSignal.unit_number] = placedSignal
