@@ -2,7 +2,7 @@ local Force = {}
 
 Force.CreateGlobals = function()
     global.force = global.force or {}
-    -- global.force.tunnelForce = The surface for horizontal tunnel underground bits.
+    global.force.tunnelForce = global.force.tunnelForce or nil -- The LuaForce for tunnel no player force entities.
 end
 
 Force.OnStartup = function()

@@ -15,19 +15,16 @@ Tunnel.CreateGlobals = function()
             alignment = either "horizontal" or "vertical".
             alignmentOrientation = the orientation value of either 0.25 (horizontal) or 0 (vertical), no concept of direction though.
             aboveSurface = LuaSurface of the main world surface.
-            undergroundSurface = LuaSurface of the underground surface for this tunnel.
-            portals = table of the 2 portal global objects that make up this tunnel.
-            segments = table of the segment global objects on the surface.
-            undergroundRailEntities = table of rail LuaEntity.
-            undergroundModifiers = {
-                railAlignmentAxis = the "x" or "y" axis that the tunnels underground rails are aligned along.
-                tunnelInstanceAxis = the "x" or "y" that each tunnel instance is spaced out along.
+            underground = {
+                undergroundSurface = ref to underground surface globla object.
+                railEntities = table of rail LuaEntity.
                 tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
-                tunnelInstanceClonedTrainValue = this tunnels static value of the tunnelInstanceAxis for the cloned (stationary) train carriages.
                 undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
                 surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
                 undergroundLeadInTiles = the tiles lead in of rail from 0
             }
+            portals = table of the 2 portal global objects that make up this tunnel.
+            segments = table of the segment global objects on the surface.
         }
     ]]
     global.tunnel.endSignals = global.tunnel.endSignals or {} --  Reference to the "in" endSignal object in global.tunnelPortals.portals[id].endSignals. Is used as a way to check for trains stopping at this signal.
@@ -64,18 +61,16 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local tunnelSegments = Interfaces.Call("TunnelSegments.TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
 
     -- Create the tunnel global object.
-    local alignment, alignmentOrientation, undergroundSurface = "vertical", 0, global.underground.verticalSurface
+    local alignment, alignmentOrientation = "vertical", 0
     if refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
         alignment = "horizontal"
         alignmentOrientation = 0.25
-        undergroundSurface = global.underground.horizontalSurface
     end
     local tunnel = {
         id = global.tunnel.nextTunnelId,
         alignment = alignment,
         alignmentOrientation = alignmentOrientation,
         aboveSurface = refTunnelPortalEntity.surface,
-        undergroundSurface = undergroundSurface,
         portals = tunnelPortals,
         segments = tunnelSegments
     }
@@ -88,7 +83,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         segment.tunnel = tunnel
     end
 
-    tunnel.undergroundRailEntities, tunnel.undergroundModifiers = Interfaces.Call("Underground.TunnelCompleted", tunnel, refTunnelPortalEntity)
+    tunnel.underground = Interfaces.Call("Underground.TunnelCompleted", tunnel)
 end
 
 Tunnel.RemoveTunnel = function(tunnel)
@@ -99,7 +94,7 @@ Tunnel.RemoveTunnel = function(tunnel)
     for _, segment in pairs(tunnel.segments) do
         Interfaces.Call("TunnelSegments.TunnelRemoved", segment)
     end
-    for _, undergroundRailEntity in pairs(tunnel.undergroundRailEntities) do
+    for _, undergroundRailEntity in pairs(tunnel.underground.railEntities) do
         undergroundRailEntity.destroy()
     end
     global.tunnel.tunnels[tunnel.id] = nil
