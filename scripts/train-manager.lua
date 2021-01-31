@@ -119,8 +119,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(exitPortalEntrancePosition, trainManagerEntry.underground.undergroundOffsetFromSurface)
 
     Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
+    EventScheduler.ScheduleEventEachTick("TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
+    EventScheduler.ScheduleEventEachTick("TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
 end
 
 TrainManager.TrainEnteringOngoing = function(event)
@@ -163,11 +163,9 @@ TrainManager.TrainEnteringOngoing = function(event)
         end
         trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
     end
-    if trainManagerEntry.aboveTrainEntering ~= nil and trainManagerEntry.aboveTrainEntering.valid and #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] ~= nil then
-        -- Train is still entering, continue loop.
-        EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
-    else
+    if trainManagerEntry.aboveTrainEntering == nil or (not trainManagerEntry.aboveTrainEntering.valid) or #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] == nil then
         -- Train has completed entering.
+        EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
         global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
         trainManagerEntry.aboveTrainEntering = nil
         trainManagerEntry.aboveTrainEnteringId = nil
@@ -186,10 +184,9 @@ TrainManager.TrainUndergroundOngoing = function(event)
     else
         leadCarriage = trainManagerEntry.undergroundTrain["back_stock"]
     end
-    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingPortalEntrancePosition) > 30 then
-        --The lead carriage isn't close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
-        EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
-    else
+    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingPortalEntrancePosition) <= 30 then
+        --The lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
+        EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
         TrainManager.TrainLeavingInitial(trainManagerEntry)
     end
 end
@@ -237,7 +234,7 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     end
 
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
+    EventScheduler.ScheduleEventEachTick("TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
 TrainManager.TrainLeavingOngoing = function(event)
@@ -256,6 +253,7 @@ TrainManager.TrainLeavingOngoing = function(event)
         local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
         if nextSourceCarriageEntity == nil then
             -- All wagons placed so tidy up.
+            EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
             TrainManager.TrainLeavingCompleted(trainManagerEntry, desiredSpeed)
             return
         end
@@ -315,8 +313,6 @@ TrainManager.TrainLeavingOngoing = function(event)
 
     TrainManager.SetTrainAbsoluteSpeed(aboveTrainLeaving, desiredSpeed)
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, desiredSpeed)
-
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
 
 TrainManager.TrainLeavingCompleted = function(trainManagerEntry, speed)
@@ -332,7 +328,7 @@ end
 TrainManager.TrainLeavingTunnelRailSegmentInitial = function(trainManagerEntry)
     trainManagerEntry.aboveTrainLeavingTunnelRailSegment, trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId
     global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId] = trainManagerEntry
-    EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
+    EventScheduler.ScheduleEventEachTick("TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
 end
 
 TrainManager.TrainLeavingTunnelRailSegmentOngoing = function(event)
@@ -340,11 +336,9 @@ TrainManager.TrainLeavingTunnelRailSegmentOngoing = function(event)
     -- This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one.
     local trainManagerEntry = global.trainManager.managedTrains[event.instanceId]
     local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entrySignals["in"].entity
-    if exitPortalEntranceSignalEntity.signal_state == defines.signal_state.closed then
-        -- A train is still in this block so check next tick.
-        EventScheduler.ScheduleEvent(game.tick + 1, "TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
-    else
+    if exitPortalEntranceSignalEntity.signal_state ~= defines.signal_state.closed then
         -- No train in the block so our one must have left.
+        EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
         TrainManager.TerminateTunnelTrip(trainManagerEntry)
     end
 end
@@ -359,6 +353,10 @@ TrainManager.RemoveUndergroundTrain = function(trainManagerEntry)
 end
 
 TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
+    EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
+    EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
+    EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
+    EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
     TrainManager.RemoveUndergroundTrain(trainManagerEntry)
     if trainManagerEntry.aboveTrainEntering then
         global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
@@ -368,7 +366,6 @@ TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
     end
     if trainManagerEntry.aboveTrainLeavingTunnelRailSegment then
         global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId] = nil
-        EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", trainManagerEntry.id)
     end
     Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
@@ -638,10 +635,10 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
             for _, carriage in pairs(undergroundCarriages) do
                 carriage.destroy()
             end
-            EventScheduler.RemoveScheduledEvents("TrainManager.TrainEnteringOngoing", managedTrain.id)
-            EventScheduler.RemoveScheduledEvents("TrainManager.TrainUndergroundOngoing", managedTrain.id)
-            EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingOngoing", managedTrain.id)
-            EventScheduler.RemoveScheduledEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainEnteringOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainUndergroundOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainLeavingOngoing", managedTrain.id)
+            EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", managedTrain.id)
             global.trainManager.managedTrains[managedTrain.id] = nil
         end
     end
