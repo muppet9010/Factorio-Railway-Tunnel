@@ -150,7 +150,10 @@ EventScheduler._OnSchedulerCycle = function(event)
         global.UTILITYSCHEDULEDFUNCTIONS[tick] = nil
     end
     if global.UTILITYSCHEDULEDFUNCTIONSPERTICK ~= nil then
-        for eventName, instances in pairs(global.UTILITYSCHEDULEDFUNCTIONSPERTICK) do
+        -- Prefetch the next table entry as we will likely remove the inner instance entry and its parent eventName while in the loop. Advised solution by Factorio discord.
+        local eventName, instances = next(global.UTILITYSCHEDULEDFUNCTIONSPERTICK)
+        while eventName do
+            local nextEventName, nextInstances = next(global.UTILITYSCHEDULEDFUNCTIONSPERTICK, eventName)
             for instanceId, scheduledFunctionData in pairs(instances) do
                 local eventData = {tick = tick, name = eventName, instanceId = instanceId, data = scheduledFunctionData}
                 if MOD.scheduledEventNames[eventName] ~= nil then
@@ -159,6 +162,7 @@ EventScheduler._OnSchedulerCycle = function(event)
                     error("WARNING: schedule event called that doesn't exist: '" .. eventName .. "' id: '" .. instanceId .. "' at tick: " .. tick)
                 end
             end
+            eventName, instances = nextEventName, nextInstances
         end
     end
 end

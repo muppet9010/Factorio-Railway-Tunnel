@@ -1,5 +1,4 @@
 Next:
-    - Errors on mining a tunnel portal. Also check destroying tunnel portal.
 
 Soon:
     - Make recipes, techs and item & entities localisations.

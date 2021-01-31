@@ -98,7 +98,6 @@ Tunnel.RemoveTunnel = function(tunnel)
         undergroundRailEntity.destroy()
     end
     global.tunnel.tunnels[tunnel.id] = nil
-    table.insert(global.tunnel.removedTunnelIds, tunnel.id)
 end
 
 Tunnel.RegisterEndSignal = function(endSignal)
