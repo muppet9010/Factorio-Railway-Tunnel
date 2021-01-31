@@ -245,7 +245,7 @@ TrainManager.TrainLeavingOngoing = function(event)
     local aboveTrainLeaving, sourceTrain = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain
     local desiredSpeed = TrainManager.GetTrainSpeed(trainManagerEntry)
 
-    if sourceTrain.speed ~= 0 then
+    if desiredSpeed ~= 0 then
         local currentSourceTrainCarriageIndex = trainManagerEntry.aboveTrainLeavingCarriagesPlaced
         local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
         if (sourceTrain.speed < 0) then
@@ -658,7 +658,7 @@ end
 
 -- Check a moving trains (non 0 speed) got a happy state. For use after manipulating the train and so assumes the train was in a happy state before we did this.
 TrainManager.ConfirmMovingLeavingTrainState = function(train)
-    if train.state == defines.train_state.on_the_path or train.state == defines.train_state.arrive_signal or train.state == defines.train_state.arrive_station or train.state == defines.train_state.wait_signal then
+    if train.state == defines.train_state.on_the_path or train.state == defines.train_state.arrive_signal or train.state == defines.train_state.arrive_station then
         return true
     else
         return false
