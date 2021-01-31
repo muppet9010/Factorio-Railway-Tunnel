@@ -5,12 +5,12 @@ local Utils = require("utility/utils")
 
 local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = false -- Does all the tests regardless of their enabled state below.
+local doAllTests = true -- Does all the tests regardless of their enabled state below.
 
 local testsToDo
 if doTests then
     testsToDo = {
-        shortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+        shortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
         shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
         shortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
@@ -59,7 +59,7 @@ TestManager.OnStartup = function()
     end
 
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
-    EventScheduler.ScheduleEvent(game.tick + 120, "TestManager.RunTests") -- Have to give it time to chart the revealed area.
+    EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.RunTests") -- Have to give it time to chart the revealed area.
 end
 
 TestManager.RunTests = function()
