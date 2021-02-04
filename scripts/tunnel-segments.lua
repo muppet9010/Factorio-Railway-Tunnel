@@ -127,6 +127,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
             }
         ) do
             local placedRail = aboveSurface.create_entity {name = "railway_tunnel-internal_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
+            placedRail.destructible = false
             segment.crossingRailEntities[placedRail.unit_number] = placedRail
         end
     elseif not placeCrossingRails and fastReplacedSegment ~= nil then
@@ -196,7 +197,8 @@ TunnelSegments.TunnelCompleted = function(segmentEntities, force, aboveSurface)
         local centerPos, directionValue = segmentEntity.position, segmentEntity.direction
 
         segment.railEntities = {}
-        local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail", position = centerPos, force = force, direction = directionValue}
+        local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = centerPos, force = force, direction = directionValue}
+        placedRail.destructible = false
         segment.railEntities[placedRail.unit_number] = placedRail
 
         segment.signalEntities = {}
@@ -204,7 +206,7 @@ TunnelSegments.TunnelCompleted = function(segmentEntities, force, aboveSurface)
             local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
             local orientation = Utils.DirectionToOrientation(signalDirection)
             local position = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0}))
-            local placedSignal = aboveSurface.create_entity {name = "railway_tunnel-tunnel_rail_signal_surface", position = position, force = force, direction = signalDirection}
+            local placedSignal = aboveSurface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection}
             segment.signalEntities[placedSignal.unit_number] = placedSignal
         end
     end

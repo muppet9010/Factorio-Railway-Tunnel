@@ -1,8 +1,6 @@
 Next:
 
 Soon:
-    - Make recipes, techs and item & entities localisations.
-    - Set entity resistences, health. Indestructable for hidden entities.
     - Handle the target station or track in the path being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Need to support a train being able to reverse while in the tunnel back out.
     - Handle players being in a train going through the tunnel.
@@ -23,15 +21,16 @@ Later:
 
 NICE TO HAVE:
     - Look at TSM and LTN compatibility requirement or block them.
-    - Have a 4x4 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic.
-    - Minimap colored lines for tunnels.
+    - Have a 6x6 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic. Don't think this can fast replace existing entities, or maybe should be just able to build tunnel segments against one another and this is a hndled configuration (needs solid across tunnel (3 pieces wide/long).
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong.
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
-    - Graphics: icons, ingame entities, placement entities.
+    - Proper Graphics: icons, ingame entities, placement entities.
     - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing, but can be driven over.
     - We assume all train carriages are 7 tiles apart, check thier prototypes.
 	- When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carraiges, fuel, cargo items, equipment grids.
     - Look at train speed and how long until the train carraige will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from every second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach?
 	- Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels.
-    - When tunnels are removed have their underground rails kept and track the removed spacings. Then allow them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this.
+    - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allow them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this.
+    - Look at if tunnel segments (not rail crossing ones) can be built under water. Should be same placement entity, just a differnet graphics entity on top to show the tunnel on the lake bed.
+    - Look at if tiles can be placed over tunnel segments or something done to allow them to be paved over (even if just a visual).
