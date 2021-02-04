@@ -1,16 +1,17 @@
 local CommonPrototypeFunctions = require("prototypes/common-prototype-functions")
 
--- Have to do this 4 rotations to keep it happy and avoid crashing on connecting rail signals via wires.
--- This bug causes the need of 4 rotations: https://forums.factorio.com/viewtopic.php?f=30&t=93681
-
 return function(tunnelSignalSurfaceCollisionLayer)
     data:extend(
         {
             {
                 type = "rail-signal",
-                name = "railway_tunnel-tunnel_portal_end_rail_signal",
+                name = "railway_tunnel-invisible_signal-not_on_map",
+                icon = "__base__/graphics/icons/rail-signal.png",
+                icon_size = 64,
+                icon_mipmaps = 4,
+                subgroup = "railway_tunnel-hidden_rail_signals",
                 animation = CommonPrototypeFunctions.GetBlankAnimations(1),
-                collision_mask = {tunnelSignalSurfaceCollisionLayer},
+                collision_mask = {tunnelSignalSurfaceCollisionLayer}, -- Just collide with other signals, doesn't let the rails be daged by weapons.
                 collision_box = {{-0.2, -0.2}, {0.2, 0.2}},
                 draw_circuit_wires = false,
                 circuit_wire_max_distance = 10,

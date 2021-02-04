@@ -425,6 +425,7 @@ TrainManager.CreateDummyTrain = function(trainManagerEntry, sourceTrain)
         raise_built = false,
         create_build_effect_smoke = false
     }
+    locomotive.destructible = false
     locomotive.burner.currently_burning = "coal"
     locomotive.burner.remaining_burning_fuel = 4000000
     trainManagerEntry.dummyTrain = locomotive.train
@@ -650,7 +651,9 @@ end
 
 TrainManager.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
     local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4}))
-    return lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
+    local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
+    pushingLocomotiveEntity.destructible = false
+    return pushingLocomotiveEntity
 end
 
 -- Check a moving trains (non 0 speed) got a happy state. For use after manipulating the train and so assumes the train was in a happy state before we did this.

@@ -23,7 +23,7 @@ function Utils.Are2EntitiesTheSame(entity1, entity2)
     end
 end
 
-function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructable, onlyKillable, entitiesExcluded)
+function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructible, onlyKillable, entitiesExcluded)
     -- Expand force affected to support range of opt in or opt out forces.
     local entitiesFound, filteredEntitiesFound = surface.find_entities(positionedBoundingBox), {}
     for k, entity in pairs(entitiesFound) do
@@ -39,7 +39,7 @@ function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionB
             end
             if not entityExcluded then
                 if (onlyForceAffected == nil) or (entity.force == onlyForceAffected) then
-                    if (not onlyDestructable) or (entity.destructible) then
+                    if (not onlyDestructible) or (entity.destructible) then
                         if (not onlyKillable) or (entity.health ~= nil) then
                             if (not collisionBoxOnlyEntities) or (Utils.IsCollisionBoxPopulated(entity.prototype.collision_box)) then
                                 table.insert(filteredEntitiesFound, entity)

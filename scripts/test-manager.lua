@@ -5,7 +5,7 @@ local Utils = require("utility/utils")
 
 local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = true -- Does all the tests regardless of their enabled state below.
+local doAllTests = false -- Does all the tests regardless of their enabled state below.
 
 local testsToDo
 if doTests then
@@ -37,6 +37,7 @@ end
 TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
+    EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
 end
 
 TestManager.OnStartup = function()
@@ -47,6 +48,11 @@ TestManager.OnStartup = function()
 
     global.testManager.testSurface = game.surfaces[1]
     global.testManager.playerForce = game.forces["player"]
+    local playerForce = global.testManager.playerForce
+
+    playerForce.character_running_speed_modifier = 10
+    playerForce.character_build_distance_bonus = 100
+    playerForce.character_reach_distance_bonus = 100
 
     local testSurface = global.testManager.testSurface
     testSurface.generate_with_lab_tiles = true
@@ -86,8 +92,27 @@ TestManager.OnPlayerCreated = function(event)
         return
     end
     local player = game.get_player(event.player_index)
-    player.exit_cutscene()
-    player.set_controller {type = defines.controllers.editor}
+    if player.controller_type == defines.controllers.cutscene then
+        player.exit_cutscene()
+    end
+
+    TestManager.OnPlayerCreatedMakeCharacter({instanceId = player.index})
+end
+
+TestManager.OnPlayerCreatedMakeCharacter = function(event)
+    -- Add a character since it was lost in surface destruction. Then go to Map Editor, that way if we leave map editor we have a character to return to.
+    local player = game.get_player(event.instanceId)
+    if player.character == nil then
+        local characterCreated = player.create_character()
+        if characterCreated == false then
+            -- Character can't create yet, try again later.
+            EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.OnPlayerCreatedMakeCharacter", player.index)
+            return
+        end
+    end
+    local tickWasPaused = game.tick_paused
+    player.toggle_map_editor()
+    game.tick_paused = tickWasPaused
 end
 
 TestManager.BuildBlueprintFromString = function(blueprintString, position, testName)
