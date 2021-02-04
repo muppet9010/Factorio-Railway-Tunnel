@@ -28,3 +28,5 @@ require("prototypes/tunnel-exit-dummy-locomotive")
 
 require("prototypes/technology")
 require("prototypes/recipe")
+
+require("prototypes/player-container")

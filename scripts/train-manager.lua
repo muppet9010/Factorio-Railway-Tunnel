@@ -32,6 +32,9 @@ TrainManager.CreateGlobals = function()
         aboveTrainLeavingTunnelRailSegmentId = The LuaTrain ID of the above Train Leaving Tunnel Rail Segment.
         aboveTrainLeavingPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
         committed = boolean if train is already fully committed to going through tunnel
+        enteringCarriageIdToUndergroundCarriageId = Table of the entering carriage unit number to the underground carriage unit number for each carriage in the train.
+        undergroundCarriageIdToLeavingCarriageId = Table of the underground carriage unit number to the leaving carriage unit number for each carriage in the train.
+        trainManagerEntry.playersInUndergroudCarriages = Table of the players and their characters that are notionally in the underground trains now.
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
@@ -140,13 +143,15 @@ TrainManager.TrainEnteringOngoing = function(event)
 
     TrainManager.SetAboveTrainEnteringSpeed(trainManagerEntry, TrainManager.GetTrainSpeed(trainManagerEntry))
 
-    local nextStockAttributeName = "front_stock"
+    local nextCarriage
     -- aboveTrainEnteringForwards has been updated for us by SetAboveTrainEnteringSpeed()
-    if not trainManagerEntry.aboveTrainEnteringForwards then
-        nextStockAttributeName = "back_stock"
+    if trainManagerEntry.aboveTrainEnteringForwards then
+        nextCarriage = aboveTrainEntering.front_stock
+    else
+        nextCarriage = aboveTrainEntering.back_stock
     end
 
-    if Utils.GetDistance(aboveTrainEntering[nextStockAttributeName].position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 14 then
+    if Utils.GetDistance(nextCarriage.position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 14 then
         if not trainManagerEntry.committed then
             -- we now start destroying entering train carriages, so train can't be allowed to turn back from the tunnel now
             trainManagerEntry.committed = true
@@ -161,9 +166,21 @@ TrainManager.TrainEnteringOngoing = function(event)
                 TrainManager.TerminateTunnelTrip(global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[aboveTrainEntering.id])
             end
         end
-        trainManagerEntry.aboveTrainEntering[nextStockAttributeName].destroy()
+        local driver, playersCarraigeUnitNumber = nextCarriage.get_driver(), nextCarriage.unit_number
+        nextCarriage.destroy()
+        -- Update local variable as new train Id after removing carriage.
+        if trainManagerEntry.aboveTrainEntering.valid then
+            aboveTrainEntering = trainManagerEntry.aboveTrainEntering
+        else
+            aboveTrainEntering = nil --set to nil if not valid as easier/cheaper to check later than valid.
+        end
+
+        -- Handle any player in the train carriage.
+        if driver ~= nil then
+            TrainManager.PlayerInCarriageEnteringTunnel(trainManagerEntry, driver, playersCarraigeUnitNumber)
+        end
     end
-    if trainManagerEntry.aboveTrainEntering == nil or (not trainManagerEntry.aboveTrainEntering.valid) or #trainManagerEntry.aboveTrainEntering[nextStockAttributeName] == nil then
+    if aboveTrainEntering == nil or (not aboveTrainEntering.valid) then
         -- Train has completed entering.
         EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
         global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
@@ -171,6 +188,22 @@ TrainManager.TrainEnteringOngoing = function(event)
         trainManagerEntry.aboveTrainEnteringId = nil
         Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", trainManagerEntry)
     end
+end
+
+TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver, playersCarraigeUnitNumber)
+    local player, character
+    if not driver.is_player() then
+        --driver.teleport(0, 10) -- TODO: temp to stop player being run over.
+        -- Is a character player driving.
+        character, player = driver, driver.player
+    else
+        player = driver
+    end
+    local playerContainer = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = Utils.ApplyOffsetToPosition(driver.position, {x = 0, y = -10}), force = driver.force}
+    playerContainer.destructible = false
+    playerContainer.set_driver(driver)
+    trainManagerEntry.playersInUndergroudCarriages = trainManagerEntry.playersInUndergroudCarriages or {}
+    trainManagerEntry.playersInUndergroudCarriages[trainManagerEntry.enteringCarriageIdToUndergroundCarriageId[playersCarraigeUnitNumber]] = {player = player, character = character}
 end
 
 TrainManager.TrainUndergroundOngoing = function(event)
@@ -549,8 +582,8 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     end
 
     local tunnelInitialPosition = Utils.RotatePositionAround0(trainManagerEntry.tunnel.alignmentOrientation, {x = 1 + trainManagerEntry.underground.tunnelInstanceValue, y = 0})
-    local firstCarraigeDistanceFromPortalCenter = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEntrance + trainManagerEntry.tunnel.portals[1].entranceDistanceFromCenter})
-    local nextCarriagePosition = Utils.ApplyOffsetToPosition(tunnelInitialPosition, firstCarraigeDistanceFromPortalCenter)
+    local firstCarriageDistanceFromPortalCenter = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEntrance + trainManagerEntry.tunnel.portals[1].entranceDistanceFromCenter})
+    local nextCarriagePosition = Utils.ApplyOffsetToPosition(tunnelInitialPosition, firstCarriageDistanceFromPortalCenter)
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
     local trainCarriagesForwardDirection = trainManagerEntry.trainTravelDirection
     if not trainManagerEntry.aboveTrainEnteringForwards then
@@ -561,6 +594,7 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
     if (refTrain.speed < 0) then
         minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrain.carriages, 1, -1
     end
+    trainManagerEntry.enteringCarriageIdToUndergroundCarriageId = {}
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
         local carriageDirection = trainCarriagesForwardDirection
@@ -572,6 +606,7 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
             refCarriageGoingForwards = false
         end
         placedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards)
+        trainManagerEntry.enteringCarriageIdToUndergroundCarriageId[refCarriage.unit_number] = placedCarriage.unit_number
 
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
     end
