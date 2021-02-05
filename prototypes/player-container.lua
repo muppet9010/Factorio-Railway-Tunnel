@@ -6,7 +6,7 @@ data:extend(
             type = "car",
             name = "railway_tunnel-player_container",
             collision_mask = {},
-            flags = {"not-on-map"},
+            flags = {"not-on-map", "placeable-off-grid"},
             weight = 1,
             braking_force = 1,
             friction_force = 1,

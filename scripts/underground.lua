@@ -61,7 +61,7 @@ Underground.CreateUndergroundSurface = function(alignment)
 
     -- Add reference rail.
     for valueVariation = -undergroundSurface.trackLengthEachSide, undergroundSurface.trackLengthEachSide, 2 do
-        table.insert(undergroundSurface.refRails, surface.create_entity {name = "straight-rail", position = {[undergroundSurface.railAlignmentAxis] = valueVariation, [undergroundSurface.tunnelInstanceAxis] = 0}, force = global.force.tunnelForce, direction = railDirection})
+        table.insert(undergroundSurface.refRails, surface.create_entity {name = "straight-rail", position = {[undergroundSurface.railAlignmentAxis] = valueVariation, [undergroundSurface.tunnelInstanceAxis] = 1}, force = global.force.tunnelForce, direction = railDirection})
     end
 
     return undergroundSurface
@@ -80,7 +80,7 @@ Underground.TunnelCompleted = function(tunnel)
     local undergroundLeadInTiles = undergroundSurface.trackLengthEachSide -- This will be dynamically tracked and generated in the future to cater for tunnel length.
     local undergroundOffsetFromSurface = {
         [undergroundSurface.railAlignmentAxis] = 0 - ((tunnel.portals[1].entity.position[undergroundSurface.railAlignmentAxis] + tunnel.portals[2].entity.position[undergroundSurface.railAlignmentAxis]) / 2),
-        [undergroundSurface.tunnelInstanceAxis] = (0 - tunnel.portals[1].entity.position[undergroundSurface.tunnelInstanceAxis]) + tunnelInstanceValue
+        [undergroundSurface.tunnelInstanceAxis] = (1 - tunnel.portals[1].entity.position[undergroundSurface.tunnelInstanceAxis]) + tunnelInstanceValue
     }
     local surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundOffsetFromSurface)
 
