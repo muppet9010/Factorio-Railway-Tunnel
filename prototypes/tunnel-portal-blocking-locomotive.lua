@@ -31,7 +31,8 @@ data:extend(
                 render_no_power_icon = false,
                 render_no_network_icon = false,
                 fuel_inventory_size = 0
-            }
+            },
+            allow_passengers = false
         }
     }
 )

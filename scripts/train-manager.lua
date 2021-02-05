@@ -3,7 +3,7 @@ local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
-local Logging = require("utility/logging")
+--local Logging = require("utility/logging")
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -35,7 +35,7 @@ TrainManager.CreateGlobals = function()
         committed = boolean if train is already fully committed to going through tunnel
         enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train.
         undergroundCarriageIdToLeavingCarriageId = Table of the underground carriage unit number to the leaving carriage unit number for each carriage in the train.
-        trainManagerEntry.playerContainersForUndergroudCarriages = Table of the player details for players that are notionally in the underground trains now. Key'd by underground carriage unit_number.
+        trainManagerEntry.playerContainersForUndergroudCarriageIds = Table of the player details for players that are notionally in the underground trains now. Key'd by underground carriage unit_number.
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
@@ -195,7 +195,6 @@ TrainManager.TrainEnteringOngoing = function(event)
 end
 
 TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver, playersCarriage)
-    Logging.Log(Logging.PositionToString(driver.position))
     local player
     if not driver.is_player() then
         -- Is a character player driving.
@@ -206,28 +205,29 @@ TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver
     local playerContainer = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
     playerContainer.destructible = false
     playerContainer.set_driver(player)
-    trainManagerEntry.playerContainersForUndergroudCarriages = trainManagerEntry.playerContainersForUndergroudCarriages or {}
+
+    -- Record state for future updating.
+    trainManagerEntry.playerContainersForUndergroudCarriageIds = trainManagerEntry.playerContainersForUndergroudCarriageIds or {}
     local playersUndergroundCarriage = trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
-    trainManagerEntry.playerContainersForUndergroudCarriages[playersUndergroundCarriage.unit_number] = {player = player, playerContainer = playerContainer, undergroundCarriageEntity = playersUndergroundCarriage}
+    trainManagerEntry.playerContainersForUndergroudCarriageIds[playersUndergroundCarriage.unit_number] = {player = player, playerContainer = playerContainer, undergroundCarriageEntity = playersUndergroundCarriage}
 end
 
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry, leadCarriage = global.trainManager.managedTrains[event.instanceId]
     if trainManagerEntry == nil then
-        -- tunnel trip has been aborted
+        -- Tunnel trip has been aborted.
         return
     end
 
-    -- Handle any players riding in the train
-    if trainManagerEntry.playerContainersForUndergroudCarriages ~= nil then
-        for _, playerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriages) do
-            Logging.Log(Logging.PositionToString(playerDetails.player.position))
+    -- Handle any players riding in the train.
+    if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil then
+        for _, playerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriageIds) do
             local playerContainerPosition = Utils.ApplyOffsetToPosition(playerDetails.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
             playerDetails.playerContainer.teleport(playerContainerPosition)
         end
     end
 
-    -- Track underground train's lead carriage
+    -- Track underground train's lead carriage.
     if (trainManagerEntry.undergroundTrain.speed > 0) then
         leadCarriage = trainManagerEntry.undergroundTrain["front_stock"]
     else
@@ -241,7 +241,7 @@ TrainManager.TrainUndergroundOngoing = function(event)
 end
 
 TrainManager.TrainLeavingInitial = function(trainManagerEntry)
-    -- cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later
+    -- cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
     local schedule, isManual, targetStop = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.dummyTrain.path_end_stop
     local dummyTrainState = trainManagerEntry.dummyTrain.state
     TrainManager.DestroyDummyTrain(trainManagerEntry)
@@ -352,10 +352,30 @@ TrainManager.TrainLeavingOngoing = function(event)
             if not isManual then
                 TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
 
-                -- Check that the train has an expected state
+                -- Check that the train has an expected state.
                 if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
                     error("reemerging train should have positive movement state")
                 end
+            end
+
+            -- Handle any players riding in this placed carriage.
+            if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil and trainManagerEntry.playerContainersForUndergroudCarriageIds[nextSourceCarriageEntity.unit_number] ~= nil then
+                local playerDetails = trainManagerEntry.playerContainersForUndergroudCarriageIds[nextSourceCarriageEntity.unit_number]
+                placedCarriage.set_driver(playerDetails.player)
+                playerDetails.playerContainer.destroy()
+                trainManagerEntry.playerContainersForUndergroudCarriageIds[nextSourceCarriageEntity.unit_number] = nil
+                if Utils.IsTableEmpty(trainManagerEntry.playerContainersForUndergroudCarriageIds) then
+                    -- No point checking every wagon in a long train when all players in the train have been handled.
+                    trainManagerEntry.playerContainersForUndergroudCarriageIds = nil
+                end
+            end
+        end
+
+        -- Handle any players riding in the train.
+        if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil then
+            for _, playerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriageIds) do
+                local playerContainerPosition = Utils.ApplyOffsetToPosition(playerDetails.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
+                playerDetails.playerContainer.teleport(playerContainerPosition)
             end
         end
     end
