@@ -8,39 +8,51 @@ local Utils = require("utility/utils")
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1
-    global.trainManager.managedTrains = global.trainManager.managedTrains or {} --[[
-        id = uniqiue id of this managed train passing through the tunnel.
-        aboveTrainEntering = LuaTrain of the entering train on the world surface.
-        aboveTrainEnteringId = The LuaTrain ID of the above Train Entering.
-        aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
-        aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
-        aboveTrainEnteringForwards = boolean if the train is moving forwards or backwards from its viewpoint.
-        dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive
-        trainTravelDirection = defines.direction the train is heading in.
-        trainTravelOrientation = the orientation of the trainTravelDirection.
-        surfaceEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
-        surfaceEntrancePortalEndSignal = the endSignal global object of the rail signal at the end of the entrance portal track (forced closed signal).
-        surfaceExitPortal = the portal global object of the exit portal for this tunnel usage instance.
-        surfaceExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
-        tunnel = ref to the global tunnel object.
-        undergroundTrain = LuaTrain of the train created in the underground surface.
-        undergroundLeavingPortalEntrancePosition = The underground position equivilent to the portal entrance that the underground train is measured against to decide when it starts leaving.
-        aboveSurface = LuaSurface of the main world surface.
-        underground = Underground object of this tunnel used by this train manager instance.
-        aboveLeavingSignalPosition = The above ground position that the rear leaving carriage should trigger the next carriage at.
-        aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
-        aboveTrainLeavingTunnelRailSegment = LuaTrain of the train leaving the tunnel's exit portal rail segment on the world surface.
-        aboveTrainLeavingTunnelRailSegmentId = The LuaTrain ID of the above Train Leaving Tunnel Rail Segment.
-        aboveTrainLeavingPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
-        committed = boolean if train is already fully committed to going through tunnel
-        enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train.
-        undergroundCarriageIdToLeavingCarriageId = Table of the underground carriage unit number to the leaving carriage unit number for each carriage in the train.
-        trainManagerEntry.playerContainersForUndergroudCarriageIds = Table of the player details for players that are notionally in the underground trains now. Key'd by underground carriage unit_number.
+    global.trainManager.managedTrains = global.trainManager.managedTrains or {}
+    --[[
+        [id] = {
+            id = uniqiue id of this managed train passing through the tunnel.
+            aboveTrainEntering = LuaTrain of the entering train on the world surface.
+            aboveTrainEnteringId = The LuaTrain ID of the above Train Entering.
+            aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
+            aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
+            aboveTrainEnteringForwards = boolean if the train is moving forwards or backwards from its viewpoint.
+            dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive
+            trainTravelDirection = defines.direction the train is heading in.
+            trainTravelOrientation = the orientation of the trainTravelDirection.
+            surfaceEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
+            surfaceEntrancePortalEndSignal = the endSignal global object of the rail signal at the end of the entrance portal track (forced closed signal).
+            surfaceExitPortal = the portal global object of the exit portal for this tunnel usage instance.
+            surfaceExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
+            tunnel = ref to the global tunnel object.
+            undergroundTrain = LuaTrain of the train created in the underground surface.
+            undergroundLeavingPortalEntrancePosition = The underground position equivilent to the portal entrance that the underground train is measured against to decide when it starts leaving.
+            aboveSurface = LuaSurface of the main world surface.
+            underground = Underground object of this tunnel used by this train manager instance.
+            aboveLeavingSignalPosition = The above ground position that the rear leaving carriage should trigger the next carriage at.
+            aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
+            aboveTrainLeavingTunnelRailSegment = LuaTrain of the train leaving the tunnel's exit portal rail segment on the world surface.
+            aboveTrainLeavingTunnelRailSegmentId = The LuaTrain ID of the above Train Leaving Tunnel Rail Segment.
+            aboveTrainLeavingPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
+            committed = boolean if train is already fully committed to going through tunnel
+            enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train.
+            undergroundCarriageIdToLeavingCarriageId = Table of the underground carriage unit number to the leaving carriage unit number for each carriage in the train.
+            undergroudCarriageIdsToPlayerContainer = Table for each underground carriage in this train with a player container related to it. Key'd by underground carraige unit number.
+        }
     ]]
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
     global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain = global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain or {}
-    global.trainManager.playeContainerIdToManagedTrain = global.trainManager.playeContainerIdToManagedTrain or {}
+    global.trainManager.playerContainers = global.trainManager.playerContainers or {} --[[
+        [id] = {
+            id = unit_number of the player container entity.
+            entity = the player container entity the player is sitting in.
+            player = LuaPlayer.
+            undergroundCarriageEntity = the underground carriage entity this container is realted to.
+            trainManagerEntry = trainManagerEntry globla object this is owned by.
+        }
+    ]]
+    global.trainManager.playerIdToPlayerContainer = global.trainManager.playerIdToPlayerContainer or {}
 end
 
 TrainManager.OnLoad = function()
@@ -64,7 +76,8 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         surfaceEntrancePortal = surfaceEntrancePortalEndSignal.portal,
         tunnel = surfaceEntrancePortalEndSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(surfaceEntrancePortalEndSignal.entity.direction + 4),
-        committed = false
+        committed = false,
+        undergroudCarriageIdsToPlayerContainer = {}
     }
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1
     global.trainManager.managedTrains[trainManagerEntry.id] = trainManagerEntry
@@ -201,15 +214,22 @@ TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver
     else
         player = driver
     end
-    local playerContainer = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
-    playerContainer.destructible = false
-    playerContainer.set_driver(player)
+    local playerContainerEntity = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
+    playerContainerEntity.destructible = false
+    playerContainerEntity.set_driver(player)
 
     -- Record state for future updating.
-    trainManagerEntry.playerContainersForUndergroudCarriageIds = trainManagerEntry.playerContainersForUndergroudCarriageIds or {}
     local playersUndergroundCarriage = trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
-    trainManagerEntry.playerContainersForUndergroudCarriageIds[playersUndergroundCarriage.unit_number] = {player = player, playerContainer = playerContainer, undergroundCarriageEntity = playersUndergroundCarriage}
-    global.trainManager.playeContainerIdToManagedTrain[playerContainer.unit_number] = trainManagerEntry
+    local playerContainer = {
+        id = playerContainerEntity.unit_number,
+        player = player,
+        entity = playerContainerEntity,
+        undergroundCarriageEntity = playersUndergroundCarriage,
+        trainManagerEntry = trainManagerEntry
+    }
+    trainManagerEntry.undergroudCarriageIdsToPlayerContainer[playersUndergroundCarriage.unit_number] = playerContainer
+    global.trainManager.playerIdToPlayerContainer[playerContainer.player.index] = playerContainer
+    global.trainManager.playerContainers[playerContainer.id] = playerContainer
 end
 
 TrainManager.TrainUndergroundOngoing = function(event)
@@ -220,11 +240,9 @@ TrainManager.TrainUndergroundOngoing = function(event)
     end
 
     -- Handle any players riding in the train.
-    if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil then
-        for _, playerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriageIds) do
-            local playerContainerPosition = Utils.ApplyOffsetToPosition(playerDetails.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
-            playerDetails.playerContainer.teleport(playerContainerPosition)
-        end
+    for _, playerContainer in pairs(trainManagerEntry.undergroudCarriageIdsToPlayerContainer) do
+        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
+        playerContainer.entity.teleport(playerContainerPosition)
     end
 
     -- Track underground train's lead carriage.
@@ -359,24 +377,17 @@ TrainManager.TrainLeavingOngoing = function(event)
             end
 
             -- Handle any players riding in this placed carriage.
-            if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil and trainManagerEntry.playerContainersForUndergroudCarriageIds[nextSourceCarriageEntity.unit_number] ~= nil then
-                local playerDetails = trainManagerEntry.playerContainersForUndergroudCarriageIds[nextSourceCarriageEntity.unit_number]
-                placedCarriage.set_driver(playerDetails.player)
-                playerDetails.playerContainer.destroy()
-                trainManagerEntry.playerContainersForUndergroudCarriageIds[nextSourceCarriageEntity.unit_number] = nil
-                if Utils.IsTableEmpty(trainManagerEntry.playerContainersForUndergroudCarriageIds) then
-                    -- No point checking every wagon in a long train when all players in the train have been handled.
-                    trainManagerEntry.playerContainersForUndergroudCarriageIds = nil
-                end
+            if trainManagerEntry.undergroudCarriageIdsToPlayerContainer[nextSourceCarriageEntity.unit_number] ~= nil then
+                local playerContainer = trainManagerEntry.undergroudCarriageIdsToPlayerContainer[nextSourceCarriageEntity.unit_number]
+                placedCarriage.set_driver(playerContainer.player)
+                TrainManager.RemovePlayerContainer(playerContainer)
             end
         end
 
         -- Handle any players riding in the train.
-        if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil then
-            for _, playerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriageIds) do
-                local playerContainerPosition = Utils.ApplyOffsetToPosition(playerDetails.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
-                playerDetails.playerContainer.teleport(playerContainerPosition)
-            end
+        for _, playerContainer in pairs(trainManagerEntry.undergroudCarriageIdsToPlayerContainer) do
+            local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
+            playerContainer.entity.teleport(playerContainerPosition)
         end
     end
 
@@ -436,10 +447,8 @@ TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
     if trainManagerEntry.aboveTrainLeavingTunnelRailSegment then
         global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId] = nil
     end
-    if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil then
-        for _, playerContainerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriageIds) do
-            global.trainManager.playeContainerIdToManagedTrain[playerContainerDetails.playerContainer.unit_number] = nil
-        end
+    for _, playerContainer in pairs(trainManagerEntry.undergroudCarriageIdsToPlayerContainer) do
+        TrainManager.RemovePlayerContainer(playerContainer)
     end
     Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
@@ -718,7 +727,10 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
             EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", managedTrain.id)
             global.trainManager.managedTrains[managedTrain.id] = nil
 
-        --TODO: need to check for any player in the underground and kill them. managedTrain.playerContainersForUndergroudCarriageIds
+            for _, playerContainer in pairs(managedTrain.undergroudCarriageIdsToPlayerContainer) do
+                playerContainer.player.destroy()
+                TrainManager.RemovePlayerContainer(playerContainer)
+            end
         end
     end
 end
@@ -744,6 +756,7 @@ TrainManager.ConfirmMovingLeavingTrainState = function(train)
 end
 
 TrainManager.OnToggleDrivingInput = function(event)
+    -- We have to intercept the enter/exit vehicle key press so we can check if he state changes successfully and if not check if its an edge cose for this mod that needs to be handled.
     local player = game.get_player(event.player_index)
     if player.vehicle == nil then
         player.driving = true -- Just get in the nearest vehicle, this is how base game works (ignores cursor selected vehicle if multiple in range)
@@ -763,10 +776,11 @@ end
 
 TrainManager.PlayerLeaveTunnel = function(player, portalEntity)
     local portalObject
+    local playerContainer = global.trainManager.playerContainers[player.vehicle.unit_number]
 
     if portalEntity == nil then
         -- Find nearest portal
-        local trainManagerEntry = global.trainManager.playeContainerIdToManagedTrain[player.vehicle.unit_number]
+        local trainManagerEntry = playerContainer.trainManagerEntry
         if Utils.GetDistance(trainManagerEntry.surfaceEntrancePortal.entity.position, player.position) < Utils.GetDistance(trainManagerEntry.surfaceExitPortal.entity.position, player.position) then
             portalObject = trainManagerEntry.surfaceEntrancePortal
         else
@@ -775,14 +789,21 @@ TrainManager.PlayerLeaveTunnel = function(player, portalEntity)
     else
         portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
     end
-    local playerPosition = player.surface.find_non_colliding_position("rail-signal", portalObject.portalEntrancePosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
+    local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntrancePosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
     player.vehicle.set_driver(nil)
     player.teleport(playerPosition)
+    TrainManager.RemovePlayerContainer(global.trainManager.playerIdToPlayerContainer[player.index])
 end
 
-TrainManager.PlayerStopBeingInTrain = function()
-    --TODO: call this from the right place when the player stops being in a managed train and make it clear up on call.
-    --trainManagerEntry.playerContainersForUndergroudCarriageIds
+TrainManager.RemovePlayerContainer = function(playerContainer)
+    if playerContainer == nil then
+        -- If the carriage hasn't entered the tunnel, but the carriage is in the portal theres no PlayerContainer yet.
+        return
+    end
+    playerContainer.entity.destroy()
+    playerContainer.trainManagerEntry.undergroudCarriageIdsToPlayerContainer[playerContainer.undergroundCarriageEntity.unit_number] = nil
+    global.trainManager.playerIdToPlayerContainer[playerContainer.player.index] = nil
+    global.trainManager.playerContainers[playerContainer.id] = nil
 end
 
 return TrainManager

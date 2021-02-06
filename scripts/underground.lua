@@ -6,12 +6,14 @@ Underground.CreateGlobals = function()
     global.underground = global.underground or {}
     global.underground.horizontal = global.underground.horizontal or nil -- Vertical underground tunnel global object.
     --[[
-        alignment = either "hotizontal" or "vertical"
-        surface = The LuaSurface
-        refRails = table of the rail entities on this underground that are to be cloned for each tunnel instance.
-        trackLengthEachSide = the distance of the ref rails each side of 0 on this surface.
-        railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel.
-        tunnelInstanceAxis = the "x" or "y" axis that each tunnel's tracks are spaced along on the underground.
+        {
+            alignment = either "hotizontal" or "vertical"
+            surface = The LuaSurface
+            refRails = table of the rail entities on this underground that are to be cloned for each tunnel instance.
+            trackLengthEachSide = the distance of the ref rails each side of 0 on this surface.
+            railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel.
+            tunnelInstanceAxis = the "x" or "y" axis that each tunnel's tracks are spaced along on the underground.
+        }
     --]]
     global.underground.vertical = global.underground.vertical or nil -- Vertical underground tunnel global object, same attributes as global.underground.horizontal.
 end
