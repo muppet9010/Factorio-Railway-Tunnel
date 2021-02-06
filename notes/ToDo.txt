@@ -1,4 +1,5 @@
 Next:
+    - Use a test placement entity that can go off grid, but collides with rail and other character collision masks. Rail signal can't go off grid.
 	- Bluepritns may place easier in map now:
 		Fixed that building blueprints in the game next to uncharted areas didn't work as expected. (https://forums.factorio.com/95056)
     - Look at replacing Utils.GetDistance() usage with Utils.GetDistanceSingleAxis() as much cheaper UPS and should be more accurate than the slight diagonals to signals currently do.

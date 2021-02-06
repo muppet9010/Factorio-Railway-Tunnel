@@ -40,6 +40,7 @@ TrainManager.CreateGlobals = function()
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
     global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain = global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain or {}
+    global.trainManager.playeContainerIdToManagedTrain = global.trainManager.playeContainerIdToManagedTrain or {}
 end
 
 TrainManager.OnLoad = function()
@@ -51,6 +52,7 @@ TrainManager.OnLoad = function()
     Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
     Interfaces.RegisterInterface("TrainManager.TunnelRemoved", TrainManager.TunnelRemoved)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainLeavingTunnelRailSegmentOngoing", TrainManager.TrainLeavingTunnelRailSegmentOngoing)
+    Events.RegisterHandlerCustomInput("railway_tunnel-toggle_driving", "TrainManager.OnToggleDrivingInput", TrainManager.OnToggleDrivingInput)
 end
 
 TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePortalEndSignal)
@@ -117,10 +119,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     trainManagerEntry.undergroundTrain = undergroundTrain
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(sourceTrain.speed))
 
-    local exitPortalOrientation = Utils.DirectionToOrientation(trainManagerEntry.surfaceExitPortal.entity.direction)
-    local exitPortalEntranceOffset = Utils.RotatePositionAround0(exitPortalOrientation, {x = 0, y = 0 - trainManagerEntry.surfaceExitPortal.entranceDistanceFromCenter})
-    local exitPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.entity.position, exitPortalEntranceOffset)
-    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(exitPortalEntrancePosition, trainManagerEntry.underground.undergroundOffsetFromSurface)
+    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.portalEntrancePosition, trainManagerEntry.underground.undergroundOffsetFromSurface)
 
     Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
     EventScheduler.ScheduleEventEachTick("TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
@@ -210,6 +209,7 @@ TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver
     trainManagerEntry.playerContainersForUndergroudCarriageIds = trainManagerEntry.playerContainersForUndergroudCarriageIds or {}
     local playersUndergroundCarriage = trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
     trainManagerEntry.playerContainersForUndergroudCarriageIds[playersUndergroundCarriage.unit_number] = {player = player, playerContainer = playerContainer, undergroundCarriageEntity = playersUndergroundCarriage}
+    global.trainManager.playeContainerIdToManagedTrain[playerContainer.unit_number] = trainManagerEntry
 end
 
 TrainManager.TrainUndergroundOngoing = function(event)
@@ -435,6 +435,11 @@ TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
     end
     if trainManagerEntry.aboveTrainLeavingTunnelRailSegment then
         global.trainManager.leavingTunnelRailSegmentTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingTunnelRailSegmentId] = nil
+    end
+    if trainManagerEntry.playerContainersForUndergroudCarriageIds ~= nil then
+        for _, playerContainerDetails in pairs(trainManagerEntry.playerContainersForUndergroudCarriageIds) do
+            global.trainManager.playeContainerIdToManagedTrain[playerContainerDetails.playerContainer.unit_number] = nil
+        end
     end
     Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
@@ -712,6 +717,8 @@ TrainManager.TunnelRemoved = function(tunnelRemoved)
             EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainLeavingOngoing", managedTrain.id)
             EventScheduler.RemoveScheduledOnceEvents("TrainManager.TrainLeavingTunnelRailSegmentOngoing", managedTrain.id)
             global.trainManager.managedTrains[managedTrain.id] = nil
+
+        --TODO: need to check for any player in the underground and kill them. managedTrain.playerContainersForUndergroudCarriageIds
         end
     end
 end
@@ -734,6 +741,48 @@ TrainManager.ConfirmMovingLeavingTrainState = function(train)
     else
         return false
     end
+end
+
+TrainManager.OnToggleDrivingInput = function(event)
+    local player = game.get_player(event.player_index)
+    if player.vehicle == nil then
+        player.driving = true -- Just get in the nearest vehicle, this is how base game works (ignores cursor selected vehicle if multiple in range)
+    elseif player.vehicle.name == "railway_tunnel-player_container" then
+        TrainManager.PlayerLeaveTunnel(player, nil)
+    else
+        player.driving = false -- Try to get out of the vehicle.
+        if player.vehicle ~= nil and player.vehicle.train ~= nil then
+            -- Failed to get out of vehicle so check if its a train in a portal (blocks player getting out).
+            local portalEntitiesFound = player.vehicle.surface.find_entities_filtered {position = player.vehicle.position, name = "railway_tunnel-tunnel_portal_surface-placed", limit = 1}
+            if #portalEntitiesFound == 1 then
+                TrainManager.PlayerLeaveTunnel(player, portalEntitiesFound[1])
+            end
+        end
+    end
+end
+
+TrainManager.PlayerLeaveTunnel = function(player, portalEntity)
+    local portalObject
+
+    if portalEntity == nil then
+        -- Find nearest portal
+        local trainManagerEntry = global.trainManager.playeContainerIdToManagedTrain[player.vehicle.unit_number]
+        if Utils.GetDistance(trainManagerEntry.surfaceEntrancePortal.entity.position, player.position) < Utils.GetDistance(trainManagerEntry.surfaceExitPortal.entity.position, player.position) then
+            portalObject = trainManagerEntry.surfaceEntrancePortal
+        else
+            portalObject = trainManagerEntry.surfaceExitPortal
+        end
+    else
+        portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
+    end
+    local playerPosition = player.surface.find_non_colliding_position("rail-signal", portalObject.portalEntrancePosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
+    player.vehicle.set_driver(nil)
+    player.teleport(playerPosition)
+end
+
+TrainManager.PlayerStopBeingInTrain = function()
+    --TODO: call this from the right place when the player stops being in a managed train and make it clear up on call.
+    --trainManagerEntry.playerContainersForUndergroudCarriageIds
 end
 
 return TrainManager

@@ -44,6 +44,7 @@ TunnelPortals.CreateGlobals = function()
             trainManagersClosingEntranceSignal = table of TrainManager global objects that currently state this entrance should be closed. key'd by TrainManager id.
             entranceSignalBlockingTrainEntity = the locomotive entity thats blocking the entrance signal.
             entranceDistanceFromCenter = the distance in tiles of the entrance from the portal center.
+            portalEntrancePosition = the position of the entrance to the portal.
         }
     ]]
 end
@@ -104,7 +105,8 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
         id = abovePlacedPortal.unit_number,
         entity = abovePlacedPortal,
         portalRailEntities = {},
-        entranceDistanceFromCenter = math.abs(SetupValues.entranceFromCenter)
+        entranceDistanceFromCenter = math.abs(SetupValues.entranceFromCenter),
+        portalEntrancePosition = Utils.ApplyOffsetToPosition(abovePlacedPortal.position, Utils.RotatePositionAround0(abovePlacedPortal.orientation, {x = 0, y = 0 - math.abs(SetupValues.entranceFromCenter)}))
     }
     global.tunnelPortals.portals[portal.id] = portal
 

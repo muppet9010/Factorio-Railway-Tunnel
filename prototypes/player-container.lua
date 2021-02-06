@@ -5,6 +5,10 @@ data:extend(
         {
             type = "car",
             name = "railway_tunnel-player_container",
+            icon = "__base__/graphics/icons/car.png",
+            icon_size = 64,
+            icon_mipmaps = 4,
+            subgroup = "railway_tunnel-hidden_cars",
             collision_mask = {},
             flags = {"not-on-map", "placeable-off-grid"},
             weight = 1,
