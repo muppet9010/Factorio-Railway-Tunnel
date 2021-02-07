@@ -1,8 +1,4 @@
 Next:
-    - Require 1.1.21
-	- Blueprints may place easier in map now:
-		Fixed that building blueprints in the game next to uncharted areas didn't work as expected. (https://forums.factorio.com/95056)
-    - Look at replacing Utils.GetDistance() usage with Utils.GetDistanceSingleAxis() as much cheaper UPS and should be more accurate than the slight diagonals to signals currently do.
 
 Soon:
     - Handle the target station or track in the path being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error.

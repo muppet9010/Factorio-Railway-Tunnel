@@ -174,7 +174,7 @@ TrainManager.TrainEnteringOngoing = function(event)
         nextCarriage = aboveTrainEntering.back_stock
     end
 
-    if Utils.GetDistance(nextCarriage.position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position) < 14 then
+    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
         if not trainManagerEntry.committed then
             -- we now start destroying entering train carriages, so train can't be allowed to turn back from the tunnel now
             trainManagerEntry.committed = true
@@ -258,7 +258,7 @@ TrainManager.TrainUndergroundOngoing = function(event)
     else
         leadCarriage = trainManagerEntry.undergroundTrain["back_stock"]
     end
-    if Utils.GetDistance(leadCarriage.position, trainManagerEntry.undergroundLeavingPortalEntrancePosition) <= 30 then
+    if Utils.GetDistanceSingleAxis(leadCarriage.position, trainManagerEntry.undergroundLeavingPortalEntrancePosition, trainManagerEntry.tunnel.railAlignmentAxis) <= 30 then
         --The lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
         EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
         TrainManager.TrainLeavingInitial(trainManagerEntry)
@@ -346,7 +346,7 @@ TrainManager.TrainLeavingOngoing = function(event)
         end
         aboveTrainLeavingRearCarriage = aboveTrainLeaving.carriages[aboveTrainLeavingRearCarriageIndex]
 
-        if Utils.GetDistance(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position) > 20 then
+        if Utils.GetDistanceSingleAxis(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) > 20 then
             -- Reattaching next carriage can clobber schedule and will set train to manual, so preserve state.
             local schedule, isManual, targetStop = aboveTrainLeaving.schedule, aboveTrainLeaving.manual_mode, aboveTrainLeaving.path_end_stop
 
@@ -809,7 +809,7 @@ TrainManager.PlayerLeaveTunnelVehicle = function(player, portalEntity, vehicle)
     if portalEntity == nil then
         -- Find nearest portal
         local trainManagerEntry = playerContainer.trainManagerEntry
-        if Utils.GetDistance(trainManagerEntry.surfaceEntrancePortal.entity.position, player.position) < Utils.GetDistance(trainManagerEntry.surfaceExitPortal.entity.position, player.position) then
+        if Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) < Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceExitPortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) then
             portalObject = trainManagerEntry.surfaceEntrancePortal
         else
             portalObject = trainManagerEntry.surfaceExitPortal

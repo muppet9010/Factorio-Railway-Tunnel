@@ -5,7 +5,7 @@ local Utils = require("utility/utils")
 
 local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = false -- Does all the tests regardless of their enabled state below.
+local doAllTests = true -- Does all the tests regardless of their enabled state below.
 
 local testsToRun
 if doTests then
