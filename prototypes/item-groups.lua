@@ -32,7 +32,19 @@ data:extend(
             type = "item-subgroup",
             name = "railway_tunnel-hidden_rail_signals",
             group = "railway_tunnel-hidden",
-            order = "b"
+            order = "c"
+        },
+        {
+            type = "item-subgroup",
+            name = "railway_tunnel-hidden_cars",
+            group = "railway_tunnel-hidden",
+            order = "d"
+        },
+        {
+            type = "item-subgroup",
+            name = "railway_tunnel-hidden_placement_tests",
+            group = "railway_tunnel-hidden",
+            order = "e"
         }
     }
 )

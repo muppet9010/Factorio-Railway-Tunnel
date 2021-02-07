@@ -34,7 +34,8 @@ data:extend(
             reversing_power_modifier = 1,
             energy_source = {
                 type = "void"
-            }
+            },
+            allow_passengers = false
         }
     }
 )

@@ -7,9 +7,9 @@ local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
 local doAllTests = false -- Does all the tests regardless of their enabled state below.
 
-local testsToDo
+local testsToRun
 if doTests then
-    testsToDo = {
+    testsToRun = {
         shortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
         shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
@@ -73,12 +73,12 @@ TestManager.RunTests = function()
 
     -- Do the demo and not any tests if it is enabled.
     if doDemo then
-        testsToDo = {
+        testsToRun = {
             demo = {enabled = true, testScript = require("tests/demo")}
         }
     end
 
-    for testName, test in pairs(testsToDo) do
+    for testName, test in pairs(testsToRun) do
         if test.enabled or doAllTests then
             test.testScript.Start(TestManager, testName)
         end

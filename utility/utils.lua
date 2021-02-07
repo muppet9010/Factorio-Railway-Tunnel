@@ -808,7 +808,7 @@ function Utils.DisplayTimeOfTicks(inputTicks, displayLargestTimeUnit, displaySma
     end
 end
 
-function Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, collisionMask)
+function Utils.CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, collisionMask)
     -- Doesn't handle mipmaps at all presently. Also ignores any of the extra data in an icons table of "Types/IconData". Think this should just duplicate the target icons table entry.
     local clonedIcon = entityToClone.icon
     local clonedIconSize = entityToClone.icon_size
@@ -846,12 +846,12 @@ end
 
 function Utils.CreateLandPlacementTestEntityPrototype(entityToClone, newEntityName, subgroup)
     subgroup = subgroup or "other"
-    return Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"water-tile", "colliding-with-tiles-only"})
+    return Utils.CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"water-tile", "colliding-with-tiles-only"})
 end
 
 function Utils.CreateWaterPlacementTestEntityPrototype(entityToClone, newEntityName, subgroup)
     subgroup = subgroup or "other"
-    return Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"ground-tile", "colliding-with-tiles-only"})
+    return Utils.CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"ground-tile", "colliding-with-tiles-only"})
 end
 
 --[[
