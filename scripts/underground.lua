@@ -1,12 +1,19 @@
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
-local TunnelCommon = require("scripts/common/tunnel-common")
 local Underground = {}
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
-    global.underground.horizontalSurface = global.underground.horizontalSurface or Underground.CreateSurface("railway_tunnel-undeground-horizontal")
-    global.underground.verticalSurface = global.underground.verticalSurface or Underground.CreateSurface("railway_tunnel-undeground-vertical")
+    global.underground.horizontal = global.underground.horizontal or nil -- Vertical underground tunnel global object.
+    --[[
+        alignment = either "hotizontal" or "vertical"
+        surface = The LuaSurface
+        refRails = table of the rail entities on this underground that are to be cloned for each tunnel instance.
+        trackLengthEachSide = the distance of the ref rails each side of 0 on this surface.
+        railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel.
+        tunnelInstanceAxis = the "x" or "y" axis that each tunnel's tracks are spaced along on the underground.
+    --]]
+    global.underground.vertical = global.underground.vertical or nil -- Vertical underground tunnel global object, same attributes as global.underground.horizontal.
 end
 
 Underground.OnLoad = function()
@@ -14,45 +21,70 @@ Underground.OnLoad = function()
 end
 
 Underground.OnStartup = function()
+    if global.underground.horizontal == nil then
+        global.underground.horizontal = Underground.CreateUndergroundSurface("horizontal")
+    end
+    if global.underground.vertical == nil then
+        global.underground.vertical = Underground.CreateUndergroundSurface("vertical")
+    end
 end
 
-Underground.CreateSurface = function(surfaceName)
+Underground.CreateUndergroundSurface = function(alignment)
+    local surfaceName = "railway_tunnel-undeground-" .. alignment
+    if game.get_surface(surfaceName) ~= nil then
+        game.delete_surface(surfaceName) -- Mod has been removed and re-added so clean out the old tunnel surfaces.
+    end
     local surface = game.create_surface(surfaceName)
     surface.generate_with_lab_tiles = true
     surface.always_day = true
     surface.freeze_daytime = true
     surface.show_clouds = false
     surface.request_to_generate_chunks({0, 0}, 10)
-    return surface
+
+    local undergroundSurface = {
+        alignment = alignment,
+        surface = surface,
+        refRails = {},
+        trackLengthEachSide = 1000
+    }
+
+    local railDirection
+    if alignment == "vertical" then
+        undergroundSurface.railAlignmentAxis = "y"
+        undergroundSurface.tunnelInstanceAxis = "x"
+        railDirection = defines.direction.north
+    else
+        undergroundSurface.railAlignmentAxis = "x"
+        undergroundSurface.tunnelInstanceAxis = "y"
+        railDirection = defines.direction.east
+    end
+
+    -- Add reference rail.
+    for valueVariation = -undergroundSurface.trackLengthEachSide, undergroundSurface.trackLengthEachSide, 2 do
+        table.insert(undergroundSurface.refRails, surface.create_entity {name = "straight-rail", position = {[undergroundSurface.railAlignmentAxis] = valueVariation, [undergroundSurface.tunnelInstanceAxis] = 0}, force = global.force.tunnelForce, direction = railDirection})
+    end
+
+    return undergroundSurface
 end
 
-Underground.TunnelCompleted = function(tunnel, refTunnelPortalEntity)
-    -- This will likely become more complicated later on and then become a self contain object. Deal with at that point.
-    local undergroundRailEntities, undergroundModifiers = {}, {}
-    if tunnel.alignment == "vertical" then
-        undergroundModifiers.railAlignmentAxis = "y"
-        undergroundModifiers.tunnelInstanceAxis = "x"
-        undergroundModifiers.tunnelInstanceValue = tunnel.id * 10
-    else
-        undergroundModifiers.railAlignmentAxis = "x"
-        undergroundModifiers.tunnelInstanceAxis = "y"
-        undergroundModifiers.tunnelInstanceValue = tunnel.id * 10
-    end
-    undergroundModifiers.tunnelInstanceClonedTrainValue = undergroundModifiers.tunnelInstanceValue + 4
-    undergroundModifiers.distanceFromCenterToPortalEntrySignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].entrySignals["in"].entity.position, tunnel.portals[2].entrySignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
-    undergroundModifiers.distanceFromCenterToPortalEndSignals = Utils.GetDistanceSingleAxis(tunnel.portals[1].endSignals["in"].entity.position, tunnel.portals[2].endSignals["in"].entity.position, undergroundModifiers.railAlignmentAxis) / 2
-    local offsetTrackDistance = undergroundModifiers.distanceFromCenterToPortalEntrySignals + TunnelCommon.setupValues.undergroundLeadInTiles
-    -- Place the tracks underground that the train will be copied on to and run on.
-    for valueVariation = -offsetTrackDistance, offsetTrackDistance, 2 do
-        table.insert(undergroundRailEntities, tunnel.undergroundSurface.create_entity {name = "straight-rail", position = {[undergroundModifiers.railAlignmentAxis] = valueVariation, [undergroundModifiers.tunnelInstanceAxis] = undergroundModifiers.tunnelInstanceValue}, force = refTunnelPortalEntity.force, direction = refTunnelPortalEntity.direction})
-    end
+Underground.TunnelCompleted = function(tunnel)
+    local railEntities, undergroundSurface = {}, global.underground[tunnel.alignment]
 
-    undergroundModifiers.undergroundOffsetFromSurface = {
-        [undergroundModifiers.railAlignmentAxis] = 0 - ((tunnel.portals[1].entity.position[undergroundModifiers.railAlignmentAxis] + tunnel.portals[2].entity.position[undergroundModifiers.railAlignmentAxis]) / 2),
-        [undergroundModifiers.tunnelInstanceAxis] = (0 - tunnel.portals[1].entity.position[undergroundModifiers.tunnelInstanceAxis]) + undergroundModifiers.tunnelInstanceValue
+    local tunnelInstanceValue = tunnel.id * 4
+    local cloneRailOffset = {
+        [undergroundSurface.railAlignmentAxis] = 0,
+        [undergroundSurface.tunnelInstanceAxis] = 0 + tunnelInstanceValue
     }
-    undergroundModifiers.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundModifiers.undergroundOffsetFromSurface)
-    return undergroundRailEntities, undergroundModifiers
+    undergroundSurface.surface.clone_entities {entities = undergroundSurface.refRails, destination_offset = cloneRailOffset, create_build_effect_smoke = false}
+
+    local undergroundLeadInTiles = undergroundSurface.trackLengthEachSide -- This will be dynamically tracked and generated in the future to cater for tunnel length.
+    local undergroundOffsetFromSurface = {
+        [undergroundSurface.railAlignmentAxis] = 0 - ((tunnel.portals[1].entity.position[undergroundSurface.railAlignmentAxis] + tunnel.portals[2].entity.position[undergroundSurface.railAlignmentAxis]) / 2),
+        [undergroundSurface.tunnelInstanceAxis] = (0 - tunnel.portals[1].entity.position[undergroundSurface.tunnelInstanceAxis]) + tunnelInstanceValue
+    }
+    local surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundOffsetFromSurface)
+
+    return {undergroundSurface = undergroundSurface, railEntities = railEntities, tunnelInstanceValue = tunnelInstanceValue, undergroundLeadInTiles = undergroundLeadInTiles, undergroundOffsetFromSurface = undergroundOffsetFromSurface, surfaceOffsetFromUnderground = surfaceOffsetFromUnderground}
 end
 
 return Underground

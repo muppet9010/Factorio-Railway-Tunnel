@@ -109,12 +109,20 @@ function Utils.IsTableValidPosition(thing)
 end
 
 function Utils.TableToProperPosition(thing)
-    if not Utils.IsTableValidPosition(thing) then
+    if thing.x ~= nil and thing.y ~= nil then
+        if type(thing.x) == "number" and type(thing.y) == "number" then
+            return thing
+        else
+            return nil
+        end
+    end
+    if #thing ~= 2 then
         return nil
-    elseif thing.x ~= nil and thing.y ~= nil then
-        return {x = thing.x, y = thing.y}
-    else
+    end
+    if type(thing[1]) == "number" and type(thing[2]) == "number" then
         return {x = thing[1], y = thing[2]}
+    else
+        return nil
     end
 end
 
@@ -440,14 +448,14 @@ function Utils.CalculateTilesUnderPositionedBoundingBox(positionedBoundingBox)
 end
 
 function Utils.GetDistance(pos1, pos2)
-    pos1, pos2 = Utils.TableToProperPosition(pos1), Utils.TableToProperPosition(pos2)
+    --Don't do any valid checks as called so frequently, big UPS wastage.
     local dx = pos1.x - pos2.x
     local dy = pos1.y - pos2.y
     return math.sqrt(dx * dx + dy * dy)
 end
 
 function Utils.GetDistanceSingleAxis(pos1, pos2, axis)
-    pos1, pos2 = Utils.TableToProperPosition(pos1), Utils.TableToProperPosition(pos2)
+    --Don't do any valid checks as called so frequently, big UPS wastage.
     return math.abs(pos1[axis] - pos2[axis])
 end
 
@@ -1324,6 +1332,10 @@ end
 
 Utils.OrientationToDirection = function(orientation)
     return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
+end
+
+Utils.DirectionToOrientation = function(direction)
+    return direction / 8
 end
 
 Utils.PushToList = function(list, itemsToPush)

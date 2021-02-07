@@ -5,6 +5,7 @@ local TunnelSegments = require("scripts/tunnel-segments")
 local Underground = require("scripts/underground")
 local TrainManager = require("scripts/train-manager")
 local TestManager = require("scripts/test-manager")
+local Force = require("scripts/force")
 
 local function CreateGlobals()
     TrainManager.CreateGlobals()
@@ -12,6 +13,9 @@ local function CreateGlobals()
     TunnelPortals.CreateGlobals()
     TunnelSegments.CreateGlobals()
     Underground.CreateGlobals()
+    Force.CreateGlobals()
+
+    TestManager.CreateGlobals()
 end
 
 local function OnLoad()
@@ -36,6 +40,7 @@ local function OnStartup()
     OnLoad()
     --OnSettingChanged(nil)
     Underground.OnStartup()
+    Force.OnStartup()
 
     TestManager.OnStartup()
 end
