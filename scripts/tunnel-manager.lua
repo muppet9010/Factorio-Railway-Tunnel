@@ -16,14 +16,7 @@ Tunnel.CreateGlobals = function()
             alignmentOrientation = the orientation value of either 0.25 (horizontal) or 0 (vertical), no concept of direction though.
             railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel. Ref to the undergroundSurface global objects attribute.
             aboveSurface = LuaSurface of the main world surface.
-            underground = {
-                undergroundSurface = ref to underground surface globla object.
-                railEntities = table of rail LuaEntity.
-                tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
-                undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
-                surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
-                undergroundLeadInTiles = the tiles lead in of rail from 0
-            }
+            undergroundTunnel = reference to the underground tunnel global object.
             portals = table of the 2 portal global objects that make up this tunnel.
             segments = table of the segment global objects on the surface.
         }
@@ -84,8 +77,8 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         segment.tunnel = tunnel
     end
 
-    tunnel.underground = Interfaces.Call("Underground.TunnelCompleted", tunnel)
-    tunnel.railAlignmentAxis = tunnel.underground.undergroundSurface.railAlignmentAxis
+    tunnel.undergroundTunnel = Interfaces.Call("Underground.CreateUndergroundTunnel", tunnel)
+    tunnel.railAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.railAlignmentAxis
 end
 
 Tunnel.RemoveTunnel = function(tunnel)
@@ -96,7 +89,7 @@ Tunnel.RemoveTunnel = function(tunnel)
     for _, segment in pairs(tunnel.segments) do
         Interfaces.Call("TunnelSegments.TunnelRemoved", segment)
     end
-    for _, undergroundRailEntity in pairs(tunnel.underground.railEntities) do
+    for _, undergroundRailEntity in pairs(tunnel.undergroundTunnel.railEntities) do
         undergroundRailEntity.destroy()
     end
     global.tunnel.tunnels[tunnel.id] = nil

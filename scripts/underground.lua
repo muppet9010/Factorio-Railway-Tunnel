@@ -4,9 +4,9 @@ local Underground = {}
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
-    global.underground.horizontal = global.underground.horizontal or nil -- Vertical underground tunnel global object.
+    global.underground.surfaces = global.underground.surfaces or {}
     --[[
-        {
+        [alignment] = {
             alignment = either "hotizontal" or "vertical"
             surface = The LuaSurface
             refRails = table of the rail entities on this underground that are to be cloned for each tunnel instance.
@@ -15,19 +15,39 @@ Underground.CreateGlobals = function()
             tunnelInstanceAxis = the "x" or "y" axis that each tunnel's tracks are spaced along on the underground.
         }
     --]]
-    global.underground.vertical = global.underground.vertical or nil -- Vertical underground tunnel global object, same attributes as global.underground.horizontal.
+    global.underground.undergroundTunnels = global.underground.undergroundTunnels or {}
+    --[[
+        [id] = {
+            id = the parent tunnel's id.
+            tunnel = the parent global tunnel object.
+            undergroundSurface = ref to underground surface globla object.
+            railEntities = table of rail LuaEntity.
+            tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
+            undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
+            surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
+            undergroundLeadInTiles = the tiles lead in of rail from 0
+            undergroundSignals = {
+                [id] = {
+                    id = undergroundSignalEntity.unit_number,
+                    entity = undergroundSignalEntity,
+                    aboveGroundSignalPaired = portalSignal
+                }
+            }
+        }
+    ]]
 end
 
 Underground.OnLoad = function()
-    Interfaces.RegisterInterface("Underground.TunnelCompleted", Underground.TunnelCompleted)
+    Interfaces.RegisterInterface("Underground.CreateUndergroundTunnel", Underground.CreateUndergroundTunnel)
+    Interfaces.RegisterInterface("Underground.SetUndergroundExitSignalState", Underground.SetUndergroundExitSignalState)
 end
 
 Underground.OnStartup = function()
-    if global.underground.horizontal == nil then
-        global.underground.horizontal = Underground.CreateUndergroundSurface("horizontal")
+    if global.underground.surfaces["horizontal"] == nil then
+        global.underground.surfaces["horizontal"] = Underground.CreateUndergroundSurface("horizontal")
     end
-    if global.underground.vertical == nil then
-        global.underground.vertical = Underground.CreateUndergroundSurface("vertical")
+    if global.underground.surfaces["vertical"] == nil then
+        global.underground.surfaces["vertical"] = Underground.CreateUndergroundSurface("vertical")
     end
 end
 
@@ -69,24 +89,74 @@ Underground.CreateUndergroundSurface = function(alignment)
     return undergroundSurface
 end
 
-Underground.TunnelCompleted = function(tunnel)
-    local railEntities, undergroundSurface = {}, global.underground[tunnel.alignment]
+Underground.CreateUndergroundTunnel = function(tunnel)
+    local undergroundSurface = global.underground.surfaces[tunnel.alignment]
+    local undergroundTunnel = {
+        id = tunnel.id,
+        tunnel = tunnel,
+        undergroundSurface = undergroundSurface,
+        railEntities = {},
+        tunnelInstanceValue = tunnel.id * 4,
+        undergroundSignals = {}
+    }
+    undergroundTunnel.undergroundLeadInTiles = undergroundSurface.trackLengthEachSide -- This will be dynamically tracked and generated in the future to cater for tunnel length.
+    global.underground.undergroundTunnels[undergroundTunnel.id] = undergroundTunnel
 
-    local tunnelInstanceValue = tunnel.id * 4
+    -- Place the rails for this tunnel
     local cloneRailOffset = {
         [undergroundSurface.railAlignmentAxis] = 0,
-        [undergroundSurface.tunnelInstanceAxis] = 0 + tunnelInstanceValue
+        [undergroundSurface.tunnelInstanceAxis] = 0 + undergroundTunnel.tunnelInstanceValue
     }
-    undergroundSurface.surface.clone_entities {entities = undergroundSurface.refRails, destination_offset = cloneRailOffset, create_build_effect_smoke = false}
+    undergroundTunnel.railEntities = undergroundSurface.surface.clone_entities {entities = undergroundSurface.refRails, destination_offset = cloneRailOffset, create_build_effect_smoke = false}
 
-    local undergroundLeadInTiles = undergroundSurface.trackLengthEachSide -- This will be dynamically tracked and generated in the future to cater for tunnel length.
-    local undergroundOffsetFromSurface = {
+    -- Generate attributes used by other parts of mod.
+    undergroundTunnel.undergroundOffsetFromSurface = {
         [undergroundSurface.railAlignmentAxis] = 0 - ((tunnel.portals[1].entity.position[undergroundSurface.railAlignmentAxis] + tunnel.portals[2].entity.position[undergroundSurface.railAlignmentAxis]) / 2),
-        [undergroundSurface.tunnelInstanceAxis] = (1 - tunnel.portals[1].entity.position[undergroundSurface.tunnelInstanceAxis]) + tunnelInstanceValue
+        [undergroundSurface.tunnelInstanceAxis] = (1 - tunnel.portals[1].entity.position[undergroundSurface.tunnelInstanceAxis]) + undergroundTunnel.tunnelInstanceValue
     }
-    local surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundOffsetFromSurface)
+    undergroundTunnel.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundTunnel.undergroundOffsetFromSurface)
 
-    return {undergroundSurface = undergroundSurface, railEntities = railEntities, tunnelInstanceValue = tunnelInstanceValue, undergroundLeadInTiles = undergroundLeadInTiles, undergroundOffsetFromSurface = undergroundOffsetFromSurface, surfaceOffsetFromUnderground = surfaceOffsetFromUnderground}
+    -- Place the entrance signals from both portals
+    for _, portal in pairs(tunnel.portals) do
+        for _, portalSignal in pairs(portal.entrySignals) do
+            local undergroundSignalPosition = Utils.ApplyOffsetToPosition(portalSignal.entity.position, undergroundTunnel.undergroundOffsetFromSurface)
+            local undergroundSignalEntity = undergroundSurface.surface.create_entity {name = "rail-signal", force = global.force.tunnelForce, position = undergroundSignalPosition, direction = portalSignal.entity.direction}
+            local undergroundSignal = {
+                id = undergroundSignalEntity.unit_number,
+                entity = undergroundSignalEntity,
+                aboveGroundSignalPaired = portalSignal
+            }
+
+            if portalSignal.direction == "out" then
+                local signalStateCombinatorPosition = Utils.ApplyOffsetToPosition(undergroundSignalEntity.position, Utils.RotatePositionAround0(portal.entity.orientation, {x = 0, y = 1})) -- 1 tile towards the tunnel center from the signal.
+                undergroundSignal.signalStateCombinator = undergroundSurface.surface.create_entity {name = "constant-combinator", force = global.force.tunnelForce, position = signalStateCombinatorPosition}
+                local signalStateCombinatorControlBehavior = undergroundSignal.signalStateCombinator.get_or_create_control_behavior()
+                signalStateCombinatorControlBehavior.set_signal(1, {signal = {type = "virtual", name = "signal-red"}, count = 1})
+                signalStateCombinatorControlBehavior.enabled = false
+
+                undergroundSignalEntity.connect_neighbour {wire = defines.wire_type.red, target_entity = undergroundSignal.signalStateCombinator}
+
+                local undergroundControlBehavior = undergroundSignalEntity.get_or_create_control_behavior()
+                undergroundControlBehavior.read_signal = false
+                undergroundControlBehavior.close_signal = true
+                undergroundControlBehavior.circuit_condition = {condition = {first_signal = {type = "virtual", name = "signal-red"}, comparator = ">", constant = 0}, fulfilled = true}
+            end
+            undergroundTunnel.undergroundSignals[undergroundSignal.id] = undergroundSignal
+            portalSignal.undergroundSignalPaired = undergroundSignal
+        end
+    end
+
+    return undergroundTunnel
+end
+
+Underground.SetUndergroundExitSignalState = function(undergroundSignal, sourceSignalState)
+    local closeSignalOn
+    if sourceSignalState == defines.signal_state.open then
+        closeSignalOn = false
+    else
+        closeSignalOn = true
+    end
+    undergroundSignal.signalStateCombinator.get_control_behavior().enabled = closeSignalOn
 end
 
 return Underground

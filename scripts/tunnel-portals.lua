@@ -24,19 +24,26 @@ TunnelPortals.CreateGlobals = function()
             id = unit_number of the placed tunnel portal entity.
             entity = ref to the entity of the placed main tunnel portal entity.
             endSignals = {
-                [unit_number] = {
+                -- Table of endSignal objects for the end signals of this portal. These are the inner locked red signals that a train paths at to enter the tunnel. Key'd as "in" and "out".
+                [direction] = {
                     id = unit_number of this signal.
+                    direction = "in"/"out" relationship of the signal to this portal.
                     entity = signal entity.
                     portal = the portal global object this signal is part of.
                 }
-            } -- table of endSignal objects for the end signals of this portal. These are the inner locked red signals that a train paths at to enter the tunnel. Key'd as "in" and "out".
+            }
             entrySignals = {
-                [unit_number] = {
+                -- Table of entrySignal objects for the entry signals at the entrance of this portal. These are the signals that are visible to the wider train network and player. Key'd as "in" and "out".
+                -- IN direction signal connected by red wire between the 2 portals IN entry signals.
+                -- OUT direction signal connected by red wire to the OUT underground signal.
+                [direction] = {
                     id = unit_number of this signal.
+                    direction = "in"/"out" relationship of the signal to this portal.
                     entity = signal entity.
                     portal = the portal global object this signal is part of.
+                    undergroundSignalPaired = the underground signal thats paired with this one.
                 }
-            } -- table of entrySignal objects for the entry signals at the entrance of this portal. These are the signals that are visible to the wider train network and player. Key'd as "in" and "out".
+            }
             tunnel = the tunnel global object this portal is part of.
             portalRailEntities = table of the rail entities that are part of the portal itself. key'd by the rail unit_number.
             tunnelRailEntities = table of the rail entities that are part of the connected tunnel for the portal. key'd by the rail unit_number.
@@ -181,12 +188,14 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
             ["in"] = {
                 id = entrySignalInEntity.unit_number,
                 entity = entrySignalInEntity,
-                portal = portal
+                portal = portal,
+                direction = "in"
             },
             ["out"] = {
                 id = entrySignalOutEntity.unit_number,
                 entity = entrySignalOutEntity,
-                portal = portal
+                portal = portal,
+                direction = "out"
             }
         }
 
@@ -209,12 +218,14 @@ TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
             ["in"] = {
                 id = endSignalInEntity.unit_number,
                 entity = endSignalInEntity,
-                portal = portal
+                portal = portal,
+                direction = "in"
             },
             ["out"] = {
                 id = endSignalOutEntity.unit_number,
                 entity = endSignalOutEntity,
-                portal = portal
+                portal = portal,
+                direction = "out"
             }
         }
         Interfaces.Call("Tunnel.RegisterEndSignal", portal.endSignals["in"])
