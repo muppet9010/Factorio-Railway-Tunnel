@@ -93,7 +93,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
     global.trainManager.managedTrains[trainManagerEntry.id] = trainManagerEntry
     local tunnel = trainManagerEntry.tunnel
     trainManagerEntry.aboveSurface = tunnel.aboveSurface
-    trainManagerEntry.underground = tunnel.underground
+    trainManagerEntry.undergroundTunnel = tunnel.undergroundTunnel
     if trainManagerEntry.aboveTrainEntering.speed > 0 then
         trainManagerEntry.aboveTrainEnteringForwards = true
     else
@@ -119,7 +119,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         Utils.RotatePositionAround0(
             tunnel.alignmentOrientation,
             {
-                x = tunnel.underground.tunnelInstanceValue + 1,
+                x = tunnel.undergroundTunnel.tunnelInstanceValue + 1,
                 y = 0
             }
         ),
@@ -127,7 +127,7 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
             trainManagerEntry.trainTravelOrientation,
             {
                 x = 0,
-                y = 0 - (tunnel.underground.undergroundLeadInTiles - 1)
+                y = 0 - (tunnel.undergroundTunnel.undergroundLeadInTiles - 1)
             }
         )
     )
@@ -135,14 +135,14 @@ TrainManager.TrainEnteringInitial = function(trainEntering, surfaceEntrancePorta
         current = 1,
         records = {
             {
-                rail = tunnel.underground.undergroundSurface.surface.find_entity("straight-rail", undergroundTrainEndScheduleTargetPos)
+                rail = tunnel.undergroundTunnel.undergroundSurface.surface.find_entity("straight-rail", undergroundTrainEndScheduleTargetPos)
             }
         }
     }
     trainManagerEntry.undergroundTrain = undergroundTrain
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(sourceTrain.speed))
 
-    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.portalEntrancePosition, trainManagerEntry.underground.undergroundOffsetFromSurface)
+    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.portalEntrancePosition, trainManagerEntry.undergroundTunnel.undergroundOffsetFromSurface)
 
     Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
     EventScheduler.ScheduleEventEachTick("TrainManager.TrainEnteringOngoing", trainManagerEntry.id)
@@ -216,33 +216,6 @@ TrainManager.TrainEnteringOngoing = function(event)
     end
 end
 
-TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver, playersCarriage)
-    local player
-    if not driver.is_player() then
-        -- Is a character player driving.
-        player = driver.player
-    else
-        player = driver
-    end
-    local playerContainerEntity = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
-    playerContainerEntity.destructible = false
-    playerContainerEntity.set_driver(player)
-
-    -- Record state for future updating.
-    local playersUndergroundCarriage = trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
-    local playerContainer = {
-        id = playerContainerEntity.unit_number,
-        player = player,
-        entity = playerContainerEntity,
-        undergroundCarriageEntity = playersUndergroundCarriage,
-        undergroundCarriageId = playersUndergroundCarriage.unit_number,
-        trainManagerEntry = trainManagerEntry
-    }
-    trainManagerEntry.undergroudCarriageIdsToPlayerContainer[playersUndergroundCarriage.unit_number] = playerContainer
-    global.trainManager.playerIdToPlayerContainer[playerContainer.player.index] = playerContainer
-    global.trainManager.playerContainers[playerContainer.id] = playerContainer
-end
-
 TrainManager.TrainUndergroundOngoing = function(event)
     local trainManagerEntry, leadCarriage = global.trainManager.managedTrains[event.instanceId]
     if trainManagerEntry == nil then
@@ -251,6 +224,10 @@ TrainManager.TrainUndergroundOngoing = function(event)
     end
 
     TrainManager.MoveTrainsPlayerContainers(trainManagerEntry)
+
+    -- Close the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
+    local exitPortalOutSignal = trainManagerEntry.surfaceExitPortal.entrySignals["out"]
+    Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, exitPortalOutSignal.entity.signal_state)
 
     -- Track underground train's lead carriage.
     if (trainManagerEntry.undergroundTrain.speed > 0) then
@@ -261,6 +238,7 @@ TrainManager.TrainUndergroundOngoing = function(event)
     if Utils.GetDistanceSingleAxis(leadCarriage.position, trainManagerEntry.undergroundLeavingPortalEntrancePosition, trainManagerEntry.tunnel.railAlignmentAxis) <= 30 then
         --The lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
         EventScheduler.RemoveScheduledEventFromEachTick("TrainManager.TrainUndergroundOngoing", trainManagerEntry.id)
+        Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, defines.signal_state.open) -- Reset the underground Exit signal to open for the next train. As this train will be path & speed controlled by the above train.
         TrainManager.TrainLeavingInitial(trainManagerEntry)
     end
 end
@@ -271,16 +249,16 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     local dummyTrainState = trainManagerEntry.dummyTrain.state
     TrainManager.DestroyDummyTrain(trainManagerEntry)
 
-    local sourceTrain, leadCarriage = trainManagerEntry.undergroundTrain
+    local sourceTrain, undergroundLeadCarriage = trainManagerEntry.undergroundTrain
     if (sourceTrain.speed > 0) then
-        leadCarriage = sourceTrain["front_stock"]
+        undergroundLeadCarriage = sourceTrain["front_stock"]
     else
-        leadCarriage = sourceTrain["back_stock"]
+        undergroundLeadCarriage = sourceTrain["back_stock"]
     end
 
-    local placementPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
-    local placedCarriage = leadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
-    placedCarriage.train.speed = leadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
+    local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, trainManagerEntry.undergroundTunnel.surfaceOffsetFromUnderground)
+    local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
+    placedCarriage.train.speed = undergroundLeadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
     trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
 
     -- Add a pushing loco if needed.
@@ -292,12 +270,12 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId = aboveTrainLeaving, aboveTrainLeaving.id
     global.trainManager.leavingTrainIdToManagedTrain[aboveTrainLeaving.id] = trainManagerEntry
 
-    -- Restore train schedule
+    -- Restore train schedule.
     aboveTrainLeaving.schedule = schedule
     if not isManual then
         TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
 
-        -- Check that the train has an expected state
+        -- Check that the train has an expected state.
         if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
             error("reemerging train should have positive movement state")
         end
@@ -307,7 +285,7 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
         end
     end
 
-    TrainManager.TransferPlayerFromContainerForClonedUndergroundCarriage(trainManagerEntry, leadCarriage, placedCarriage)
+    TrainManager.TransferPlayerFromContainerForClonedUndergroundCarriage(trainManagerEntry, undergroundLeadCarriage, placedCarriage)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
     EventScheduler.ScheduleEventEachTick("TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
 end
@@ -358,7 +336,7 @@ TrainManager.TrainLeavingOngoing = function(event)
             end
 
             local aboveTrainOldCarriageCount = #aboveTrainLeavingRearCarriage.train.carriages
-            local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
+            local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.undergroundTunnel.surfaceOffsetFromUnderground)
             local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
             trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
             if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
@@ -543,9 +521,9 @@ TrainManager.SetTrainToAuto = function(train, targetStop)
     end
 end
 
-TrainManager.SpeedGovernedByLeavingTrain = function(trainManagerEntry)
-    local train = trainManagerEntry.aboveTrainLeaving
-    if train and train.valid and train.state ~= defines.train_state.on_the_path then
+TrainManager.IsSpeedGovernedByLeavingTrain = function(trainManagerEntry)
+    local aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
+    if aboveTrainLeaving and aboveTrainLeaving.valid and aboveTrainLeaving.state ~= defines.train_state.on_the_path then
         return true
     else
         return false
@@ -554,7 +532,7 @@ end
 
 -- determine the current speed of the train passing through the tunnel
 TrainManager.GetTrainSpeed = function(trainManagerEntry)
-    if TrainManager.SpeedGovernedByLeavingTrain(trainManagerEntry) then
+    if TrainManager.IsSpeedGovernedByLeavingTrain(trainManagerEntry) then
         return math.abs(trainManagerEntry.aboveTrainLeaving.speed)
     else
         return math.abs(trainManagerEntry.undergroundTrain.speed)
@@ -597,7 +575,7 @@ end
 TrainManager.SetUndergroundTrainSpeed = function(trainManagerEntry, speed)
     local train = trainManagerEntry.undergroundTrain
 
-    if speed ~= 0 or not TrainManager.SpeedGovernedByLeavingTrain(trainManagerEntry) then
+    if speed ~= 0 or not TrainManager.IsSpeedGovernedByLeavingTrain(trainManagerEntry) then
         if not train.manual_mode then
             TrainManager.SetTrainAbsoluteSpeed(train, speed)
         else
@@ -614,7 +592,7 @@ TrainManager.SetUndergroundTrainSpeed = function(trainManagerEntry, speed)
 end
 
 TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
-    local placedCarriage, refTrain, targetSurface = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.underground.undergroundSurface.surface
+    local placedCarriage, refTrain, targetSurface = nil, trainManagerEntry.aboveTrainEntering, trainManagerEntry.undergroundTunnel.undergroundSurface.surface
 
     local endSignalRailUnitNumber = trainManagerEntry.surfaceEntrancePortalEndSignal.entity.get_connected_rails()[1].unit_number
     local firstCarriageDistanceFromPortalEntrance = 0
@@ -630,7 +608,7 @@ TrainManager.CopyTrainToUnderground = function(trainManagerEntry)
         end
     end
 
-    local tunnelInitialPosition = Utils.RotatePositionAround0(trainManagerEntry.tunnel.alignmentOrientation, {x = 1 + trainManagerEntry.underground.tunnelInstanceValue, y = 0})
+    local tunnelInitialPosition = Utils.RotatePositionAround0(trainManagerEntry.tunnel.alignmentOrientation, {x = 1 + trainManagerEntry.undergroundTunnel.tunnelInstanceValue, y = 0})
     local firstCarriageDistanceFromPortalCenter = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEntrance + trainManagerEntry.tunnel.portals[1].entranceDistanceFromCenter})
     local nextCarriagePosition = Utils.ApplyOffsetToPosition(tunnelInitialPosition, firstCarriageDistanceFromPortalCenter)
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
@@ -829,20 +807,47 @@ TrainManager.CancelPlayerTryLeaveTrain = function(player)
     EventScheduler.RemoveScheduledOnceEvents("TrainManager.OnToggleDrivingInputAfterChangedState", player.index, game.tick)
 end
 
+TrainManager.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver, playersCarriage)
+    local player
+    if not driver.is_player() then
+        -- Is a character player driving.
+        player = driver.player
+    else
+        player = driver
+    end
+    local playerContainerEntity = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
+    playerContainerEntity.destructible = false
+    playerContainerEntity.set_driver(player)
+
+    -- Record state for future updating.
+    local playersUndergroundCarriage = trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
+    local playerContainer = {
+        id = playerContainerEntity.unit_number,
+        player = player,
+        entity = playerContainerEntity,
+        undergroundCarriageEntity = playersUndergroundCarriage,
+        undergroundCarriageId = playersUndergroundCarriage.unit_number,
+        trainManagerEntry = trainManagerEntry
+    }
+    trainManagerEntry.undergroudCarriageIdsToPlayerContainer[playersUndergroundCarriage.unit_number] = playerContainer
+    global.trainManager.playerIdToPlayerContainer[playerContainer.player.index] = playerContainer
+    global.trainManager.playerContainers[playerContainer.id] = playerContainer
+end
+
+TrainManager.MoveTrainsPlayerContainers = function(trainManagerEntry)
+    -- Update any player containers for the train.
+    for _, playerContainer in pairs(trainManagerEntry.undergroudCarriageIdsToPlayerContainer) do
+        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.undergroundTunnel.surfaceOffsetFromUnderground)
+        playerContainer.entity.teleport(playerContainerPosition)
+    end
+end
+
 TrainManager.TransferPlayerFromContainerForClonedUndergroundCarriage = function(trainManagerEntry, undergroundCarriage, placedCarriage)
     -- Handle any players riding in this placed carriage.
     if trainManagerEntry.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number] ~= nil then
         local playerContainer = trainManagerEntry.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number]
         placedCarriage.set_driver(playerContainer.player)
         TrainManager.RemovePlayerContainer(playerContainer)
-    end
-end
-
-TrainManager.MoveTrainsPlayerContainers = function(trainManagerEntry)
-    -- Update any player containers for the train.
-    for _, playerContainer in pairs(trainManagerEntry.undergroudCarriageIdsToPlayerContainer) do
-        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.underground.surfaceOffsetFromUnderground)
-        playerContainer.entity.teleport(playerContainerPosition)
     end
 end
 
