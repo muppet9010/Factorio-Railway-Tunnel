@@ -5,12 +5,12 @@ local Utils = require("utility/utils")
 
 local doDemo = false -- Does the demo rather than any enabled tests.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = true -- Does all the tests regardless of their enabled state below.
+local doAllTests = false -- Does all the tests regardless of their enabled state below.
 
 local testsToRun
 if doTests then
     testsToRun = {
-        shortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+        shortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
         shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
         shortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
@@ -23,7 +23,8 @@ if doTests then
         pathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         inwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}
+        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
+        forceRepathBackThroughTunnel = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel")}
     }
 end
 
@@ -118,6 +119,7 @@ end
 TestManager.BuildBlueprintFromString = function(blueprintString, position, testName)
     -- Utility function to build a blueprint from a string on the test surface.
     -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
+    -- Returns the list of directly placed entities. Any script reaction to entities being revived will lead to invalid entity references in the returned result.
     local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]
     local itemStack = player.cursor_stack
@@ -144,13 +146,16 @@ TestManager.BuildBlueprintFromString = function(blueprintString, position, testN
 
     local pass2Ghosts = {}
     local fuelProxies = {}
+    local placedEntities = {}
 
     for _, ghost in pairs(ghosts) do
-        local r, _, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
-        if r == nil then
-            -- train ghosts can't be revived before the rail underneath
-            -- them, so save failed ghosts for a second pass
+        local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
+        if revivedOutcome == nil then
+            -- Train ghosts can't be revived before the rail underneath them, so save failed ghosts for a second pass.
             table.insert(pass2Ghosts, ghost)
+        elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
+            -- Only record valid entities, anythng else is passed help.
+            table.insert(placedEntities, revivedGhostEntity)
         end
         if fuelProxy ~= nil then
             table.insert(fuelProxies, fuelProxy)
@@ -158,9 +163,12 @@ TestManager.BuildBlueprintFromString = function(blueprintString, position, testN
     end
 
     for _, ghost in pairs(pass2Ghosts) do
-        local r, _, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
-        if r == nil then
+        local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
+        if revivedOutcome == nil then
             error("only 2 rounds of ghost reviving supported. Test: " .. testName)
+        elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
+            -- Only record valid entities, anythng else is passed help.
+            table.insert(placedEntities, revivedGhostEntity)
         end
         if fuelProxy ~= nil then
             table.insert(fuelProxies, fuelProxy)
@@ -177,6 +185,8 @@ TestManager.BuildBlueprintFromString = function(blueprintString, position, testN
     for _, train in pairs(testSurface.get_trains()) do
         train.manual_mode = false
     end
+
+    return placedEntities
 end
 
 return TestManager

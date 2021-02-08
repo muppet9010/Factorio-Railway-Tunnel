@@ -4,6 +4,8 @@ local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
 
+local ForceValidPathLeavingTunnel = false -- defaults false - DEBUG SETTING when true to make a leaving train have a valid path.
+
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1
@@ -275,11 +277,12 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     if not isManual then
         TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
 
-        -- Check that the train has an expected state.
-        if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
+        -- If in debug mode check that the train has an expected state.
+        if ForceValidPathLeavingTunnel and (not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving)) then
             error("reemerging train should have positive movement state")
         end
     else
+        -- Not sure this is needed or helps, but added in legacy change for future use case...
         if aboveTrainLeaving.state ~= dummyTrainState then
             error("manual reemerging train should have same state as dummy train")
         end
@@ -356,8 +359,8 @@ TrainManager.TrainLeavingOngoing = function(event)
             if not isManual then
                 TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
 
-                -- Check that the train has an expected state.
-                if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
+                -- If in debug mode check that the train has an expected state.
+                if ForceValidPathLeavingTunnel and (not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving)) then
                     error("reemerging train should have positive movement state")
                 end
             end

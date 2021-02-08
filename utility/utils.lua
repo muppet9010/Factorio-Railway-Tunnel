@@ -634,6 +634,20 @@ Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value)
     return nil
 end
 
+Utils.GetTableKeysWithInnerKeyValue = function(theTable, key, value)
+    local keysFound = {}
+    for i, innerTable in pairs(theTable) do
+        if innerTable[key] ~= nil and innerTable[key] == value then
+            table.insert(keysFound, i)
+        end
+    end
+    if #keysFound > 0 then
+        return keysFound
+    else
+        return nil
+    end
+end
+
 Utils.TableValuesToKey = function(tableWithValues)
     if tableWithValues == nil then
         return nil
