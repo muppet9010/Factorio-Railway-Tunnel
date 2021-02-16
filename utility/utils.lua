@@ -1096,12 +1096,13 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     end
 end
 
-Utils.EmptyRotatedSprite = function()
+Utils.EmptyRotatedSprite = function(repeat_count)
     return {
         direction_count = 1,
         filename = "__core__/graphics/empty.png",
         width = 1,
-        height = 1
+        height = 1,
+        repeat_count = repeat_count or 1
     }
 end
 

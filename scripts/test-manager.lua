@@ -24,7 +24,9 @@ if doTests then
         inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         inwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
         inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        forceRepathBackThroughTunnel = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel")}
+        forceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
+        forceRepathBackThroughTunnelShortSingleEnded = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
+        forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
     }
 end
 
@@ -39,6 +41,13 @@ TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
+
+    -- Run any active tests OnLoad function.
+    for _, test in pairs(testsToRun) do
+        if test.enabled and test.testScript.OnLoad ~= nil then
+            test.testScript["OnLoad"]()
+        end
+    end
 end
 
 TestManager.OnStartup = function()

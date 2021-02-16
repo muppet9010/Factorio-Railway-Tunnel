@@ -2,7 +2,6 @@ Next:
 
 Soon:
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error.
-    - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Need to support a train being able to reverse while in the tunnel back out.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
 
 Later:

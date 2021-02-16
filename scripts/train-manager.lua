@@ -248,7 +248,6 @@ end
 TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     -- cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
     local schedule, isManual, targetStop = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.dummyTrain.path_end_stop
-    local dummyTrainState = trainManagerEntry.dummyTrain.state
     TrainManager.DestroyDummyTrain(trainManagerEntry)
 
     local sourceTrain, undergroundLeadCarriage = trainManagerEntry.undergroundTrain
@@ -273,24 +272,31 @@ TrainManager.TrainLeavingInitial = function(trainManagerEntry)
     global.trainManager.leavingTrainIdToManagedTrain[aboveTrainLeaving.id] = trainManagerEntry
 
     -- Restore train schedule.
-    aboveTrainLeaving.schedule = schedule
-    if not isManual then
-        TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
-
-        -- If in debug mode check that the train has an expected state.
-        if ForceValidPathLeavingTunnel and (not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving)) then
-            error("reemerging train should have positive movement state")
-        end
-    else
-        -- Not sure this is needed or helps, but added in legacy change for future use case...
-        if aboveTrainLeaving.state ~= dummyTrainState then
-            error("manual reemerging train should have same state as dummy train")
-        end
-    end
+    TrainManager.LeavingTrainSetScheduleCheckState(trainManagerEntry, aboveTrainLeaving, schedule, isManual, targetStop)
 
     TrainManager.TransferPlayerFromContainerForClonedUndergroundCarriage(trainManagerEntry, undergroundLeadCarriage, placedCarriage)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
     EventScheduler.ScheduleEventEachTick("TrainManager.TrainLeavingOngoing", trainManagerEntry.id)
+end
+
+TrainManager.LeavingTrainSetScheduleCheckState = function(trainManagerEntry, aboveTrainLeaving, schedule, isManual, targetStop)
+    aboveTrainLeaving.schedule = schedule
+    if not isManual then
+        TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
+
+        -- Handle if the train doesn't have the desired state of moving away from tunnel
+        if not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
+            if ForceValidPathLeavingTunnel then
+                -- In strict debug mode so flag undesired state.
+                error("reemerging train should have positive movement state")
+            end
+            -- Set the train to move to the end of the tunnel (signal segment) as chance it can auto turn around and is far clearer whats happened.
+            local newSchedule = Utils.DeepCopy(aboveTrainLeaving.schedule)
+            local endOfTunnelScheduleRecord = {rail = trainManagerEntry.surfaceExitPortal.entrySignals["out"].entity.get_connected_rails()[1], temporary = true}
+            table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
+            aboveTrainLeaving.schedule = newSchedule
+        end
+    end
 end
 
 TrainManager.TrainLeavingOngoing = function(event)
@@ -355,15 +361,7 @@ TrainManager.TrainLeavingOngoing = function(event)
             aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
 
             -- Restore schedule and state.
-            aboveTrainLeaving.schedule = schedule
-            if not isManual then
-                TrainManager.SetTrainToAuto(aboveTrainLeaving, targetStop)
-
-                -- If in debug mode check that the train has an expected state.
-                if ForceValidPathLeavingTunnel and (not TrainManager.ConfirmMovingLeavingTrainState(aboveTrainLeaving)) then
-                    error("reemerging train should have positive movement state")
-                end
-            end
+            TrainManager.LeavingTrainSetScheduleCheckState(trainManagerEntry, aboveTrainLeaving, schedule, isManual, targetStop)
 
             TrainManager.TransferPlayerFromContainerForClonedUndergroundCarriage(trainManagerEntry, nextSourceCarriageEntity, placedCarriage)
         end
