@@ -1,8 +1,6 @@
 local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
 local Utils = require("utility/utils")
 
--- TODO: ideally stop this showing the No Path message when the exit from the tunnel is blocked, but don't believe its possible.
-
 data:extend(
     {
         {

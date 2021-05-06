@@ -45,7 +45,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if signal == nil or global.tunnel.endSignals[signal.unit_number] == nil then
         return
     end
-    Interfaces.Call("TrainManager.TrainEnteringInitial", train, global.tunnel.endSignals[signal.unit_number])
+    Interfaces.Call("TrainManager.TrainApproachingInitial", train, global.tunnel.endSignals[signal.unit_number])
 end
 
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)

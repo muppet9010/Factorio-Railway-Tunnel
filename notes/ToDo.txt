@@ -1,11 +1,25 @@
 Next:
+    - Player can rotate (R) a portal entity and this breaks our inner logic.
 
 Soon:
-    - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error.
+    - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
+    - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Needs to support a train being able to reverse while in the tunnel back out. The train should retain its station reservation if it can path to its target, as this is what happens to a double ended train in the a regular track segment if there is an alternatitve route to target. Only if the train can't reach the target at all does it sit no pathing. If no pathing train should pull to the end of the portal and then it can sit and no path.
+        - Long train has both facing locos at head, they emerge and then path is lost. This sub train part will try and path back through the tunnel instantly, rather than us initiating the backwards path. Origional use case.
+        - Need to have dummy train checking while train comitted to entering the tunnel. If dummy train loses path and entering train is double headed try pathing backwards to see if the entering train should try and reverse where it currently is.
+        - Short train single headed leaves tunnel and waits.
+        - Short train double headed leaves tunnel and then reverses back through tunnel as new tunnel usage (loses station reservation, but believe normal trains would also from No Path event)
+        - Long train double headed emerged with forward and rear loco.
+        - Long train double headed emerged with forward loco only.
+        - Long train double headed emerged with rear loco only.
+        - Long train single headed emerged with no loco.
+        - When a dummy train No Paths and theres no reverse option, set the dummy train to manual and have the train in tunnel go to end of portal entrance signals. It can then be left to try and path to its set target. Don't try any other station in schedule as vanilla doesn't do this, unless the station or rail pathing to is removed, then it does skip it.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
+    - Have to still handle when a train could try to reverse through a tunnel:
+        - long train sticking out of both ends and stops due to path lost. The front/back segments could try to reverse as it's still in a dual direction rail segment on the tail end.
+        - change a committed entering trains order.
 
 Later:
-    - Handle player driven trains approaching the tunnel (will go on auto through the tunnel).
+    - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.
     - Handle 2 trains both entering the tunnel at once.
     - Handle very very long trains:
         - Place rails under the underground train carriages if its a very long train, Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag).

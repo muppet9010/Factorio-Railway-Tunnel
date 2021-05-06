@@ -3,9 +3,10 @@ local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
 
-local doDemo = false -- Does the demo rather than any enabled tests.
+-- If tests or demo are done the map is replaced with a test science lab tile world and the tests placed/run.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = false -- Does all the tests regardless of their enabled state below.
+local doAllTests = true -- Does all the tests regardless of their enabled state below.
+local doDemo = false -- Does the demo rather than any enabled tests.
 
 local testsToRun
 if doTests then
@@ -23,10 +24,10 @@ if doTests then
         pathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         inwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        forceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
-        forceRepathBackThroughTunnelShortSingleEnded = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
-        forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
+        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}
+        --forceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")}
+        --forceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
+        --forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
     }
 end
 
