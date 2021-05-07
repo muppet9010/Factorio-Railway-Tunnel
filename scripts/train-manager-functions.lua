@@ -1,7 +1,6 @@
 local TrainManagerFuncs = {}
 local Utils = require("utility/utils")
-
-local ForceValidPathLeavingTunnel = false -- Defaults false - DEBUG SETTING when true to make a leaving train have a valid path.
+-- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
 
 TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
     if isFrontStockLeading then
@@ -22,6 +21,10 @@ end
 
 TrainManagerFuncs.CarriageIsAPushingLoco = function(carriage, trainDirection)
     return carriage.type == "locomotive" and carriage.orientation == trainDirection
+end
+
+TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
+    return carriage.type == "locomotive" and carriage.orientation ~= trainOrientation
 end
 
 TrainManagerFuncs.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
@@ -52,9 +55,6 @@ TrainManagerFuncs.SetTrainAbsoluteSpeed = function(train, speed)
         train.speed = speed
     elseif train.speed < 0 then
         train.speed = -1 * speed
-    elseif speed ~= 0 then
-        -- this shouldn't be possible to reach, so throw an error for now
-        error "unable to determine train direction"
     end
 end
 
@@ -125,21 +125,20 @@ TrainManagerFuncs.LeavingTrainSetSchedule = function(aboveTrainLeaving, schedule
     if not isManual then
         TrainManagerFuncs.SetTrainToAuto(aboveTrainLeaving, targetStop)
 
-        -- Handle if the train doesn't have the desired state of moving away from tunnel.
+        -- Handle if the train doesn't have the desired state of moving away from tunnel. The tunnel trip isn't aborted in this case, its just the target for the leaving train is being chnaged and the tunnel trip is continueing as normal.
         if not TrainManagerFuncs.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
-            if ForceValidPathLeavingTunnel then
-                -- In strict debug mode so flag undesired state.
-                error("reemerging train should have positive movement state")
-            end
-            -- Set the train to move to the end of the tunnel (signal segment) as chance it can auto turn around and if not is far easier to access the train.
-            local newSchedule = Utils.DeepCopy(aboveTrainLeaving.schedule)
+            -- Set the train to move to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train.
+            -- TODO: commented out while testing reversing partial locos.
+            -- TODO: this should be optional and only passed in from a stateful part of the code, not just as a default everywhere.
+            --[[local newSchedule = aboveTrainLeaving.schedule
             local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
             table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
-            aboveTrainLeaving.schedule = newSchedule
+            aboveTrainLeaving.schedule = newSchedule--]]
+            local x = 1
         end
     end
 end
---
+
 TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrientation, refTrainFacingForwards, trainTravelDirection, firstCarriagePosition)
     local nextCarriagePosition = firstCarriagePosition
     local trainCarriagesOffset = Utils.RotatePositionAround0(trainTravelOrientation, {x = 0, y = 7})
@@ -154,6 +153,7 @@ TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrien
     end
     local carriageIdToEntityList = {}
     local placedCarriage = nil
+    local trainEnteredHasBackwardsLocomotives = false
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
         local carriageDirection = trainCarriagesForwardDirection
@@ -163,13 +163,16 @@ TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrien
         local refCarriageGoingForwards = true
         if refCarriage.speed < 0 then
             refCarriageGoingForwards = false
+            if refCarriage.type == "locomotive" then
+                trainEnteredHasBackwardsLocomotives = true
+            end
         end
         placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards)
         carriageIdToEntityList[refCarriage.unit_number] = placedCarriage
 
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
     end
-    return placedCarriage.train, carriageIdToEntityList
+    return placedCarriage.train, carriageIdToEntityList, trainEnteredHasBackwardsLocomotives
 end
 
 TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition = function(sourceTrain, tunnelAlignmentOrientation, tunnelInstanceValue, trainTravelOrientation, tunnelPortalEntranceDistanceFromCenter, surfaceEntrancePortalEndSignalRailUnitNumber)
@@ -190,6 +193,31 @@ TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition = function
     local firstCarriageDistanceFromPortalCenter = Utils.RotatePositionAround0(trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEntrance + tunnelPortalEntranceDistanceFromCenter})
     local firstCarriagePosition = Utils.ApplyOffsetToPosition(tunnelInitialPosition, firstCarriageDistanceFromPortalCenter)
     return firstCarriagePosition
+end
+
+TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, aboveTrainLeaving, aboveTrainLeavingCarriagesPlaced, aboveTrainLeavingPushingLoco)
+    local currentSourceTrainCarriageIndex = aboveTrainLeavingCarriagesPlaced
+    local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
+    if (sourceTrain.speed < 0) then
+        currentSourceTrainCarriageIndex = #sourceTrain.carriages - aboveTrainLeavingCarriagesPlaced
+        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
+    end
+    local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
+
+    local aboveTrainLeavingRearCarriage, aboveTrainLeavingRearCarriageIndex, aboveTrainLeavingRearCarriagePushingIndexMod
+    if (aboveTrainLeaving.speed > 0) then
+        aboveTrainLeavingRearCarriageIndex = #aboveTrainLeaving.carriages
+        aboveTrainLeavingRearCarriagePushingIndexMod = -1
+    else
+        aboveTrainLeavingRearCarriageIndex = 1
+        aboveTrainLeavingRearCarriagePushingIndexMod = 1
+    end
+    if aboveTrainLeavingPushingLoco ~= nil then
+        aboveTrainLeavingRearCarriageIndex = aboveTrainLeavingRearCarriageIndex + aboveTrainLeavingRearCarriagePushingIndexMod
+    end
+    aboveTrainLeavingRearCarriage = aboveTrainLeaving.carriages[aboveTrainLeavingRearCarriageIndex]
+
+    return nextSourceCarriageEntity, aboveTrainLeavingRearCarriage
 end
 
 return TrainManagerFuncs
