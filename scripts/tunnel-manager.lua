@@ -45,14 +45,14 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if signal == nil or global.tunnel.endSignals[signal.unit_number] == nil then
         return
     end
-    Interfaces.Call("TrainManager.TrainApproachingInitial", train, global.tunnel.endSignals[signal.unit_number])
+    Interfaces.Call("TrainManager.RegisterTrainApproaching", train, global.tunnel.endSignals[signal.unit_number])
 end
 
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
 
-    local tunnelPortals = Interfaces.Call("TunnelPortals.TunnelCompleted", tunnelPortalEntities, force, aboveSurface)
-    local tunnelSegments = Interfaces.Call("TunnelSegments.TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
+    local tunnelPortals = Interfaces.Call("TunnelPortals.On_TunnelCompleted", tunnelPortalEntities, force, aboveSurface)
+    local tunnelSegments = Interfaces.Call("TunnelSegments.On_TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation = "vertical", 0
@@ -82,12 +82,12 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
 end
 
 Tunnel.RemoveTunnel = function(tunnel)
-    Interfaces.Call("TrainManager.TunnelRemoved", tunnel)
+    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
     for _, portal in pairs(tunnel.portals) do
-        Interfaces.Call("TunnelPortals.TunnelRemoved", portal)
+        Interfaces.Call("TunnelPortals.On_TunnelRemoved", portal)
     end
     for _, segment in pairs(tunnel.segments) do
-        Interfaces.Call("TunnelSegments.TunnelRemoved", segment)
+        Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
     end
     for _, undergroundRailEntity in pairs(tunnel.undergroundTunnel.railEntities) do
         undergroundRailEntity.destroy()

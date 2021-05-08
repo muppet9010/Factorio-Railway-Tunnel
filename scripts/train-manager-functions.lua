@@ -12,7 +12,8 @@ end
 
 TrainManagerFuncs.ConfirmMovingLeavingTrainState = function(train)
     -- Check a moving trains (non 0 speed) got a happy state. For use after manipulating the train and so assumes the train was in a happy state before we did this.
-    if train.state == defines.train_state.on_the_path or train.state == defines.train_state.arrive_signal or train.state == defines.train_state.arrive_station then
+    --TODO: this used to be called from within manaul train = false. This scenario is NOT supported/tested at present so not re-implimented with state changes.
+    if train.state == defines.train_state.on_the_path or train.state == defines.train_state.arrive_signal or train.state == defines.train_state.wait_signal or train.state == defines.train_state.arrive_station or train.state == defines.train_state.wait_station then
         return true
     else
         return false
@@ -120,23 +121,45 @@ TrainManagerFuncs.GetTrainSpeed = function(aboveTrainLeaving, undergroundTrain)
     end
 end
 
-TrainManagerFuncs.LeavingTrainSetSchedule = function(aboveTrainLeaving, schedule, isManual, targetStop, fallbackTargetRail)
+TrainManagerFuncs.LeavingTrainSetSchedule = function(aboveTrainLeaving, schedule, isManual, targetStop)
     aboveTrainLeaving.schedule = schedule
     if not isManual then
         TrainManagerFuncs.SetTrainToAuto(aboveTrainLeaving, targetStop)
-
-        -- Handle if the train doesn't have the desired state of moving away from tunnel. The tunnel trip isn't aborted in this case, its just the target for the leaving train is being chnaged and the tunnel trip is continueing as normal.
         if not TrainManagerFuncs.ConfirmMovingLeavingTrainState(aboveTrainLeaving) then
-            -- Set the train to move to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train.
-            -- TODO: commented out while testing reversing partial locos.
-            -- TODO: this should be optional and only passed in from a stateful part of the code, not just as a default everywhere.
-            --[[local newSchedule = aboveTrainLeaving.schedule
-            local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
-            table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
-            aboveTrainLeaving.schedule = newSchedule--]]
-            local x = 1
+            -- Any issue on the train from the previous tick should be detected by the state check. So this should only trigger after misplaced wagons.
+            error("reemerging train should have positive movement state")
         end
     end
+end
+
+TrainManagerFuncs.HandleLeavingTrainBadState = function(trainManagerEntry)
+    local aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
+    if aboveTrainLeaving.state == defines.train_state.no_path and trainManagerEntry.trainEnteredHasBackwardsLocomotives and (not trainManagerEntry.trainLeftHasBackwardsLocomotives) then
+        --WIP CODE - NOT PART OF OLDER CODE: should add backwards loco to emerged train to let it try and reverse. - ROUGH CODE
+
+        -- TODO: this should also be detected before the train starts leaving with the dummy train.
+        -- The leaving train has no speed, officially has no where to go (come to end of exit signals), main train can reverse based on locomotives, but no backwards locomotives have emerged from the tunnel yet. --TODO: do we need the speed checks?
+        --TODO: this triggers after TrainManagerFuncs.LeavingTrainSetSchedule() when the check fails and looks to roll the trian to the end of the tunnel. It needs to run before it...
+        -- TODO: The targetStop entity has to be re-established as at this point the path has been lost. Given multiple stations can have the same name I think we need to log the station entity within the object so we can re-apply it.
+        --[[local schedule, isManual, targetStop = aboveTrainLeaving.schedule, aboveTrainLeaving.manual_mode, xxx
+        trainManagerEntry.aboveTrainLeavingPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(aboveTrainLeaving.front_stock, aboveTrainLeaving.front_stock.orientation + 0.5)
+        aboveTrainLeaving = trainManagerEntry.aboveTrainLeaving
+        TrainManagerFuncs.LeavingTrainSetSchedule(trainManagerEntry, aboveTrainLeaving, schedule, isManual, targetStop, trainManagerEntry.surfaceExitPortalEntrySignalOutRail)]]
+        --TODO: this leads to the train entering the tunnel again from scratch, rather than the existing tunnel transition reversing. Needs the states resetting as a partial train reentering scenario.
+        error("test failure")
+    end
+end
+
+TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(aboveTrainLeaving, fallbackTargetRail)
+    -- RECENT ADDITION CODE - NOT PART OF OLDER CODE. Added as part of trying and handle invalid paths, before this state threw an intentional error.
+
+    -- Set the train to move to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train.
+    -- TODO: this should be optional and only passed in from a stateful part of the code, not just as a default everywhere.
+    local newSchedule = aboveTrainLeaving.schedule
+    local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
+    table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
+    aboveTrainLeaving.schedule = newSchedule
+    error("test failure")
 end
 
 TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrientation, refTrainFacingForwards, trainTravelDirection, firstCarriagePosition)

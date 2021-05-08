@@ -78,8 +78,8 @@ TunnelPortals.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, "TunnelPortals.OnBuiltEntityGhost", portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, "TunnelPortals.OnBuiltEntityGhost", portalEntityGhostNames_Filter)
 
-    Interfaces.RegisterInterface("TunnelPortals.TunnelCompleted", TunnelPortals.TunnelCompleted)
-    Interfaces.RegisterInterface("TunnelPortals.TunnelRemoved", TunnelPortals.TunnelRemoved)
+    Interfaces.RegisterInterface("TunnelPortals.On_TunnelCompleted", TunnelPortals.On_TunnelCompleted)
+    Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
     Interfaces.RegisterInterface("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", TunnelPortals.CloseEntranceSignalForTrainManagerEntry)
     Interfaces.RegisterInterface("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", TunnelPortals.OpenEntranceSignalForTrainManagerEntry)
 end
@@ -147,7 +147,7 @@ TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortal, pla
     return TunnelCommon.CheckTunnelPartsInDirection(startingTunnelPortal, startingTunnelPartPoint, tunnelPortals, tunnelSegments, directionValue, placer), tunnelPortals, tunnelSegments
 end
 
-TunnelPortals.TunnelCompleted = function(portalEntities, force, aboveSurface)
+TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
     local portals = {}
 
     for _, portalEntity in pairs(portalEntities) do
@@ -373,7 +373,7 @@ TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
     global.tunnelPortals.portals[portal.id] = nil
 end
 
-TunnelPortals.TunnelRemoved = function(portal, killForce, killerCauseEntity)
+TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
     TunnelCommon.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
     for _, otherEntity in pairs(portal.tunnelOtherEntities) do

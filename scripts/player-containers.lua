@@ -163,7 +163,7 @@ PlayerContainers.RemovePlayerContainer = function(playerContainer)
     global.playerContainers.containers[playerContainer.id] = nil
 end
 
-PlayerContainers.TerminateTunnelTrip = function(undergroundTrain)
+PlayerContainers.On_TerminateTunnelTrip = function(undergroundTrain)
     for _, undergroundCarriage in pairs(undergroundTrain.carriages) do
         local playerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number]
         if playerContainer ~= nil then
@@ -172,7 +172,7 @@ PlayerContainers.TerminateTunnelTrip = function(undergroundTrain)
     end
 end
 
-PlayerContainers.TunnelRemoved = function(undergroundTrain)
+PlayerContainers.On_TunnelRemoved = function(undergroundTrain)
     for _, undergroundCarriage in pairs(undergroundTrain.carriages) do
         local playerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number]
         if playerContainer ~= nil then

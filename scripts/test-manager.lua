@@ -5,7 +5,7 @@ local Utils = require("utility/utils")
 
 -- If tests or demo are done the map is replaced with a test science lab tile world and the tests placed/run.
 local doTests = true -- Does the enabled tests below.
-local doAllTests = false -- Does all the tests regardless of their enabled state below.
+local doAllTests = true -- Does all the tests regardless of their enabled state below.
 local doDemo = false -- Does the demo rather than any enabled tests.
 
 local testsToRun
@@ -13,21 +13,21 @@ if doTests then
     testsToRun = {
         shortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
-        shortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+        shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
         shortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
         doubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
         pathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
         pathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
-        tunnelInUseNotLeavePortal = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal")},
+        tunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
         tunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
         pathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         inwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        forceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
-        forceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
-        forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
+        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}
+        --forceRepathBackThroughTunnelShortDualEnded = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")}
+        --forceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
+        --forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
     }
 end
 
