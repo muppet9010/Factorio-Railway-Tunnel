@@ -104,20 +104,20 @@ Tunnel.DeregisterEndSignal = function(endSignal)
 end
 
 Tunnel.TrainReservedTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
 end
 
 Tunnel.TrainFinishedEnteringTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveEntrancePortal, trainManagerEntry)
 end
 
 Tunnel.TrainStartedExitingTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
 end
 
 Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveEntrancePortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
 end
 
 return Tunnel

@@ -19,6 +19,7 @@ Soon:
     - Have to still handle when a train could try to reverse through a tunnel:
         - long train sticking out of both ends and stops due to path lost. The front/back segments could try to reverse as it's still in a dual direction rail segment on the tail end.
         - change a committed entering trains order.
+    - Test with train set to go to rail tile on other side of tunnel, not station. Don't believe it will work.
 
 Later:
     - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.

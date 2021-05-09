@@ -22,7 +22,7 @@ local LeavingTrainStates = {
     trainLeftTunnel = "trainLeftTunnel",
     finished = "finished"
 }
-local PrimaryTrainPartNames = {entering = "entering", underground = "underground", leaving = "leaving"}
+local PrimaryTrainPartNames = {entering = "entering", underground = "underground", leaving = "leaving", finished = "finished"}
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -31,42 +31,44 @@ TrainManager.CreateGlobals = function()
     --[[
         [id] = {
             id = uniqiue id of this managed train passing through the tunnel.
-            primaryTrainPartName = The primary real train part name (PrimaryTrainPartName) that dictates the trains primary monitored object.
+            primaryTrainPartName = The primary real train part name (PrimaryTrainPartName) that dictates the trains primary monitored object. Finished is for when the tunnel trip is completed.
 
-            aboveTrainEnteringState = The current entering train's state (EnteringTrainStates).
-            aboveTrainEntering = LuaTrain of the entering train on the world surface.
-            aboveTrainEnteringId = The LuaTrain ID of the above Train Entering.
-            aboveTrainEnteringForwards = boolean if the train is moving forwards or backwards from its viewpoint.
+            enteringTrainState = The current entering train's state (EnteringTrainStates).
+            enteringTrain = LuaTrain of the entering train on the world surface.
+            enteringTrainId = The LuaTrain ID of the above Train Entering.
+            enteringTrainFowards = boolean if the train is moving forwards or backwards from its viewpoint.
+            enteringTrainBackwardsLocomotives = count of the backwards locomotives of the part of the train that has yet to enter the tunnel.
+            enteringTrainReversePushingLoco = Locomotive entity pushing the entering train backwards if it doesn't have a backwards facing locomotive still, otherwise Nil. Only added when leaving train path fails.
 
             undergroundTrainState = The current underground train's state (UndergroundTrainStates).
             undergroundTrain = LuaTrain of the train created in the underground surface.
 
-            aboveTrainLeavingState = The current leaving train's state (LeavingTrainStates).
-            aboveTrainLeaving = LuaTrain of the train created leaving the tunnel on the world surface.
-            aboveTrainLeavingId = The LuaTrain ID of the above Train Leaving.
-            aboveTrainLeavingCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
-            aboveTrainLeavingPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
+            leavingTrainState = The current leaving train's state (LeavingTrainStates).
+            leavingTrain = LuaTrain of the train created leaving the tunnel on the world surface.
+            leavingTrainId = The LuaTrain ID of the above Train Leaving.
+            leavingTrainCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
+            leavingTrainBackwardsLocomotives = count of the backwards locomotives of the part of the train that has left the tunnel.
+            leavingTrainPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
 
-            aboveTrainLeft = LuaTrain of the train thats left the tunnel.
-            aboveTrainLeftId = The LuaTrain ID of the aboveTrainLeft.
+            leftTrain = LuaTrain of the train thats left the tunnel.
+            leftTrainId = The LuaTrain ID of the leftTrain.
 
             dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive
             trainTravelDirection = defines.direction the train is heading in.
             trainTravelOrientation = the orientation of the trainTravelDirection.
+            completeTrainBackwardsLocomotives = count of the backwards locomotives of the entire train using the tunnel has. If greater than 0 it can conceptually go backwards out of the tunnel if needed.
+            scheduleTarget = the target stop entity of this train, needed in case the path gets lost as we only have the station name then.
 
             aboveSurface = LuaSurface of the main world surface.
-            surfaceEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
-            surfaceEntrancePortalEndSignal = the endSignal global object of the rail signal at the end of the entrance portal track (forced closed signal).
-            surfaceExitPortal = the portal global object of the exit portal for this tunnel usage instance.
-            surfaceExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
-            surfaceExitPortalEntrySignalOutRail = the rail at the entry signal on the exit portal (where a train pulls up to the last bit of track in the protal before leaving the tunnel rail)
+            aboveEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
+            aboveEntrancePortalEndSignal = the endSignal global object of the rail signal at the end of the entrance portal track (forced closed signal).
+            aboveExitPortal = the portal global object of the exit portal for this tunnel usage instance.
+            aboveExitPortalEndSignal = the endSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
             tunnel = ref to the global tunnel object.
+            undergroundTunnel = ref to the global tunnel's underground tunnel object.
             undergroundLeavingPortalEntrancePosition = The underground position equivilent to the portal entrance that the underground train is measured against to decide when it starts leaving.
 
             enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train. Currently used for tracking players riding in a train when it enters.
-
-            trainEnteredHasBackwardsLocomotives = boolean if the train that entered the tunnel has backwards locomoties and thus can go backwards out of the tunnel if needed.
-            trainLeftHasBackwardsLocomotives = boolean if the train that has left the tunnel so far has backwards locomoties.
         }
     ]]
     -- Used to track trainIds to managedTrainEntries. When the trainId is detected as changing via event the global object is updated to stay up to date. -- TODO: make in to a single list with attributes for the "type". Low priority and just to make code neater.
@@ -92,119 +94,178 @@ end
 
 ----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+--
 --                                  State handling section
+--
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
 
-TrainManager.RegisterTrainApproaching = function(trainEntering, surfaceEntrancePortalEndSignal)
-    local trainManagerEntry = TrainManager.CreateTrainManagerEntryObject(trainEntering, surfaceEntrancePortalEndSignal)
-    trainManagerEntry.primaryTrainPartName, trainManagerEntry.aboveTrainEnteringState, trainManagerEntry.undergroundTrainState, trainManagerEntry.aboveTrainLeavingState = PrimaryTrainPartNames.entering, EnteringTrainStates.approaching, UndergroundTrainStates.travelling, LeavingTrainStates.pre
+TrainManager.RegisterTrainApproaching = function(enteringTrain, aboveEntrancePortalEndSignal)
+    local trainManagerEntry = TrainManager.CreateTrainManagerEntryObject(enteringTrain, aboveEntrancePortalEndSignal)
+    trainManagerEntry.primaryTrainPartName, trainManagerEntry.enteringTrainState, trainManagerEntry.undergroundTrainState, trainManagerEntry.leavingTrainState = PrimaryTrainPartNames.entering, EnteringTrainStates.approaching, UndergroundTrainStates.travelling, LeavingTrainStates.pre
     TrainManager.CreateUndergroundTrainObject(trainManagerEntry)
     Interfaces.Call("Tunnel.TrainReservedTunnel", trainManagerEntry)
 
     -- Check if this train is already using the tunnel to leave. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
-    if global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.aboveTrainEntering.id] ~= nil then
+    if global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.enteringTrain.id] ~= nil then
         -- Terminate the old tunnel usage that was delayed until this point.
-        TrainManager.TerminateTunnelTrip(global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.aboveTrainEntering.id])
+        -- TODO: should this be a tunnel reverse instead now for neatness ?
+        TrainManager.TerminateTunnelTrip(global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.enteringTrain.id])
     end
 end
 
 TrainManager.ProcessManagedTrains = function()
-    -- If the tunnel trip is terminated mid processing the trainManagerEntry will become nil.
     for _, trainManagerEntry in pairs(global.trainManager.managedTrains) do
-        if trainManagerEntry ~= nil and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.entering and trainManagerEntry.aboveTrainEnteringState == EnteringTrainStates.approaching then
-            -- Check whether the train is still approaching the tunnel portal as its not committed yet.
-            if trainManagerEntry.aboveTrainEntering.state ~= defines.train_state.arrive_signal or trainManagerEntry.aboveTrainEntering.signal ~= trainManagerEntry.surfaceEntrancePortalEndSignal.entity then
+        -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
+        if not TrainManagerFuncs.CheckTrainState(trainManagerEntry.dummyTrain) then
+            TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.dummyTrain)
+            return
+        end
+
+        if trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.entering and trainManagerEntry.enteringTrainState == EnteringTrainStates.approaching then
+            -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
+            if trainManagerEntry.enteringTrain.state ~= defines.train_state.arrive_signal or trainManagerEntry.enteringTrain.signal ~= trainManagerEntry.aboveEntrancePortalEndSignal.entity then
                 TrainManager.TerminateTunnelTrip(trainManagerEntry)
                 return
             end
 
-            -- Keep on running until the train is committed to entering the tunnel while approaching is primary.
+            -- Keep on running until the train is committed to entering the tunnel.
             TrainManager.TrainApproachingOngoing(trainManagerEntry)
         end
 
-        if trainManagerEntry ~= nil and trainManagerEntry.aboveTrainEnteringState == EnteringTrainStates.entering then
-            -- Keep on running now the train is committed until the entire train has entered the tunnel.
+        if trainManagerEntry.enteringTrainState == EnteringTrainStates.entering then
+            -- Keep on running until the entire train has entered the tunnel.
             TrainManager.TrainEnteringOngoing(trainManagerEntry)
         end
 
-        if trainManagerEntry ~= nil and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.underground then
-            -- Run just while the underground train is the primary train part.
+        if trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.underground then
+            -- Run just while the underground train is the primary train part. Detects when the train can start leaving.
             TrainManager.TrainUndergroundOngoing(trainManagerEntry)
         end
 
-        if trainManagerEntry ~= nil and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving then
-            if trainManagerEntry.aboveTrainLeavingState == LeavingTrainStates.leavingFirstCarriage then
-                -- Check if the dummy train is in a good state before we replace it with the first wagon.
-                if not TrainManagerFuncs.ConfirmMovingLeavingTrainState(trainManagerEntry.dummyTrain) then
-                    error("dummy train in bad state before being changed")
-                end
-
+        if trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving then
+            if trainManagerEntry.leavingTrainState == LeavingTrainStates.leavingFirstCarriage then
                 -- Only runs for the first carriage and then changes to the ongoing for the remainder.
                 TrainManager.TrainLeavingFirstCarriage(trainManagerEntry)
-            elseif trainManagerEntry.aboveTrainLeavingState == LeavingTrainStates.leaving then
-                -- Check if the leaving train is in a good state before we add any new wagons to it.
-                if not TrainManagerFuncs.ConfirmMovingLeavingTrainState(trainManagerEntry.aboveTrainLeaving) then
-                    error("above leaving train in bad state before being changed")
+            elseif trainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
+                -- Check if the leaving train is in a good state before we check to add any new wagons to it.
+                if not TrainManagerFuncs.CheckTrainState(trainManagerEntry.leavingTrain) then
+                    TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.leavingTrain)
+                else
+                    -- Keep on running until the entire train has left the tunnel.
+                    TrainManager.TrainLeavingOngoing(trainManagerEntry)
                 end
-
-                -- Keep on running until the entire train has left the tunnel.
-                TrainManager.TrainLeavingOngoing(trainManagerEntry)
             end
         end
 
-        if trainManagerEntry ~= nil and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving and trainManagerEntry.aboveTrainLeavingState == LeavingTrainStates.trainLeftTunnel then
+        if trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving and trainManagerEntry.leavingTrainState == LeavingTrainStates.trainLeftTunnel then
             -- Keep on running until the entire train has left the tunnel's exit rail segment.
             TrainManager.TrainLeftTunnelOngoing(trainManagerEntry)
         end
     end
 end
 
+TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithBadState)
+    -- TODO: if there's trainManagerEntry.leavingTrainBackwardsLocomotives > 0 then the leaving train may try to path backwards on its own. We need to detect/handle this. Not catered for currently.
+
+    if trainManagerEntry.completeTrainBackwardsLocomotives > 0 then
+        local canPathBackwards, enteringTrain = false, trainManagerEntry.enteringTrain
+        local schedule, isManual, targetStop = trainWithBadState.schedule, trainWithBadState.manual_mode, trainManagerEntry.scheduleTarget
+        if trainManagerEntry.enteringTrainState == EnteringTrainStates.entering then
+            -- Try to path with the entering train to where it wants to go.
+            -- Has to be the remaining train and not a dummy train at the portal as the entering train may be long and over running the track points for its path backwards.
+
+            -- Add a reverse loco to the entering train if needed to test the path.
+            if trainManagerEntry.enteringTrainBackwardsLocomotives == 0 then
+                trainManagerEntry.enteringTrainReversePushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(enteringTrain.front_stock, enteringTrain.front_stock.orientation + 0.5)
+                enteringTrain = trainManagerEntry.enteringTrain -- Update as the reference will have been broken.
+            end
+
+            TrainManagerFuncs.TrainSetSchedule(enteringTrain, schedule, isManual, targetStop, true)
+            if enteringTrain.has_path then
+                canPathBackwards = true
+            end
+
+            -- Remove temp reversing loco if added.
+            if trainManagerEntry.enteringTrainReversePushingLoco ~= nil then
+                trainManagerEntry.enteringTrainReversePushingLoco.destroy()
+                trainManagerEntry.enteringTrainReversePushingLoco = nil
+            -- enteringTrain reference will have been broken, but not used later on this logic route.
+            end
+        else
+            -- Handle trains that have fully entered the tunnel.
+            local pathTestTrain = TrainManagerFuncs.CreateDummyTrain(trainManagerEntry.aboveEntrancePortal.entity, enteringTrain, true)
+            TrainManagerFuncs.TrainSetSchedule(pathTestTrain, schedule, isManual, targetStop, true)
+            if pathTestTrain.has_path then
+                canPathBackwards = true
+            end
+            TrainManagerFuncs.DestroyTrain(nil, nil, pathTestTrain)
+        end
+
+        if canPathBackwards then
+            TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
+            return
+        end
+    end
+
+    -- Handle train that can't go backwards so just pull the train forwards to the end of the tunnel, nothing else can be done.
+    TrainManagerFuncs.MoveLeavingTrainToFallbackPosition(trainWithBadState, trainManagerEntry.aboveExitPortal.entrySignals["out"].entity.get_connected_rails()[1])
+end
+
 TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
-    local aboveTrainEntering = trainManagerEntry.aboveTrainEntering
+    local enteringTrain = trainManagerEntry.enteringTrain
 
-    TrainManager.SetAboveTrainEnteringSpeed(trainManagerEntry, TrainManagerFuncs.GetTrainSpeed(trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain))
-    -- trainManagerEntry.aboveTrainEnteringForwards has been updated for us by SetAboveTrainEnteringSpeed().
-    local nextCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(aboveTrainEntering, trainManagerEntry.aboveTrainEnteringForwards)
+    TrainManager.SetTrainEnteringSpeed(trainManagerEntry, TrainManagerFuncs.GetTrainSpeed(trainManagerEntry.leavingTrain, trainManagerEntry.undergroundTrain))
+    -- trainManagerEntry.enteringTrainFowards has been updated for us by SetTrainEnteringSpeed().
+    local nextCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, trainManagerEntry.enteringTrainFowards)
 
-    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
-        trainManagerEntry.aboveTrainEnteringState = EnteringTrainStates.entering
+    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
+        -- Train is now committed to use the tunnel.
+        trainManagerEntry.enteringTrainState = EnteringTrainStates.entering
         trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.underground
-        trainManagerEntry.dummyTrain = TrainManagerFuncs.CreateDummyTrain(trainManagerEntry.surfaceExitPortal.entity, aboveTrainEntering)
+        trainManagerEntry.dummyTrain = TrainManagerFuncs.CreateDummyTrain(trainManagerEntry.aboveExitPortal.entity, enteringTrain)
+        trainManagerEntry.scheduleTarget = enteringTrain.path_end_stop
         -- Schedule has been transferred to dummy train.
-        aboveTrainEntering.schedule = nil
+        enteringTrain.schedule = nil
     end
 end
 
 TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
-    local aboveTrainEntering = trainManagerEntry.aboveTrainEntering
+    local enteringTrain = trainManagerEntry.enteringTrain
 
     -- Force an entering train to stay in manual mode.
-    aboveTrainEntering.manual_mode = true
+    enteringTrain.manual_mode = true
 
-    TrainManager.SetAboveTrainEnteringSpeed(trainManagerEntry, TrainManagerFuncs.GetTrainSpeed(trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain))
-    -- trainManagerEntry.aboveTrainEnteringForwards has been updated for us by SetAboveTrainEnteringSpeed().
-    local nextCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(aboveTrainEntering, trainManagerEntry.aboveTrainEnteringForwards)
+    TrainManager.SetTrainEnteringSpeed(trainManagerEntry, TrainManagerFuncs.GetTrainSpeed(trainManagerEntry.leavingTrain, trainManagerEntry.undergroundTrain))
+    -- trainManagerEntry.enteringTrainFowards has been updated for us by SetTrainEnteringSpeed().
+    local nextCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, trainManagerEntry.enteringTrainFowards)
 
-    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.surfaceEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
+    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
         -- Handle any player in the train carriage.
         local driver = nextCarriage.get_driver()
         if driver ~= nil then
             PlayerContainers.PlayerInCarriageEnteringTunnel(trainManagerEntry, driver, nextCarriage)
         end
 
-        nextCarriage.destroy()
+        if TrainManagerFuncs.CarriageIsAReverseLoco(nextCarriage, trainManagerEntry.trainTravelOrientation) then
+            trainManagerEntry.enteringTrainBackwardsLocomotives = trainManagerEntry.enteringTrainBackwardsLocomotives - 1
+        end
 
+        nextCarriage.destroy()
         -- Update local variable as new train number after removing carriage.
-        aboveTrainEntering = trainManagerEntry.aboveTrainEntering
+        enteringTrain = trainManagerEntry.enteringTrain
     end
 
-    if not aboveTrainEntering.valid then
+    if not enteringTrain.valid then
         -- Train has completed entering.
-        trainManagerEntry.aboveTrainEnteringState = EnteringTrainStates.finished
-        global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
-        trainManagerEntry.aboveTrainEntering = nil
-        trainManagerEntry.aboveTrainEnteringId = nil
+        trainManagerEntry.enteringTrainState = EnteringTrainStates.finished
+        global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.enteringTrainId] = nil
+        trainManagerEntry.enteringTrain = nil
+        trainManagerEntry.enteringTrainId = nil
         trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity = nil
         Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", trainManagerEntry)
     end
@@ -214,7 +275,7 @@ TrainManager.TrainUndergroundOngoing = function(trainManagerEntry)
     PlayerContainers.MoveTrainsPlayerContainers(trainManagerEntry)
 
     -- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Close the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
-    local exitPortalOutSignal = trainManagerEntry.surfaceExitPortal.entrySignals["out"]
+    local exitPortalOutSignal = trainManagerEntry.aboveExitPortal.entrySignals["out"]
     Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, exitPortalOutSignal.entity.signal_state)
 
     -- Check if the lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
@@ -225,7 +286,7 @@ TrainManager.TrainUndergroundOngoing = function(trainManagerEntry)
         Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, defines.signal_state.open)
 
         trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.leaving
-        trainManagerEntry.aboveTrainLeavingState = LeavingTrainStates.leavingFirstCarriage
+        trainManagerEntry.leavingTrainState = LeavingTrainStates.leavingFirstCarriage
     end
 end
 
@@ -236,40 +297,40 @@ TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
 
     -- Place initial leaving train carriage and set schedule back.
     local placedCarriage, undergroundLeadCarriage = TrainManager.CreateFirstCarriageForLeavingTrain(trainManagerEntry)
-    TrainManagerFuncs.LeavingTrainSetSchedule(trainManagerEntry.aboveTrainLeaving, schedule, isManual, targetStop, trainManagerEntry.surfaceExitPortalEntrySignalOutRail)
+    TrainManagerFuncs.TrainSetSchedule(trainManagerEntry.leavingTrain, schedule, isManual, targetStop)
 
     -- Follow up items post train creation.
     PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
 
     -- Check if all train wagons placed and train fully left the tunnel, otherwise set state for future carriages with the ongoing state.
-    if trainManagerEntry.aboveTrainLeavingCarriagesPlaced == #trainManagerEntry.undergroundTrain.carriages then
+    if trainManagerEntry.leavingTrainCarriagesPlaced == #trainManagerEntry.undergroundTrain.carriages then
         TrainManager.TrainLeavingCompleted(trainManagerEntry, nil)
     else
-        trainManagerEntry.aboveTrainLeavingState = LeavingTrainStates.leaving
+        trainManagerEntry.leavingTrainState = LeavingTrainStates.leaving
     end
 end
 
 TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
-    local desiredSpeed = TrainManagerFuncs.GetTrainSpeed(trainManagerEntry.aboveTrainLeaving, trainManagerEntry.undergroundTrain)
+    local desiredSpeed = TrainManagerFuncs.GetTrainSpeed(trainManagerEntry.leavingTrain, trainManagerEntry.undergroundTrain)
 
     if desiredSpeed ~= 0 then
-        local nextSourceCarriageEntity, aboveTrainLeavingRearCarriage = TrainManagerFuncs.GetCarriageToAddToLeavingTrain(trainManagerEntry.undergroundTrain, trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingCarriagesPlaced, trainManagerEntry.aboveTrainLeavingPushingLoco)
+        local nextSourceCarriageEntity, leavingTrainRearCarriage = TrainManagerFuncs.GetCarriageToAddToLeavingTrain(trainManagerEntry.undergroundTrain, trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrainCarriagesPlaced, trainManagerEntry.leavingTrainPushingLoco)
 
-        if Utils.GetDistanceSingleAxis(aboveTrainLeavingRearCarriage.position, trainManagerEntry.surfaceExitPortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) > 20 then
+        if Utils.GetDistanceSingleAxis(leavingTrainRearCarriage.position, trainManagerEntry.aboveExitPortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) > 20 then
             -- Reattaching next carriage can clobber schedule and will set train to manual, so preserve state.
-            local schedule, isManual, targetStop = trainManagerEntry.aboveTrainLeaving.schedule, trainManagerEntry.aboveTrainLeaving.manual_mode, trainManagerEntry.aboveTrainLeaving.path_end_stop
+            local schedule, isManual, targetStop = trainManagerEntry.leavingTrain.schedule, trainManagerEntry.leavingTrain.manual_mode, trainManagerEntry.leavingTrain.path_end_stop
 
             -- Place new leaving train carriage and set schedule back.
-            local placedCarriage = TrainManager.AddCarraigeToLeavingTrain(trainManagerEntry, nextSourceCarriageEntity, aboveTrainLeavingRearCarriage)
-            TrainManagerFuncs.LeavingTrainSetSchedule(trainManagerEntry.aboveTrainLeaving, schedule, isManual, targetStop, trainManagerEntry.surfaceExitPortalEntrySignalOutRail)
+            local placedCarriage = TrainManager.AddCarraigeToLeavingTrain(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
+            TrainManagerFuncs.TrainSetSchedule(trainManagerEntry.leavingTrain, schedule, isManual, targetStop)
 
             -- Follow up items post leaving train carriatge addition.
             PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nextSourceCarriageEntity, placedCarriage)
 
             -- Check if all train wagons placed and train fully left the tunnel.
-            if trainManagerEntry.aboveTrainLeavingCarriagesPlaced == #trainManagerEntry.undergroundTrain.carriages then
-                TrainManagerFuncs.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, desiredSpeed)
+            if trainManagerEntry.leavingTrainCarriagesPlaced == #trainManagerEntry.undergroundTrain.carriages then
+                TrainManagerFuncs.SetTrainAbsoluteSpeed(trainManagerEntry.leavingTrain, desiredSpeed)
                 TrainManager.TrainLeavingCompleted(trainManagerEntry)
                 return
             end
@@ -279,55 +340,41 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
         PlayerContainers.MoveTrainsPlayerContainers(trainManagerEntry)
     end
 
-    TrainManagerFuncs.SetTrainAbsoluteSpeed(trainManagerEntry.aboveTrainLeaving, desiredSpeed)
+    TrainManagerFuncs.SetTrainAbsoluteSpeed(trainManagerEntry.leavingTrain, desiredSpeed)
     TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, desiredSpeed)
 end
 
 TrainManager.TrainLeavingCompleted = function(trainManagerEntry)
     TrainManagerFuncs.DestroyTrain(trainManagerEntry, "undergroundTrain")
 
-    trainManagerEntry.aboveTrainLeft, trainManagerEntry.aboveTrainLeftId = trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId
-    global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeftId] = trainManagerEntry
-    trainManagerEntry.aboveTrainLeavingState = LeavingTrainStates.trainLeftTunnel
+    trainManagerEntry.leftTrain, trainManagerEntry.leftTrainId = trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrainId
+    global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.leftTrainId] = trainManagerEntry
+    trainManagerEntry.leavingTrainState = LeavingTrainStates.trainLeftTunnel
     trainManagerEntry.undergroundTrainState = UndergroundTrainStates.finished
 
-    global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingId] = nil
-    trainManagerEntry.aboveTrainLeavingId = nil
-    trainManagerEntry.aboveTrainLeaving = nil
+    global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.leavingTrainId] = nil
+    trainManagerEntry.leavingTrainId = nil
+    trainManagerEntry.leavingTrain = nil
 end
 
 TrainManager.TrainLeftTunnelOngoing = function(trainManagerEntry)
     -- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left. We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one.
-    local exitPortalEntranceSignalEntity = trainManagerEntry.surfaceExitPortal.entrySignals["in"].entity
+    local exitPortalEntranceSignalEntity = trainManagerEntry.aboveExitPortal.entrySignals["in"].entity
     if exitPortalEntranceSignalEntity.signal_state ~= defines.signal_state.closed then
         -- No train in the block so our one must have left.
         TrainManager.TerminateTunnelTrip(trainManagerEntry)
     end
 end
 
-TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
-    if trainManagerEntry.aboveTrainEntering then
-        global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.aboveTrainEnteringId] = nil
-    end
-    if trainManagerEntry.aboveTrainLeaving then
-        global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeavingId] = nil
-    end
-    if trainManagerEntry.aboveTrainLeft then
-        global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeftId] = nil
-    end
-
-    if trainManagerEntry.undergroundTrain then
-        PlayerContainers.On_TerminateTunnelTrip(trainManagerEntry.undergroundTrain)
-        TrainManagerFuncs.DestroyTrain(trainManagerEntry, "undergroundTrain")
-    end
-
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
-    global.trainManager.managedTrains[trainManagerEntry.id] = nil
-end
-
 ----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+--
 --                                  Functions using global objects section
+--
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
 
@@ -356,18 +403,18 @@ TrainManager.TrainTracking_OnTrainCreated = function(event)
         {
             {
                 list = global.trainManager.enteringTrainIdToManagedTrain,
-                trainAttributeName = "aboveTrainEntering",
-                trainIdAttributeName = "aboveTrainEnteringId"
+                trainAttributeName = "enteringTrain",
+                trainIdAttributeName = "enteringTrainId"
             },
             {
                 list = global.trainManager.leavingTrainIdToManagedTrain,
-                trainAttributeName = "aboveTrainLeaving",
-                trainIdAttributeName = "aboveTrainLeavingId"
+                trainAttributeName = "leavingTrain",
+                trainIdAttributeName = "leavingTrainId"
             },
             {
                 list = global.trainManager.trainLeftTunnelTrainIdToManagedTrain,
-                trainAttributeName = "aboveTrainLeft",
-                trainIdAttributeName = "aboveTrainLeftId"
+                trainAttributeName = "leftTrain",
+                trainIdAttributeName = "leftTrainId"
             }
         }
     ) do
@@ -375,25 +422,25 @@ TrainManager.TrainTracking_OnTrainCreated = function(event)
     end
 end
 
-TrainManager.SetAboveTrainEnteringSpeed = function(trainManagerEntry, speed)
-    local aboveTrainEntering = trainManagerEntry.aboveTrainEntering
+TrainManager.SetTrainEnteringSpeed = function(trainManagerEntry, speed)
+    local enteringTrain = trainManagerEntry.enteringTrain
 
-    -- Only update aboveTrainEnteringForwards if speed ~= 0. As the last entering train direction needs to be preserved in global data if the train stops while entering the tunnel.
-    if aboveTrainEntering.speed > 0 then
-        trainManagerEntry.aboveTrainEnteringForwards = true
-        aboveTrainEntering.speed = speed
-    elseif aboveTrainEntering.speed < 0 then
-        trainManagerEntry.aboveTrainEnteringForwards = false
-        aboveTrainEntering.speed = -1 * speed
+    -- Only update enteringTrainFowards if speed ~= 0. As the last entering train direction needs to be preserved in global data if the train stops while entering the tunnel.
+    if enteringTrain.speed > 0 then
+        trainManagerEntry.enteringTrainFowards = true
+        enteringTrain.speed = speed
+    elseif enteringTrain.speed < 0 then
+        trainManagerEntry.enteringTrainFowards = false
+        enteringTrain.speed = -1 * speed
     else
-        aboveTrainEntering.speed = 0
+        enteringTrain.speed = 0
     end
 end
 
 TrainManager.SetUndergroundTrainSpeed = function(trainManagerEntry, speed)
     local train = trainManagerEntry.undergroundTrain
 
-    if speed ~= 0 or not TrainManagerFuncs.IsSpeedGovernedByLeavingTrain(trainManagerEntry.aboveTrainLeaving) then
+    if speed ~= 0 or not TrainManagerFuncs.IsSpeedGovernedByTrain(trainManagerEntry.leavingTrain) then
         if not train.manual_mode then
             TrainManagerFuncs.SetTrainAbsoluteSpeed(train, speed)
         else
@@ -433,20 +480,20 @@ end
 TrainManager.On_TunnelRemoved = function(tunnelRemoved)
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
-            if managedTrain.aboveTrainEnteringId ~= nil then
-                global.trainManager.enteringTrainIdToManagedTrain[managedTrain.aboveTrainEnteringId] = nil
-                managedTrain.aboveTrainEntering.manual_mode = true
-                managedTrain.aboveTrainEntering.speed = 0
+            if managedTrain.enteringTrainId ~= nil then
+                global.trainManager.enteringTrainIdToManagedTrain[managedTrain.enteringTrainId] = nil
+                managedTrain.enteringTrain.manual_mode = true
+                managedTrain.enteringTrain.speed = 0
                 if managedTrain.dummyTrain ~= nil then
-                    managedTrain.aboveTrainEntering.schedule = managedTrain.dummyTrain.schedule
-                elseif managedTrain.aboveTrainLeaving ~= nil then
-                    managedTrain.aboveTrainEntering.schedule = managedTrain.aboveTrainLeaving.schedule
+                    managedTrain.enteringTrain.schedule = managedTrain.dummyTrain.schedule
+                elseif managedTrain.leavingTrain ~= nil then
+                    managedTrain.enteringTrain.schedule = managedTrain.leavingTrain.schedule
                 end
             end
-            if managedTrain.aboveTrainLeavingId ~= nil then
-                global.trainManager.leavingTrainIdToManagedTrain[managedTrain.aboveTrainLeavingId] = nil
-                managedTrain.aboveTrainLeaving.manual_mode = true
-                managedTrain.aboveTrainLeaving.speed = 0
+            if managedTrain.leavingTrainId ~= nil then
+                global.trainManager.leavingTrainIdToManagedTrain[managedTrain.leavingTrainId] = nil
+                managedTrain.leavingTrain.manual_mode = true
+                managedTrain.leavingTrain.speed = 0
             end
             TrainManagerFuncs.DestroyTrain(managedTrain, "dummyTrain")
 
@@ -459,85 +506,83 @@ end
 
 TrainManager.CreateFirstCarriageForLeavingTrain = function(trainManagerEntry)
     local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(trainManagerEntry.undergroundTrain, trainManagerEntry.undergroundTrain.speed > 0)
-    local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, trainManagerEntry.undergroundTunnel.surfaceOffsetFromUnderground)
+    local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, trainManagerEntry.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
     local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
     placedCarriage.train.speed = undergroundLeadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
-    trainManagerEntry.aboveTrainLeavingCarriagesPlaced = 1
-    trainManagerEntry.aboveTrainLeaving, trainManagerEntry.aboveTrainLeavingId = placedCarriage.train, placedCarriage.train.id
-    global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.aboveTrainLeaving.id] = trainManagerEntry
+    trainManagerEntry.leavingTrainCarriagesPlaced = 1
+    trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrainId = placedCarriage.train, placedCarriage.train.id
+    global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.leavingTrain.id] = trainManagerEntry
 
     -- Add a pushing loco if needed.
     if not TrainManagerFuncs.CarriageIsAPushingLoco(placedCarriage, trainManagerEntry.trainTravelOrientation) then
-        trainManagerEntry.aboveTrainLeavingPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
+        trainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
     end
 
     -- If emerged train has a reverse loco yet.
     if TrainManagerFuncs.CarriageIsAReverseLoco(placedCarriage, trainManagerEntry.trainTravelOrientation) then
-        trainManagerEntry.trainLeftHasBackwardsLocomotives = true
+        trainManagerEntry.leavingTrainBackwardsLocomotives = 1
     else
-        trainManagerEntry.trainLeftHasBackwardsLocomotives = false
+        trainManagerEntry.leavingTrainBackwardsLocomotives = 0
     end
 
     return placedCarriage, undergroundLeadCarriage
 end
 
-TrainManager.AddCarraigeToLeavingTrain = function(trainManagerEntry, nextSourceCarriageEntity, aboveTrainLeavingRearCarriage)
+TrainManager.AddCarraigeToLeavingTrain = function(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
     -- Remove the pushing loco if present before the next carriage is placed.
-    local hadPushingLoco = trainManagerEntry.aboveTrainLeavingPushingLoco ~= nil
-    if trainManagerEntry.aboveTrainLeavingPushingLoco ~= nil then
-        trainManagerEntry.aboveTrainLeavingPushingLoco.destroy()
-        trainManagerEntry.aboveTrainLeavingPushingLoco = nil
+    local hadPushingLoco = trainManagerEntry.leavingTrainPushingLoco ~= nil
+    if trainManagerEntry.leavingTrainPushingLoco ~= nil then
+        trainManagerEntry.leavingTrainPushingLoco.destroy()
+        trainManagerEntry.leavingTrainPushingLoco = nil
     end
 
-    local aboveTrainOldCarriageCount = #aboveTrainLeavingRearCarriage.train.carriages
-    local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.undergroundTunnel.surfaceOffsetFromUnderground)
+    local aboveTrainOldCarriageCount = #leavingTrainRearCarriage.train.carriages
+    local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
     local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
-    trainManagerEntry.aboveTrainLeavingCarriagesPlaced = trainManagerEntry.aboveTrainLeavingCarriagesPlaced + 1
+    trainManagerEntry.leavingTrainCarriagesPlaced = trainManagerEntry.leavingTrainCarriagesPlaced + 1
     if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
         error("Placed carriage not part of train as expected carriage count not right")
     end
 
     -- If train had a pushing loco before and still needs one, add one back.
     if hadPushingLoco and (not TrainManagerFuncs.CarriageIsAPushingLoco(placedCarriage, trainManagerEntry.trainTravelOrientation)) then
-        trainManagerEntry.aboveTrainLeavingPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
+        trainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
     end
 
     -- If emerged train has a reverse loco yet.
-    if (not trainManagerEntry.trainLeftHasBackwardsLocomotives) and TrainManagerFuncs.CarriageIsAReverseLoco(placedCarriage, trainManagerEntry.trainTravelOrientation) then
-        trainManagerEntry.trainLeftHasBackwardsLocomotives = true
+    if TrainManagerFuncs.CarriageIsAReverseLoco(placedCarriage, trainManagerEntry.trainTravelOrientation) then
+        trainManagerEntry.leavingTrainBackwardsLocomotives = trainManagerEntry.leavingTrainBackwardsLocomotives + 1
     end
 
     return placedCarriage
 end
 
-TrainManager.CreateTrainManagerEntryObject = function(trainEntering, surfaceEntrancePortalEndSignal)
+TrainManager.CreateTrainManagerEntryObject = function(enteringTrain, aboveEntrancePortalEndSignal)
     local trainManagerEntry = {
         id = global.trainManager.nextManagedTrainId,
-        aboveTrainEntering = trainEntering,
-        aboveTrainEnteringId = trainEntering.id,
-        surfaceEntrancePortalEndSignal = surfaceEntrancePortalEndSignal,
-        surfaceEntrancePortal = surfaceEntrancePortalEndSignal.portal,
-        tunnel = surfaceEntrancePortalEndSignal.portal.tunnel,
-        trainTravelDirection = Utils.LoopDirectionValue(surfaceEntrancePortalEndSignal.entity.direction + 4)
+        enteringTrain = enteringTrain,
+        enteringTrainId = enteringTrain.id,
+        aboveEntrancePortalEndSignal = aboveEntrancePortalEndSignal,
+        aboveEntrancePortal = aboveEntrancePortalEndSignal.portal,
+        tunnel = aboveEntrancePortalEndSignal.portal.tunnel,
+        trainTravelDirection = Utils.LoopDirectionValue(aboveEntrancePortalEndSignal.entity.direction + 4)
     }
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1
     global.trainManager.managedTrains[trainManagerEntry.id] = trainManagerEntry
     trainManagerEntry.aboveSurface = trainManagerEntry.tunnel.aboveSurface
-    trainManagerEntry.undergroundTunnel = trainManagerEntry.tunnel.undergroundTunnel
-    if trainManagerEntry.aboveTrainEntering.speed > 0 then
-        trainManagerEntry.aboveTrainEnteringForwards = true
+    if trainManagerEntry.enteringTrain.speed > 0 then
+        trainManagerEntry.enteringTrainFowards = true
     else
-        trainManagerEntry.aboveTrainEnteringForwards = false
+        trainManagerEntry.enteringTrainFowards = false
     end
     trainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(trainManagerEntry.trainTravelDirection)
-    global.trainManager.enteringTrainIdToManagedTrain[trainEntering.id] = trainManagerEntry
+    global.trainManager.enteringTrainIdToManagedTrain[enteringTrain.id] = trainManagerEntry
 
     -- Get the exit end signal on the other portal so we know when to bring the train back in.
     for _, portal in pairs(trainManagerEntry.tunnel.portals) do
-        if portal.id ~= surfaceEntrancePortalEndSignal.portal.id then
-            trainManagerEntry.surfaceExitPortalEndSignal = portal.endSignals["out"]
-            trainManagerEntry.surfaceExitPortal = portal
-            trainManagerEntry.surfaceExitPortalEntrySignalOutRail = portal.entrySignals["out"].entity.get_connected_rails()[1]
+        if portal.id ~= aboveEntrancePortalEndSignal.portal.id then
+            trainManagerEntry.aboveExitPortalEndSignal = portal.endSignals["out"]
+            trainManagerEntry.aboveExitPortal = portal
         end
     end
 
@@ -546,20 +591,24 @@ end
 
 TrainManager.CreateUndergroundTrainObject = function(trainManagerEntry)
     -- Copy the above train underground and set it running.
-    local sourceTrain = trainManagerEntry.aboveTrainEntering
     local firstCarriagePosition =
         TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition(
-        sourceTrain,
+        trainManagerEntry.enteringTrain,
         trainManagerEntry.tunnel.alignmentOrientation,
-        trainManagerEntry.undergroundTunnel.tunnelInstanceValue,
+        trainManagerEntry.tunnel.undergroundTunnel.tunnelInstanceValue,
         trainManagerEntry.trainTravelOrientation,
         trainManagerEntry.tunnel.portals[1].entranceDistanceFromCenter,
-        trainManagerEntry.surfaceEntrancePortalEndSignal.entity.get_connected_rails()[1].unit_number
+        trainManagerEntry.aboveEntrancePortalEndSignal.entity.get_connected_rails()[1].unit_number
     )
-    trainManagerEntry.undergroundTrain, trainManagerEntry.carriageIdToEntityList, trainManagerEntry.trainEnteredHasBackwardsLocomotives =
-        TrainManagerFuncs.CopyTrain(sourceTrain, trainManagerEntry.undergroundTunnel.undergroundSurface.surface, trainManagerEntry.trainTravelOrientation, trainManagerEntry.aboveTrainEnteringForwards, trainManagerEntry.trainTravelDirection, firstCarriagePosition)
-    local undergroundTrain = trainManagerEntry.undergroundTrain
+    trainManagerEntry.undergroundTrain, trainManagerEntry.carriageIdToEntityList, trainManagerEntry.completeTrainBackwardsLocomotives =
+        TrainManagerFuncs.CopyTrain(trainManagerEntry.enteringTrain, trainManagerEntry.tunnel.undergroundTunnel.undergroundSurface.surface, trainManagerEntry.trainTravelOrientation, trainManagerEntry.enteringTrainFowards, trainManagerEntry.trainTravelDirection, firstCarriagePosition)
+    trainManagerEntry.enteringTrainBackwardsLocomotives = trainManagerEntry.completeTrainBackwardsLocomotives
 
+    TrainManager.SetUndergroundTrainScheduleAndEndPosition(trainManagerEntry)
+    TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(trainManagerEntry.enteringTrain.speed))
+end
+
+TrainManager.SetUndergroundTrainScheduleAndEndPosition = function(trainManagerEntry)
     local undergroundTrainEndScheduleTargetPos =
         Utils.ApplyOffsetToPosition(
         Utils.RotatePositionAround0(
@@ -577,7 +626,7 @@ TrainManager.CreateUndergroundTrainObject = function(trainManagerEntry)
             }
         )
     )
-    undergroundTrain.schedule = {
+    trainManagerEntry.undergroundTrain.schedule = {
         current = 1,
         records = {
             {
@@ -585,9 +634,113 @@ TrainManager.CreateUndergroundTrainObject = function(trainManagerEntry)
             }
         }
     }
-    TrainManager.SetUndergroundTrainSpeed(trainManagerEntry, math.abs(sourceTrain.speed))
 
-    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.surfaceExitPortal.portalEntrancePosition, trainManagerEntry.undergroundTunnel.undergroundOffsetFromSurface)
+    trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.aboveExitPortal.portalEntrancePosition, trainManagerEntry.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
+end
+
+TrainManager.TerminateTunnelTrip = function(trainManagerEntry)
+    if trainManagerEntry.undergroundTrain then
+        PlayerContainers.On_TerminateTunnelTrip(trainManagerEntry.undergroundTrain)
+        TrainManagerFuncs.DestroyTrain(trainManagerEntry, "undergroundTrain")
+    end
+    TrainManager.ReversingTunnelTripTidyOldManagedTrain(trainManagerEntry)
+    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
+end
+
+TrainManager.ReversingTunnelTripTidyOldManagedTrain = function(trainManagerEntry)
+    trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.finished -- used by local object references to know the trip has been completed.
+
+    if trainManagerEntry.enteringTrain then
+        global.trainManager.enteringTrainIdToManagedTrain[trainManagerEntry.enteringTrainId] = nil
+    end
+    if trainManagerEntry.leavingTrain then
+        global.trainManager.leavingTrainIdToManagedTrain[trainManagerEntry.leavingTrainId] = nil
+    end
+    if trainManagerEntry.leftTrain then
+        global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.leftTrainId] = nil
+    end
+
+    if trainManagerEntry.dummyTrain then
+        TrainManagerFuncs.DestroyTrain(trainManagerEntry, "dummyTrain")
+    end
+
+    global.trainManager.managedTrains[trainManagerEntry.id] = nil
+end
+
+TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
+    -- The managed train is going to reverse and go out of the tunnel the way it came in. Will be lodged as a new managed train so that old managed trains logic can be closed off.
+    -- This function can't be reached if the train isn't committed, so no need to handle EnteringTrainStates.approaching.
+
+    local newTrainManagerEntry = {
+        id = global.trainManager.nextManagedTrainId
+    }
+    global.trainManager.managedTrains[newTrainManagerEntry.id] = newTrainManagerEntry
+    global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1
+
+    --dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive
+    newTrainManagerEntry.trainTravelDirection = Utils.LoopDirectionValue(oldTrainManagerEntry.trainTravelDirection + 4)
+    newTrainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(newTrainManagerEntry.trainTravelDirection)
+    newTrainManagerEntry.completeTrainBackwardsLocomotives = 0 -- TODO: count the nowfacing backwards locos on the underground train.
+    newTrainManagerEntry.scheduleTarget = oldTrainManagerEntry.scheduleTarget
+
+    newTrainManagerEntry.aboveSurface = oldTrainManagerEntry.aboveSurface
+    newTrainManagerEntry.aboveEntrancePortal = oldTrainManagerEntry.aboveExitPortal
+    newTrainManagerEntry.aboveEntrancePortalEndSignal = oldTrainManagerEntry.aboveExitPortalEndSignal
+    newTrainManagerEntry.aboveExitPortal = oldTrainManagerEntry.aboveEntrancePortal
+    newTrainManagerEntry.aboveExitPortalEndSignal = oldTrainManagerEntry.aboveEntrancePortalEndSignal
+    newTrainManagerEntry.tunnel = oldTrainManagerEntry.tunnel
+
+    if oldTrainManagerEntry.leavingTrainState == LeavingTrainStates.leavingFirstCarriage or oldTrainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
+        newTrainManagerEntry.enteringTrainState = EnteringTrainStates.entering
+        newTrainManagerEntry.enteringTrain = oldTrainManagerEntry.leavingTrain
+        newTrainManagerEntry.enteringTrainId = oldTrainManagerEntry.leavingTrainId
+        newTrainManagerEntry.enteringTrainFowards = not oldTrainManagerEntry.enteringTrainFowards
+        newTrainManagerEntry.enteringTrainBackwardsLocomotives = oldTrainManagerEntry.leavingTrainBackwardsLocomotives
+        newTrainManagerEntry.enteringTrainReversePushingLoco = nil -- TODO: needs working out for current state.
+    end
+
+    newTrainManagerEntry.undergroundTrainState = oldTrainManagerEntry.undergroundTrainState
+    newTrainManagerEntry.undergroundTrain = oldTrainManagerEntry.undergroundTrain
+
+    --TODO: enteringTrain approaching may unlock the tunnel if reversed when it shouldn't, check exactly when its locked.
+    if oldTrainManagerEntry.enteringTrainState == EnteringTrainStates.entering then
+        newTrainManagerEntry.leavingTrainState = LeavingTrainStates.leaving
+        newTrainManagerEntry.leavingTrain = oldTrainManagerEntry.enteringTrain
+        newTrainManagerEntry.leavingTrainId = oldTrainManagerEntry.enteringTrainId
+        newTrainManagerEntry.leavingTrainCarriagesPlaced = #newTrainManagerEntry.leavingTrain.carriages
+        newTrainManagerEntry.leavingTrainBackwardsLocomotives = oldTrainManagerEntry.enteringTrainBackwardsLocomotives
+        newTrainManagerEntry.leavingTrainPushingLoco = nil -- TODO: needs working out for current state.
+    end
+
+    -- Don't need to handle any leftTrain as the terminate of old tunnel trip will tidy it up. We don't need to create a leaving train entry for the reversed train.
+
+    if oldTrainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.entering then
+        newTrainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.leaving -- TODO: not sure on this or if the reversed train will be in the left state ?
+    elseif oldTrainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving then
+        newTrainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.entering
+    elseif oldTrainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.underground then
+        if newTrainManagerEntry.leavingTrainCarriagesPlaced > 0 then
+            newTrainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.leaving
+        else
+            newTrainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.underground
+        end
+    else
+        error("Unexpected reversed managed train primaryTrainPartName")
+    end
+
+    --[[
+        --TODO: PlayerContainers globals needs handling in addition to the below list in the trainManagerEntry.
+    enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train. Currently used for tracking players riding in a train when it enters.
+    ]]
+    if newTrainManagerEntry.enteringTrain then
+        global.trainManager.enteringTrainIdToManagedTrain[newTrainManagerEntry.enteringTrainId] = newTrainManagerEntry
+    end
+    if newTrainManagerEntry.leavingTrain then
+        global.trainManager.leavingTrainIdToManagedTrain[newTrainManagerEntry.leavingTrainId] = newTrainManagerEntry
+    end
+
+    TrainManager.SetUndergroundTrainScheduleAndEndPosition(newTrainManagerEntry)
+    TrainManager.ReversingTunnelTripTidyOldManagedTrain(oldTrainManagerEntry)
 end
 
 return TrainManager

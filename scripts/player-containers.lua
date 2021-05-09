@@ -88,10 +88,10 @@ PlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalEntity, vehic
 
     if portalEntity == nil then
         local trainManagerEntry = playerContainer.trainManagerEntry
-        if Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceEntrancePortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) < Utils.GetDistanceSingleAxis(trainManagerEntry.surfaceExitPortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) then
-            portalObject = trainManagerEntry.surfaceEntrancePortal
+        if Utils.GetDistanceSingleAxis(trainManagerEntry.aboveEntrancePortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) < Utils.GetDistanceSingleAxis(trainManagerEntry.aboveExitPortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) then
+            portalObject = trainManagerEntry.aboveEntrancePortal
         else
-            portalObject = trainManagerEntry.surfaceExitPortal
+            portalObject = trainManagerEntry.aboveExitPortal
         end
     else
         portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
@@ -138,7 +138,7 @@ end
 PlayerContainers.MoveTrainsPlayerContainers = function(trainManagerEntry)
     -- Update any player containers for the train.
     for _, playerContainer in pairs(global.playerContainers.undergroudCarriageIdsToPlayerContainer) do
-        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.undergroundTunnel.surfaceOffsetFromUnderground)
+        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
         playerContainer.entity.teleport(playerContainerPosition)
     end
 end
