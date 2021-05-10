@@ -11,10 +11,6 @@ TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
 end
 
 TrainManagerFuncs.CheckTrainState = function(train)
-    if train == nil or not train.valid then
-        -- A non existent train is in a good state.
-        return true
-    end
     if train.state == defines.train_state.no_path or train.state == defines.train_state.path_lost then
         return false
     else
@@ -131,10 +127,12 @@ TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetS
     train.schedule, skipStateCheck = schedule, skipStateCheck or false
     if not isManual then
         TrainManagerFuncs.SetTrainToAuto(train, targetStop)
-        if skipStateCheck and not TrainManagerFuncs.CheckTrainState(train) then
+        if not skipStateCheck and not TrainManagerFuncs.CheckTrainState(train) then
             -- Any issue on the train from the previous tick should be detected by the state check. So this should only trigger after misplaced wagons.
             error("train doesn't have positive state after setting schedule")
         end
+    else
+        train.manual_mode = true
     end
 end
 
@@ -152,7 +150,6 @@ TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrien
     end
     local carriageIdToEntityList = {}
     local placedCarriage = nil
-    local completeTrainBackwardsLocomotives = 0
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
         local carriageDirection = trainCarriagesForwardDirection
@@ -162,16 +159,14 @@ TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrien
         local refCarriageGoingForwards = true
         if refCarriage.speed < 0 then
             refCarriageGoingForwards = false
-            if refCarriage.type == "locomotive" then
-                completeTrainBackwardsLocomotives = completeTrainBackwardsLocomotives + 1
-            end
         end
         placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards)
         carriageIdToEntityList[refCarriage.unit_number] = placedCarriage
 
         nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
     end
-    return placedCarriage.train, carriageIdToEntityList, completeTrainBackwardsLocomotives
+
+    return placedCarriage.train, carriageIdToEntityList
 end
 
 TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition = function(sourceTrain, tunnelAlignmentOrientation, tunnelInstanceValue, trainTravelOrientation, tunnelPortalEntranceDistanceFromCenter, aboveEntrancePortalEndSignalRailUnitNumber)

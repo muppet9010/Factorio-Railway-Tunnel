@@ -4,12 +4,12 @@ local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
 
 -- If tests or demo are done the map is replaced with a test science lab tile world and the tests placed/run.
-local doTests = true -- Does the enabled tests below.
-local doAllTests = false -- Does all the tests regardless of their enabled state below.
-local doDemo = false -- Does the demo rather than any enabled tests.
+local DoTests = true -- Does the enabled tests below.
+local DoAllTests = false -- Does all the tests regardless of their enabled state below.
+local DoDemo = false -- Does the demo rather than any enabled tests.
 
 local testsToRun
-if doTests then
+if DoTests then
     testsToRun = {
         shortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
@@ -27,7 +27,7 @@ if doTests then
         inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
         forceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
         forceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
-        forceRepathBackThroughTunnelLongDualEnded = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
+        forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
     }
 end
 
@@ -45,14 +45,14 @@ TestManager.OnLoad = function()
 
     -- Run any active tests OnLoad function.
     for _, test in pairs(testsToRun) do
-        if test.enabled and test.testScript.OnLoad ~= nil then
+        if (DoAllTests or test.enabled) and test.testScript.OnLoad ~= nil then
             test.testScript["OnLoad"]()
         end
     end
 end
 
 TestManager.OnStartup = function()
-    if ((not doTests) and (not doDemo)) or global.testManager.testsRun then
+    if ((not DoTests) and (not DoDemo)) or global.testManager.testsRun then
         return
     end
     global.testManager.testsRun = true
@@ -83,14 +83,14 @@ TestManager.RunTests = function()
     game.tick_paused = true
 
     -- Do the demo and not any tests if it is enabled.
-    if doDemo then
+    if DoDemo then
         testsToRun = {
             demo = {enabled = true, testScript = require("tests/demo")}
         }
     end
 
     for testName, test in pairs(testsToRun) do
-        if test.enabled or doAllTests then
+        if test.enabled or DoAllTests then
             test.testScript.Start(TestManager, testName)
         end
     end
@@ -99,7 +99,7 @@ TestManager.RunTests = function()
 end
 
 TestManager.OnPlayerCreated = function(event)
-    if ((not doTests) and (not doDemo)) then
+    if ((not DoTests) and (not DoDemo)) then
         return
     end
     local player = game.get_player(event.player_index)
