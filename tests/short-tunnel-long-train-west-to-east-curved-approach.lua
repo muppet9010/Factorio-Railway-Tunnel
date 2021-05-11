@@ -1,5 +1,7 @@
 local Test = {}
 
+Test.RunTime = 2800
+
 Test.Start = function()
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]

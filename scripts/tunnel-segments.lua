@@ -313,7 +313,9 @@ TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.crossingRailEntities ~= nil then
         TunnelCommon.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
         for _, crossingRailEntity in pairs(segment.crossingRailEntities) do
-            crossingRailEntity.destroy()
+            if crossingRailEntity.valid then
+                crossingRailEntity.destroy()
+            end
         end
     end
     global.tunnelSegments.segmentPositions[segment.positionString] = nil

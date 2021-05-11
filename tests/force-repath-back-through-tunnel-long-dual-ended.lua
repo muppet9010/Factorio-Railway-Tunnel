@@ -1,3 +1,4 @@
+-- TODO: WILL BE REPLACED BY DYNAMIC TEST
 --[[
     Once the train has started entering the tunnel and is committed (first carriage removed from aboveground), remove a piece of track on the exit side of the tunnel. An alternative path by reversing through the tunnel exists, and the train is a a long dual headed, so reverse engine is still in the tunnel.
 ]]

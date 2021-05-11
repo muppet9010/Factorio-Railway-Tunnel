@@ -1,10 +1,17 @@
 local Test = {}
+local TestFunctions = require("scripts/test-functions")
 
-Test.Start = function()
+Test.RunTime = 1800
+
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+end
+
+Test.Start = function(testName)
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
 
-    local yRailValue = 61
+    local yRailValue = 1
     local nauvisEntitiesToPlace = {}
 
     -- West side
@@ -41,7 +48,9 @@ Test.Start = function()
     -- Loco3 makes the train face backwards and so it drives backwards on its orders.
     local loco3 = nauvisSurface.create_entity {name = "locomotive", position = {116, yRailValue}, force = playerForce, direction = defines.direction.east}
     loco3.insert("coal")
-    loco1.train.schedule = {
+
+    local train = loco1.train
+    train.schedule = {
         current = 1,
         records = {
             {
@@ -52,7 +61,48 @@ Test.Start = function()
             }
         }
     }
-    loco1.train.manual_mode = false
+    train.manual_mode = false
+
+    local testData = TestFunctions.GetTestDataObject(testName)
+    testData.westStationReached = false
+    testData.eastStationReached = false
+    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+    testData.trainStopWest = trainStopWest
+    testData.trainStopEast = trainStopEast
+
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.Stop = function(testName)
+    TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.EveryTick = function(event)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()
+    if westTrain ~= nil and not testData.westStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
+        local trainSnapshotDifference = TestFunctions.TrainSnapshotDifference(testData.origionalTrainSnapshot, currentTrainSnapshot)
+        if trainSnapshotDifference ~= nil then
+            TestFunctions.TestFailed(testName, "train reached west station, but with train differences: " .. trainSnapshotDifference)
+            return
+        end
+        game.print("train reached west station")
+        testData.westStationReached = true
+    end
+    if eastTrain ~= nil and not testData.eastStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
+        local trainSnapshotDifference = TestFunctions.TrainSnapshotDifference(testData.origionalTrainSnapshot, currentTrainSnapshot)
+        if trainSnapshotDifference ~= nil then
+            TestFunctions.TestFailed(testName, "train reached east station, but with train differences: " .. trainSnapshotDifference)
+            return
+        end
+        game.print("train reached east station")
+        testData.eastStationReached = true
+    end
+    if testData.westStationReached and testData.eastStationReached then
+        TestFunctions.TestCompleted(testName)
+    end
 end
 
 return Test

@@ -2,60 +2,86 @@ local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
+local Interfaces = require("utility/interfaces")
 
 -- If tests or demo are done the map is replaced with a test science lab tile world and the tests placed/run.
-local DoTests = true -- Does the enabled tests below.
-local DoAllTests = false -- Does all the tests regardless of their enabled state below.
-local DoDemo = false -- Does the demo rather than any enabled tests.
+local DoTests = true -- Does the enabled tests below if TRUE.
+local DoDemo = false -- Does the demo rather than any enabled tests if TRUE.
 
-local testsToRun
+local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
+local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
+local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next.
+
+-- Add any new tests in to the table and set enable true/false as desired.
+local TestsToRun
 if DoTests then
-    testsToRun = {
-        shortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
-        shortTunnelShortTrainWestToEast = {enabled = false, testScript = require("tests/short-tunnel-short-train-west-to-east")},
-        shortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
-        shortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
-        repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
-        doubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
-        pathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
-        pathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
-        tunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-        tunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
-        pathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
-        inwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
-        inwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-        inwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        forceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
-        forceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
-        forceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
+    TestsToRun = {
+        --ShortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+        --ShortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+        ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
+        --repathOnApproach = {enabled = true, testScript = require("tests/repath-on-approach")},
+        DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
+        PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
+        PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
+        TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
+        TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+        PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
+        InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")}
+        --InwardFacingTrainBlockedExitLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+        --InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}
+        --ForceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
+        --ForceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
+        --ForceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
+        --ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests"), multipleTests = true} -- WIP
     }
 end
 
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+--
+--                                          DONT CHANGE BELOW HERE WHEN JUST ADDING TESTS
+--
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
-    global.testManager.testsRun = global.testManager.testsRun or false -- Used to flag when a save was started with tests already.
+    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false -- Used to flag when a save was started with tests already.
     global.testManager.testSurface = global.testManager.testSurface or nil
     global.testManager.playerForce = global.testManager.playerForce or nil
+    global.testManager.testData = global.testManager.testData or {} -- Used by tests to store their local data. Key'd by testName.
+    global.testManager.testsToRun = global.testManager.testsToRun or TestsToRun
+    if DoDemo then
+        -- Do just the demo if it is enabled, no tests.
+        global.testManager.testsToRun = {
+            demo = {enabled = true, testScript = require("tests/demo")}
+        }
+    end
 end
 
 TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
+    EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests", TestManager.WaitForPlayerThenRunTests)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
 
     -- Run any active tests OnLoad function.
-    for _, test in pairs(testsToRun) do
-        if (DoAllTests or test.enabled) and test.testScript.OnLoad ~= nil then
-            test.testScript["OnLoad"]()
+    for testName, test in pairs(global.testManager.testsToRun) do
+        if (AllTests or test.enabled) and test.testScript.OnLoad ~= nil then
+            test.testScript["OnLoad"](testName)
         end
     end
 end
 
 TestManager.OnStartup = function()
-    if ((not DoTests) and (not DoDemo)) or global.testManager.testsRun then
+    if not DoTests or global.testManager.testProcessStarted then
         return
     end
-    global.testManager.testsRun = true
+    global.testManager.testProcessStarted = true
 
     global.testManager.testSurface = game.surfaces[1]
     global.testManager.playerForce = game.forces["player"]
@@ -75,31 +101,72 @@ TestManager.OnStartup = function()
         testSurface.delete_chunk({x = chunk.x, y = chunk.y})
     end
 
+    game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
-    EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.RunTests") -- Have to give it time to chart the revealed area.
+
+    for _, test in pairs(global.testManager.testsToRun) do
+        test.started = false
+        test.finished = false
+        test.success = nil
+    end
+
+    EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
+end
+
+TestManager.WaitForPlayerThenRunTests = function(event)
+    local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
+    if currentTestName ~= nil then
+        local test = global.testManager.testsToRun[currentTestName]
+        test.testScript.Stop(currentTestName)
+        game.print("Test NOT Completed:" .. currentTestName, {1, 0, 0, 1})
+        test.finished = true
+        test.success = false
+        game.tick_paused = true
+        return
+    end
+    if WaitForPlayerAtEndOfEachTest then
+        if event.data.firstLoad then
+            game.print("Testing started paused in editor mode - will pause at the end of each test")
+        end
+        game.tick_paused = true
+        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests")
+    else
+        TestManager.RunTests()
+    end
 end
 
 TestManager.RunTests = function()
-    game.tick_paused = true
-
-    -- Do the demo and not any tests if it is enabled.
-    if DoDemo then
-        testsToRun = {
-            demo = {enabled = true, testScript = require("tests/demo")}
-        }
-    end
-
-    for testName, test in pairs(testsToRun) do
-        if test.enabled or DoAllTests then
-            test.testScript.Start(TestManager, testName)
+    -- Clean any previous entities off the map. Run twice to catch any rails with trains on them that get missed first attempt.
+    for i = 1, 2 do
+        for _, entity in pairs(global.testManager.testSurface.find_entities()) do
+            entity.destroy({raise_destroy = true})
         end
     end
 
-    global.testManager.playerForce.chart_all(global.testManager.testSurface)
+    -- Clear any previous console messages to make it easy to track each test.
+    for _, player in pairs(game.connected_players) do
+        player.clear_console()
+    end
+
+    for testName, test in pairs(global.testManager.testsToRun) do
+        if (test.enabled or AllTests) and not test.started then
+            game.print("Starting Test:   " .. testName)
+            global.testManager.testData[testName] = {}
+            test.testScript.Start(testName)
+            test.started = true
+            if test.testScript.RunTime ~= nil then
+                EventScheduler.ScheduleEventOnce(game.tick + test.testScript.RunTime, "TestManager.WaitForPlayerThenRunTests", nil, {currentTestName = testName})
+            end
+            global.testManager.playerForce.chart_all(global.testManager.testSurface)
+            return
+        end
+    end
+
+    game.print("All Tests Done", {0, 0, 1, 1})
 end
 
 TestManager.OnPlayerCreated = function(event)
-    if ((not DoTests) and (not DoDemo)) then
+    if not DoTests then
         return
     end
     local player = game.get_player(event.player_index)
@@ -124,79 +191,6 @@ TestManager.OnPlayerCreatedMakeCharacter = function(event)
     local tickWasPaused = game.tick_paused
     player.toggle_map_editor()
     game.tick_paused = tickWasPaused
-end
-
-TestManager.BuildBlueprintFromString = function(blueprintString, position, testName)
-    -- Utility function to build a blueprint from a string on the test surface.
-    -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
-    -- Returns the list of directly placed entities. Any script reaction to entities being revived will lead to invalid entity references in the returned result.
-    local testSurface = global.testManager.testSurface
-    local player = game.connected_players[1]
-    local itemStack = player.cursor_stack
-
-    itemStack.clear()
-    if itemStack.import_stack(blueprintString) ~= 0 then
-        error("Error importing blueprint string for test: " .. testName)
-    end
-    if Utils.IsTableEmpty(itemStack.cost_to_build) then
-        error("Blank blueprint used in test: " .. testName)
-    end
-
-    local ghosts =
-        itemStack.build_blueprint {
-        surface = testSurface,
-        force = global.testManager.playerForce,
-        position = position,
-        by_player = player
-    }
-    if #ghosts == 0 then
-        error("Blueprint in test failed to place, likely outside of generated/revealed area. Test: " .. testName)
-    end
-    itemStack.clear()
-
-    local pass2Ghosts = {}
-    local fuelProxies = {}
-    local placedEntities = {}
-
-    for _, ghost in pairs(ghosts) do
-        local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
-        if revivedOutcome == nil then
-            -- Train ghosts can't be revived before the rail underneath them, so save failed ghosts for a second pass.
-            table.insert(pass2Ghosts, ghost)
-        elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
-            -- Only record valid entities, anythng else is passed help.
-            table.insert(placedEntities, revivedGhostEntity)
-        end
-        if fuelProxy ~= nil then
-            table.insert(fuelProxies, fuelProxy)
-        end
-    end
-
-    for _, ghost in pairs(pass2Ghosts) do
-        local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
-        if revivedOutcome == nil then
-            error("only 2 rounds of ghost reviving supported. Test: " .. testName)
-        elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
-            -- Only record valid entities, anythng else is passed help.
-            table.insert(placedEntities, revivedGhostEntity)
-        end
-        if fuelProxy ~= nil then
-            table.insert(fuelProxies, fuelProxy)
-        end
-    end
-
-    for _, fuelProxy in pairs(fuelProxies) do
-        for item, count in pairs(fuelProxy.item_requests) do
-            fuelProxy.proxy_target.insert({name = item, count = count})
-        end
-        fuelProxy.destroy()
-    end
-
-    for _, train in pairs(testSurface.get_trains()) do
-        train.manual_mode = false
-    end
-
-    return placedEntities
 end
 
 return TestManager

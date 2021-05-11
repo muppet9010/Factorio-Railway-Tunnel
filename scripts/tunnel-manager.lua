@@ -89,9 +89,10 @@ Tunnel.RemoveTunnel = function(tunnel)
     for _, segment in pairs(tunnel.segments) do
         Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
     end
-    for _, undergroundRailEntity in pairs(tunnel.undergroundTunnel.railEntities) do
-        undergroundRailEntity.destroy()
-    end
+    -- TODO: this isn't populated as we bulk clone, but we also don't want to delete rails. In the future we want to reuse them for future tunnels. We could use the on_entity_cloned event to track rails being cloned if we really needed to populate it.
+    --for _, undergroundRailEntity in pairs(tunnel.undergroundTunnel.railEntities) do
+    --    undergroundRailEntity.destroy()
+    --end
     global.tunnel.tunnels[tunnel.id] = nil
 end
 
