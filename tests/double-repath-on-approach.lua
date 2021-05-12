@@ -3,14 +3,89 @@
     Then when the train passes in to (triggers) the second circuit connected signal the stations switch back, routing the train back through the tunnel.
 ]]
 local Test = {}
+local TestFunctions = require("scripts/test-functions")
+local Utils = require("utility/utils")
 
-Test.RunTime = 1000
+Test.RunTime = 1800
+
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+end
 
 local blueprintString =
-    "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"
+    "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"
 
-Test.Start = function(TestManager, testName)
-    TestManager.BuildBlueprintFromString(blueprintString, {x = 0, y = 100}, testName)
+Test.Start = function(testName)
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+
+    -- Get the stations placed by name.
+    local stationSouths, stationSouthEndViaTunnel, stationSouthEndNotTunnel, stationNorth = {}
+    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+        local stationEntity = builtEntities[stationEntityIndex]
+        if stationEntity.backer_name == "South" then
+            table.insert(stationSouths, stationEntity)
+        elseif stationEntity.backer_name == "North" then
+            stationNorth = stationEntity
+        end
+    end
+    if stationSouths[1].position.x < stationSouths[2].position.x then
+        stationSouthEndViaTunnel = stationSouths[1]
+        stationSouthEndNotTunnel = stationSouths[2]
+    else
+        stationSouthEndViaTunnel = stationSouths[2]
+        stationSouthEndNotTunnel = stationSouths[1]
+    end
+
+    local repathTrain = builtEntities[Utils.GetTableKeyWithInnerKeyValue(builtEntities, "name", "locomotive")].train
+
+    local testData = TestFunctions.GetTestDataObject(testName)
+    testData.stationSouthReached = false
+    testData.stationNorthReached = false
+    testData.repathTrain = repathTrain
+    testData.repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain)
+    testData.stationSouthEndViaTunnel = stationSouthEndViaTunnel
+    testData.stationSouthEndNotTunnel = stationSouthEndNotTunnel
+    testData.stationNorth = stationNorth
+
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.Stop = function(testName)
+    TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.EveryTick = function(event)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testData.stationSouthEndViaTunnel.get_stopped_train(), testData.stationSouthEndNotTunnel.get_stopped_train(), testData.stationNorth.get_stopped_train()
+
+    if stationSouthEndViaTunnelTrain ~= nil and not testData.stationSouthReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.repathTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train at south station has differences")
+            return
+        end
+        game.print("train reached tunnel usage south station")
+        testData.stationSouthReached = true
+    end
+    if stationSouthEndNotTunnelTrain ~= nil then
+        -- The train should never reach this specific station as it should use the tunnel.
+        TestFunctions.TestFailed(testName, "train didn't use tunnel and reached wrong south station")
+        return
+    end
+    if stationNorthTrain ~= nil and not testData.stationNorthReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.repathTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train at north station has differences")
+            return
+        end
+        game.print("train reached north station")
+        testData.stationNorthReached = true
+    end
+
+    if testData.stationSouthReached and testData.stationNorthReached then
+        TestFunctions.TestCompleted(testName)
+        return
+    end
 end
 
 return Test

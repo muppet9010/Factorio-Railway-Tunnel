@@ -1,5 +1,9 @@
 Next:
     - Update existing tests to new framework.
+    - remove use of Utils.GetTableKeysWithInnerKeyValue and use Utils.GetTableValuesWithInnerKeyValue
+    - check tests for looking for station only by position when by name is easier.
+    - check tests for any case where i use global lists and not blueprint placed entity list (make multi test at once safe).
+    - Sync Utils to repo from this mod.
 
 Soon:
     - Add single loco test as otherwise this is only hit in the path finder weighting tests.

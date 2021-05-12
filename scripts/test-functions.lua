@@ -1,6 +1,7 @@
 local TestFunctions = {}
 local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
+local Interfaces = require("utility/interfaces")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -33,7 +34,7 @@ end
 TestFunctions.TestCompleted = function(testName)
     game.print("Completed Test: " .. testName, {0, 1, 0, 1})
     local test = global.testManager.testsToRun[testName]
-    test.testScript.Stop(testName)
+    Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
     test.finished = true
     test.success = true
     EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
@@ -44,7 +45,7 @@ end
 TestFunctions.TestFailed = function(testName, errorText)
     game.print("Failure Message: " .. errorText, {1, 0, 0, 1})
     local test = global.testManager.testsToRun[testName]
-    test.testScript.Stop(testName)
+    Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
     test.finished = true
     test.success = false
     EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
@@ -104,54 +105,66 @@ TestFunctions.GetSnapshotOfTrain = function(train)
         carriageCount = #train.carriages,
         carriages = {}
     }
-    local frontCarriageOrientation = train.front_stock.orientation
+    local previousCarriageOrientation, previousCarriageFacingFowards = train.front_stock.orientation, true
     for _, realCarriage in pairs(train.carriages) do
         local snapCarriage = {
             name = realCarriage.name,
-            health = realCarriage.health,
-            facingForwards = realCarriage.orientation == frontCarriageOrientation
+            health = realCarriage.health
         }
+
+        -- A train on a curve will have the same facing carriages roughly on the same orientation as the ones each side.
+        if (realCarriage.orientation > previousCarriageOrientation - 0.25 and realCarriage.orientation < previousCarriageOrientation + 0.25) then
+            snapCarriage.facingForwards = previousCarriageFacingFowards
+        else
+            snapCarriage.facingForwards = not previousCarriageFacingFowards
+        end
+
         if realCarriage.type == "cargo-wagon" or realCarriage.type == "fluid-wagon" then
             snapCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
         end
         table.insert(snapshot.carriages, snapCarriage)
+
+        previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapCarriage.facingForwards
     end
     return snapshot
 end
 
--- Compares 2 train snapshots to see if they are the same train strcuture. Returns a string with differences between 2 trains snapshots, returns nil if equal. Handles whole trains being reversed.
-TestFunctions.TrainSnapshotDifference = function(origionalSnapshot, currentSnapshot)
-    -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" comapred to before. Does mean that this function won't detect if a symetrical train has been flipped.
+-- Compares 2 train snapshots to see if they are the same train structure.
+TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSnapshot)
+    -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
 
     if origionalSnapshot.carriageCount ~= currentSnapshot.carriageCount then
-        return "carriage counts don't match"
+        return false
     end
 
-    -- Check in same order down both trains.
-    local forwardDifference
-    for carriageNumber = 1, origionalSnapshot.carriageCount do
-        forwardDifference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshot.carriages[carriageNumber], false)
-        if forwardDifference then
-            break
-        end
-    end
-
-    -- Check the current train reversing the facingForwards attribute if a forwardDifference was found.
-    if forwardDifference then
-        local backwardsDifference
-        for carriageNumber = 1, origionalSnapshot.carriageCount do
-            backwardsDifference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshot.carriages[carriageNumber], true)
-            if backwardsDifference then
-                break
+    -- Check the 2 trains starting in the same order and facingForwards as this is most likely sceanrio (perfect copy). Then check combinations of  reversed facingForwards and iterate the carraige list backwards.
+    for _, reverseFacingFowards in pairs({false, true}) do
+        for _, currentCarriageIteratorFunc in pairs(
+            {
+                function(origCarriageCount)
+                    return origCarriageCount
+                end,
+                function(origCarriageCount, carriageMax)
+                    return (carriageMax - origCarriageCount) + 1
+                end
+            }
+        ) do
+            local difference
+            for carriageNumber = 1, origionalSnapshot.carriageCount do
+                local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #origionalSnapshot.carriages)
+                difference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshot.carriages[currentCarriageCount], reverseFacingFowards)
+                if difference then
+                    break
+                end
+            end
+            if difference == nil then
+                return true
             end
         end
-
-        if backwardsDifference then
-            return "forward difference: " .. forwardDifference .. "   ---   backwards difference: " .. backwardsDifference
-        end
     end
 
-    return nil
+    -- All combinations tested and none have 0 differences, so train snapshots don't match.
+    return false
 end
 
 -- Builds a given blueprint string centered on the given position and returns a list of all build entities. Also starts any placed trains (set to automatic mode).

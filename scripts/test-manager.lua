@@ -6,11 +6,12 @@ local Interfaces = require("utility/interfaces")
 
 -- If tests or demo are done the map is replaced with a test science lab tile world and the tests placed/run.
 local DoTests = true -- Does the enabled tests below if TRUE.
-local DoDemo = false -- Does the demo rather than any enabled tests if TRUE.
-
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
+
+local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
 local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next.
+local DoDemoInsteadOfTests = false -- Does the demo rather than any enabled tests if TRUE.
 
 -- Add any new tests in to the table and set enable true/false as desired.
 local TestsToRun
@@ -18,13 +19,13 @@ if DoTests then
     TestsToRun = {
         --ShortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         --ShortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
-        ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
+        --ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         --repathOnApproach = {enabled = true, testScript = require("tests/repath-on-approach")},
-        DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
-        PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
-        PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
-        TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-        TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+        --DoubleRepathOnApproach = {enabled = true, testScript = require("tests/double-repath-on-approach")},
+        --PathingKeepReservation = {enabled = true, testScript = require("tests/pathing-keep-reservation")},
+        --PathingKeepReservationNoGap = {enabled = true, testScript = require("tests/pathing-keep-reservation-no-gap")},
+        --TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = true, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
+        --TunnelInUseWaitingTrains = {enabled = true, testScript = require("tests/tunnel-in-use-waiting-trains")},
         PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")}
         --InwardFacingTrainBlockedExitLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
@@ -48,19 +49,20 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
+if DoDemoInsteadOfTests then
+    -- Do just the demo if it is enabled, no tests.
+    TestsToRun = {
+        demo = {enabled = true, testScript = require("tests/demo")}
+    }
+end
+
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
     global.testManager.testProcessStarted = global.testManager.testProcessStarted or false -- Used to flag when a save was started with tests already.
     global.testManager.testSurface = global.testManager.testSurface or nil
     global.testManager.playerForce = global.testManager.playerForce or nil
     global.testManager.testData = global.testManager.testData or {} -- Used by tests to store their local data. Key'd by testName.
-    global.testManager.testsToRun = global.testManager.testsToRun or TestsToRun
-    if DoDemo then
-        -- Do just the demo if it is enabled, no tests.
-        global.testManager.testsToRun = {
-            demo = {enabled = true, testScript = require("tests/demo")}
-        }
-    end
+    global.testManager.testsToRun = global.testManager.testsToRun or {} -- Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
 end
 
 TestManager.OnLoad = function()
@@ -68,11 +70,12 @@ TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests", TestManager.WaitForPlayerThenRunTests)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
+    Interfaces.RegisterInterface("TestManager.GetTestScript", TestManager.GetTestScript)
 
     -- Run any active tests OnLoad function.
-    for testName, test in pairs(global.testManager.testsToRun) do
+    for testName, test in pairs(TestsToRun) do
         if (AllTests or test.enabled) and test.testScript.OnLoad ~= nil then
-            test.testScript["OnLoad"](testName)
+            test.testScript.OnLoad(testName)
         end
     end
 end
@@ -104,23 +107,34 @@ TestManager.OnStartup = function()
     game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
-    for _, test in pairs(global.testManager.testsToRun) do
-        test.started = false
-        test.finished = false
-        test.success = nil
+    -- Create the global test management state data. Lua script funcctions can't be included in to global object.
+    for testName, test in pairs(TestsToRun) do
+        global.testManager.testsToRun[testName] = {
+            enabled = test.enabled,
+            runTime = test.testScript.Runtime,
+            started = false,
+            finished = false,
+            success = nil
+        }
     end
 
     EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
 end
 
 TestManager.WaitForPlayerThenRunTests = function(event)
+    if event.data.firstLoad then
+        for _, player in pairs(game.connected_players) do
+            player.zoom = PlayerStartingZoom
+        end
+    end
+
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
-        local test = global.testManager.testsToRun[currentTestName]
-        test.testScript.Stop(currentTestName)
+        TestManager.GetTestScript(currentTestName).Stop(currentTestName)
         game.print("Test NOT Completed:" .. currentTestName, {1, 0, 0, 1})
-        test.finished = true
-        test.success = false
+        local testObject = global.testManager.testsToRun[currentTestName]
+        testObject.finished = true
+        testObject.success = false
         game.tick_paused = true
         return
     end
@@ -152,10 +166,10 @@ TestManager.RunTests = function()
         if (test.enabled or AllTests) and not test.started then
             game.print("Starting Test:   " .. testName)
             global.testManager.testData[testName] = {}
-            test.testScript.Start(testName)
+            TestManager.GetTestScript(testName).Start(testName)
             test.started = true
-            if test.testScript.RunTime ~= nil then
-                EventScheduler.ScheduleEventOnce(game.tick + test.testScript.RunTime, "TestManager.WaitForPlayerThenRunTests", nil, {currentTestName = testName})
+            if test.runTime ~= nil then
+                EventScheduler.ScheduleEventOnce(game.tick + test.runTime, "TestManager.WaitForPlayerThenRunTests", nil, {currentTestName = testName})
             end
             global.testManager.playerForce.chart_all(global.testManager.testSurface)
             return
@@ -191,6 +205,11 @@ TestManager.OnPlayerCreatedMakeCharacter = function(event)
     local tickWasPaused = game.tick_paused
     player.toggle_map_editor()
     game.tick_paused = tickWasPaused
+end
+
+-- Called when the test script needs to be referenced as it can't be stored in global data.
+TestManager.GetTestScript = function(testName)
+    return TestsToRun[testName].testScript
 end
 
 return TestManager

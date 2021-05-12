@@ -82,9 +82,8 @@ Test.EveryTick = function(event)
     local northTrain, southTrain = testData.trainStopNorth.get_stopped_train(), testData.trainStopSouth.get_stopped_train()
     if northTrain ~= nil and not testData.northStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
-        local trainSnapshotDifference = TestFunctions.TrainSnapshotDifference(testData.origionalTrainSnapshot, currentTrainSnapshot)
-        if trainSnapshotDifference ~= nil then
-            TestFunctions.TestFailed(testName, "train reached north station, but with train differences: " .. trainSnapshotDifference)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train reached north station, but with train differences")
             return
         end
         game.print("train reached north station")
@@ -92,9 +91,8 @@ Test.EveryTick = function(event)
     end
     if southTrain ~= nil and not testData.southStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southTrain)
-        local trainSnapshotDifference = TestFunctions.TrainSnapshotDifference(testData.origionalTrainSnapshot, currentTrainSnapshot)
-        if trainSnapshotDifference ~= nil then
-            TestFunctions.TestFailed(testName, "train reached south station, but with train differences: " .. trainSnapshotDifference)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train reached south station, but with train differences")
             return
         end
         game.print("train reached south station")

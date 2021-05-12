@@ -1,18 +1,58 @@
 --[[
-    When the is going from right (Station "Reset") to left (Station "Target") reaches the circuit connected set of signals and RS latch
-    triggers and the train limit on the target station is set to zero. Train should continue through the tunnel and to the target station as the
-    existing slot reservation that it has is transferred across. When the train returns to the reset station, the RS latch resets, train limit on
-    target station is set to 1 again, and another loop starts.
+    When the train going from right (Station "Reset") to left (Station "Target") reaches the circuit connected set of signals, an RS latch triggers and the train limit on the target station is set to zero. Train should continue through the tunnel and to the target station as the existing slot reservation that it has is transferred across.
+    When the train returns to the reset station, the RS latch resets and the train limit on target station is set to 1 again. Ready for another test loop.
 ]]
 local Test = {}
+local TestFunctions = require("scripts/test-functions")
+local Utils = require("utility/utils")
 
-Test.RunTime = 1000
+Test.RunTime = 1800
+
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+end
 
 local blueprintString =
-    "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"
+    "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"
 
-Test.Start = function(TestManager, testName)
-    TestManager.BuildBlueprintFromString(blueprintString, {x = 0, y = -60}, testName)
+Test.Start = function(testName)
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+
+    local train = builtEntities[Utils.GetTableKeyWithInnerKeyValue(builtEntities, "name", "locomotive")].train
+
+    local stationTarget
+    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+        local stationEntity = builtEntities[stationEntityIndex]
+        if stationEntity.backer_name == "Target" then
+            stationTarget = stationEntity
+        end
+    end
+
+    local testData = TestFunctions.GetTestDataObject(testName)
+    testData.train = train
+    testData.trainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+    testData.stationTarget = stationTarget
+
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.Stop = function(testName)
+    TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.EveryTick = function(event)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local stationTargetTrain = testData.stationTarget.get_stopped_train()
+
+    if stationTargetTrain ~= nil then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationTargetTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.trainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train has differences after tunnel use")
+            return
+        end
+        game.print("train reached target station")
+        TestFunctions.TestCompleted(testName)
+    end
 end
 
 return Test

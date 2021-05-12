@@ -1,13 +1,18 @@
 local Test = {}
+local TestFunctions = require("scripts/test-functions")
 
-Test.RunTime = 2800
+Test.RunTime = 3600
 
-Test.Start = function()
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+end
+
+Test.Start = function(testName)
     local nauvisSurface = game.surfaces["nauvis"]
     local playerForce = game.forces["player"]
 
-    local yRailValue = -149
-    local xRailValue = 8
+    local yRailValue = 1
+    local xRailValue = 0
     local startRunUp = 200
     local nauvisEntitiesToPlace = {}
 
@@ -74,8 +79,8 @@ Test.Start = function()
     end
 
     -- Place Train and setup
-    local trainStopNorthWest = nauvisSurface.create_entity {name = "train-stop", position = {-37 + xRailValue, yRailValue - (188 + startRunUp)}, force = playerForce, direction = defines.direction.north}
-    local trainStopSouthEast = nauvisSurface.create_entity {name = "train-stop", position = {41 + xRailValue, yRailValue - (188 + startRunUp)}, force = playerForce, direction = defines.direction.north}
+    local trainStopWest = nauvisSurface.create_entity {name = "train-stop", position = {-37 + xRailValue, yRailValue - (188 + startRunUp)}, force = playerForce, direction = defines.direction.north}
+    local trainStopEast = nauvisSurface.create_entity {name = "train-stop", position = {41 + xRailValue, yRailValue - (188 + startRunUp)}, force = playerForce, direction = defines.direction.north}
     local yPos, train = yRailValue - (185 + startRunUp)
     for i = 1, 4 do
         local loco = nauvisSurface.create_entity {name = "locomotive", position = {-39 + xRailValue, yPos}, force = playerForce, direction = defines.direction.north}
@@ -97,14 +102,53 @@ Test.Start = function()
         current = 1,
         records = {
             {
-                station = trainStopSouthEast.backer_name
+                station = trainStopEast.backer_name
             },
             {
-                station = trainStopNorthWest.backer_name
+                station = trainStopWest.backer_name
             }
         }
     }
     train.manual_mode = false
+
+    local testData = TestFunctions.GetTestDataObject(testName)
+    testData.westStationReached = false
+    testData.eastStationReached = false
+    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+    testData.trainStopWest = trainStopWest
+    testData.trainStopEast = trainStopEast
+
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.Stop = function(testName)
+    TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.EveryTick = function(event)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()
+    if eastTrain ~= nil and not testData.eastStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train reached east station, but with train differences")
+            return
+        end
+        game.print("train reached east station")
+        testData.eastStationReached = true
+    end
+    if westTrain ~= nil and not testData.westStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train reached west station, but with train differences")
+            return
+        end
+        game.print("train reached west station")
+        testData.westStationReached = true
+    end
+    if testData.westStationReached and testData.eastStationReached then
+        TestFunctions.TestCompleted(testName)
+    end
 end
 
 return Test

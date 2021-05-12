@@ -19,7 +19,7 @@ Test.Start = function(testName)
     local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the stations placed by name.
-    local stationRepaths, stationRepathEndViaTunnel, startionRepathEndNotTunnel, stationLoopEnd = {}
+    local stationRepaths, stationRepathEndViaTunnel, stationRepathEndNotTunnel, stationLoopEnd = {}
     for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
         local stationEntity = builtEntities[stationEntityIndex]
         if stationEntity.backer_name == "Repathed-End" then
@@ -30,13 +30,13 @@ Test.Start = function(testName)
     end
     if stationRepaths[1].position.x < stationRepaths[2].position.x then
         stationRepathEndViaTunnel = stationRepaths[1]
-        startionRepathEndNotTunnel = stationRepaths[2]
+        stationRepathEndNotTunnel = stationRepaths[2]
     else
         stationRepathEndViaTunnel = stationRepaths[2]
-        startionRepathEndNotTunnel = stationRepaths[1]
+        stationRepathEndNotTunnel = stationRepaths[1]
     end
 
-    -- Get the repathing train - its the most east one in the BP.
+    -- Get the trains - Repath train is most east in BP - Loop train is most west in BP.
     local eastMostLoco, eastMostLocoXPos, westMostLoco, westMostLocoXPos = nil, -100000, nil, 100000
     for _, locoEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "locomotive")) do
         local locoEntity = builtEntities[locoEntityIndex]
@@ -53,12 +53,13 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationLoopEndReached = false
-    testData.startionRepathEndNotTunnelReached = false
+    testData.stationRepathEndNotTunnelReached = false
     testData.repathTrain = repathTrain
     testData.loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain)
     testData.stationRepathEndViaTunnel = stationRepathEndViaTunnel
-    testData.startionRepathEndNotTunnel = startionRepathEndNotTunnel
+    testData.stationRepathEndNotTunnel = stationRepathEndNotTunnel
     testData.stationLoopEnd = stationLoopEnd
+
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -68,7 +69,7 @@ end
 
 Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local repathTrain, stationRepathEndViaTunnelTrain, startionRepathEndNotTunnelTrain, stationLoopEndTrain = testData.repathTrain, testData.stationRepathEndViaTunnel.get_stopped_train(), testData.startionRepathEndNotTunnel.get_stopped_train(), testData.stationLoopEnd.get_stopped_train()
+    local repathTrain, stationRepathEndViaTunnelTrain, stationRepathEndNotTunnelTrain, stationLoopEndTrain = testData.repathTrain, testData.stationRepathEndViaTunnel.get_stopped_train(), testData.stationRepathEndNotTunnel.get_stopped_train(), testData.stationLoopEnd.get_stopped_train()
 
     if repathTrain == nil or not repathTrain.valid then
         -- The train should never change as it shouldn't use the tunnel.
@@ -76,21 +77,26 @@ Test.EveryTick = function(event)
         return
     end
 
-    if startionRepathEndNotTunnelTrain ~= nil and not testData.startionRepathEndNotTunnelReached then
+    if stationRepathEndNotTunnelTrain ~= nil and not testData.stationRepathEndNotTunnelReached then
         game.print("repathed train reached non tunnel usage end station")
-        testData.startionRepathEndNotTunnelReached = true
+        testData.stationRepathEndNotTunnelReached = true
     end
     if stationRepathEndViaTunnelTrain ~= nil then
         -- The train should never reach this specific station as it shouldn't use the tunnel. The loop train doesn't stop at this station.
-        TestFunctions.TestFailed(testName, "train used tunnel and reached wrong station")
+        TestFunctions.TestFailed(testName, "repathed train used tunnel and reached wrong station")
         return
     end
     if stationLoopEndTrain ~= nil and not testData.stationLoopEndReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationLoopEndTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.loopTrainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "loop train has differences after tunnel use")
+            return
+        end
         game.print("loop train reached post tunnel station")
         testData.stationLoopEndReached = true
     end
 
-    if testData.startionRepathEndNotTunnelReached and testData.stationLoopEndReached then
+    if testData.stationRepathEndNotTunnelReached and testData.stationLoopEndReached then
         TestFunctions.TestCompleted(testName)
         return
     end

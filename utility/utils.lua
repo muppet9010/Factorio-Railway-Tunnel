@@ -311,10 +311,22 @@ Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
 end
 
 Utils.LoopIntValueWithinRange = function(value, min, max)
+    -- This steps through the ints with min and max being seperatee steps.
     if value > max then
         return min - (max - value) - 1
     elseif value < min then
         return max + (value - min) + 1
+    else
+        return value
+    end
+end
+
+Utils.BoundFloatValueWithinRange = function(value, min, max)
+    -- This treats the min and max values as equal when bounding: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
+    if value > max then
+        return min + (value - max)
+    elseif value < min then
+        return max - (value - min)
     else
         return value
     end
@@ -625,6 +637,20 @@ Utils.GetTableKeyWithValue = function(theTable, value)
     return nil
 end
 
+Utils.GetTableKeysWithValue = function(theTable, value)
+    local keysFound = {}
+    for k, v in pairs(theTable) do
+        if v == value then
+            table.insert(keysFound, k)
+        end
+    end
+    if #keysFound > 0 then
+        return keysFound
+    else
+        return nil
+    end
+end
+
 Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value)
     for i, innerTable in pairs(theTable) do
         if innerTable[key] ~= nil and innerTable[key] == value then
@@ -643,6 +669,52 @@ Utils.GetTableKeysWithInnerKeyValue = function(theTable, key, value)
     end
     if #keysFound > 0 then
         return keysFound
+    else
+        return nil
+    end
+end
+
+Utils.GetTableValueWithValue = function(theTable, value)
+    for k, v in pairs(theTable) do
+        if v == value then
+            return v
+        end
+    end
+    return nil
+end
+
+Utils.GetTableValuesWithValue = function(theTable, value)
+    local valuesFound = {}
+    for k, v in pairs(theTable) do
+        if v == value then
+            table.insert(valuesFound, v)
+        end
+    end
+    if #valuesFound > 0 then
+        return valuesFound
+    else
+        return nil
+    end
+end
+
+Utils.GetTableValueWithInnerKeyValue = function(theTable, key, value)
+    for i, innerTable in pairs(theTable) do
+        if innerTable[key] ~= nil and innerTable[key] == value then
+            return innerTable
+        end
+    end
+    return nil
+end
+
+Utils.GetTableValuesWithInnerKeyValue = function(theTable, key, value)
+    local valuesFound = {}
+    for i, innerTable in pairs(theTable) do
+        if innerTable[key] ~= nil and innerTable[key] == value then
+            table.insert(valuesFound, innerTable)
+        end
+    end
+    if #valuesFound > 0 then
+        return valuesFound
     else
         return nil
     end
