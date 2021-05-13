@@ -15,9 +15,14 @@ local Interfaces = require("utility/interfaces")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
--- Gets the test's data object reference.
+-- Gets the test's internal data object reference. Recrated each test start.
 TestFunctions.GetTestDataObject = function(testName)
     return global.testManager.testData[testName]
+end
+
+-- Gets the test manager's test object reference. Persists across tests.
+TestFunctions.GetTestMangaerObject = function(testName)
+    return global.testManager.testsToRun[testName]
 end
 
 -- Get the test surface's LuaSurface reference.
@@ -32,7 +37,7 @@ end
 
 -- Complete the current test. arguments: the test name.
 TestFunctions.TestCompleted = function(testName)
-    game.print("Completed Test: " .. testName, {0, 1, 0, 1})
+    game.print("Completed Test", {0, 1, 0, 1})
     local test = global.testManager.testsToRun[testName]
     Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
     test.finished = true
@@ -234,6 +239,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         fuelProxy.destroy()
     end
 
+    -- TODO: maybe get the trains from the placedEntities would be future proof safer.
     for _, train in pairs(testSurface.get_trains()) do
         train.manual_mode = false
     end

@@ -10,9 +10,17 @@ local TestFunctions = require("scripts/test-functions")
 -- How long the test runs for (ticks) before being failed as un-completed. Should be safely longer than the test should take to complete, but can otherwise be approx.
 Test.RunTime = 3600
 
+-- OPTIONAL, can exclude the attribute. How many times this tests will be run. If object value is ommited the test is run just once. Used by tests that run multiple times for different comination iterations. The test must handle the iterations internally.
+Test.RunLoopsMax = 1
+
 -- Any scheduled event types for the test must be Registered here. Most tests have an event every tick to check the test progress.
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+end
+
+-- OPTIONAL, can exclude the attribute. If present it will be called when starting a test and shown to the player. For use with mutliple run tests to label each one based on inner test logic.
+Test.GetTestDisplayName = function(testName)
+    return testName
 end
 
 -- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
@@ -31,7 +39,7 @@ Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", nil)
 end
 
--- Example empty scheduled event function to check test state each tick.
+-- EXAMPLE - scheduled event function to check test state each tick.
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)

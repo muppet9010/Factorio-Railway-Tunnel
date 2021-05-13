@@ -1,6 +1,5 @@
--- TODO: WIP
 --[[
-    Does a range of tests for the different situations of a train trying to reverse down a tunnel:
+    Does a range of tests for the different situations of a train trying to reverse down a tunnel when a piece of track after the tunnel is removed:
         - Train types (heading west): <, <----, ----<, <>, <-->, <>----, ----<>
         - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
 ]]
@@ -8,8 +7,17 @@ local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
-Test.RunTime = 3600
-
+Test.RunTime = 1800
+Test.RunLoopsMax = 0 -- Populated when script loaded.
+Test.TestScenarios = {} -- Populated when script loaded.
+--[[
+    {
+        trainText = trainType.text so the train makeup in symbols.
+        carriages = fully populated list of carriage requirements from trainType.carriages.
+        tunnelUsageType = TunnelUsageType object reference for the test.
+        reverseOnCarriageNumber = the carriage number to reverse the train on. For non perCarriage tests (TunnelUsageType) this value will be ignored.
+    }
+]]
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
@@ -17,27 +25,330 @@ end
 -- Blueprint is just track, tunnel and stations. No train as these are dynamicly placed.
 -- Station names:   west station: ForceRepathBackThroughTunnelTests-End     east station: ForceRepathBackThroughTunnelTests-Start
 local blueprintString =
-    "0eNqtnNtu20YURf+FzxLAmeHMkHos0H5A47cgMBiJtYXKlEBSbg1D/17dnNoOHe9F8sWxkmj7iJtrLod7/Jx83+yrXbOuu2TxnKyX27pNFl+fk3Z9V5eb0991T7sqWSTrrnpIZkldPpxeNeV680/5dNvt67razC9/3O62TVdubtt981e5rOa7zfHrQ3WUPsySdb2q/k0W5jCTxF+9xR6+zZKjyrpbV5fizi+ebuv9w/eqOWr+eOdy3zxWq/lZYJbstu3xPdv69IOOOnOTprPkKVm4ND2qr9ZNtbz8czgV9U7U/hBtu6Pe3X33kWzhz6q2KN6q2h5Vp6s6XTXTVY2u6mXVvNBVg64addWoqwK3cl0VuFXoqsAtk8qyEdhljC4L/DI6XhEYZnS+InDM6IBFYplOWCCW6YgFYpnOWCCW6ZAFYplOWQCWWZ0yDyyzOmUeWGZ1yjywzOqUeWCZ1SnzxDKdsoxYplOWEct0yjJimU5ZRizTKcuAZU6nzAHLnE6ZA5Y5nTJHloo6ZQ5Y5nTKHLFMp8wSy3TKLLFMp8wSy3TKLLFMp8wCyzKdMgMsy3TKDLAs0ykzwLJMp8yQHZlOmSGW6ZQRx3TIiGE6Y8QvHTFil04Y2UDLgBFRGS/w+b0MF7DKy2iBu8rLYAEAvIwVgdXLWJGRxctYkWHQy1iRMdvLWJEJJshYkdkwyFyRqTvIYJF1RpDJIouiIKNFVnBBZossN4PMFlkbB5ktspAPMltk1xFktsgWKcpskf1clNkim88os0V2ylFmi2zro8wW6UFEmS3SMIkyW6S7E2W2SCsqymyRvlmU2SJNvlxmi3Qkc5kt0j7NZbZIrzeX2SKN6Vxmi3TRc5kt0vLPg/as8sRg35NK16epb7RM6q667q1u7NOV2bo+UPpJ1fSpgq1W6q+6/vNqi3SArvv86hbi0+UTMWfNcOhTAd2LNF6VovCp3QBdL3xq0L9IX9wvhHr9AN0o1BtAv+XCqzNGqDdy3ffXobfeHOhemTUCs0UxQNd8Xu85OkEwMNlbUd8rClqF192sM8JYYFI7QNgplwHwdt0pOxOVirMBwl6p2KvpGHu1zqZK2oAAV/RfiP56I5shtWrxVKbV+j9tJ9V63nbbXW/n+EX13dBw/AxtV16+T/7YNsvqz2pXdve/lcu/b+6b7f7u/uYcrbqp2q6d/16vkt6MRjogmLX6+JGis+anOh/LZl1+PK2bV0GR/hra6u6UBfu8iJfbZUgRdrIi4vAi3GRFjLAjm6wIN7wIP1kRZngRYaoiRtyXcaoaRtyW+VQ1jLgri6lqGH5T2nSym3J4DVMNliNKmGqoHOHEVAPl8BvSTjVMDufSTjVIDh+e7FRD5Ihh2k41RI6Yr+xUQ+SIidtONUSOWMG4qYbIEUs5Z6ZZ0360pLVCCVZa3ud+ksX9l65sut7lvSMZlQ+ueH9aGmw6XSTCoM3jPBEG207niDBo9DhDhEGnxyLzQKvHEvNILswS80gyzBLzSDbMEvNIOswQ87IB7R5N2PPOlyYceGdREx7QYtWEc95r1oQL3nSXhP2AZxiasOGPiDRh8lyDmOfBSTninQdn5ZB1np4XFHUDPTEo6kZ6ZlDUzempQVG3oOcGNV09TPZyclDUNfTsoKhr6elBUdfR44OibkbPD4q6nh4gFHUDPUEo6kZ6hFDUzWFMQZSVcUNXQY+XIdP0fBm6x/SAGUJCT5ghgvWIGRpw9IwZGh/1kBkazvWUGZp99JgZmiz1nBma2/WgGVqK6EkztHLSo2ZooadnzdjCVE+bsZW0njdjS/9cP4WA9ip66oxtrvTUGdsN6rkztn3Vc2dsv10YXZf4pifRWEdDT6KxFoyeRGM9Iz2JxppcehKNdeX0JBprI+pJNNb31JNoqFFrU5030lm2ehYNtcKtHkX7Re/+2+zyK5IWr35d0yx5rJr28h9yk8XCRhejN2l2OPwHOoFMmQ=="
+    "0eNqtnN1u4zYQhd9F1zag4Y8o5r5PsJfFIvDGamrAkQ1bSRsEfvfKaydNUqX7HUI3+dnEZ0c+/MjhcJiX6sf2sdsfNv1Q3bxUm7tdf6xufn+pjpv7frU9/9vwvO+qm2ozdA/VoupXD+fvDqvN9q/V8+3w2Pfddnn5dLvfHYbV9vb4ePhjddct99vx40M3Sp8W1aZfd39XN3ZaIPF3L3Gn74tqVNkMm+4S3M9vnm/7x4cf3WHUfHvl3ePhqVsvfwosqv3uOL5m15//o1FnmepF9Tx+DqP2enPo7i4/bM4hfZJ0b5LHYVS7/3P4SrSJF9H4UdRNiHou6rFo4KKGRSMWjRmLNlw0YdHERblRLRflRmUuyo2yGqsG7pQZV+VWGYcqcK+MUxW4WcaxCoJbnCsvuMXB8oJbnCwvuMXR8oJbnC3P3XKcLcfdcpwtx91ynC3H3XKcLcfdcpwtJ7jF2TLBLc6WCW5xtkxwi7NlglucLeNuec4WN8tztLhXnpMlZIIcLO6U51wJRmGsBE0MlfDwGCnBJQyUMJwwTnzcBwyTQGjAMAmTScAwCfNewDAJU3TAMAmrScAwCQtfwDQJa3TAOAnpRMA8CZlPwEAJSVrERAn5ZMRECalvxEQJWXrERAkbioiJEvY+ERMlbNMiJkrYUUZMlLD5jZgoYZ8eMVFCSaHBRAnVjwYTJdRpGkyUUFFqMFFC7avBRClVOkyUUE9sMFFC5bPBRAk12gYT1QhGYaIablTCRCVuVMJEJW5UwkQlblTCRCWhmoyJSoJRmKhWMAoT1QpGYaJawShMVCsYhYlquVEtJipzo1pMVOZGtZioLJx6YKIyN6rFRGXBKF6UqAWnGnaOaHUzeY7opzR5pe91QrWPqmlKteXPnydVbUqVV/qu8zQINdeq6OdQp97WDI987Xzm9Hy2e0qEV/auS4gHz+tVUfK4vLJ3XZciiDSqoh5Eyuvl18UugUiTKhpBpLxafl1BM4g0q6Lp15FaXWuj3eqPonFSlBfLr4u9AdytdqpsJu8Ap+qaRJgnwQZZ1ki0ETak5KtfDTnoF8jKk2/BdKxJW/RYrPL6xGL9l66zar88Drv91OnGq+inaWB8guOwunxd/davq8nWh7qgyWn99cmdpf8E8bQ6bFZfr8P2rv1iOoRjd39uq/plDNdyf0kIbq4QfHEIfq4Qyo0Ic4WQikOIc4WQi0NoZgrBlQ/HNFcI5cOxnSuE8uGY5wqheDi6eq4Qioejm2t29MXD0c01O/ri4ejmmh198XB0c82Ovnw4zjU7+vLhONfsGMqH41yzYygfjnPNjqF8OM41O4bi4ejnmh1D8XD0Nk/6mqZ9cCACh7J0e03L/i9J/zasDsNkmi50UL1tBxLpJhaaqOok6ArtiXUUdIUGxdoLukKLYm2CLi+7ZMU2XnjJgmtBaFMUTOO9VcsseMa7q5ZZsCx4ufKAZPXiC5KNcl0LyTZqZY/JyqVNJtuqtV0mm+XiNpGN8hkBkzX17IXJCscGgmVRuB0mWBaF+2GKZVG9IMdkG/WKHJNN6iU5Jtuq1+SYbFYvyiFZ3oH1elWOyZp6WY7JOvW6HJP16n05JhvUC3NMNqo35phso16ZY7JJvTPHZFv1sJ/JZi4rvAm8K0tK83lflrQr4Z1Z0iaK92aZCZbx7iwzxTLeTWKKZQ2XVSxLXFaxjFPmFMs4ZU6wjHdqmRMs471a5gTLeLeWOcEy3q9lXrCMd2yZVyzjlHnFMk6ZVyzjlHnFMk6ZskTyzi1TFnTeu2VK+pE5ZUqyxNu5TEnteEOXKYkob+kyJW3mTV2mJPm8rcuULQlv7DJlA8Vbu0zZ7vHmLhM2p67mlAlbacf7u0zY+Dve32Vflim+Ly5/8Ofm3R8fWlRP3eF4+YV25D675FOKVofT6R/zmwBM"
 
-Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 246}, testName)
+local TrainTypes = {
+    {
+        text = "<",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.75
+            }
+        }
+    },
+    {
+        text = "<----",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 4
+            }
+        }
+    },
+    {
+        text = "----<",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 4
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            }
+        }
+    },
+    {
+        text = "--<--",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 2
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 2
+            }
+        }
+    },
+    {
+        text = "<>",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            }
+        }
+    },
+    {
+        text = "<---->",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 4
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            }
+        }
+    },
+    {
+        text = "<>----",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 4
+            }
+        }
+    },
+    {
+        text = "----<>",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 4
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            }
+        }
+    },
+    {
+        text = "--<>--",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 2
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 2
+            }
+        }
+    },
+    {
+        text = "><",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            }
+        }
+    },
+    {
+        text = ">----<",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.25,
+                count = 4
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            }
+        }
+    },
+    {
+        text = "><----",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 4
+            }
+        }
+    },
+    {
+        text = "----><",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.25,
+                count = 4
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            }
+        }
+    },
+    {
+        text = "--<>--",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.25,
+                count = 2
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 2
+            }
+        }
+    }
+}
+local TunnelUsageType = {
+    beforeCommitted = {name = "beforeCommitted", perCarriage = false},
+    onceCommitted = {name = "onceCommitted", perCarriage = false},
+    carriageEntering = {name = "carriageEntering", perCarriage = true},
+    fullyUnderground = {name = "fullyUnderground", perCarriage = false},
+    carriageLeaving = {name = "carriageLeaving", perCarriage = true},
+    leftTunnel = {name = "leftTunnel", perCarriage = false}
+}
 
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train -- Just get any loco in this blueprint.
-
-    -- Find the left hand station and then get the rail 50 tiles to the right of it (between station and tunnel).
-    local leftStation
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        if stationEntity.backer_name == "ForceRepathBackThroughTunnelTests-End" then
-            leftStation = stationEntity
+-- Do each iteration of train type and tunnel usage. Each wagon entering/leaving the tunnel is a test.
+for _, trainType in pairs(TrainTypes) do
+    local fullCarriageArray = {}
+    for _, carriage in pairs(trainType.carriages) do
+        carriage.count = carriage.count or 1
+        for i = 1, carriage.count do
+            table.insert(fullCarriageArray, {name = carriage.name, orientation = carriage.orientation})
         end
     end
-    local leftStationRail = leftStation.connected_rail
-    local trackToRemove = leftStation.surface.find_entity("straight-rail", {x = leftStationRail.position.x + 50, y = leftStationRail.position.y})
+    for _, tunnelUsageType in pairs(TunnelUsageType) do
+        local maxCarriageCount
+        if not tunnelUsageType.perCarriage then
+            -- Simple 1 test for whole train.
+            maxCarriageCount = 1
+        else
+            maxCarriageCount = #fullCarriageArray
+        end
+        -- 1 test per carriage in train.
+        for carriageCount = 1, maxCarriageCount do
+            local scenario = {
+                trainText = trainType.text,
+                carriages = fullCarriageArray,
+                tunnelUsageType = tunnelUsageType,
+                reverseOnCarriageNumber = carriageCount -- On non perCarriage tests this value will be ignored.
+            }
+
+            Test.RunLoopsMax = Test.RunLoopsMax + 1
+            table.insert(Test.TestScenarios, scenario)
+        end
+    end
+end
+
+Test.GetTestDisplayName = function(testName)
+    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
+
+    local carriageText = ""
+    if testScenario.tunnelUsageType.perCarriage then
+        carriageText = "     carriage " .. testScenario.reverseOnCarriageNumber
+    end
+    local displayName = testScenario.trainText .. "     " .. testScenario.tunnelUsageType.name .. carriageText
+
+    return displayName
+end
+
+Test.Start = function(testName)
+    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
+
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+
+    -- Get the stations from the blueprint
+    local stationEnd, stationStart
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+        if stationEntity.backer_name == "End" then
+            stationEnd = stationEntity
+        elseif stationEntity.backer_name == "Start" then
+            stationStart = stationEntity
+        end
+    end
+    local stationEndRail = stationEnd.connected_rail
+    local trackToRemove = stationEnd.surface.find_entity("straight-rail", {x = stationEndRail.position.x + 20, y = stationEndRail.position.y})
+
+    -- Place the train for this run.
+    local train = Test.BuildTrain(stationStart, testScenario.carriages, stationEnd)
+
+    -- TODO: need to establish & record expected outcome based on this test scenario.
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.train = train
+    testData.stationStart = stationStart
+    testData.stationEnd = stationEnd
     testData.trackToRemove = trackToRemove
+    testData.train = train
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+    testData.startingTick = game.tick
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -48,12 +359,38 @@ end
 
 Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    if testData.train.valid then
-        return
+
+    -- TODO: need to check if expected outcome based on test scenario is reached.
+
+    --if game.tick > testData.startingTick + 1000 then
+    if testData.stationEnd.get_stopped_train() ~= nil then
+        TestFunctions.TestCompleted(testName)
+    end
+end
+
+Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
+    -- Build the train from the station heading west. Give each loco fuel, set target schedule and to automatic.
+    local placedCarriage
+    local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+    local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = 3, y = 2})
+    for _, carriageDetails in pairs(carriagesDetails) do
+        placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
+        if carriageDetails.name == "locomotive" then
+            placedCarriage.insert({name = "rocket-fuel", count = 10})
+        end
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 7, y = 0})
     end
 
-    -- Train carriage has been removed as Lue Train object no longer is valid.
-    testData.trackToRemove.destroy()
+    local train = placedCarriage.train
+    train.schedule = {
+        current = 1,
+        records = {
+            {station = scheduleStation.backer_name}
+        }
+    }
+    train.manual_mode = false
+
+    return train
 end
 
 return Test

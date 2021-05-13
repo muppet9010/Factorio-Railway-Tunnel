@@ -30,11 +30,8 @@ if DoTests then
         PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-        InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}
-        --ForceRepathBackThroughTunnelShortDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-dual-ended")},
-        --ForceRepathBackThroughTunnelShortSingleEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-short-single-ended")},
-        --ForceRepathBackThroughTunnelLongDualEnded = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-long-dual-ended")}
-        --ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests"), multipleTests = true} -- WIP
+        InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
+        ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests")}
     }
 end
 
@@ -111,9 +108,11 @@ TestManager.OnStartup = function()
     -- Create the global test management state data. Lua script funcctions can't be included in to global object.
     for testName, test in pairs(TestsToRun) do
         global.testManager.testsToRun[testName] = {
+            testName = testName,
             enabled = test.enabled,
             runTime = test.testScript.Runtime,
-            started = false,
+            runLoopsMax = test.testScript.RunLoopsMax or 1,
+            runLoopsCount = 0,
             finished = false,
             success = nil
         }
@@ -132,7 +131,7 @@ TestManager.WaitForPlayerThenRunTests = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
         TestManager.GetTestScript(currentTestName).Stop(currentTestName)
-        game.print("Test NOT Completed:" .. currentTestName, {1, 0, 0, 1})
+        game.print("Test NOT Completed:" .. TestManager.GetTestDisplayName(currentTestName), {1, 0, 0, 1})
         local testObject = global.testManager.testsToRun[currentTestName]
         testObject.finished = true
         testObject.success = false
@@ -164,11 +163,11 @@ TestManager.RunTests = function()
     end
 
     for testName, test in pairs(global.testManager.testsToRun) do
-        if (test.enabled or AllTests) and not test.started then
-            game.print("Starting Test:   " .. testName)
-            global.testManager.testData[testName] = {}
+        if (test.enabled or AllTests) and test.runLoopsCount < test.runLoopsMax then
+            test.runLoopsCount = test.runLoopsCount + 1
+            game.print("Starting Test:   " .. TestManager.GetTestDisplayName(testName), {0, 1, 1, 1})
+            global.testManager.testData[testName] = {} -- Reset for every test run as this is the test's internal data object.
             TestManager.GetTestScript(testName).Start(testName)
-            test.started = true
             if test.runTime ~= nil then
                 EventScheduler.ScheduleEventOnce(game.tick + test.runTime, "TestManager.WaitForPlayerThenRunTests", nil, {currentTestName = testName})
             end
@@ -177,7 +176,19 @@ TestManager.RunTests = function()
         end
     end
 
-    game.print("All Tests Done", {0, 0, 1, 1})
+    -- Clear any previous console messages to make it easy to track each test.
+    for _, player in pairs(game.connected_players) do
+        player.clear_console()
+    end
+    game.print("All Tests Done", {0, 1, 0, 1})
+end
+
+TestManager.GetTestDisplayName = function(testName)
+    local displayTestName = testName
+    if TestManager.GetTestScript(testName).GetTestDisplayName ~= nil then
+        displayTestName = TestManager.GetTestScript(testName).GetTestDisplayName(testName)
+    end
+    return displayTestName
 end
 
 TestManager.OnPlayerCreated = function(event)
