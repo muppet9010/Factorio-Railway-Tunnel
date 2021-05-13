@@ -1,12 +1,7 @@
 Next:
-    - Update existing tests to new framework.
-    - remove use of Utils.GetTableKeysWithInnerKeyValue and use Utils.GetTableValuesWithInnerKeyValue
-    - check tests for looking for station only by position when by name is easier.
-    - check tests for any case where i use global lists and not blueprint placed entity list (make multi test at once safe).
     - Sync Utils to repo from this mod.
 
 Soon:
-    - Add single loco test as otherwise this is only hit in the path finder weighting tests.
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Needs to support a train being able to reverse while in the tunnel back out. The train should retain its station reservation if it can path to its target, as this is what happens to a double ended train in the a regular track segment if there is an alternatitve route to target. Only if the train can't reach the target at all does it pull to the end of the portal and then it can sit and no path. Automated test types:
         - Train types (heading west): <, <>, <-->, <>----, ----<>

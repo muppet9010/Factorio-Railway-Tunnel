@@ -16,12 +16,12 @@ end
 Test.Start = function(TestManager, testName)
     local builtEntities = TestManager.BuildBlueprintFromString(blueprintString, {x = 0, y = 276}, testName)
 
-    local train = builtEntities[Utils.GetTableKeyWithInnerKeyValue(builtEntities, "name", "locomotive")].train -- Just get any loco in this blueprint.
+    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train -- Just get any loco in this blueprint.
 
     -- Find the left hand station and then get the rail 50 tiles to the right of it (between station and tunnel).
     local stations, leftStation = {}
-    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        table.insert(stations, builtEntities[stationEntityIndex])
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+        table.insert(stations, stationEntity)
     end
     if stations[1].position.x < stations[2].position.x then
         leftStation = stations[1]

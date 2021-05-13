@@ -20,8 +20,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local stationSouths, stationSouthEndViaTunnel, stationSouthEndNotTunnel, stationNorth = {}
-    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        local stationEntity = builtEntities[stationEntityIndex]
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
         if stationEntity.backer_name == "South" then
             table.insert(stationSouths, stationEntity)
         elseif stationEntity.backer_name == "North" then
@@ -36,7 +35,7 @@ Test.Start = function(testName)
         stationSouthEndNotTunnel = stationSouths[1]
     end
 
-    local repathTrain = builtEntities[Utils.GetTableKeyWithInnerKeyValue(builtEntities, "name", "locomotive")].train
+    local repathTrain = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationSouthReached = false

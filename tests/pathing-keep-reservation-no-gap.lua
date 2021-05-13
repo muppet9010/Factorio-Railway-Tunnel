@@ -26,8 +26,7 @@ Test.Start = function(testName)
 
     -- Get the trains - Tunnel train is most north in BP - Other train is most south in BP.
     local northMostLoco, northMostLocoYPos, southMostLoco, southMostLocoYPos = nil, 100000, nil, -100000
-    for _, locoEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "locomotive")) do
-        local locoEntity = builtEntities[locoEntityIndex]
+    for _, locoEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "locomotive")) do
         if locoEntity.position.y < northMostLocoYPos then
             northMostLoco = locoEntity
             northMostLocoYPos = locoEntity.position.y
@@ -40,8 +39,7 @@ Test.Start = function(testName)
     local tunnelTrain, otherTrain = northMostLoco.train, southMostLoco.train
 
     local stationEnd, otherStationStart
-    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        local stationEntity = builtEntities[stationEntityIndex]
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Bottom Start" then
@@ -77,7 +75,7 @@ Test.EveryTick = function(event)
             return
         end
         if testData.otherStationStart.trains_count ~= 1 then
-            TestFunctions.TestFailed(testName, "other start station didn't have 1 train (other trian) waiting at it")
+            TestFunctions.TestFailed(testName, "other start station didn't have 1 train scheduled (other trian waiting) to it")
             return
         end
         if testData.otherTrain.state ~= defines.train_state.destination_full then

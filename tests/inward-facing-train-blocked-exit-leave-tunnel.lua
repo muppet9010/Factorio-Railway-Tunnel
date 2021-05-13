@@ -20,9 +20,8 @@ Test.Start = function(testName)
 
     -- Get the trains/wagons
     local blockingWagon, movingTrain
-    local wagonKeys = Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "cargo-wagon")
-    for _, wagonKey in pairs(wagonKeys) do
-        local wagon = builtEntities[wagonKey]
+    local wagons = Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "cargo-wagon")
+    for _, wagon in pairs(wagons) do
         if #wagon.train.carriages == 1 then
             blockingWagon = wagon
         else
@@ -32,8 +31,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        local stationEntity = builtEntities[stationEntityIndex]
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then
@@ -64,14 +62,14 @@ Test.DestroyBlockingWagon = function(event)
     -- The main train should have completed its tunnel trip north and have completely stopped at the blocking wagon at this point.
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
 
-    local mainTrain
-    local trains = TestFunctions.GetTestForce().get_trains(TestFunctions.GetTestSurface())
-    for _, train in pairs(trains) do
-        if #train.carriages > 1 then
-            mainTrain = train
-            break
-        end
+    -- The main train will have its lead loco around 30 tiles below the blocking wagon if stopped at the signal.
+    local inspectionArea = {left_top = {x = testData.blockingWagon.position.x, y = testData.blockingWagon.position.y + 25}, right_bottom = {x = testData.blockingWagon.position.x, y = testData.blockingWagon.position.y + 35}}
+    local locosInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = "locomotive", limit = 1}
+    if #locosInInspectionArea ~= 1 then
+        TestFunctions.TestFailed(testName, "1 loco not found around expected point")
+        return
     end
+    local mainTrain = locosInInspectionArea[1].train
 
     if mainTrain.state ~= defines.train_state.wait_signal then
         TestFunctions.TestFailed(testName, "train not stopped at a signal (for blocking wagon) as expected")

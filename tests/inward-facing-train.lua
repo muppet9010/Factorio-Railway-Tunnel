@@ -2,14 +2,74 @@
     A train that has its locomotive facing inwards, so can't path on its own when it emerges from the tunnel.
 ]]
 local Test = {}
+local TestFunctions = require("scripts/test-functions")
+local Utils = require("utility/utils")
 
-Test.RunTime = 1200
+Test.RunTime = 1800
+
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+end
 
 local blueprintString =
-    "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"
+    "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"
 
-Test.Start = function(TestManager, testName)
-    TestManager.BuildBlueprintFromString(blueprintString, {x = 215, y = 0}, testName)
+Test.Start = function(testName)
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+
+    -- Get the stations placed by name.
+    local stationNorth, stationSouth
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+        if stationEntity.backer_name == "North" then
+            stationNorth = stationEntity
+        elseif stationEntity.backer_name == "South" then
+            stationSouth = stationEntity
+        end
+    end
+
+    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+
+    local testData = TestFunctions.GetTestDataObject(testName)
+    testData.stationNorthReached = false
+    testData.stationSouthReached = false
+    testData.trainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+    testData.stationNorth = stationNorth
+    testData.stationSouth = stationSouth
+
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.Stop = function(testName)
+    TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+Test.EveryTick = function(event)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local stationNorthTrain, stationSouthTrain = testData.stationNorth.get_stopped_train(), testData.stationSouth.get_stopped_train()
+
+    if stationNorthTrain ~= nil and not testData.stationNorthReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.trainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train reached north station with differences")
+            return
+        end
+        game.print("train reached north station")
+        testData.stationNorthReached = true
+    end
+    if stationSouthTrain ~= nil and not testData.stationSouthReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.trainSnapshot, currentTrainSnapshot) then
+            TestFunctions.TestFailed(testName, "train reached south station with differences")
+            return
+        end
+        game.print("train reached south station")
+        testData.stationSouthReached = true
+    end
+
+    if testData.stationNorthReached and testData.stationSouthReached then
+        TestFunctions.TestCompleted(testName)
+        return
+    end
 end
 
 return Test

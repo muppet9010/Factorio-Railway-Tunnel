@@ -18,10 +18,9 @@ local blueprintString =
 Test.Start = function(testName)
     local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
-    -- Get the stations placed by name.
+    -- Get the stations placed by name. There are 2 stations with the same name "Repathed-End" that are sorted by relative map position.
     local stationRepaths, stationRepathEndViaTunnel, stationRepathEndNotTunnel, stationLoopEnd = {}
-    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        local stationEntity = builtEntities[stationEntityIndex]
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
         if stationEntity.backer_name == "Repathed-End" then
             table.insert(stationRepaths, stationEntity)
         elseif stationEntity.backer_name == "Loop-2" then
@@ -38,8 +37,7 @@ Test.Start = function(testName)
 
     -- Get the trains - Repath train is most east in BP - Loop train is most west in BP.
     local eastMostLoco, eastMostLocoXPos, westMostLoco, westMostLocoXPos = nil, -100000, nil, 100000
-    for _, locoEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "locomotive")) do
-        local locoEntity = builtEntities[locoEntityIndex]
+    for _, locoEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "locomotive")) do
         if locoEntity.position.x > eastMostLocoXPos then
             eastMostLoco = locoEntity
             eastMostLocoXPos = locoEntity.position.x

@@ -19,8 +19,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local stationWest, stationEast
-    for _, stationEntityIndex in pairs(Utils.GetTableKeysWithInnerKeyValue(builtEntities, "name", "train-stop")) do
-        local stationEntity = builtEntities[stationEntityIndex]
+    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
         if stationEntity.backer_name == "West" then
             stationWest = stationEntity
         elseif stationEntity.backer_name == "East" then
@@ -28,7 +27,7 @@ Test.Start = function(testName)
         end
     end
 
-    local train = builtEntities[Utils.GetTableKeyWithInnerKeyValue(builtEntities, "name", "locomotive")].train
+    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationWestReached = false
