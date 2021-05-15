@@ -22,6 +22,8 @@ end
 
 local function OnLoad()
     --Any Remote Interface registration calls can go in here or in root of control.lua
+    remote.remove_interface("railway_tunnel")
+
     TrainManager.OnLoad()
     TunnelManager.OnLoad()
     TunnelPortals.OnLoad()

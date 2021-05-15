@@ -2,6 +2,7 @@ local TestFunctions = {}
 local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
 local Interfaces = require("utility/interfaces")
+local Events = require("utility/events")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -38,10 +39,13 @@ end
 -- Complete the current test. arguments: the test name.
 TestFunctions.TestCompleted = function(testName)
     game.print("Completed Test", {0, 1, 0, 1})
-    local test = global.testManager.testsToRun[testName]
+    Interfaces.Call("TestManager.LogTestOutcome", "Test Completed")
+    local testManagerData = global.testManager.testsToRun[testName]
     Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
-    test.finished = true
-    test.success = true
+    if testManagerData.runLoopsCount == testManagerData.runLoopsMax then
+        testManagerData.finished = true
+        testManagerData.success = true
+    end
     EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
     EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests")
 end
@@ -49,25 +53,30 @@ end
 -- Fail the current test. arguments: the test name, the text reason that is shown on screen.
 TestFunctions.TestFailed = function(testName, errorText)
     game.print("Failure Message: " .. errorText, {1, 0, 0, 1})
-    local test = global.testManager.testsToRun[testName]
+    Interfaces.Call("TestManager.LogTestOutcome", "Test Failed: " .. errorText)
+    local testManagerData = global.testManager.testsToRun[testName]
     Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
-    test.finished = true
-    test.success = false
+    if not global.testManager.justLogAllTests then
+        testManagerData.finished = true
+        testManagerData.success = false
+        game.tick_paused = true
+    end
     EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
-    game.tick_paused = true
+    if global.testManager.justLogAllTests then
+        -- Continue with scheduling next test when running all tests.
+        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests")
+    end
 end
 
--- Register a unique name and function for future event scheduling.
+-- Register a unique name and function for future event scheduling. Must be called from a test's OnLoad() and is a pre-requisite for any events to be scheduled during a test Start().
 TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, testFunction)
-    -- Called by tests to register a test event without having to hard code details in the test.
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RegisterScheduledEventType(completeName, testFunction)
 end
 
--- Schedule an event named function once at a given tick.
+-- Schedule an event named function once at a given tick. To be called from Start().
 TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, instanceId, eventData)
-    -- Called by tests to schedule a test once event without having to hard code details in the test.
-    -- instanceId and eventData are optional
+    -- instanceId and eventData are optional.
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
         instanceId = testName
@@ -75,10 +84,9 @@ TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, insta
     EventScheduler.ScheduleEventOnce(tick, completeName, instanceId, eventData)
 end
 
--- Schedule an event named function to run every tick until cancelled.
+-- Schedule an event named function to run every tick until cancelled. To be called from Start().
 TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instanceId, eventData)
-    -- Called by tests to schedule a test every tick event without having to hard code details in the test.
-    -- instanceId and eventData are optional
+    -- instanceId and eventData are optional.
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
         instanceId = testName
@@ -86,20 +94,33 @@ TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instan
     EventScheduler.ScheduleEventEachTick(completeName, instanceId, eventData)
 end
 
--- Remove any instances of future scheduled once events.
+-- Remove any instances of future scheduled once events. To be called from Stop().
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
-    -- Called by tests to remove a test once event without having to hard code details in the test.
-    -- instanceId is optional
+    -- instanceId is optional.
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledOnceEvents(completeName, instanceId)
 end
 
--- Remove any instances of future scheduled every tick events.
+-- Remove any instances of future scheduled every tick events. To be called from Stop().
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
-    -- Called by tests to schedule a test every tick event without having to hard code details in the test.
-    -- instanceId is optional
+    -- instanceId is optional.
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledEventFromEachTick(completeName, instanceId)
+end
+
+-- Register a unique name and function to react to a named event. Will only trigger when this test is active. Must be called from OnLoad() and Start().
+TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterName, filterData)
+    -- filterName and filterData are optional.
+    -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
+    local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
+    local activeTestCheckFunc = function(event)
+        local testManagerData = global.testManager.testsToRun[testName]
+        if testManagerData.runLoopsCount > 0 and not testManagerData.finished then
+            event.testName = testName
+            testFunction(event)
+        end
+    end
+    Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterName, filterData)
 end
 
 -- Returns an abstract meta data of a train to be compared later.
@@ -206,14 +227,35 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
     local placedEntities = {}
 
     for _, ghost in pairs(ghosts) do
+        -- Special cases where the placed entity will be removed by other scripts.
+        local tunnelPortalPosition, tunnelSegmentPosition
+        if ghost.ghost_name == "railway_tunnel-tunnel_portal_surface-placed" then
+            tunnelPortalPosition = ghost.position
+        elseif ghost.ghost_name == "railway_tunnel-tunnel_segment_surface-placed" then
+            tunnelSegmentPosition = ghost.position
+        end
+
+        -- Revive the ghost and handle the outcome.
         local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
         if revivedOutcome == nil then
             -- Train ghosts can't be revived before the rail underneath them, so save failed ghosts for a second pass.
             table.insert(pass2Ghosts, ghost)
         elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
-            -- Only record valid entities, anythng else is passed help.
+            -- Only record valid entities, anything else is passed help.
             table.insert(placedEntities, revivedGhostEntity)
+        elseif #revivedOutcome == 0 then
+            -- Entity was revived and instantly removed by a script event.
+            if tunnelPortalPosition ~= nil then
+                -- Tunnel Portal was revived.
+                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_portal_surface-placed", tunnelPortalPosition)
+                table.insert(placedEntities, tunnelEntity)
+            elseif tunnelSegmentPosition ~= nil then
+                -- Tunnel Segment was revived.
+                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_segment_surface-placed", tunnelSegmentPosition)
+                table.insert(placedEntities, tunnelEntity)
+            end
         end
+
         if fuelProxy ~= nil then
             table.insert(fuelProxies, fuelProxy)
         end

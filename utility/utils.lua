@@ -1431,4 +1431,12 @@ end
 
 Utils.MaxTrainStopLimit = 4294967295 -- uint
 
+Utils.ReturnValidLuaObjectOrNil = function(luaObject)
+    if luaObject == nil or not luaObject.valid then
+        return nil
+    else
+        return luaObject
+    end
+end
+
 return Utils

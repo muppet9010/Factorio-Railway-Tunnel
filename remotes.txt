@@ -1,0 +1,42 @@
+Remote Interfaces & Custom Events
+=================
+
+All interfaces are under the interface name "railway_tunnel".
+
+
+
+Train Tunnel Usage Changed
+--------------
+
+**Remote interface to get custom event id**
+- Interface Name: get_tunnel_usage_changed_event_id
+- Description: An event id that will be raised every time a train's tunnel usage details change.
+- Arguments:
+    - none
+- Returns:
+    - Factorio event id.
+
+**Custom event raised**
+- Description: Event raised every time a train's tunnel usage details change. This will include change of primaryState and change of LuaTrain ids, i.e. when a carriage is added/removed from the entering/leaving train.
+- Event Attributes:
+    - The Returns from "Get A Train's Tunnel Usage Details" for the train.
+    - action: the action that occured (STRING): StartApproaching, Terminated, ReversedDuringUse, CommittedToTunnel, EnteringCarriageRemoved, FullyEntered, StartedLeaving, LeavingCarriageAdded, FullyLeft.
+    - changeReason: the cause of the change (STRING): ReversedAfterLeft, AbortedApproach, ForwardPathLost, CompletedTunnelUsage.
+
+
+
+Get A Train's Tunnel Usage Details
+----------------
+
+- Interface Name: get_train_tunnel_usage_details
+- Description: Remote interface to get details on specific train's tunnel usage. Can be called at any time.
+- Arguments:
+    - Train's tunnel usage id (INT).
+- Returns:
+    - trainTunnelUsageId = id of the train's tunnel usage details (INT). Always presnet.
+    - valid = if the train is still using the tunnel (BOOLEAN). If its false then all other return attributes will be nil.
+    - primaryState = the primary (lead) state of the trains tunnel usage (STRING): approaching, underground, leaving, finished.
+    - enteringTrain = LuaTrain of the train still entering the tunnel if it exists, otherwise nil.
+    - undergroundTrain = LuaTrain of the complete train underground if it exists, otherwise nil.
+    - leavingTrain = LuaTrain of the train leaving the tunnel if it exists, otherwise nil.
+    - leftTrain = LuaTrain of the train that has left the tunnel (but still being monitored for cleairn track, etc) if it exists, otherwise nil.

@@ -11,6 +11,7 @@ local AllTests = false -- Does all the tests regardless of their enabled state b
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
 local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next.
+local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 local DoDemoInsteadOfTests = false -- Does the demo rather than any enabled tests if TRUE.
 
 -- Add any new tests in to the table and set enable true/false as desired.
@@ -61,6 +62,7 @@ TestManager.CreateGlobals = function()
     global.testManager.playerForce = global.testManager.playerForce or nil
     global.testManager.testData = global.testManager.testData or {} -- Used by tests to store their local data. Key'd by testName.
     global.testManager.testsToRun = global.testManager.testsToRun or {} -- Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
+    global.testManager.justLogAllTests = JustLogAllTests
 end
 
 TestManager.OnLoad = function()
@@ -69,6 +71,7 @@ TestManager.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
     Interfaces.RegisterInterface("TestManager.GetTestScript", TestManager.GetTestScript)
+    Interfaces.RegisterInterface("TestManager.LogTestOutcome", TestManager.LogTestOutcome)
 
     -- Run any active tests OnLoad function.
     for testName, test in pairs(TestsToRun) do
@@ -110,12 +113,18 @@ TestManager.OnStartup = function()
         global.testManager.testsToRun[testName] = {
             testName = testName,
             enabled = test.enabled,
-            runTime = test.testScript.Runtime,
+            runTime = test.testScript.RunTime,
             runLoopsMax = test.testScript.RunLoopsMax or 1,
             runLoopsCount = 0,
             finished = false,
             success = nil
         }
+    end
+
+    -- If logging tests clear out any old file.
+    if global.testManager.justLogAllTests then
+        game.write_file("RailwayTunnel_Tests.txt", "", false)
+        WaitForPlayerAtEndOfEachTest = false -- We don't want to pause in this mode.
     end
 
     EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
@@ -131,14 +140,17 @@ TestManager.WaitForPlayerThenRunTests = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
         TestManager.GetTestScript(currentTestName).Stop(currentTestName)
-        game.print("Test NOT Completed:" .. TestManager.GetTestDisplayName(currentTestName), {1, 0, 0, 1})
+        game.print("Test NOT Completed: " .. TestManager.GetTestDisplayName(currentTestName), {1, 0, 0, 1})
+        TestManager.LogTestOutcome("Test NOT Completed")
         local testObject = global.testManager.testsToRun[currentTestName]
-        testObject.finished = true
-        testObject.success = false
-        game.tick_paused = true
-        return
+        if not global.testManager.justLogAllTests then
+            testObject.finished = true
+            testObject.success = false
+            game.tick_paused = true
+            return
+        end
     end
-    if WaitForPlayerAtEndOfEachTest then
+    if WaitForPlayerAtEndOfEachTest or (global.testManager.justLogAllTests and event.data.firstLoad) then
         if event.data.firstLoad then
             game.print("Testing started paused in editor mode - will pause at the end of each test")
         end
@@ -166,6 +178,9 @@ TestManager.RunTests = function()
         if (test.enabled or AllTests) and test.runLoopsCount < test.runLoopsMax then
             test.runLoopsCount = test.runLoopsCount + 1
             game.print("Starting Test:   " .. TestManager.GetTestDisplayName(testName), {0, 1, 1, 1})
+            if global.testManager.justLogAllTests then
+                game.write_file("RailwayTunnel_Tests.txt", TestManager.GetTestDisplayName(testName) .. "   =   ", true)
+            end
             global.testManager.testData[testName] = {} -- Reset for every test run as this is the test's internal data object.
             TestManager.GetTestScript(testName).Start(testName)
             if test.runTime ~= nil then
@@ -222,6 +237,12 @@ end
 -- Called when the test script needs to be referenced as it can't be stored in global data.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
+end
+
+TestManager.LogTestOutcome = function(text)
+    if global.testManager.justLogAllTests then
+        game.write_file("RailwayTunnel_Tests.txt", text .. "\r\n", true)
+    end
 end
 
 return TestManager
