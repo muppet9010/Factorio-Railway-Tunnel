@@ -18,8 +18,8 @@ local DoDemoInsteadOfTests = false -- Does the demo rather than any enabled test
 local TestsToRun
 if DoTests then
     TestsToRun = {
-        ShortTunnelSingleTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-train-east-to-west")},
-        ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+        ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
+        ShortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
         ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
@@ -32,6 +32,7 @@ if DoTests then
         InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
         InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
+        LongTrainExitDoubleBlockedRailSegments = {enabled = true, testScript = require("tests/long-train-exit-double-blocked-rail-segments")},
         ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests")}
     }
 end

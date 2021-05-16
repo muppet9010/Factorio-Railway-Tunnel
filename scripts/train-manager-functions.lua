@@ -107,22 +107,6 @@ TrainManagerFuncs.DestroyTrain = function(parentObject, referenceToSelf, localOb
     end
 end
 
-TrainManagerFuncs.IsSpeedGovernedByTrain = function(train)
-    if train == nil or not train.valid or not TrainManagerFuncs.IsTrainHealthlyState(train) then
-        return false
-    else
-        return true
-    end
-end
-
-TrainManagerFuncs.GetTrainSpeed = function(leavingTrain, undergroundTrain)
-    if TrainManagerFuncs.IsSpeedGovernedByTrain(leavingTrain) then
-        return math.abs(leavingTrain.speed)
-    else
-        return math.abs(undergroundTrain.speed)
-    end
-end
-
 TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetStop, skipStateCheck)
     train.schedule, skipStateCheck = schedule, skipStateCheck or false
     if not isManual then
@@ -189,15 +173,8 @@ TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition = function
     return firstCarriagePosition
 end
 
-TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrain, leavingTrainCarriagesPlaced, leavingTrainPushingLoco)
-    local currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
-    local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
-    if (sourceTrain.speed < 0) then
-        currentSourceTrainCarriageIndex = #sourceTrain.carriages - leavingTrainCarriagesPlaced
-        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
-    end
-    local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
-
+TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leavingTrainPushingLoco)
+    -- Get the current rear carriage of the leaving train based on if a pushing loco was added. Handles train facing either direction (+/- speed) assuming the train is leaving the tunnel.
     local leavingTrainRearCarriage, leavingTrainRearCarriageIndex, leavingTrainRearCarriagePushingIndexMod
     if (leavingTrain.speed > 0) then
         leavingTrainRearCarriageIndex = #leavingTrain.carriages
@@ -211,7 +188,19 @@ TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leaving
     end
     leavingTrainRearCarriage = leavingTrain.carriages[leavingTrainRearCarriageIndex]
 
-    return nextSourceCarriageEntity, leavingTrainRearCarriage
+    return leavingTrainRearCarriage
+end
+
+TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
+    -- Get the next carraige to be placed from the underground train.
+    local currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
+    local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
+    if (sourceTrain.speed < 0) then
+        currentSourceTrainCarriageIndex = #sourceTrain.carriages - leavingTrainCarriagesPlaced
+        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
+    end
+    local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
+    return nextSourceCarriageEntity
 end
 
 TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fallbackTargetRail)
