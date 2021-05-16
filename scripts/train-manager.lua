@@ -132,7 +132,7 @@ end
 TrainManager.ProcessManagedTrains = function()
     for _, trainManagerEntry in pairs(global.trainManager.managedTrains) do
         -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
-        if trainManagerEntry.dummyTrain ~= nil and not TrainManagerFuncs.CheckTrainState(trainManagerEntry.dummyTrain) then
+        if trainManagerEntry.dummyTrain ~= nil and not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.dummyTrain) then
             TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.dummyTrain)
             return
         end
@@ -164,7 +164,7 @@ TrainManager.ProcessManagedTrains = function()
                 TrainManager.TrainLeavingFirstCarriage(trainManagerEntry)
             elseif trainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
                 -- Check if the leaving train is in a good state before we check to add any new wagons to it.
-                if not TrainManagerFuncs.CheckTrainState(trainManagerEntry.leavingTrain) then
+                if not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
                     TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.leavingTrain)
                 else
                     -- Keep on running until the entire train has left the tunnel.
@@ -229,7 +229,6 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
         end
 
         if canPathBackwards then
-            TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.ReversedDuringUse, TrainManager.TunnelUsageChangeReason.ForwardPathLost)
             TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
             return
         else
@@ -237,14 +236,12 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
                 -- Set the enteringTrain schedule, state and speed back to what it was before the repath attempt. This preserves the enteringTrain travel direction.
                 TrainManagerFuncs.TrainSetSchedule(enteringTrain, oldEnteringSchedule, oldEnteringIsManual, targetStop, true)
                 enteringTrain.speed = oldEnteringSpeed
-            -- TODO: without pulling to end of the tunnel the entering and underground train freewheel on and keep on being tested for valid paths every tick.
             end
         end
     end
 
     -- Handle train that can't go backwards so just pull the train forwards to the end of the tunnel, nothing else can be done.
-    -- TODO: don't pull forwards at present as this makes main logic harder to test. Not sure if we should only do this for a train fully in the tunnel... At present if we don't pull forwards the train continues to move in to the tunnel as we didn't stop it.
-    --TrainManagerFuncs.MoveLeavingTrainToFallbackPosition(trainWithBadState, trainManagerEntry.aboveExitPortal.entrySignals["out"].entity.get_connected_rails()[1])
+    TrainManagerFuncs.MoveLeavingTrainToFallbackPosition(trainWithBadState, trainManagerEntry.aboveExitPortal.entrySignals["out"].entity.get_connected_rails()[1])
 end
 
 TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
@@ -765,6 +762,8 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     TrainManager.SetUndergroundTrainScheduleAndEndPosition(newTrainManagerEntry)
     TrainManager.SetUndergroundTrainSpeed(newTrainManagerEntry, 0)
     TrainManager.ReversingTunnelTripTidyOldManagedTrain(oldTrainManagerEntry)
+
+    TrainManager.TunnelUsageChangedRemote(newTrainManagerEntry.id, TrainManager.TunnelUsageAction.ReversedDuringUse, TrainManager.TunnelUsageChangeReason.ForwardPathLost, oldTrainManagerEntry.id)
 end
 
 ----------------------------------------------------------------------------------------------------------
@@ -798,11 +797,12 @@ TrainManager.TunnelUsageChangeReason = {
     CompletedTunnelUsage = "CompletedTunnelUsage"
 }
 
-TrainManager.TunnelUsageChangedRemote = function(trainManagerEntryId, action, changeReason)
+TrainManager.TunnelUsageChangedRemote = function(trainManagerEntryId, action, changeReason, replacedTrainTunnelUsageId)
     local data = TrainManager.GetTrainTunnelUsageRemote(trainManagerEntryId)
     data.name = "RailwayTunnel.TunnelUsageChanged"
     data.action = action
     data.changeReason = changeReason
+    data.replacedTrainTunnelUsageId = replacedTrainTunnelUsageId
     Events.RaiseEvent(data)
 end
 

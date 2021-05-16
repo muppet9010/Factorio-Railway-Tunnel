@@ -131,12 +131,6 @@ TestManager.OnStartup = function()
 end
 
 TestManager.WaitForPlayerThenRunTests = function(event)
-    if event.data.firstLoad then
-        for _, player in pairs(game.connected_players) do
-            player.zoom = PlayerStartingZoom
-        end
-    end
-
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
         TestManager.GetTestScript(currentTestName).Stop(currentTestName)
@@ -162,9 +156,9 @@ TestManager.WaitForPlayerThenRunTests = function(event)
 end
 
 TestManager.RunTests = function()
-    -- Clean any previous entities off the map. Run twice to catch any rails with trains on them that get missed first attempt.
-    for i = 1, 2 do
-        for _, entity in pairs(global.testManager.testSurface.find_entities()) do
+    -- Clean any previous entities off the map. Remove any trains first and then everything else; to avoid triggering tunnel removal destroying trains alerts.
+    for _, entityTypeFilter in pairs({{"cargo-wagon", "locomotive", "fluid-wagon"}, {}}) do
+        for _, entity in pairs(global.testManager.testSurface.find_entities_filtered({name = entityTypeFilter})) do
             entity.destroy({raise_destroy = true})
         end
     end
@@ -176,6 +170,12 @@ TestManager.RunTests = function()
 
     for testName, test in pairs(global.testManager.testsToRun) do
         if (test.enabled or AllTests) and test.runLoopsCount < test.runLoopsMax then
+            if PlayerStartingZoom ~= nil then
+                -- Set zoom on every test start. Makes loading a save before a test easier.
+                for _, player in pairs(game.connected_players) do
+                    player.zoom = PlayerStartingZoom
+                end
+            end
             test.runLoopsCount = test.runLoopsCount + 1
             game.print("Starting Test:   " .. TestManager.GetTestDisplayName(testName), {0, 1, 1, 1})
             if global.testManager.justLogAllTests then

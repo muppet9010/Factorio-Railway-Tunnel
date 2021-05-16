@@ -10,7 +10,7 @@ TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
     end
 end
 
-TrainManagerFuncs.CheckTrainState = function(train)
+TrainManagerFuncs.IsTrainHealthlyState = function(train)
     if train.state == defines.train_state.no_path or train.state == defines.train_state.path_lost then
         return false
     else
@@ -108,7 +108,7 @@ TrainManagerFuncs.DestroyTrain = function(parentObject, referenceToSelf, localOb
 end
 
 TrainManagerFuncs.IsSpeedGovernedByTrain = function(train)
-    if train == nil or not train.valid or not TrainManagerFuncs.CheckTrainState(train) then
+    if train == nil or not train.valid or not TrainManagerFuncs.IsTrainHealthlyState(train) then
         return false
     else
         return true
@@ -127,7 +127,7 @@ TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetS
     train.schedule, skipStateCheck = schedule, skipStateCheck or false
     if not isManual then
         TrainManagerFuncs.SetTrainToAuto(train, targetStop)
-        if not skipStateCheck and not TrainManagerFuncs.CheckTrainState(train) then
+        if not skipStateCheck and not TrainManagerFuncs.IsTrainHealthlyState(train) then
             -- Any issue on the train from the previous tick should be detected by the state check. So this should only trigger after misplaced wagons.
             error("train doesn't have positive state after setting schedule")
         end

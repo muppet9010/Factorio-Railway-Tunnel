@@ -8,8 +8,15 @@ local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
-local SpecificTrainTypesFilter = {"<", "<>"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
-local SpecificTunnelUsageTypesFilter = {"onceCommitted"} -- Pass in array of TunnelUsageType keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {"<>", "><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTunnelUsageTypesFilter = {
+    --"beforeCommitted",
+    "onceCommitted",
+    "carriageEntering",
+    "fullyUnderground",
+    "carriageLeaving",
+    "leftTunnel"
+} -- Pass in array of TunnelUsageType keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
 
 Test.RunTime = 1200
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -361,10 +368,13 @@ Test.Start = function(testName)
     testData.leavingPortal = leavingPortal
     testData.train = train
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.managedTrainId = 0
+    testData.managedTrainId = 0 -- Tracks current managed train id for tunnel usage.
+    testData.oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
     testData.testScenario = testScenario
     testData.lastTrainAction = nil -- Populated by the last TunnelUsageChanged action.
     testData.lastTrainChangeReason = nil -- Populated by the last TunnelUsageChanged changeReason.
+
+    game.print("Expected test result: " .. testData.testScenario.expectedResult)
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
     TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
@@ -390,11 +400,22 @@ Test.EveryTick = function(event)
     local tunnelUsageDetails = remote.call("railway_tunnel", "get_train_tunnel_usage_details", testData.managedTrainId)
     local endStationTrain = testData.stationEnd.get_stopped_train()
     if testData.testScenario.expectedResult == ResultStates.NotReachTunnel then
-        -- No valid tunnelUsageDetails, but testData.train hasn't become invalid yet.
-        if testData.lastTrainAction == "Terminated" and testData.lastTrainChangeReason == "AbortedApproach" and testData.train.state == defines.train_state.path_lost then
+        -- This outcome can be checked instantly after the path out of tunnel broken. As the train never entered the tunnel the old testData.train reference should be valid still.
+        -- Depending on exactly where the train stopped and its length it may/not be able to reach the end station. So can't check this at present.
+        if testData.train == nil or not testData.train.valid then
+            TestFunctions.TestFailed(testName, "train reference should still exist from test start")
+            return
+        else
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(testData.train)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+                TestFunctions.TestFailed(testName, "train has differences")
+                return
+            end
+        end
+        if testData.lastTrainAction == "Terminated" and testData.lastTrainChangeReason == "AbortedApproach" then
             TestFunctions.TestCompleted(testName)
         else
-            TestFunctions.TestFailed(testName, "train in wrong state")
+            TestFunctions.TestFailed(testName, "last tunnel usage state wasn't AbortedApproach")
         end
     elseif testData.testScenario.expectedResult == ResultStates.PullToFrontOfTunnel then
         local inspectionArea = {left_top = {x = testData.leavingPortal.position.x - 20, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x - 18, y = testData.leavingPortal.position.y}}
@@ -407,7 +428,7 @@ Test.EveryTick = function(event)
             return
         end
         if trainFound.state == defines.train_state.path_lost then
-            -- TODO: check the carriages that have come out match up to 1 end of the origional train. First 4 carriages ?
+            -- TODO: check the carriages that have come out match up to 1 end of the origional train. First 4/5 carriages ?
             TestFunctions.TestCompleted(testName)
         elseif endStationTrain ~= nil then
             TestFunctions.TestFailed(testName, "train reached end station")
@@ -431,7 +452,16 @@ Test.TunnelUsageChanged = function(event)
         testData.managedTrainId = event.trainTunnelUsageId
     end
     if testData.managedTrainId ~= event.trainTunnelUsageId then
-        TestFunctions.TestFailed(testName, "unexpected train tunnel id event received")
+        if event.replacedTrainTunnelUsageId ~= nil and testData.managedTrainId == event.replacedTrainTunnelUsageId then
+            -- Train tunnel usage entry has been replaced by another one.
+            testData.managedTrainId = event.trainTunnelUsageId
+            testData.oldManagedTrainId = event.replacedTrainTunnelUsageId
+        elseif testData.oldManagedTrainId == event.trainTunnelUsageId then
+            -- This old managed train id is expected and can be ignored entirely.
+            return
+        else
+            TestFunctions.TestFailed(testName, "unexpected train tunnel id event received")
+        end
     end
     local testTunnelUsageType = testData.testScenario.tunnelUsageType
     testData.lastTrainAction, testData.lastTrainChangeReason = event.action, event.changeReason
