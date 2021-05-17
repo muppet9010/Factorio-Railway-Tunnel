@@ -27,6 +27,7 @@ TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
 end
 
 TrainManagerFuncs.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
+    -- TODO: This should be dynmaic distance based on the rear carriage and the one we are placing.
     local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4}))
     local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
     pushingLocomotiveEntity.destructible = false
@@ -158,11 +159,7 @@ TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition = function
     local firstCarriageDistanceFromPortalEntrance = 0
     for _, railEntity in pairs(sourceTrain.path.rails) do
         -- This doesn't account for where on the current rail entity the carriage is, but should be accurate enough. Does cause up to half a carriage difference in train on both sides of a tunnel.
-        local thisRailLength = 2
-        if railEntity.type == "curved-rail" then
-            thisRailLength = 7 -- Estimate
-        end
-        firstCarriageDistanceFromPortalEntrance = firstCarriageDistanceFromPortalEntrance + thisRailLength
+        firstCarriageDistanceFromPortalEntrance = firstCarriageDistanceFromPortalEntrance + TrainManagerFuncs.GetRailEntityLength(railEntity)
         if railEntity.unit_number == aboveEntrancePortalEndSignalRailUnitNumber then
             break
         end
@@ -210,6 +207,59 @@ TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fa
     local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
     table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
     leavingTrain.schedule = newSchedule
+end
+
+TrainManagerFuncs.GetTrackDistanceBetweenPortalExitSignalAndTargetSignal = function(sourceTrain, exitPortalSignal, targetSignal)
+    local targetRails = targetSignal.get_connected_rails() -- the stopping signal can be on multiple rails at once, however, only 1 will be in our path list.
+    local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
+
+    -- Measure the distance from the end portal signal to the target signal. Ignores trains exact position and just deals with the tracks.
+    local distance = 0
+    local portalSignalEntityRail = exitPortalSignal.get_connected_rails()[1] -- Only ever 1 rail as inside portal.
+    local portalSignalRailReached, lastRail = false, nil
+    for _, railEntity in pairs(sourceTrain.get_rails()) do
+        if not portalSignalRailReached and railEntity.unit_number == portalSignalEntityRail.unit_number then
+            portalSignalRailReached = true
+        elseif portalSignalRailReached then
+            distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity)
+            lastRail = railEntity
+        end
+    end
+    for _, railEntity in pairs(sourceTrain.path.rails) do
+        if lastRail ~= nil and railEntity.unit_number == lastRail.unit_number then
+            -- Rail already counted as under the train.
+            lastRail = nil
+        else
+            distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity)
+            if targetRailUnitNumberAsKeys[railEntity.unit_number] then
+                -- One of the rails attached to the signal has been reached in the path.
+                break
+            end
+        end
+    end
+
+    return distance
+end
+
+TrainManagerFuncs.GetRailEntityLength = function(railEntity)
+    if railEntity.type == "straight-rail" then
+        return 2
+    elseif railEntity.type == "curved-rail" then
+        return 7.842081225095 -- According to rail segment length.
+    else
+        error("not valid rail type: " .. railEntity.type)
+    end
+end
+
+TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(undergroundTrain, position)
+    undergroundTrain.schedule = {
+        current = 1,
+        records = {
+            {
+                rail = undergroundTrain.front_stock.surface.find_entity("straight-rail", position)
+            }
+        }
+    }
 end
 
 return TrainManagerFuncs

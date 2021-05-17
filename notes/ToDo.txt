@@ -1,4 +1,10 @@
+Need to test the arrive at signal and station when still in tunnel to make sure it doesn't overshoot. Distance for curves matters a lot and may mean the final bit has to be done with leaving train setting speed ?
+
+Watch train leaving state and if arrive at signal or station then mirror target position to underground train so it brakes accordingly. If it goes back on the path then set underground target as end of line.
+
 Next:
+    - Underground tunnel train placement looks to be off for tunnels not centered around 0. The relationship between above and below looks off.
+    - Underground tunnel signals aren't same distance apart as the above ground portal entrance signals.
     - A train leaving the underground is only checked for the portal leaving signal and then shoved out. For longer trains this will push them through subsequent non open signals. Part of the underground train should set train speed with leavingTrain just checking rail signals. This needs to handle train signals unrelated to the tunnel portals.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Needs to support a train being able to reverse while in the tunnel back out. The train should retain its station reservation if it can path to its target, as this is what happens to a double ended train in the a regular track segment if there is an alternatitve route to target. Only if the train can't reach the target at all does it pull to the end of the portal and then it can sit and no path. Automated test types:
         - Train types (heading west): <, <>, <-->, <>----, ----<>
@@ -36,7 +42,6 @@ NICE TO HAVE:
     - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing, but can be driven over.
     - We assume all train carriages are 7 tiles apart, check thier prototypes.
     - When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carriages, fuel, cargo items, equipment grids.
-    - Look at train speed and how long until the train carriage will next need to be monitored and then have the ongoing function run scheduled for then. This should reduce the event firings from every second and lower UPS.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach?
     - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels.
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allow them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this.

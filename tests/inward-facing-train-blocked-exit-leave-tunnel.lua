@@ -69,6 +69,7 @@ Test.DestroyBlockingWagon = function(event)
         TestFunctions.TestFailed(testName, "1 loco not found around expected point")
         return
     end
+    local leadingCarriage = locosInInspectionArea[1]
     local mainTrain = locosInInspectionArea[1].train
 
     if mainTrain.state ~= defines.train_state.wait_signal then
@@ -76,14 +77,7 @@ Test.DestroyBlockingWagon = function(event)
         return
     end
 
-    local northestCarriage, northestCarriageYPos = nil, 100000
-    for _, carriage in pairs(mainTrain.carriages) do
-        if carriage.position.y < northestCarriageYPos then
-            northestCarriage = carriage
-            northestCarriageYPos = carriage.position.y
-        end
-    end
-    if Utils.GetDistanceSingleAxis(northestCarriage.position, testData.blockingWagon.position, "y") > 25 then
+    if Utils.GetDistanceSingleAxis(leadingCarriage.position, testData.blockingWagon.position, "y") > 25 then
         TestFunctions.TestFailed(testName, "train not stopped at expected position for blocking wagon signal")
         return
     end

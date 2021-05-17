@@ -731,6 +731,17 @@ Utils.TableValuesToKey = function(tableWithValues)
     return newTable
 end
 
+Utils.TableInnerValueToKey = function(refTable, innerValueAttributeName)
+    if refTable == nil then
+        return nil
+    end
+    local newTable = {}
+    for _, value in pairs(refTable) do
+        newTable[value[innerValueAttributeName]] = value
+    end
+    return newTable
+end
+
 Utils.GetRandomFloatInRange = function(lower, upper)
     return lower + math.random() * (upper - lower)
 end

@@ -40,6 +40,8 @@ end
 Underground.OnLoad = function()
     Interfaces.RegisterInterface("Underground.CreateUndergroundTunnel", Underground.CreateUndergroundTunnel)
     Interfaces.RegisterInterface("Underground.SetUndergroundExitSignalState", Underground.SetUndergroundExitSignalState)
+    Interfaces.RegisterInterface("Underground.GetForwardsEndOfRailPosition", Underground.GetForwardsEndOfRailPosition)
+    Interfaces.RegisterInterface("Underground.GetForwardsDistancePosition", Underground.GetForwardsDistancePosition)
 end
 
 Underground.OnStartup = function()
@@ -157,6 +159,44 @@ Underground.SetUndergroundExitSignalState = function(undergroundSignal, sourceSi
         closeSignalOn = true
     end
     undergroundSignal.signalStateCombinator.get_control_behavior().enabled = closeSignalOn
+end
+
+Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTravelOrientation)
+    return Utils.ApplyOffsetToPosition(
+        Utils.RotatePositionAround0(
+            undergroundTunnel.tunnel.alignmentOrientation,
+            {
+                x = undergroundTunnel.tunnelInstanceValue + 1,
+                y = 0
+            }
+        ),
+        Utils.RotatePositionAround0(
+            trainTravelOrientation,
+            {
+                x = 0,
+                y = 0 - (undergroundTunnel.undergroundLeadInTiles - 1)
+            }
+        )
+    )
+end
+
+Underground.GetForwardsDistancePosition = function(undergroundTunnel, trainTravelOrientation, distance)
+    return Utils.ApplyOffsetToPosition(
+        Utils.RotatePositionAround0(
+            undergroundTunnel.tunnel.alignmentOrientation,
+            {
+                x = undergroundTunnel.tunnelInstanceValue + 1,
+                y = 0
+            }
+        ),
+        Utils.RotatePositionAround0(
+            trainTravelOrientation,
+            {
+                x = 0,
+                y = 0 - (distance - 1)
+            }
+        )
+    )
 end
 
 return Underground
