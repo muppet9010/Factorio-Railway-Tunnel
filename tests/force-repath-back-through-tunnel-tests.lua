@@ -609,6 +609,7 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
         elseif carriageDetails.name == "cargo-wagon" then
             placedCarriage.insert({name = "iron-plate", count = i})
         end
+        -- TODO: handle gap between carriages dynamically.
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 7, y = 0})
     end
 

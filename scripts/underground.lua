@@ -33,6 +33,8 @@ Underground.CreateGlobals = function()
                     aboveGroundSignalPaired = portalSignal
                 }
             }
+            distanceBetweenPortalCenters = The distance from the underground tunnel center to the portal center.
+            tunnelRailCenterValue = The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
         }
     ]]
 end
@@ -41,7 +43,7 @@ Underground.OnLoad = function()
     Interfaces.RegisterInterface("Underground.CreateUndergroundTunnel", Underground.CreateUndergroundTunnel)
     Interfaces.RegisterInterface("Underground.SetUndergroundExitSignalState", Underground.SetUndergroundExitSignalState)
     Interfaces.RegisterInterface("Underground.GetForwardsEndOfRailPosition", Underground.GetForwardsEndOfRailPosition)
-    Interfaces.RegisterInterface("Underground.GetForwardsDistancePosition", Underground.GetForwardsDistancePosition)
+    Interfaces.RegisterInterface("Underground.GetForwardPositionFromCurrentForDistance", Underground.GetForwardPositionFromCurrentForDistance)
 end
 
 Underground.OnStartup = function()
@@ -112,8 +114,25 @@ Underground.CreateUndergroundTunnel = function(tunnel)
     undergroundTunnel.railEntities = undergroundSurface.surface.clone_entities {entities = undergroundSurface.refRails, destination_offset = cloneRailOffset, create_build_effect_smoke = false}
 
     -- Generate attributes used by other parts of mod.
+    local greatestPortal, lesserPortal
+    if tunnel.portals[1].entity.position[undergroundSurface.railAlignmentAxis] > tunnel.portals[2].entity.position[undergroundSurface.railAlignmentAxis] then
+        greatestPortal = tunnel.portals[1]
+        lesserPortal = tunnel.portals[2]
+    else
+        greatestPortal = tunnel.portals[2]
+        lesserPortal = tunnel.portals[1]
+    end
+    undergroundTunnel.distanceBetweenPortalCenters = Utils.GetDistanceSingleAxis(greatestPortal.entity.position, lesserPortal.entity.position, undergroundSurface.railAlignmentAxis)
+    local undergroundTunnelTiles = undergroundTunnel.distanceBetweenPortalCenters - 50
+    -- Get the correct center of the underground tunnel as otherwise the portal entry signals will be on the wrong track pieces.
+    if undergroundTunnelTiles % 4 == 0 then
+        undergroundTunnel.tunnelRailCenterValue = 0
+    else
+        undergroundTunnel.tunnelRailCenterValue = 1
+    end
+
     undergroundTunnel.undergroundOffsetFromSurface = {
-        [undergroundSurface.railAlignmentAxis] = 0 - ((tunnel.portals[1].entity.position[undergroundSurface.railAlignmentAxis] + tunnel.portals[2].entity.position[undergroundSurface.railAlignmentAxis]) / 2),
+        [undergroundSurface.railAlignmentAxis] = undergroundTunnel.tunnelRailCenterValue - (greatestPortal.entity.position[undergroundSurface.railAlignmentAxis] - (undergroundTunnel.distanceBetweenPortalCenters / 2)),
         [undergroundSurface.tunnelInstanceAxis] = (1 - tunnel.portals[1].entity.position[undergroundSurface.tunnelInstanceAxis]) + undergroundTunnel.tunnelInstanceValue
     }
     undergroundTunnel.surfaceOffsetFromUnderground = Utils.RotatePositionAround0(0.5, undergroundTunnel.undergroundOffsetFromSurface)
@@ -180,20 +199,23 @@ Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTrav
     )
 end
 
-Underground.GetForwardsDistancePosition = function(undergroundTunnel, trainTravelOrientation, distance)
+Underground.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
+    -- Applies the target distance to the undergroundTrains' leading carriage.
+    local leadCarriage
+    if undergroundTrain.speed > 0 then
+        leadCarriage = undergroundTrain.front_stock
+    elseif undergroundTrain.speed < 0 then
+        leadCarriage = undergroundTrain.back_stock
+    else
+        error("Underground.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.")
+    end
     return Utils.ApplyOffsetToPosition(
+        leadCarriage.position,
         Utils.RotatePositionAround0(
-            undergroundTunnel.tunnel.alignmentOrientation,
-            {
-                x = undergroundTunnel.tunnelInstanceValue + 1,
-                y = 0
-            }
-        ),
-        Utils.RotatePositionAround0(
-            trainTravelOrientation,
+            leadCarriage.orientation,
             {
                 x = 0,
-                y = 0 - (distance - 1)
+                y = distance - 1
             }
         )
     )

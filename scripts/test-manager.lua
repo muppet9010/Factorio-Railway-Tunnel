@@ -19,22 +19,24 @@ local TestsToRun
 if DoTests then
     TestsToRun = {
         ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-        ShortTunnelShortTrainEastToWest = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west")},
-        ShortTunnelShortTrainNorthToSouth = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+        ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+        ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
         ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
         DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
         PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
         PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
         TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-        TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+        --TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
         PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
         InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        DoubleBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/double-blocked-exit-rail-segments-long-train")},
-        ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")}
+        PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = true, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")}
+        --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")}
     }
+else
+    TestsToRun = {}
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

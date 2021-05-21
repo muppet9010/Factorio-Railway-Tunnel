@@ -27,8 +27,8 @@ TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
 end
 
 TrainManagerFuncs.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
-    -- TODO: This should be dynmaic distance based on the rear carriage and the one we are placing.
-    local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4}))
+    -- TODO: This should be dynamic distance based on the rear carriage and the one we are placing.
+    local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4})) -- 3.5 for lastCarriage connection and joint distance halved + 0.5 for custom pushingLoco connection distance halved.
     local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
     pushingLocomotiveEntity.destructible = false
     return pushingLocomotiveEntity
@@ -48,14 +48,6 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
         placedCarriage.connect_rolling_stock(correctFrontOfTrain)
     end
     return placedCarriage
-end
-
-TrainManagerFuncs.SetTrainAbsoluteSpeed = function(train, speed)
-    if train.speed > 0 then
-        train.speed = speed
-    elseif train.speed < 0 then
-        train.speed = -1 * speed
-    end
 end
 
 TrainManagerFuncs.SetTrainToAuto = function(train, targetStop)
@@ -121,64 +113,17 @@ TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetS
     end
 end
 
-TrainManagerFuncs.CopyTrain = function(refTrain, targetSurface, trainTravelOrientation, refTrainFacingForwards, trainTravelDirection, firstCarriagePosition)
-    local nextCarriagePosition = firstCarriagePosition
-    local trainCarriagesOffset = Utils.RotatePositionAround0(trainTravelOrientation, {x = 0, y = 7})
-    local trainCarriagesForwardDirection = trainTravelDirection
-    if not refTrainFacingForwards then
-        trainCarriagesForwardDirection = Utils.LoopDirectionValue(trainCarriagesForwardDirection + 4)
-    end
-
-    local minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #refTrain.carriages, 1
-    if (refTrain.speed < 0) then
-        minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrain.carriages, 1, -1
-    end
-    local carriageIdToEntityList = {}
-    local placedCarriage = nil
-    for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
-        local carriageDirection = trainCarriagesForwardDirection
-        if refCarriage.speed ~= refTrain.speed then
-            carriageDirection = Utils.LoopDirectionValue(carriageDirection + 4)
-        end
-        local refCarriageGoingForwards = true
-        if refCarriage.speed < 0 then
-            refCarriageGoingForwards = false
-        end
-        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards)
-        carriageIdToEntityList[refCarriage.unit_number] = placedCarriage
-
-        nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
-    end
-
-    return placedCarriage.train, carriageIdToEntityList
-end
-
-TrainManagerFuncs.GetFutureCopiedTrainToUndergroundFirstWagonPosition = function(sourceTrain, tunnelAlignmentOrientation, tunnelInstanceValue, trainTravelOrientation, tunnelPortalEntranceDistanceFromCenter, aboveEntrancePortalEndSignalRailUnitNumber)
-    -- This is very specifc to our scenario, but is standalone code still.
-    local firstCarriageDistanceFromPortalEntrance = 0
-    for _, railEntity in pairs(sourceTrain.path.rails) do
-        -- This doesn't account for where on the current rail entity the carriage is, but should be accurate enough. Does cause up to half a carriage difference in train on both sides of a tunnel.
-        firstCarriageDistanceFromPortalEntrance = firstCarriageDistanceFromPortalEntrance + TrainManagerFuncs.GetRailEntityLength(railEntity)
-        if railEntity.unit_number == aboveEntrancePortalEndSignalRailUnitNumber then
-            break
-        end
-    end
-    local tunnelInitialPosition = Utils.RotatePositionAround0(tunnelAlignmentOrientation, {x = 1 + tunnelInstanceValue, y = 0})
-    local firstCarriageDistanceFromPortalCenter = Utils.RotatePositionAround0(trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEntrance + tunnelPortalEntranceDistanceFromCenter})
-    local firstCarriagePosition = Utils.ApplyOffsetToPosition(tunnelInitialPosition, firstCarriageDistanceFromPortalCenter)
-    return firstCarriagePosition
-end
-
 TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leavingTrainPushingLoco)
     -- Get the current rear carriage of the leaving train based on if a pushing loco was added. Handles train facing either direction (+/- speed) assuming the train is leaving the tunnel.
     local leavingTrainRearCarriage, leavingTrainRearCarriageIndex, leavingTrainRearCarriagePushingIndexMod
     if (leavingTrain.speed > 0) then
         leavingTrainRearCarriageIndex = #leavingTrain.carriages
         leavingTrainRearCarriagePushingIndexMod = -1
-    else
+    elseif (leavingTrain.speed < 0) then
         leavingTrainRearCarriageIndex = 1
         leavingTrainRearCarriagePushingIndexMod = 1
+    else
+        error("TrainManagerFuncs.GetRearCarriageOfLeavingTrain() doesn't support 0 speed")
     end
     if leavingTrainPushingLoco ~= nil then
         leavingTrainRearCarriageIndex = leavingTrainRearCarriageIndex + leavingTrainRearCarriagePushingIndexMod
@@ -190,11 +135,15 @@ end
 
 TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
     -- Get the next carraige to be placed from the underground train.
-    local currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
-    local nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
-    if (sourceTrain.speed < 0) then
+    local currentSourceTrainCarriageIndex, nextSourceTrainCarriageIndex
+    if (sourceTrain.speed > 0) then
+        currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
+        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
+    elseif (sourceTrain.speed < 0) then
         currentSourceTrainCarriageIndex = #sourceTrain.carriages - leavingTrainCarriagesPlaced
         nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
+    else
+        error("TrainManagerFuncs.GetCarriageToAddToLeavingTrain() doesn't support 0 speed sourceTrain")
     end
     local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
     return nextSourceCarriageEntity
@@ -209,32 +158,19 @@ TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fa
     leavingTrain.schedule = newSchedule
 end
 
-TrainManagerFuncs.GetTrackDistanceBetweenPortalExitSignalAndTargetSignal = function(sourceTrain, exitPortalSignal, targetSignal)
-    local targetRails = targetSignal.get_connected_rails() -- the stopping signal can be on multiple rails at once, however, only 1 will be in our path list.
+TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignal = function(sourceTrain, targetSignalEntity)
+    -- This doesn't account for where on the current rail entity the carriage is, but should be accurate enough. Does cause up to half a carriage difference in train on both sides of a tunnel.
+
+    local targetRails = targetSignalEntity.get_connected_rails() -- the stopping signal can be on multiple rails at once, however, only 1 will be in our path list.
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
-    -- Measure the distance from the end portal signal to the target signal. Ignores trains exact position and just deals with the tracks.
+    -- Measure the distance from the train to the target signal. Ignores trains exact position and just deals with the tracks.
     local distance = 0
-    local portalSignalEntityRail = exitPortalSignal.get_connected_rails()[1] -- Only ever 1 rail as inside portal.
-    local portalSignalRailReached, lastRail = false, nil
-    for _, railEntity in pairs(sourceTrain.get_rails()) do
-        if not portalSignalRailReached and railEntity.unit_number == portalSignalEntityRail.unit_number then
-            portalSignalRailReached = true
-        elseif portalSignalRailReached then
-            distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity)
-            lastRail = railEntity
-        end
-    end
     for _, railEntity in pairs(sourceTrain.path.rails) do
-        if lastRail ~= nil and railEntity.unit_number == lastRail.unit_number then
-            -- Rail already counted as under the train.
-            lastRail = nil
-        else
-            distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity)
-            if targetRailUnitNumberAsKeys[railEntity.unit_number] then
-                -- One of the rails attached to the signal has been reached in the path.
-                break
-            end
+        distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity)
+        if targetRailUnitNumberAsKeys[railEntity.unit_number] then
+            -- One of the rails attached to the signal has been reached in the path.
+            break
         end
     end
 
@@ -245,7 +181,7 @@ TrainManagerFuncs.GetRailEntityLength = function(railEntity)
     if railEntity.type == "straight-rail" then
         return 2
     elseif railEntity.type == "curved-rail" then
-        return 7.842081225095 -- According to rail segment length.
+        return 7.842081225095 -- According to rail segment length. Weridly this exact length vs "7" caused some trains to report their facings backwards, causing speed applying issues...
     else
         error("not valid rail type: " .. railEntity.type)
     end
