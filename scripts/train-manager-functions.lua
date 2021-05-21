@@ -27,9 +27,9 @@ TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
 end
 
 TrainManagerFuncs.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
-    -- TODO: This should be dynamic distance based on the rear carriage and the one we are placing.
-    local pushingLocoPlacementPosition = Utils.ApplyOffsetToPosition(lastCarriage.position, Utils.RotatePositionAround0(trainOrientation, {x = 0, y = 4})) -- 3.5 for lastCarriage connection and joint distance halved + 0.5 for custom pushingLoco connection distance halved.
-    local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = "railway_tunnel-tunnel_portal_pushing_locomotive", position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
+    local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
+    local pushingLocoPlacementPosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainOrientation, lastCarriage, pushingLocoEntityName)
+    local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = pushingLocoEntityName, position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
     pushingLocomotiveEntity.destructible = false
     return pushingLocomotiveEntity
 end
@@ -181,7 +181,7 @@ TrainManagerFuncs.GetRailEntityLength = function(railEntity)
     if railEntity.type == "straight-rail" then
         return 2
     elseif railEntity.type == "curved-rail" then
-        return 7.842081225095 -- According to rail segment length. Weridly this exact length vs "7" caused some trains to report their facings backwards, causing speed applying issues...
+        return 7.842081225095
     else
         error("not valid rail type: " .. railEntity.type)
     end
@@ -196,6 +196,21 @@ TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(underg
             }
         }
     }
+end
+
+TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)
+    local carriagesDistance = TrainManagerFuncs.GetCarriagePlacementDistance(lastCarriageEntity.name) + TrainManagerFuncs.GetCarriagePlacementDistance(nextCarriageEntityName)
+    local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
+    return Utils.ApplyOffsetToPosition(lastCarriageEntity.position, nextCarriageOffset)
+end
+
+TrainManagerFuncs.GetCarriagePlacementDistance = function(carriageEntityName)
+    -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distane via API. Can hard code custom values in future if needed.
+    if carriageEntityName == "railway_tunnel-tunnel_portal_pushing_locomotive" then
+        return 0.5
+    else
+        return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
+    end
 end
 
 return TrainManagerFuncs

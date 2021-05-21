@@ -208,6 +208,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
             end
             if #enteringTrain.locomotives[reverseLocoListName] == 0 then
                 --TODO: front/rear stock needs to be worked out. The orientation needs to be from the train and tunnel travel direction as there are unknwon carriage count with unknown direction each.
+                error("catch if TODO reached")
                 enteringTrainReversePushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(enteringTrain.front_stock, enteringTrain.front_stock.orientation + 0.5)
                 enteringTrain = trainManagerEntry.enteringTrain -- Update as the reference will have been broken.
             end
@@ -597,8 +598,7 @@ TrainManager.AddCarraigeToLeavingTrain = function(trainManagerEntry, nextSourceC
     end
 
     local aboveTrainOldCarriageCount = #leavingTrainRearCarriage.train.carriages
-    -- TODO: puting the carriage the exact distance behind the lead carriage may make more sense rather than relying on the relationship between the underground and leaving train always being exactly right.
-    local nextCarriagePosition = Utils.ApplyOffsetToPosition(nextSourceCarriageEntity.position, trainManagerEntry.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
+    local nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainManagerEntry.trainTravelOrientation, leavingTrainRearCarriage, nextSourceCarriageEntity.name)
     local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
     if placedCarriage == nil then
         error("Failed placing carriage at rear of leaving train.")
@@ -683,8 +683,6 @@ end
 
 TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCarriagePosition)
     local nextCarriagePosition, refTrain, targetSurface = firstCarriagePosition, trainManagerEntry.enteringTrain, trainManagerEntry.tunnel.undergroundTunnel.undergroundSurface.surface
-    -- TODO: handle gap between carriages dynamically.
-    local trainCarriagesOffset = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 7})
     local trainCarriagesForwardDirection = trainManagerEntry.trainTravelDirection
     if not trainManagerEntry.enteringTrainFowards then
         trainCarriagesForwardDirection = Utils.LoopDirectionValue(trainCarriagesForwardDirection + 4)
@@ -706,6 +704,7 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
         if refCarriage.speed ~= refTrain.speed then
             carriageDirection = Utils.LoopDirectionValue(carriageDirection + 4)
         end
+
         local refCarriageGoingForwards
         if refCarriage.speed > 0 then
             refCarriageGoingForwards = true
@@ -714,10 +713,14 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
         else
             error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refCarriage")
         end
+
+        if currentSourceTrainCarriageIndex ~= minCarriageIndex then
+            -- The first carriage in the train doesn't need incrementing.
+            nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainManagerEntry.trainTravelOrientation, placedCarriage, refCarriage.name)
+        end
+
         placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards)
         trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[refCarriage.unit_number] = placedCarriage
-
-        nextCarriagePosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, trainCarriagesOffset)
     end
 
     trainManagerEntry.undergroundTrain = placedCarriage.train

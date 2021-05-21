@@ -42,7 +42,6 @@ NICE TO HAVE:
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Proper Graphics: icons, ingame entities, placement entities.
     - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing, but can be driven over.
-    - We assume all train carriages are 7 tiles apart, currently can't check their prototype so have a list lookup for now.
     - When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carriages, fuel, cargo items, equipment grids.
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach?
     - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels.

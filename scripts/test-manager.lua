@@ -13,6 +13,7 @@ local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
 local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 local DoDemoInsteadOfTests = false -- Does the demo rather than any enabled tests if TRUE.
+local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking.
 
 -- Add any new tests in to the table and set enable true/false as desired.
 local TestsToRun
@@ -66,6 +67,7 @@ TestManager.CreateGlobals = function()
     global.testManager.testData = global.testManager.testData or {} -- Used by tests to store their local data. Key'd by testName.
     global.testManager.testsToRun = global.testManager.testsToRun or {} -- Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests
+    global.testManager.keepRunningTest = KeepRunningTest
 end
 
 TestManager.OnLoad = function()

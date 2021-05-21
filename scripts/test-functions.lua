@@ -47,7 +47,9 @@ TestFunctions.TestCompleted = function(testName)
         testManagerData.success = true
     end
     EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
-    EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests")
+    if not global.testManager.keepRunningTest then
+        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests")
+    end
 end
 
 -- Fail the current test. arguments: the test name, the text reason that is shown on screen.
