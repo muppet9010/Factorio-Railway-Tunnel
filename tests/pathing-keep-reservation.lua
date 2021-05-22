@@ -21,7 +21,7 @@ Test.Start = function(testName)
     local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
 
     local stationTarget
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "Target" then
             stationTarget = stationEntity
         end

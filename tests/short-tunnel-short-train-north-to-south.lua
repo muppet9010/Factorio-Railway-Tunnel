@@ -18,7 +18,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then

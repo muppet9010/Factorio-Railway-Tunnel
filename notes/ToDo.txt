@@ -20,7 +20,7 @@ Soon:
         - Player changes a committed entering trains order?
     - Test with train set to go to rail tile on other side of tunnel, not station. Don't believe it will work.
     - Player can rotate (R) a portal entity after placed and this breaks our inner logic. No reason for this to be possible, so try to just block it.
-    - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't tracked and so are never removed (disabled logic state).
+    - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities).
 
 Later:
     - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.
@@ -34,6 +34,7 @@ Later:
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
     - Check entering artillery trains stopped going in to the tunnel when the head has stopped coming out (signal). In vanialla an arty train not stopped at station or in manual won't fire.
     - Add tests for all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains and when the carraiges, portals and tunnels are destroyed.
+    - Look at merging the trainId tracking lists in to a single list with attributes for the "type". Low priority and just to make code neater: global.trainManager.enteringTrainIdToManagedTrain, global.trainManager.leavingTrainIdToManagedTrain, global.trainManager.trainLeftTunnelTrainIdToManagedTrain.
 
 NICE TO HAVE:
     - Look at TSM and LTN compatibility requirement or block them.

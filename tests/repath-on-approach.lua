@@ -20,7 +20,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name. There are 2 stations with the same name "Repathed-End" that are sorted by relative map position.
     local stationRepaths, stationRepathEndViaTunnel, stationRepathEndNotTunnel, stationLoopEnd = {}
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "Repathed-End" then
             table.insert(stationRepaths, stationEntity)
         elseif stationEntity.backer_name == "Loop-2" then
@@ -37,7 +37,7 @@ Test.Start = function(testName)
 
     -- Get the trains - Repath train is most east in BP - Loop train is most west in BP.
     local eastMostLoco, eastMostLocoXPos, westMostLoco, westMostLocoXPos = nil, -100000, nil, 100000
-    for _, locoEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "locomotive")) do
+    for _, locoEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", true, false)) do
         if locoEntity.position.x > eastMostLocoXPos then
             eastMostLoco = locoEntity
             eastMostLocoXPos = locoEntity.position.x

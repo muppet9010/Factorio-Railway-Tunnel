@@ -24,7 +24,7 @@ Test.Start = function(testName)
 
     -- Get the trains/wagons. The blocking wagons are the single carriage trains sorted south to north.
     local movingTrain, blockingWagons = nil, {}
-    local wagonEntities = Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "cargo-wagon")
+    local wagonEntities = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "cargo-wagon", true, false)
     for _, wagonEntity in pairs(wagonEntities) do
         if #wagonEntity.train.carriages == 1 then
             table.insert(blockingWagons, wagonEntity)
@@ -41,7 +41,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then

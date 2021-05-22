@@ -26,7 +26,7 @@ Test.Start = function(testName)
 
     -- Get the trains - Tunnel train is most north in BP - Other train is most south in BP.
     local northMostLoco, northMostLocoYPos, southMostLoco, southMostLocoYPos = nil, 100000, nil, -100000
-    for _, locoEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "locomotive")) do
+    for _, locoEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", true, false)) do
         if locoEntity.position.y < northMostLocoYPos then
             northMostLoco = locoEntity
             northMostLocoYPos = locoEntity.position.y
@@ -39,7 +39,7 @@ Test.Start = function(testName)
     local tunnelTrain, otherTrain = northMostLoco.train, southMostLoco.train
 
     local stationEnd, otherStationStart
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Bottom Start" then

@@ -72,7 +72,7 @@ TrainManager.CreateGlobals = function()
             enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train. Currently used for tracking players riding in a train when it enters.
         }
     ]]
-    -- Used to track trainIds to managedTrainEntries. When the trainId is detected as changing via event the global object is updated to stay up to date. -- TODO: make in to a single list with attributes for the "type". Low priority and just to make code neater.
+    -- Used to track trainIds to managedTrainEntries. When the trainId is detected as changing via event the global object is updated to stay up to date.
     global.trainManager.enteringTrainIdToManagedTrain = global.trainManager.enteringTrainIdToManagedTrain or {}
     global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {}
     global.trainManager.trainLeftTunnelTrainIdToManagedTrain = global.trainManager.trainLeftTunnelTrainIdToManagedTrain or {}
@@ -809,6 +809,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
 
     newTrainManagerEntry.undergroundTrainState = oldTrainManagerEntry.undergroundTrainState
     newTrainManagerEntry.undergroundTrain = oldTrainManagerEntry.undergroundTrain
+    newTrainManagerEntry.undergroundTrainForwards = not oldTrainManagerEntry.undergroundTrainForwards
 
     --dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive -- TODO: will need generating in some cases.
     newTrainManagerEntry.trainTravelDirection = Utils.LoopDirectionValue(oldTrainManagerEntry.trainTravelDirection + 4)

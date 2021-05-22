@@ -21,7 +21,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local stationWest, stationEast
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "West" then
             stationWest = stationEntity
         elseif stationEntity.backer_name == "East" then
@@ -31,7 +31,7 @@ Test.Start = function(testName)
 
     -- Get the trains. The trains have 1 loco ach and then 1-4 carriages in variable order below.
     local trainHeadingEast1, trainHeadingEast2, trainHeadingWest1, trainHeadingWest2
-    local locos = Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "locomotive")
+    local locos = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", true, false)
     for _, loco in pairs(locos) do
         if #loco.train.carriages == 2 then
             trainHeadingEast1 = loco.train

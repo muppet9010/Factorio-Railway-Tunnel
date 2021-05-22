@@ -10,7 +10,7 @@ local AllTests = false -- Does all the tests regardless of their enabled state b
 
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
-local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next.
+local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 local DoDemoInsteadOfTests = false -- Does the demo rather than any enabled tests if TRUE.
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking.

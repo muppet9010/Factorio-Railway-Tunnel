@@ -283,9 +283,9 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         fuelProxy.destroy()
     end
 
-    -- TODO: maybe get the trains from the placedEntities would be future proof safer.
-    for _, train in pairs(testSurface.get_trains()) do
-        train.manual_mode = false
+    local placedCarriages = Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}, true, true)
+    for _, carriage in pairs(placedCarriages) do
+        carriage.train.manual_mode = false
     end
 
     return placedEntities

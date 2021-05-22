@@ -334,7 +334,7 @@ Test.Start = function(testName)
 
     -- Get the stations from the blueprint
     local stationEnd, stationStart
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop"), true, false) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Start" then
@@ -344,7 +344,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local enteringPortal, enteringPortalXPos, leavingPortal, leavingPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed")) do
+    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed"), true, false) do
         if portalEntity.position.x > enteringPortalXPos then
             enteringPortal = portalEntity
             enteringPortalXPos = portalEntity.position.x

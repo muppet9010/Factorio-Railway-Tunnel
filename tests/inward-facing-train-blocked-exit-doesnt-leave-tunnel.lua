@@ -20,7 +20,7 @@ Test.Start = function(testName)
 
     -- Get the trains/wagons
     local blockingWagon, movingTrain
-    local wagons = Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "cargo-wagon")
+    local wagons = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "cargo-wagon", true, false)
     for _, wagon in pairs(wagons) do
         if #wagon.train.carriages == 1 then
             blockingWagon = wagon
@@ -31,7 +31,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntity in pairs(Utils.GetTableValuesWithInnerKeyValue(builtEntities, "name", "train-stop")) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then

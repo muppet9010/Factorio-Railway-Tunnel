@@ -628,96 +628,78 @@ Utils.FormatSurfacePositionTableToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
 end
 
-Utils.GetTableKeyWithValue = function(theTable, value)
-    for k, v in pairs(theTable) do
-        if v == value then
-            return k
-        end
-    end
-    return nil
-end
-
-Utils.GetTableKeysWithValue = function(theTable, value)
+Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true).
+    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local keysFound = {}
     for k, v in pairs(theTable) do
-        if v == value then
-            table.insert(keysFound, k)
+        if not isValueAList then
+            if v == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
+        else
+            if v == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
         end
     end
-    if #keysFound > 0 then
-        return keysFound
-    else
-        return nil
-    end
+    return keysFound
 end
 
-Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value)
-    for i, innerTable in pairs(theTable) do
-        if innerTable[key] ~= nil and innerTable[key] == value then
-            return i
-        end
-    end
-    return nil
-end
-
-Utils.GetTableKeysWithInnerKeyValue = function(theTable, key, value)
+Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local keysFound = {}
-    for i, innerTable in pairs(theTable) do
-        if innerTable[key] ~= nil and innerTable[key] == value then
-            table.insert(keysFound, i)
+    for k, innerTable in pairs(theTable) do
+        if not isValueAList then
+            if innerTable[key] ~= nil and innerTable[key] == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
+        else
+            if innerTable[key] ~= nil and innerTable[key] == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
         end
     end
-    if #keysFound > 0 then
-        return keysFound
-    else
-        return nil
-    end
+    return keysFound
 end
 
-Utils.GetTableValueWithValue = function(theTable, value)
-    for k, v in pairs(theTable) do
-        if v == value then
-            return v
-        end
-    end
-    return nil
-end
-
-Utils.GetTableValuesWithValue = function(theTable, value)
+Utils.GetTableValueWithInnerKeyValue = function(theTable, key, value, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local valuesFound = {}
-    for k, v in pairs(theTable) do
-        if v == value then
-            table.insert(valuesFound, v)
+    for _, innerTable in pairs(theTable) do
+        if not isValueAList then
+            if innerTable[key] ~= nil and innerTable[key] == value then
+                if not returnMultipleResults then
+                    return innerTable
+                end
+                table.insert(valuesFound, innerTable)
+            end
+        else
+            for _, valueInList in pairs(value) do
+                if innerTable[key] ~= nil and innerTable[key] == valueInList then
+                    if not returnMultipleResults then
+                        return innerTable
+                    end
+                    table.insert(valuesFound, innerTable)
+                end
+            end
         end
     end
-    if #valuesFound > 0 then
-        return valuesFound
-    else
-        return nil
-    end
-end
-
-Utils.GetTableValueWithInnerKeyValue = function(theTable, key, value)
-    for i, innerTable in pairs(theTable) do
-        if innerTable[key] ~= nil and innerTable[key] == value then
-            return innerTable
-        end
-    end
-    return nil
-end
-
-Utils.GetTableValuesWithInnerKeyValue = function(theTable, key, value)
-    local valuesFound = {}
-    for i, innerTable in pairs(theTable) do
-        if innerTable[key] ~= nil and innerTable[key] == value then
-            table.insert(valuesFound, innerTable)
-        end
-    end
-    if #valuesFound > 0 then
-        return valuesFound
-    else
-        return nil
-    end
+    return valuesFound
 end
 
 Utils.TableValuesToKey = function(tableWithValues)
@@ -1349,7 +1331,7 @@ Utils.DoesRecipeResultsIncludeItemName = function(recipePrototype, itemName)
         if recipeBase ~= nil then
             if recipeBase.result ~= nil and recipeBase.result == itemName then
                 return true
-            elseif recipeBase.results ~= nil and Utils.GetTableKeyWithInnerKeyValue(recipeBase.results, "name", itemName) ~= nil then
+            elseif recipeBase.results ~= nil and #Utils.GetTableKeyWithInnerKeyValue(recipeBase.results, "name", itemName) > 0 then
                 return true
             end
         end
