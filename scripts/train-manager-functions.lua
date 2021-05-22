@@ -213,4 +213,31 @@ TrainManagerFuncs.GetCarriagePlacementDistance = function(carriageEntityName)
     end
 end
 
+TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
+    -- Applies the target distance to the train's leading carriage for the train direction.
+    local leadCarriage, undergroundTrainOrientation
+    if undergroundTrain.speed > 0 then
+        leadCarriage = undergroundTrain.front_stock
+    elseif undergroundTrain.speed < 0 then
+        leadCarriage = undergroundTrain.back_stock
+    else
+        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.")
+    end
+    if undergroundTrain.speed == leadCarriage.speed then
+        undergroundTrainOrientation = leadCarriage.orientation
+    else
+        undergroundTrainOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+    end
+    return Utils.ApplyOffsetToPosition(
+        leadCarriage.position,
+        Utils.RotatePositionAround0(
+            undergroundTrainOrientation,
+            {
+                x = 0,
+                y = 0 - (distance - 1) -- TODO: this -1 seems an odd bodge? As 1 rail piece would be 2 tiles.
+            }
+        )
+    )
+end
+
 return TrainManagerFuncs

@@ -43,7 +43,6 @@ Underground.OnLoad = function()
     Interfaces.RegisterInterface("Underground.CreateUndergroundTunnel", Underground.CreateUndergroundTunnel)
     Interfaces.RegisterInterface("Underground.SetUndergroundExitSignalState", Underground.SetUndergroundExitSignalState)
     Interfaces.RegisterInterface("Underground.GetForwardsEndOfRailPosition", Underground.GetForwardsEndOfRailPosition)
-    Interfaces.RegisterInterface("Underground.GetForwardPositionFromCurrentForDistance", Underground.GetForwardPositionFromCurrentForDistance)
 end
 
 Underground.OnStartup = function()
@@ -194,28 +193,6 @@ Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTrav
             {
                 x = 0,
                 y = 0 - (undergroundTunnel.undergroundLeadInTiles - 1)
-            }
-        )
-    )
-end
-
-Underground.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
-    -- Applies the target distance to the undergroundTrains' leading carriage.
-    local leadCarriage
-    if undergroundTrain.speed > 0 then
-        leadCarriage = undergroundTrain.front_stock
-    elseif undergroundTrain.speed < 0 then
-        leadCarriage = undergroundTrain.back_stock
-    else
-        error("Underground.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.")
-    end
-    return Utils.ApplyOffsetToPosition(
-        leadCarriage.position,
-        Utils.RotatePositionAround0(
-            leadCarriage.orientation,
-            {
-                x = 0,
-                y = distance - 1
             }
         )
     )

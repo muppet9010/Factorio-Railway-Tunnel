@@ -61,8 +61,8 @@ Test.Start = function(testName)
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
     TestFunctions.ScheduleTestsOnceEvent(game.tick + 400, testName, "DestroyNextBlockingWagon", testName)
-    TestFunctions.ScheduleTestsOnceEvent(game.tick + 800, testName, "DestroyNextBlockingWagon", testName) -- should be 600, but needs 800 due to stopping point TODO and train slowdown it causes.
-    TestFunctions.ScheduleTestsOnceEvent(game.tick + 1100, testName, "DestroyNextBlockingWagon", testName) -- Needs 300 from second stop as trian fully out of tunnel so behaves itself.
+    TestFunctions.ScheduleTestsOnceEvent(game.tick + 600, testName, "DestroyNextBlockingWagon", testName)
+    TestFunctions.ScheduleTestsOnceEvent(game.tick + 800, testName, "DestroyNextBlockingWagon", testName)
 end
 
 Test.Stop = function(testName)

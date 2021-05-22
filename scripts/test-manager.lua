@@ -28,12 +28,12 @@ if DoTests then
         PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
         PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
         TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-        --TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+        TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
         PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
         InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
         InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
         InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = true, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")}
+        PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")}
         --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")}
     }
 else
