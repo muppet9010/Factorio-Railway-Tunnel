@@ -1,16 +1,8 @@
-Run all tests after recent changes. TunnelInUseWaitingTrains broken until underground speed changes finished due to the signals after the tunnel portal exits.
-
-Need to test the arrive at signal and station when still in tunnel to make sure it doesn't overshoot. Distance for curves matters a lot and may mean the final bit has to be done with leaving train setting speed ?
-
-Watch train leaving state and if arrive at signal or station then mirror target position to underground train so it brakes accordingly. If it goes back on the path then set underground target as end of line.
-
 Next:
-    - A train leaving the underground is only checked for the portal leaving signal and then shoved out. For longer trains this will push them through subsequent non open signals. Part of the underground train should set train speed with leavingTrain just checking rail signals. This needs to handle train signals unrelated to the tunnel portals.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Needs to support a train being able to reverse while in the tunnel back out. The train should retain its station reservation if it can path to its target, as this is what happens to a double ended train in the a regular track segment if there is an alternatitve route to target. Only if the train can't reach the target at all does it pull to the end of the portal and then it can sit and no path. Automated test types:
         - Train types (heading west): <, <>, <-->, <>----, ----<>
         - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
     - Sync Utils to repo from this mod.
-    - Add checks for if an existing train moves position when we add/remove a carriage from it. This is likely a bug our side?
 
 Soon:
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.

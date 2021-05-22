@@ -22,7 +22,7 @@ if DoTests then
         ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
         ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
         ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
-        ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
+        ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = true, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
         repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
         DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
         PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},

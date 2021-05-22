@@ -380,7 +380,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
         if trainManagerEntry.leavingTrainStoppingSignal == nil then
             -- The above ground and underground trains will never be exactly relational to one another as they change speed each tick differently before they are re-aligned. So the underground train should be targetted as an offset from its current location and when the above train is very near the target signal the above train can take over setting speed to manage the final pulling up.
             trainManagerEntry.leavingTrainStoppingSignal = trainManagerEntry.leavingTrain.signal
-            local exactDistanceFromTrainToTargetSignal = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignal(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain.signal)
+            local exactDistanceFromTrainToTargetSignal = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain.signal, trainManagerEntry.leavingTrainForwards)
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTargetSignal)
             TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainTargetPosition)
             trainManagerEntry.undergroundTrainSetsSpeed = true
@@ -710,13 +710,15 @@ TrainManager.CreateUndergroundTrainObject = function(trainManagerEntry)
 end
 
 TrainManager.GetUndergroundFirstWagonPosition = function(trainManagerEntry)
-    -- Work out the distance in rail tracks between the train and the portal's end signal. This accounts for curves and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignal = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignal(trainManagerEntry.enteringTrain, trainManagerEntry.aboveEntrancePortalEndSignal.entity)
+    -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
+    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail(trainManagerEntry.enteringTrain, trainManagerEntry.aboveEntrancePortalEndSignal.entity, trainManagerEntry.enteringTrainForwards)
 
-    -- Apply the straight line distance to the above portal (plus account for rail signal vs track side alignment) and then get the underground position for this spot.
-    local firstCarriageOffsetFromEndSignal = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignal})
-    local signalOffsetFromRail = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = -1.5, y = 0}) -- The Y isn't quite perfect in some tunnel and train orientations, but its 0.5 tiles or less and seems to vary in every combination.
-    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(Utils.ApplyOffsetToPosition(trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, firstCarriageOffsetFromEndSignal), signalOffsetFromRail)
+    -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
+    local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})
+    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.aboveEntrancePortalEndSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
+    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromEndSignalsRail)
+
+    -- Get the underground position for this above ground spot.
     local firstCarriageUndergroundPosition = Utils.ApplyOffsetToPosition(firstCarriageAbovegroundPosition, trainManagerEntry.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
     return firstCarriageUndergroundPosition
 end
@@ -737,7 +739,7 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
         error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain")
     end
     trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity = {}
-    local placedCarriage = nil
+    local placedCarriage
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrain.carriages[currentSourceTrainCarriageIndex]
         local carriageDirection = trainCarriagesForwardDirection
