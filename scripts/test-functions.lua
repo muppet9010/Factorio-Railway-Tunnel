@@ -129,6 +129,7 @@ end
 TestFunctions.GetSnapshotOfTrain = function(train)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
+    -- Any table values for comparing should be converted to JSON to make them simple to compare later.
     local snapshot = {
         carriageCount = #train.carriages,
         carriages = {}
@@ -147,25 +148,44 @@ TestFunctions.GetSnapshotOfTrain = function(train)
             snapCarriage.facingForwards = not previousCarriageFacingFowards
         end
 
-        if realCarriage.type == "cargo-wagon" or realCarriage.type == "fluid-wagon" then
+        if realCarriage.type ~= "locomotive" then
+            -- Exclude locomotives as we don't want to track their fuel amounts, as they'll be used as the train moves.
             snapCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
         end
         table.insert(snapshot.carriages, snapCarriage)
+
+        if realCarriage.color ~= nil then
+            snapCarriage.color = game.table_to_json(realCarriage.color)
+        end
 
         previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapCarriage.facingForwards
     end
     return snapshot
 end
 
--- Compares 2 train snapshots to see if they are the same train structure.
-TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSnapshot)
+-- Compares 2 train snapshots to see if they are the same train structure. If Optional "allowPartialCurrentSnapshot" argument is true then the current snapshot can be one end of the origonal train.
+TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSnapshot, allowPartialCurrentSnapshot)
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
+    allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
 
-    if origionalSnapshot.carriageCount ~= currentSnapshot.carriageCount then
+    local wagonsToIgnore = {["railway_tunnel-tunnel_portal_pushing_locomotive"] = "railway_tunnel-tunnel_portal_pushing_locomotive"}
+
+    -- If dummy /pushing locos are allowed then check the train ends and remove them if found, so they don't trigger a fail in comparison. Don't remove any from within the train as they shouldn't be there.
+    if allowPartialCurrentSnapshot then
+        for _, currentCarriageCount in pairs({1, currentSnapshot.carriageCount}) do
+            if wagonsToIgnore[currentSnapshot.carriages[currentCarriageCount].name] ~= nil then
+                table.remove(currentSnapshot.carriages, currentCarriageCount)
+                currentSnapshot.carriageCount = currentSnapshot.carriageCount - 1
+            end
+        end
+    end
+
+    -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
+    if not allowPartialCurrentSnapshot and origionalSnapshot.carriageCount ~= currentSnapshot.carriageCount then
         return false
     end
 
-    -- Check the 2 trains starting in the same order and facingForwards as this is most likely sceanrio (perfect copy). Then check combinations of  reversed facingForwards and iterate the carraige list backwards.
+    -- Check the 2 trains starting in the same order and facingForwards as this is most likely scenario (perfect copy). Then check combinations of facing backwards and iterate the carriage list backwards.
     for _, reverseFacingFowards in pairs({false, true}) do
         for _, currentCarriageIteratorFunc in pairs(
             {
@@ -178,8 +198,8 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
             }
         ) do
             local difference
-            for carriageNumber = 1, origionalSnapshot.carriageCount do
-                local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #origionalSnapshot.carriages)
+            for carriageNumber = 1, currentSnapshot.carriageCount do
+                local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #currentSnapshot.carriages)
                 difference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshot.carriages[currentCarriageCount], reverseFacingFowards)
                 if difference then
                     break
@@ -195,11 +215,11 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
     return false
 end
 
--- Builds a given blueprint string centered on the given position and returns a list of all build entities. Also starts any placed trains (set to automatic mode).
+-- Builds a given blueprint string centered on the given position and returns a list of all build entities. Also starts any placed trains (set to automatic mode). To aid train comparison locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
     -- Utility function to build a blueprint from a string on the test surface.
     -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
-    -- Returns the list of directly placed entities. Any script reaction to entities being revived will lead to invalid entity references in the returned result.
+    -- Returns the list of directly placed entities and scripted player interactable tunnel entities. Any other script reaction to entities being revived will lead to invalid entity references in the returned result.
     local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]
     local itemStack = player.cursor_stack
@@ -224,9 +244,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
     end
     itemStack.clear()
 
-    local pass2Ghosts = {}
-    local fuelProxies = {}
-    local placedEntities = {}
+    local pass2Ghosts, fuelProxies, placedEntities = {}, {}, {}
 
     for _, ghost in pairs(ghosts) do
         -- Special cases where the placed entity will be removed by other scripts.
@@ -283,9 +301,22 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         fuelProxy.destroy()
     end
 
-    local placedCarriages = Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}, true, true)
-    for _, carriage in pairs(placedCarriages) do
+    local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "locomotive", true, false)) do
         carriage.train.manual_mode = false
+        carriage.color = {math.random(0, 255), math.random(0, 255), math.random(0, 255), 1}
+    end
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "cargo-wagon", true, false)) do
+        cargoWagonCount = cargoWagonCount + 1
+        carriage.insert({name = "iron-plate", count = cargoWagonCount})
+    end
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "fluid-wagon", true, false)) do
+        fluidWagonCount = fluidWagonCount + 1
+        carriage.insert({name = "water", count = fluidWagonCount})
+    end
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "artillery-wagon", true, false)) do
+        artilleryWagonCount = artilleryWagonCount + 1
+        carriage.insert({name = "artillery-shell", count = artilleryWagonCount})
     end
 
     return placedEntities
@@ -304,8 +335,13 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 TestFunctions._CarriageSnapshotsMatch = function(carriage1, carriage2, reverseFacingForwardsCarriage2)
-    for _, attribute in pairs({"name", "health", "facingForwards", "cargoInventory"}) do
-        if reverseFacingForwardsCarriage2 and attribute == "facingForwards" then
+    if carriage1 == nil then
+        return "carriage1 is nil"
+    elseif carriage2 == nil then
+        return "carriage2 is nil"
+    end
+    for _, attribute in pairs({"name", "health", "facingForwards", "cargoInventory", "color"}) do
+        if attribute == "facingForwards" and reverseFacingForwardsCarriage2 then
             -- Reverse the expected attribute value and so if they equal its really a difference.
             if carriage1[attribute] == carriage2[attribute] then
                 return attribute

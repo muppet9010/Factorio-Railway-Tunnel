@@ -50,6 +50,7 @@ TrainManager.CreateGlobals = function()
             leavingTrainCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
             leavingTrainPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
             leavingTrainStoppingSignal = the LuaSignal that the leaving train is currently stopping at beyond the portal, or nil.
+            leavingTrainStoppingStation = the LuaStation that the leaving train is currently stopping at beyond the portal, or nil.
 
             leftTrain = LuaTrain of the train thats left the tunnel.
             leftTrainId = The LuaTrain ID of the leftTrain.
@@ -358,49 +359,9 @@ end
 TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
     TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
 
-    -- TODO: need to handle arrive at station as well.
-
-    -- 1: If leaving train is now arriving at a signal other than the exiting signal on the portal, then check state in detail as we may need to update the underground train stop point.
-    -- 2: Once the leaving train is stopped at the non exit protal signal, clear out signal arriving state.
-    -- 3: Otherwise check for moving away states and if there was a preivous stopping state to be finished.
-    if trainManagerEntry.leavingTrain.state == defines.train_state.arrive_signal and trainManagerEntry.leavingTrain.signal.unit_number ~= trainManagerEntry.aboveExitPortalEntrySignalOut.entity.unit_number then
-        -- If a known stopping signal was set, make sure it still exists.
-        if trainManagerEntry.leavingTrainStoppingSignal ~= nil and not trainManagerEntry.leavingTrainStoppingSignal.valid then
-            trainManagerEntry.leavingTrainStoppingSignal = nil
-            trainManagerEntry.undergroundTrainSetsSpeed = true
-        end
-
-        -- Check the signal stopping at is the expected one, if not reset state to detect new signal.
-        if trainManagerEntry.leavingTrainStoppingSignal ~= nil and trainManagerEntry.leavingTrain.signal.unit_number ~= trainManagerEntry.leavingTrainStoppingSignal.unit_number then
-            trainManagerEntry.leavingTrainStoppingSignal = nil
-            trainManagerEntry.undergroundTrainSetsSpeed = true
-        end
-
-        -- 1: If there's no expected stopping signal then record state and update leaving and underground trains activities.
-        -- 2: Otherwise its the same signal as previously, so if the underground train is setting the speed need to check distance from signal and hand over control to leaving train if close.
-        if trainManagerEntry.leavingTrainStoppingSignal == nil then
-            -- The above ground and underground trains will never be exactly relational to one another as they change speed each tick differently before they are re-aligned. So the underground train should be targetted as an offset from its current location and when the above train is very near the target signal the above train can take over setting speed to manage the final pulling up.
-            trainManagerEntry.leavingTrainStoppingSignal = trainManagerEntry.leavingTrain.signal
-            local exactDistanceFromTrainToTargetSignal = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain.signal, trainManagerEntry.leavingTrainForwards)
-            local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTargetSignal)
-            TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainTargetPosition)
-            trainManagerEntry.undergroundTrainSetsSpeed = true
-        elseif trainManagerEntry.undergroundTrainSetsSpeed then
-            -- Is the same signal as last tick, so check if the leaving train is close to the signal and give it speed control if so.
-            local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrainForwards)
-            local leadCarriageDistanceFromStoppingSignal = Utils.GetDistance(leadCarriage.position, trainManagerEntry.leavingTrainStoppingSignal.position)
-            local leavingTrainCloseToSignalDistance = TrainManagerFuncs.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
-            if leadCarriageDistanceFromStoppingSignal < leavingTrainCloseToSignalDistance then
-                trainManagerEntry.undergroundTrainSetsSpeed = false
-            end
-        end
-    elseif trainManagerEntry.leavingTrainStoppingSignal ~= nil and trainManagerEntry.leavingTrain.state == defines.train_state.on_the_path then
-        -- If the train was stopped at a signal and now is back on the path, return to underground train setting speed and assume everything is back to normal.
-        trainManagerEntry.leavingTrainStoppingSignal = nil
-        trainManagerEntry.undergroundTrainSetsSpeed = true
-        local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", trainManagerEntry.tunnel.undergroundTunnel, trainManagerEntry.trainTravelOrientation)
-        TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainEndScheduleTargetPos)
-    end
+    -- Handle if the train is stopping at a signal or station. Updates trainManagerEntry.undergroundTrainSetsSpeed and the underground train path if required.
+    TrainManager.HandleLeavingTrainStoppingAtSignalStation(trainManagerEntry, "signal")
+    TrainManager.HandleLeavingTrainStoppingAtSignalStation(trainManagerEntry, "station")
 
     -- Get the desired speed for this tick.
     local desiredSpeed
@@ -447,6 +408,65 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
         TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, "leavingTrain", desiredSpeed)
     else
         TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, "undergroundTrain", desiredSpeed)
+    end
+end
+
+TrainManager.HandleLeavingTrainStoppingAtSignalStation = function(trainManagerEntry, arriveAtName)
+    -- Handles a train leaving a tunnel arriving at a station/signal based on input. Updated global state data that impacts TrainManager.TrainLeavingOngoing(): trainManagerEntry.undergroundTrainSetsSpeed and underground train path target. Is a black box to calling functions otherwise.
+
+    local trainStoppingEntityAttributeName, stoppingTargetEntityAttributeName, arriveAtReleventStoppingTarget
+    if arriveAtName == "signal" then
+        trainStoppingEntityAttributeName = "signal"
+        stoppingTargetEntityAttributeName = "leavingTrainStoppingSignal"
+        arriveAtReleventStoppingTarget = trainManagerEntry.leavingTrain.state == defines.train_state.arrive_signal and trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName].unit_number ~= trainManagerEntry.aboveExitPortalEntrySignalOut.entity.unit_number
+    elseif arriveAtName == "station" then
+        trainStoppingEntityAttributeName = "path_end_stop"
+        stoppingTargetEntityAttributeName = "leavingTrainStoppingStation"
+        arriveAtReleventStoppingTarget = trainManagerEntry.leavingTrain.state == defines.train_state.arrive_station
+    else
+        error("TrainManager.HandleLeavingTrainStoppingAtSignalStation() unsuported arriveAtName: " .. arriveAtName)
+    end
+
+    -- 1: If leaving train is now arriving at a relvent stopping target. Relevent target is either any station or a signal other than the entrance out signal on the current exit portal. If relevent then check state in detail as we may need to update the underground train stop point.
+    -- 2: Once the leaving train is stopped at a relevent stopping target, clear out stopping target arriving state.
+    -- 3: Otherwise check for moving away states and if there was a preivous stopping state to be finished.
+    if arriveAtReleventStoppingTarget then
+        -- If a known stopping target was set, make sure it still exists.
+        if trainManagerEntry[stoppingTargetEntityAttributeName] ~= nil and not trainManagerEntry[stoppingTargetEntityAttributeName].valid then
+            trainManagerEntry[stoppingTargetEntityAttributeName] = nil
+            trainManagerEntry.undergroundTrainSetsSpeed = true
+        end
+
+        -- Check the stopping target is the expected one, if not reset state to detect new stopping target.
+        if trainManagerEntry[stoppingTargetEntityAttributeName] ~= nil and trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName].unit_number ~= trainManagerEntry[stoppingTargetEntityAttributeName].unit_number then
+            trainManagerEntry[stoppingTargetEntityAttributeName] = nil
+            trainManagerEntry.undergroundTrainSetsSpeed = true
+        end
+
+        -- 1: If there's no expected stopping target then record state and update leaving and underground trains activities.
+        -- 2: Otherwise its the same stopping target as previously, so if the underground train is setting the speed need to check distance from stopping target and hand over control to leaving train if close.
+        if trainManagerEntry[stoppingTargetEntityAttributeName] == nil then
+            -- The above ground and underground trains will never be exactly relational to one another as they change speed each tick differently before they are re-aligned. So the underground train should be targetted as an offset from its current location and when the above train is very near the stopping target the above train can take over setting speed to manage the final pulling up.
+            trainManagerEntry[stoppingTargetEntityAttributeName] = trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName]
+            local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards)
+            local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTarget)
+            TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainTargetPosition)
+            trainManagerEntry.undergroundTrainSetsSpeed = true
+        elseif trainManagerEntry.undergroundTrainSetsSpeed then
+            -- Is the same stopping target as last tick, so check if the leaving train is close to the stopping target and give it speed control if so.
+            local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrainForwards)
+            local leadCarriageDistanceFromStoppingEntity = Utils.GetDistance(leadCarriage.position, trainManagerEntry[stoppingTargetEntityAttributeName].position)
+            local leavingTrainCloseToStoppingEntityDistance = TrainManagerFuncs.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
+            if leadCarriageDistanceFromStoppingEntity < leavingTrainCloseToStoppingEntityDistance then
+                trainManagerEntry.undergroundTrainSetsSpeed = false
+            end
+        end
+    elseif trainManagerEntry[stoppingTargetEntityAttributeName] ~= nil and trainManagerEntry.leavingTrain.state == defines.train_state.on_the_path then
+        -- If the train was stopped/stopping at a stopping target and now is back on the path, return to underground train setting speed and assume everything is back to normal.
+        trainManagerEntry[stoppingTargetEntityAttributeName] = nil
+        trainManagerEntry.undergroundTrainSetsSpeed = true
+        local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", trainManagerEntry.tunnel.undergroundTunnel, trainManagerEntry.trainTravelOrientation)
+        TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainEndScheduleTargetPos)
     end
 end
 
@@ -712,7 +732,7 @@ end
 
 TrainManager.GetUndergroundFirstWagonPosition = function(trainManagerEntry)
     -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail(trainManagerEntry.enteringTrain, trainManagerEntry.aboveEntrancePortalEndSignal.entity, trainManagerEntry.enteringTrainForwards)
+    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail(trainManagerEntry.enteringTrain, trainManagerEntry.aboveEntrancePortalEndSignal.entity, trainManagerEntry.enteringTrainForwards)
 
     -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
     local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})

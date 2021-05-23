@@ -158,18 +158,25 @@ TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fa
     leavingTrain.schedule = newSchedule
 end
 
-TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail = function(train, targetSignalEntity, trainGoingForwards)
-    -- This measures to the nearest edge of the target rail, so doesn't include any of the target rails length.
+TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail = function(train, targetEntity, trainGoingForwards)
+    -- This measures to the nearest edge of the target's rail, so doesn't include any of the target's rail's length.
 
-    local targetRails = targetSignalEntity.get_connected_rails() -- the stopping signal can be on multiple rails at once, however, only 1 will be in our path list.
+    local targetRails
+    if targetEntity.type == "train-stop" then
+        targetRails = {targetEntity.connected_rail} -- A station as the stopping target can only be on 1 rail at a time.
+    elseif targetEntity.type == "rail-signal" or targetEntity.type == "rail-chain-signal" then
+        targetRails = targetEntity.get_connected_rails() -- A signal as the stopping target can be on multiple rails at once, however, only 1 will be in our path list.
+    else
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail() doesn't support targetEntity type: " .. targetEntity.type)
+    end
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
-    -- Measure the distance from the train to the target signal. Ignores trains exact position and just deals with the tracks. The first rail isn't included here as we get the remaining part of the rail's distance later in function.
+    -- Measure the distance from the train to the target entity. Ignores trains exact position and just deals with the tracks. The first rail isn't included here as we get the remaining part of the rail's distance later in function.
     local distance = 0
     for i, railEntity in pairs(train.path.rails) do
         if i > 1 then
             if targetRailUnitNumberAsKeys[railEntity.unit_number] then
-                -- One of the rails attached to the signal has been reached in the path, so stop before we count it.
+                -- One of the rails attached to the target entity has been reached in the path, so stop before we count it.
                 break
             end
             distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity.type)
@@ -184,7 +191,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail = function(tr
     elseif leadCarriage.speed < 0 then
         leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
     else
-        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail() doesn't support 0 speed train")
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail() doesn't support 0 speed train")
     end
     local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
     local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
@@ -328,8 +335,8 @@ TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
 end
 
 TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
-    -- Applies the target distance to the train's leading carriage for the train direction.
-    local leadCarriage, undergroundTrainOrientation
+    -- Applies the target distance to the train's leading carriage for the train direction on a straight track.
+    local leadCarriage
     if undergroundTrain.speed > 0 then
         leadCarriage = undergroundTrain.front_stock
     elseif undergroundTrain.speed < 0 then
@@ -337,10 +344,13 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
     else
         error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.")
     end
-    if undergroundTrain.speed == leadCarriage.speed then
+    local undergroundTrainOrientation
+    if leadCarriage.speed > 0 then
         undergroundTrainOrientation = leadCarriage.orientation
-    else
+    elseif leadCarriage.speed < 0 then
         undergroundTrainOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+    else
+        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train")
     end
     return Utils.ApplyOffsetToPosition(
         leadCarriage.position,

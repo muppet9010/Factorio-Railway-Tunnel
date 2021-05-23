@@ -8,7 +8,7 @@ local Test = {}
 Test.RunTime = 1800
 
 local blueprintString =
-    "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"
+    "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"
 
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
@@ -17,47 +17,36 @@ end
 Test.Start = function(testName)
     local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
-    -- Get the trains/wagons. The blocking wagons are the single carriage trains sorted south to north.
-    local movingTrain, blockingWagons = nil, {}
-    local wagonEntities = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "cargo-wagon", true, false)
-    for _, wagonEntity in pairs(wagonEntities) do
-        if #wagonEntity.train.carriages == 1 then
-            table.insert(blockingWagons, wagonEntity)
-        else
-            movingTrain = wagonEntity.train
-        end
-    end
-    table.sort(
-        blockingWagons,
-        function(a, b)
-            return a.position.y > b.position.y
-        end
-    )
+    -- Get the train.
+    local movingTrain = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train
 
     -- Get the stations placed by name.
-    local trainStopNorth, trainStopSouth
+    local trainStopFirst, trainStopSecond, trainStopThird, trainStopSouth
     for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
-        if stationEntity.backer_name == "North" then
-            trainStopNorth = stationEntity
+        if stationEntity.backer_name == "First" then
+            trainStopFirst = stationEntity
+        elseif stationEntity.backer_name == "Second" then
+            trainStopSecond = stationEntity
+        elseif stationEntity.backer_name == "Third" then
+            trainStopThird = stationEntity
         elseif stationEntity.backer_name == "South" then
             trainStopSouth = stationEntity
         end
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.blockingWagons = blockingWagons
     testData.movingTrain = movingTrain
-    testData.blockingWagonsReached = {false, false, false}
-    testData.northStationReached = false
+    testData.firstStationReached = false
+    testData.secondStationReached = false
+    testData.thirdStationReached = false
     testData.southStationReached = false
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(movingTrain)
-    testData.trainStopNorth = trainStopNorth
+    testData.trainStopFirst = trainStopFirst
+    testData.trainStopSecond = trainStopSecond
+    testData.trainStopThird = trainStopThird
     testData.trainStopSouth = trainStopSouth
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
-    TestFunctions.ScheduleTestsOnceEvent(game.tick + 400, testName, "DestroyNextBlockingWagon", testName)
-    TestFunctions.ScheduleTestsOnceEvent(game.tick + 600, testName, "DestroyNextBlockingWagon", testName)
-    TestFunctions.ScheduleTestsOnceEvent(game.tick + 800, testName, "DestroyNextBlockingWagon", testName)
 end
 
 Test.Stop = function(testName)
@@ -66,26 +55,44 @@ end
 
 Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local northTrain, southTrain = testData.trainStopNorth.get_stopped_train(), testData.trainStopSouth.get_stopped_train()
-    if northTrain ~= nil and not testData.northStationReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
-            TestFunctions.TestFailed(testName, "train reached north station, but with train differences")
+    local firstStationTrain, secondStationTrain, thirdStationTrain, southStationTrain = testData.trainStopFirst.get_stopped_train(), testData.trainStopSecond.get_stopped_train(), testData.trainStopThird.get_stopped_train(), testData.trainStopSouth.get_stopped_train()
+    if firstStationTrain ~= nil and not testData.firstStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(firstStationTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, true) then
+            TestFunctions.TestFailed(testName, "train reached first station, but with train differences")
             return
         end
-        game.print("train reached north station")
-        testData.northStationReached = true
+        game.print("train reached first station")
+        testData.firstStationReached = true
     end
-    if southTrain ~= nil and not testData.southStationReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+    if secondStationTrain ~= nil and not testData.secondStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(secondStationTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, true) then
+            TestFunctions.TestFailed(testName, "train reached second station, but with train differences")
+            return
+        end
+        game.print("train reached second station")
+        testData.secondStationReached = true
+    end
+    if thirdStationTrain ~= nil and not testData.thirdStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(thirdStationTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
+            TestFunctions.TestFailed(testName, "train reached third station, but with train differences")
+            return
+        end
+        game.print("train reached third station")
+        testData.thirdStationReached = true
+    end
+    if southStationTrain ~= nil and not testData.southStationReached then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southStationTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
             TestFunctions.TestFailed(testName, "train reached south station, but with train differences")
             return
         end
         game.print("train reached south station")
         testData.southStationReached = true
     end
-    if testData.blockingWagonsReached[1] and testData.blockingWagonsReached[2] and testData.blockingWagonsReached[3] and testData.northStationReached and testData.southStationReached then
+    if testData.firstStationReached and testData.secondStationReached and testData.thirdStationReached and testData.southStationReached then
         TestFunctions.TestCompleted(testName)
     end
 end
