@@ -134,7 +134,7 @@ TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leaving
 end
 
 TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
-    -- Get the next carraige to be placed from the underground train.
+    -- Get the next carriage to be placed from the underground train.
     local currentSourceTrainCarriageIndex, nextSourceTrainCarriageIndex
     if (sourceTrain.speed > 0) then
         currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
@@ -317,7 +317,7 @@ TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, 
 end
 
 TrainManagerFuncs.GetCarriagePlacementDistance = function(carriageEntityName)
-    -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distane via API. Can hard code custom values in future if needed.
+    -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
     if carriageEntityName == "railway_tunnel-tunnel_portal_pushing_locomotive" then
         return 0.5
     else
@@ -358,7 +358,7 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
             undergroundTrainOrientation,
             {
                 x = 0,
-                y = 0 - (distance - 1) -- TODO: this -1 seems an odd bodge? As 1 rail piece would be 2 tiles.
+                y = 0 - distance
             }
         )
     )

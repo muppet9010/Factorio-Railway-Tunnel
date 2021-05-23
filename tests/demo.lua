@@ -1,12 +1,20 @@
---TODO: this doesn't work with new test framework!
 local Test = {}
 local Utils = require("utility/utils")
+local TestFunctions = require("scripts/test-functions")
 
 local yRailValue = 5
+
+Test.RunTime = nil
+
+Test.OnLoad = function()
+end
 
 Test.Start = function()
     Test.TunnelEastWest()
     Test.Loop()
+end
+
+Test.Stop = function()
 end
 
 Test.TunnelEastWest = function()

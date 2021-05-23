@@ -4,42 +4,49 @@ local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
 
--- If tests or demo are done the map is replaced with a test science lab tile world and the tests placed/run.
-local DoTests = true -- Does the enabled tests below if TRUE.
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+--
+--                                          TESTING OPTIONS CONFIGURATION
+--
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+-- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
+local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
 local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
-local DoDemoInsteadOfTests = false -- Does the demo rather than any enabled tests if TRUE.
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking.
 
--- Add any new tests in to the table and set enable true/false as desired.
-local TestsToRun
-if DoTests then
-    TestsToRun = {
-        ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-        ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
-        ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
-        ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
-        repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
-        DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
-        PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
-        PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
-        TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-        TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
-        PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
-        InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
-        InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-        InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-        PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
-        PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")}
-        --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")}
-    }
-else
-    TestsToRun = {}
-end
+-- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
+local TestsToRun = {
+    demo = {enabled = false, testScript = require("tests/demo"), notInAllTests = true},
+    ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
+    ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+    ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+    ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
+    repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
+    DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
+    PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
+    PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
+    TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
+    TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+    PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
+    InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
+    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+    InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
+    PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
+    PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
+    ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests")}
+}
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -53,13 +60,6 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
-if DoDemoInsteadOfTests then
-    -- Do just the demo if it is enabled, no tests.
-    TestsToRun = {
-        demo = {enabled = true, testScript = require("tests/demo")}
-    }
-end
-
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
     global.testManager.testProcessStarted = global.testManager.testProcessStarted or false -- Used to flag when a save was started with tests already.
@@ -72,6 +72,9 @@ TestManager.CreateGlobals = function()
 end
 
 TestManager.OnLoad = function()
+    if not DoTests then
+        return
+    end
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
     EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests", TestManager.WaitForPlayerThenRunTests)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
@@ -81,7 +84,7 @@ TestManager.OnLoad = function()
 
     -- Run any active tests OnLoad function.
     for testName, test in pairs(TestsToRun) do
-        if (AllTests or test.enabled) and test.testScript.OnLoad ~= nil then
+        if ((AllTests and not test.notInAllTests) or test.enabled) and test.testScript.OnLoad ~= nil then
             test.testScript.OnLoad(testName)
         end
     end
@@ -175,7 +178,7 @@ TestManager.RunTests = function()
     end
 
     for testName, test in pairs(global.testManager.testsToRun) do
-        if (test.enabled or AllTests) and test.runLoopsCount < test.runLoopsMax then
+        if ((AllTests and not test.notInAllTests) or test.enabled) and test.runLoopsCount < test.runLoopsMax then
             if PlayerStartingZoom ~= nil then
                 -- Set zoom on every test start. Makes loading a save before a test easier.
                 for _, player in pairs(game.connected_players) do
@@ -213,9 +216,6 @@ TestManager.GetTestDisplayName = function(testName)
 end
 
 TestManager.OnPlayerCreated = function(event)
-    if not DoTests then
-        return
-    end
     local player = game.get_player(event.player_index)
     if player.controller_type == defines.controllers.cutscene then
         player.exit_cutscene()

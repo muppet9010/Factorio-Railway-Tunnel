@@ -59,7 +59,7 @@ Test.EveryTick = function(event)
     if firstStationTrain ~= nil and not testData.firstStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(firstStationTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, true) then
-            TestFunctions.TestFailed(testName, "train reached first station, but with train differences")
+            TestFunctions.TestFailed(testName, "train reached first station, but with train differences in the emerged train so far")
             return
         end
         game.print("train reached first station")
@@ -68,7 +68,7 @@ Test.EveryTick = function(event)
     if secondStationTrain ~= nil and not testData.secondStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(secondStationTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, true) then
-            TestFunctions.TestFailed(testName, "train reached second station, but with train differences")
+            TestFunctions.TestFailed(testName, "train reached second station, but with train differences in the emerged train so far")
             return
         end
         game.print("train reached second station")
@@ -77,7 +77,7 @@ Test.EveryTick = function(event)
     if thirdStationTrain ~= nil and not testData.thirdStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(thirdStationTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
-            TestFunctions.TestFailed(testName, "train reached third station, but with train differences")
+            TestFunctions.TestFailed(testName, "train reached third station, but with train differences in the full train")
             return
         end
         game.print("train reached third station")

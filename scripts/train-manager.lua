@@ -381,7 +381,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
 
             -- Place new leaving train carriage and set schedule back.
             local nextSourceCarriageEntity = TrainManagerFuncs.GetCarriageToAddToLeavingTrain(trainManagerEntry.undergroundTrain, trainManagerEntry.leavingTrainCarriagesPlaced)
-            local placedCarriage = TrainManager.AddCarraigeToLeavingTrain(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
+            local placedCarriage = TrainManager.AddCarriageToLeavingTrain(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
             TrainManagerFuncs.TrainSetSchedule(trainManagerEntry.leavingTrain, scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetStopBeforeCarriageAttachment)
 
             -- Follow up items post leaving train carriatge addition.
@@ -448,7 +448,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalStation = function(trainManagerEn
         if trainManagerEntry[stoppingTargetEntityAttributeName] == nil then
             -- The above ground and underground trains will never be exactly relational to one another as they change speed each tick differently before they are re-aligned. So the underground train should be targetted as an offset from its current location and when the above train is very near the stopping target the above train can take over setting speed to manage the final pulling up.
             trainManagerEntry[stoppingTargetEntityAttributeName] = trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName]
-            local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards)
+            local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTarget)
             TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainTargetPosition)
             trainManagerEntry.undergroundTrainSetsSpeed = true
@@ -650,7 +650,7 @@ TrainManager.CreateFirstCarriageForLeavingTrain = function(trainManagerEntry)
     return placedCarriage, undergroundLeadCarriage
 end
 
-TrainManager.AddCarraigeToLeavingTrain = function(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
+TrainManager.AddCarriageToLeavingTrain = function(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
     -- Remove the pushing loco if present before the next carriage is placed.
     local hadPushingLoco = trainManagerEntry.leavingTrainPushingLoco ~= nil
     if trainManagerEntry.leavingTrainPushingLoco ~= nil then
@@ -832,6 +832,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
 
     newTrainManagerEntry.undergroundTrainState = oldTrainManagerEntry.undergroundTrainState
     newTrainManagerEntry.undergroundTrain = oldTrainManagerEntry.undergroundTrain
+    newTrainManagerEntry.undergroundTrainSetsSpeed = nil -- TODO: undergroundSettingSpeed state needs handling.
     newTrainManagerEntry.undergroundTrainForwards = not oldTrainManagerEntry.undergroundTrainForwards
 
     --dummyTrain = LuaTrain of the dummy train used to keep the train stop reservation alive -- TODO: will need generating in some cases.
@@ -839,12 +840,16 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     newTrainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(newTrainManagerEntry.trainTravelDirection)
     newTrainManagerEntry.scheduleTarget = oldTrainManagerEntry.scheduleTarget
 
+    -- TODO: Entry and Exit portals and sub entries need flipping as train going other way through tunnel.
     newTrainManagerEntry.aboveSurface = oldTrainManagerEntry.aboveSurface
     newTrainManagerEntry.aboveEntrancePortal = oldTrainManagerEntry.aboveExitPortal
     newTrainManagerEntry.aboveEntrancePortalEndSignal = oldTrainManagerEntry.aboveExitPortalEndSignal
     newTrainManagerEntry.aboveExitPortal = oldTrainManagerEntry.aboveEntrancePortal
     newTrainManagerEntry.aboveExitPortalEndSignal = oldTrainManagerEntry.aboveEntrancePortalEndSignal
+    newTrainManagerEntry.aboveExitPortalEntrySignalOut = oldTrainManagerEntry.aboveExitPortalEntrySignalOut
     newTrainManagerEntry.tunnel = oldTrainManagerEntry.tunnel
+    newTrainManagerEntry.undergroundTunnel = oldTrainManagerEntry.undergroundTunnel
+    newTrainManagerEntry.undergroundLeavingPortalEntrancePosition = oldTrainManagerEntry.undergroundLeavingPortalEntrancePosition
 
     if oldTrainManagerEntry.leavingTrainState == LeavingTrainStates.leavingFirstCarriage or oldTrainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
         newTrainManagerEntry.enteringTrainState = EnteringTrainStates.entering
@@ -861,6 +866,8 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.leavingTrainForwards = oldTrainManagerEntry.enteringTrainForwards
         newTrainManagerEntry.leavingTrainCarriagesPlaced = #newTrainManagerEntry.leavingTrain.carriages
         newTrainManagerEntry.leavingTrainPushingLoco = nil -- TODO: needs adding if required and recording. As we are jumping in to the leaving mid way through.
+        newTrainManagerEntry.leavingTrainStoppingSignal = nil -- TODO: undergroundSettingSpeed state needs handling.
+        newTrainManagerEntry.leavingTrainStoppingStation = nil -- TODO: undergroundSettingSpeed state needs handling.
     end
 
     -- Don't need to handle any leftTrain as the terminate of old tunnel trip will tidy it up. We don't need to create a leaving train entry for the reversed train.

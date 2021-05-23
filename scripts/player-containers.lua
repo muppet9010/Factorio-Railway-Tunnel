@@ -25,7 +25,7 @@ PlayerContainers.CreateGlobals = function()
             oldVehicle = the vehicle entity the player was in before they hit the enter/exit vehicle button.
         }
     ]]
-    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} -- Table for each underground carriage with a player container related to it. Key'd by underground carraige unit number.
+    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} -- Table for each underground carriage with a player container related to it. Key'd by underground carriage unit number.
 end
 
 PlayerContainers.OnLoad = function()

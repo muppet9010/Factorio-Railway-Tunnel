@@ -6,6 +6,7 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
+local TrainManagerFuncs = require("scripts/train-manager-functions")
 
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
 local SpecificTrainTypesFilter = {"<>", "><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
@@ -334,7 +335,7 @@ Test.Start = function(testName)
 
     -- Get the stations from the blueprint
     local stationEnd, stationStart
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop"), true, false) do
+    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Start" then
@@ -344,7 +345,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local enteringPortal, enteringPortalXPos, leavingPortal, leavingPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed"), true, false) do
+    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed", true, false)) do
         if portalEntity.position.x > enteringPortalXPos then
             enteringPortal = portalEntity
             enteringPortalXPos = portalEntity.position.x
@@ -396,8 +397,6 @@ Test.EveryTick = function(event)
         return
     end
 
-    -- TODO: these tests should check the trainTunnelDetails last action and match up train ids. Needs the main mod code to be working better for this. Current code should be good enough for a rough start of testing.
-    local tunnelUsageDetails = remote.call("railway_tunnel", "get_train_tunnel_usage_details", testData.managedTrainId)
     local endStationTrain = testData.stationEnd.get_stopped_train()
     if testData.testScenario.expectedResult == ResultStates.NotReachTunnel then
         -- This outcome can be checked instantly after the path out of tunnel broken. As the train never entered the tunnel the old testData.train reference should be valid still.
@@ -428,7 +427,11 @@ Test.EveryTick = function(event)
             return
         end
         if trainFound.state == defines.train_state.path_lost then
-            -- TODO: check the carriages that have come out match up to 1 end of the origional train. First 4/5 carriages ?
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(endStationTrain)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
+                TestFunctions.TestFailed(testName, "train pulled to front of tunnel, but with train differences in the emerged train so far")
+                return
+            end
             TestFunctions.TestCompleted(testName)
         elseif endStationTrain ~= nil then
             TestFunctions.TestFailed(testName, "train reached end station")
@@ -574,7 +577,7 @@ Test.GenerateTestScenarios = function()
 
             local doTest = true
             if tunnelUsageType.name == TunnelUsageType.fullyUnderground.name and maxCarriageCount > 10 then
-                -- If it is the underground test and the train is longer than tunnel (10 carraiges) don't do this test.
+                -- If it is the underground test and the train is longer than tunnel (10 carriages) don't do this test.
                 doTest = false
             end
             if doTest then
@@ -601,16 +604,16 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
     -- Build the train from the station heading west. Give each loco fuel, set target schedule and to automatic.
     local placedCarriage
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
-    local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = 3, y = 2})
+    local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = -0.5, y = 2}) -- offset to position first carriage correctly.
     for i, carriageDetails in pairs(carriagesDetails) do
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
         if carriageDetails.name == "locomotive" then
             placedCarriage.insert({name = "rocket-fuel", count = 10})
         elseif carriageDetails.name == "cargo-wagon" then
             placedCarriage.insert({name = "iron-plate", count = i})
         end
-        -- TODO: handle gap between carriages dynamically.
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 7, y = 0})
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
     end
 
     local train = placedCarriage.train
@@ -645,7 +648,7 @@ Test.CalculateExpectedResult = function(testScenario)
         return ResultStates.ReachStation
     end
 
-    -- The backest safe carriage position is 5 carraiges to enter the tunnel or a carriage position 25 tiles from the portal position.
+    -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.
     local enteringTrainLengthAtReverseTime
     if testScenario.tunnelUsageType.name == TunnelUsageType.onceCommitted.name then
         -- No part of the train has entered yet.
