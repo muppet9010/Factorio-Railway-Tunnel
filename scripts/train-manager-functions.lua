@@ -159,42 +159,127 @@ TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fa
 end
 
 TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail = function(train, targetSignalEntity, trainGoingForwards)
-    -- This meausres to the edge of the target rail, so doesn't include any of the target rails length.
+    -- This measures to the nearest edge of the target rail, so doesn't include any of the target rails length.
 
     local targetRails = targetSignalEntity.get_connected_rails() -- the stopping signal can be on multiple rails at once, however, only 1 will be in our path list.
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
-    -- Measure the distance from the train to the target signal. Ignores trains exact position and just deals with the tracks.
+    -- Measure the distance from the train to the target signal. Ignores trains exact position and just deals with the tracks. The first rail isn't included here as we get the remaining part of the rail's distance later in function.
     local distance = 0
-    for _, railEntity in pairs(train.path.rails) do
-        distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity.type)
-        if targetRailUnitNumberAsKeys[railEntity.unit_number] then
-            -- One of the rails attached to the signal has been reached in the path.
-            break
+    for i, railEntity in pairs(train.path.rails) do
+        if i > 1 then
+            if targetRailUnitNumberAsKeys[railEntity.unit_number] then
+                -- One of the rails attached to the signal has been reached in the path, so stop before we count it.
+                break
+            end
+            distance = distance + TrainManagerFuncs.GetRailEntityLength(railEntity.type)
         end
     end
 
-    -- Subtract the part of rail being used by the lead carriage. Seems to be the lead joint. This isn't quite perfect when carriage is on a corner, but far closer than just the whole rail.
+    -- Add the remaining part of the first rail being used by the lead carriage. Carriage uses the lead joint as when it is "on" a rail piece. This isn't quite perfect when carriage is on a corner, but far closer than just the whole rail. In testing up to 0.5 tiles wrong for curves, but trains drift during tunnel use from speed as well so...
     local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(train, trainGoingForwards)
-    local forwardOrientation
+    local leadCarriageForwardOrientation
     if leadCarriage.speed > 0 then
-        forwardOrientation = leadCarriage.orientation
+        leadCarriageForwardOrientation = leadCarriage.orientation
     elseif leadCarriage.speed < 0 then
-        forwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+        leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetSignalsRail() doesn't support 0 speed train")
     end
-    local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(forwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
+    local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
     local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
     local firstRail = train.path.rails[1]
-    local firstRailFarEndPosition = Utils.ApplyOffsetToPosition(firstRail.position, Utils.RotatePositionAround0(forwardOrientation, {x = 0, y = -1})) --TODO: only handles straight rail.
+    local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
     local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
+    if firstRail.type == "curved-rail" then
+        distanceRemainingOnRail = distanceRemainingOnRail * 1.0663824640154573798004974128959 -- Rough conversion for the straight line distance (7.3539105243401) to curved arc distance (7.842081225095).
+    end
     distance = distance + distanceRemainingOnRail
 
-    -- Take the joint distance back off the result to get the center position of the carriage.
-    distanceForCarriageCenter = distance - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)
+    -- Add the joint distance to the result to get the center position of the carriage.
+    local distanceForCarriageCenter = distance + TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)
 
     return distanceForCarriageCenter
+end
+
+TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientation)
+    local railFarEndPosition
+    if railEntity.type == "straight-rail" then
+        railFarEndPosition = Utils.ApplyOffsetToPosition(railEntity.position, Utils.RotatePositionAround0(forwardsOrientation, {x = 0, y = -1}))
+    elseif railEntity.type == "curved-rail" then
+        -- Curved end offset position based on that a diagonal straight rail is 2 long and this sets where the curved end points must be.
+        local directionDetails = {
+            [defines.direction.north] = {
+                straightEndOffset = {x = 1, y = 4},
+                straightEndOrientation = 0.5,
+                curvedEndOffset = {x = -1.8, y = -2.8},
+                curvedEndOrientation = 0.875
+            },
+            [defines.direction.northeast] = {
+                straightEndOffset = {x = -1, y = 4},
+                straightEndOrientation = 0.5,
+                curvedEndOffset = {x = 1.8, y = -2.8},
+                curvedEndOrientation = 0.125
+            },
+            [defines.direction.east] = {
+                straightEndOffset = {x = -4, y = 1},
+                straightEndOrientation = 0.75,
+                curvedEndOffset = {x = 2.8, y = -1.8},
+                curvedEndOrientation = 0.125
+            },
+            [defines.direction.southeast] = {
+                straightEndOffset = {x = -4, y = -1},
+                straightEndOrientation = 0.75,
+                curvedEndOffset = {x = 2.8, y = 1.8},
+                curvedEndOrientation = 0.375
+            },
+            [defines.direction.south] = {
+                straightEndOffset = {x = -1, y = -4},
+                straightEndOrientation = 1,
+                curvedEndOffset = {x = 1.8, y = 2.8},
+                curvedEndOrientation = 0.375
+            },
+            [defines.direction.southwest] = {
+                straightEndOffset = {x = 1, y = -4},
+                straightEndOrientation = 0,
+                curvedEndOffset = {x = -1.8, y = 2.8},
+                curvedEndOrientation = 0.625
+            },
+            [defines.direction.west] = {
+                straightEndOffset = {x = 4, y = -1},
+                straightEndOrientation = 0.25,
+                curvedEndOffset = {x = -2.8, y = 1.8},
+                curvedEndOrientation = 0.625
+            },
+            [defines.direction.northwest] = {
+                straightEndOffset = {x = 4, y = 1},
+                straightEndOrientation = 0.25,
+                curvedEndOffset = {x = -2.8, y = -1.8},
+                curvedEndOrientation = 0.875
+            }
+        }
+        local endoffset
+        local thisTrackDirectionDetails = directionDetails[railEntity.direction]
+        -- Rails specifically have 0 or 1 to avoid having to check for 0/1 wrapping. As the carriage on a specific curve has a very limited orientation range.
+        if math.abs(forwardsOrientation - thisTrackDirectionDetails.straightEndOrientation) < math.abs(forwardsOrientation - thisTrackDirectionDetails.curvedEndOrientation) then
+            -- Closer aligned to straight orientation.
+            endoffset = thisTrackDirectionDetails.straightEndOffset
+        else
+            -- Closer aligned to curved orientation.
+            endoffset = thisTrackDirectionDetails.curvedEndOffset
+        end
+
+        -- Mark on map end of rail locations for debugging.
+        --rendering.draw_circle {color = {0, 0, 1, 1}, radius = 0.1, filled = true, target = railEntity, surface = railEntity.surface}
+        --rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.1, filled = true, target = Utils.ApplyOffsetToPosition(railEntity.position, thisTrackDirectionDetails.straightEndOffset), surface = railEntity.surface}
+        --rendering.draw_circle {color = {1, 0, 0, 1}, radius = 0.1, filled = true, target = Utils.ApplyOffsetToPosition(railEntity.position, thisTrackDirectionDetails.curvedEndOffset), surface = railEntity.surface}
+
+        railFarEndPosition = Utils.ApplyOffsetToPosition(railEntity.position, endoffset)
+    else
+        error("not valid rail type: " .. railEntity.type)
+    end
+
+    return railFarEndPosition
 end
 
 TrainManagerFuncs.GetRailEntityLength = function(railEntityType)

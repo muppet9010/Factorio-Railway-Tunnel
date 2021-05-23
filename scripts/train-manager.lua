@@ -359,6 +359,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
     TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
 
     -- TODO: need to handle arrive at station as well.
+
     -- 1: If leaving train is now arriving at a signal other than the exiting signal on the portal, then check state in detail as we may need to update the underground train stop point.
     -- 2: Once the leaving train is stopped at the non exit protal signal, clear out signal arriving state.
     -- 3: Otherwise check for moving away states and if there was a preivous stopping state to be finished.
