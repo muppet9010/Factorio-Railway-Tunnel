@@ -4,7 +4,7 @@ Utils.DeepCopy = factorioUtil.table.deepcopy
 Utils.TableMerge = factorioUtil.merge -- Takes an array of tables and returns a new table with copies of their contents
 
 Utils.Are2EntitiesTheSame = function(entity1, entity2)
-    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity.
+    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
     if not entity1.valid or not entity2.valid then
         return false
     end
@@ -20,6 +20,14 @@ Utils.Are2EntitiesTheSame = function(entity1, entity2)
         else
             return false
         end
+    end
+end
+
+Utils.ArePositionsTheSame = function(pos1, pos2)
+    if (pos1.x or pos1[1]) == (pos2.x or pos2[1]) and (pos1.y or pos1[2]) == (pos2.y or pos2[2]) then
+        return true
+    else
+        return false
     end
 end
 

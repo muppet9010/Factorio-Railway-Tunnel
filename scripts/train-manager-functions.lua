@@ -72,7 +72,7 @@ TrainManagerFuncs.SetTrainToAuto = function(train, targetStop)
     end
 end
 
-TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, sourceTrain, skipScheduling)
+TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, sourceTrain, skipScheduling, backupScheduleTarget)
     skipScheduling = skipScheduling or false
     local locomotive =
         exitPortalEntity.surface.create_entity {
@@ -88,7 +88,7 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, sourceTrain, ski
     locomotive.burner.remaining_burning_fuel = 4000000
     local dummyTrain = locomotive.train
     if not skipScheduling then
-        TrainManagerFuncs.TrainSetSchedule(dummyTrain, sourceTrain.schedule, false, sourceTrain.path_end_stop)
+        TrainManagerFuncs.TrainSetSchedule(dummyTrain, sourceTrain.schedule, false, sourceTrain.path_end_stop or backupScheduleTarget)
         if dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
             error("dummy train has unexpected state " .. tonumber(dummyTrain.state))
@@ -97,15 +97,11 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, sourceTrain, ski
     return dummyTrain
 end
 
-TrainManagerFuncs.DestroyTrain = function(parentObject, referenceToSelf, localObjectRef)
-    local dummyTrain = localObjectRef or parentObject[referenceToSelf]
-    if dummyTrain ~= nil and dummyTrain.valid then
-        for _, carriage in pairs(dummyTrain.carriages) do
+TrainManagerFuncs.DestroyTrainsCarriages = function(train)
+    if train ~= nil and train.valid then
+        for _, carriage in pairs(train.carriages) do
             carriage.destroy()
         end
-    end
-    if parentObject ~= nil and referenceToSelf ~= nil then
-        parentObject[referenceToSelf] = nil
     end
 end
 

@@ -368,7 +368,8 @@ Test.Start = function(testName)
     testData.enteringPortal = enteringPortal
     testData.leavingPortal = leavingPortal
     testData.train = train
-    testData.stayHereTrain = stationStayHere.get_stopped_train()
+    testData.stayHereTrain = stationStayHere.get_train_stop_trains()[1]
+    testData.stayHereTrainCarriage1StartingPosition = testData.stayHereTrain.carriages[1].position
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
     testData.managedTrainId = 0 -- Tracks current managed train id for tunnel usage.
     testData.oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
@@ -439,6 +440,10 @@ Test.EveryTick = function(event)
         end
     elseif testData.testScenario.expectedResult == ResultStates.ReachStation then
         if endStationTrain ~= nil then
+            if not Utils.ArePositionsTheSame(testData.stayHereTrain.carriages[1].position, testData.stayHereTrainCarriage1StartingPosition) then
+                TestFunctions.TestFailed(testName, "Stay Here train wasn't where it started")
+                return
+            end
             if testData.stayHereTrain.state ~= defines.train_state.destination_full then
                 TestFunctions.TestFailed(testName, "Stay Here train wasn't in desitination full state")
                 return

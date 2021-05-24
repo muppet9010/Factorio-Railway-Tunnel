@@ -38,7 +38,7 @@ end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
-    if train.state ~= defines.train_state.arrive_signal then
+    if not train.valid or train.state ~= defines.train_state.arrive_signal then
         return
     end
     local signal = train.signal
