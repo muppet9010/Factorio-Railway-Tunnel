@@ -170,7 +170,7 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
 
     local wagonsToIgnore = {["railway_tunnel-tunnel_portal_pushing_locomotive"] = "railway_tunnel-tunnel_portal_pushing_locomotive"}
 
-    -- If dummy /pushing locos are allowed then check the train ends and remove them if found, so they don't trigger a fail in comparison. Don't remove any from within the train as they shouldn't be there.
+    -- If dummy/pushing locos are allowed then check the train ends and remove them if found, so they don't trigger a fail in comparison. Don't remove any from within the train as they shouldn't be there.
     if allowPartialCurrentSnapshot then
         for _, currentCarriageCount in pairs({1, currentSnapshot.carriageCount}) do
             if wagonsToIgnore[currentSnapshot.carriages[currentCarriageCount].name] ~= nil then
@@ -185,7 +185,7 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
         return false
     end
 
-    -- Check the 2 trains starting in the same order and facingForwards as this is most likely scenario (perfect copy). Then check combinations of facing backwards and iterate the carriage list backwards.
+    -- Check the 2 trains starting in the same order and facingForwards as this is most likely scenario (perfect copy). Then check combinations of facing backwards (new train is declared backwards due to build order by Factorio magic) and iterate the carriage list backwards (new train is generally running backwards).
     for _, reverseFacingFowards in pairs({false, true}) do
         for _, currentCarriageIteratorFunc in pairs(
             {
@@ -301,25 +301,31 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         fuelProxy.destroy()
     end
 
+    TestFunctions.MakeCarriagesUnique(placedEntities)
+
+    return placedEntities
+end
+
+-- Makes all the train carriages in the provided entity list unique via color or cargo. Can take a random list of entities safely. Helps make train snapshot comparison easier if every carriage is unique.
+-- Only needed if trains are being built manually/scripted and not via TestFunctions.BuildBlueprintFromString().
+TestFunctions.MakeCarriagesUnique = function(entities)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "locomotive", true, false)) do
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "locomotive", true, false)) do
         carriage.train.manual_mode = false
         carriage.color = {math.random(0, 255), math.random(0, 255), math.random(0, 255), 1}
     end
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "cargo-wagon", true, false)) do
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "cargo-wagon", true, false)) do
         cargoWagonCount = cargoWagonCount + 1
         carriage.insert({name = "iron-plate", count = cargoWagonCount})
     end
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "fluid-wagon", true, false)) do
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "fluid-wagon", true, false)) do
         fluidWagonCount = fluidWagonCount + 1
         carriage.insert({name = "water", count = fluidWagonCount})
     end
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(placedEntities, "type", "artillery-wagon", true, false)) do
+    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "artillery-wagon", true, false)) do
         artilleryWagonCount = artilleryWagonCount + 1
         carriage.insert({name = "artillery-shell", count = artilleryWagonCount})
     end
-
-    return placedEntities
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

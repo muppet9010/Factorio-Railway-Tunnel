@@ -122,6 +122,7 @@ TestManager.OnStartup = function()
         global.testManager.testsToRun[testName] = {
             testName = testName,
             enabled = test.enabled,
+            notInAllTests = test.notInAllTests,
             runTime = test.testScript.RunTime,
             runLoopsMax = test.testScript.RunLoopsMax or 1,
             runLoopsCount = 0,

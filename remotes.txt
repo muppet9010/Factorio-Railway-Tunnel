@@ -20,7 +20,7 @@ Train Tunnel Usage Changed
 - Description: Event raised every time a train's tunnel usage details change. This will occur for changes to primaryState and changes of LuaTrain ids, i.e. when a carriage is added/removed from the entering/leaving train.
 - Event Attributes:
     - The Returns from "Get A Train's Tunnel Usage Details" remote interface for the train.
-    - action: the action that occured (STRING): StartApproaching, Terminated, ReversedDuringUse, CommittedToTunnel, EnteringCarriageRemoved, FullyEntered, StartedLeaving, LeavingCarriageAdded, FullyLeft.
+    - action: the action that occured (STRING): StartApproaching, Terminated, ReversedDuringUse, EnteringCarriageRemoved, FullyEntered, StartedLeaving, LeavingCarriageAdded, FullyLeft.
     - changeReason: the cause of the change (STRING): ReversedAfterLeft, AbortedApproach, ForwardPathLost, CompletedTunnelUsage.
     - replacedTrainTunnelUsageId: the old train tunnel usage id of the train that has been replaced by this new train tunnel usage details, or nil if no replacement occured. Occurs for the "ReversedDuringUse" action.
 

@@ -18,12 +18,21 @@ TrainManagerFuncs.IsTrainHealthlyState = function(train)
     end
 end
 
-TrainManagerFuncs.CarriageIsAPushingLoco = function(carriage, trainDirection)
-    return carriage.type == "locomotive" and carriage.orientation == trainDirection
+TrainManagerFuncs.CarriageIsAPushingLoco = function(carriage, trainOrientation)
+    return carriage.type == "locomotive" and carriage.orientation == trainOrientation
 end
 
 TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
     return carriage.type == "locomotive" and carriage.orientation ~= trainOrientation
+end
+
+TrainManagerFuncs.DoesTrainHaveAPushingLoco = function(train, trainOrientation)
+    for _, carriage in pairs(train.carriages) do
+        if TrainManagerFuncs.CarriageIsAPushingLoco(carriage, trainOrientation) then
+            return true
+        end
+    end
+    return false
 end
 
 TrainManagerFuncs.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)

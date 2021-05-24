@@ -2,6 +2,7 @@
     Does a range of tests for the different situations of a train trying to reverse down a tunnel when a piece of track after the tunnel is removed:
         - Train types (heading west): <, <----, ----<, <>, <-->, <>----, ----<>
         - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
+    Theres a second train trying to path to the same station with a train limit of 1. This second train should never move if the reservation isn't lost.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -11,10 +12,8 @@ local TrainManagerFuncs = require("scripts/train-manager-functions")
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
 local SpecificTrainTypesFilter = {"<>", "><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
 local SpecificTunnelUsageTypesFilter = {
-    --"beforeCommitted",
-    "onceCommitted",
+    --"beforeCommitted"
     "carriageEntering",
-    "fullyUnderground",
     "carriageLeaving",
     "leftTunnel"
 } -- Pass in array of TunnelUsageType keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
@@ -40,7 +39,7 @@ end
 
 -- Blueprint is just track, tunnel and stations. No train as these are dynamicly placed.
 local blueprintString =
-    "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"
+    "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"
 
 -- Orientation 0.75 is forwards, 0.25 is backwards.
 -- Trains should be 6+ carriages long as otherwise when entering they never go longer than the backwards track points.
@@ -302,9 +301,7 @@ local TrainTypes = {
 }
 local TunnelUsageType = {
     beforeCommitted = {name = "beforeCommitted", perCarriage = false},
-    onceCommitted = {name = "onceCommitted", perCarriage = false},
     carriageEntering = {name = "carriageEntering", perCarriage = true}, -- This can overlap with carriageLeaving.
-    fullyUnderground = {name = "fullyUnderground", perCarriage = false}, -- This may not be a reachable state for tests with trains longer than the tunnel.
     carriageLeaving = {name = "carriageLeaving", perCarriage = true}, -- This can overlap with carriageEntering.
     leftTunnel = {name = "leftTunnel", perCarriage = false}
 }
@@ -334,12 +331,14 @@ Test.Start = function(testName)
     local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the stations from the blueprint
-    local stationEnd, stationStart
+    local stationEnd, stationStart, stationStayHere
     for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Start" then
             stationStart = stationEntity
+        elseif stationEntity.backer_name == "StayHere" then
+            stationStayHere = stationEntity
         end
     end
 
@@ -363,11 +362,13 @@ Test.Start = function(testName)
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationStart = stationStart
     testData.stationEnd = stationEnd
+    testData.stationStayHere = stationStayHere
     testData.trackToRemove = trackToRemove
     testData.trackRemoved = false
     testData.enteringPortal = enteringPortal
     testData.leavingPortal = leavingPortal
     testData.train = train
+    testData.stayHereTrain = stationStayHere.get_stopped_train()
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
     testData.managedTrainId = 0 -- Tracks current managed train id for tunnel usage.
     testData.oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
@@ -438,6 +439,10 @@ Test.EveryTick = function(event)
         end
     elseif testData.testScenario.expectedResult == ResultStates.ReachStation then
         if endStationTrain ~= nil then
+            if testData.stayHereTrain.state ~= defines.train_state.destination_full then
+                TestFunctions.TestFailed(testName, "Stay Here train wasn't in desitination full state")
+                return
+            end
             local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(endStationTrain)
             if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "train reached station, but with train differences")
@@ -463,7 +468,7 @@ Test.TunnelUsageChanged = function(event)
             -- This old managed train id is expected and can be ignored entirely.
             return
         else
-            TestFunctions.TestFailed(testName, "unexpected train tunnel id event received")
+            TestFunctions.TestFailed(testName, "tunnel event for unexpected train id received")
         end
     end
     local testTunnelUsageType = testData.testScenario.tunnelUsageType
@@ -477,10 +482,6 @@ Test.TunnelUsageChanged = function(event)
     -- Check test type and usage change type to see if the desired state has been reached.
     if testTunnelUsageType.name == TunnelUsageType.beforeCommitted.name then
         if event.action ~= "StartApproaching" then
-            return
-        end
-    elseif testTunnelUsageType.name == TunnelUsageType.onceCommitted.name then
-        if event.action ~= "CommittedToTunnel" then
             return
         end
     elseif testTunnelUsageType.name == TunnelUsageType.carriageEntering.name then
@@ -497,10 +498,6 @@ Test.TunnelUsageChanged = function(event)
             if (testData.testScenario.reverseOnCarriageNumber) ~= trainCarriageCount then
                 return
             end
-        end
-    elseif testTunnelUsageType.name == TunnelUsageType.fullyUnderground.name then
-        if event.action ~= "FullyEntered" then
-            return
         end
     elseif testTunnelUsageType.name == TunnelUsageType.carriageLeaving.name then
         if event.action ~= "LeavingCarriageAdded" then
@@ -575,26 +572,19 @@ Test.GenerateTestScenarios = function()
                 maxCarriageCount = #fullCarriageArray
             end
 
-            local doTest = true
-            if tunnelUsageType.name == TunnelUsageType.fullyUnderground.name and maxCarriageCount > 10 then
-                -- If it is the underground test and the train is longer than tunnel (10 carriages) don't do this test.
-                doTest = false
-            end
-            if doTest then
-                -- 1 test per carriage in train.
-                for carriageCount = 1, maxCarriageCount do
-                    local scenario = {
-                        trainText = trainType.text,
-                        carriages = fullCarriageArray,
-                        tunnelUsageType = tunnelUsageType,
-                        reverseOnCarriageNumber = carriageCount, -- On non perCarriage tests this value will be ignored.
-                        backwardsLocoCarriageNumber = backwardsLocoCarriageNumber
-                    }
-                    scenario.expectedResult = Test.CalculateExpectedResult(scenario)
+            -- 1 test per carriage in train.
+            for carriageCount = 1, maxCarriageCount do
+                local scenario = {
+                    trainText = trainType.text,
+                    carriages = fullCarriageArray,
+                    tunnelUsageType = tunnelUsageType,
+                    reverseOnCarriageNumber = carriageCount, -- On non perCarriage tests this value will be ignored.
+                    backwardsLocoCarriageNumber = backwardsLocoCarriageNumber
+                }
+                scenario.expectedResult = Test.CalculateExpectedResult(scenario)
 
-                    Test.RunLoopsMax = Test.RunLoopsMax + 1
-                    table.insert(Test.TestScenarios, scenario)
-                end
+                Test.RunLoopsMax = Test.RunLoopsMax + 1
+                table.insert(Test.TestScenarios, scenario)
             end
         end
     end
@@ -610,8 +600,6 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
         placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
         if carriageDetails.name == "locomotive" then
             placedCarriage.insert({name = "rocket-fuel", count = 10})
-        elseif carriageDetails.name == "cargo-wagon" then
-            placedCarriage.insert({name = "iron-plate", count = i})
         end
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
     end
@@ -624,6 +612,7 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
         }
     }
     train.manual_mode = false
+    TestFunctions.MakeCarriagesUnique(train.carriages)
 
     return train
 end
@@ -643,17 +632,10 @@ Test.CalculateExpectedResult = function(testScenario)
         -- Train has has left tunnel so nothing can be underground or entering. So no other checks are needed.
         return ResultStates.ReachStation
     end
-    if testScenario.tunnelUsageType.name == TunnelUsageType.fullyUnderground.name then
-        -- Train has fully entered. So no other checks are needed.
-        return ResultStates.ReachStation
-    end
 
     -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.
     local enteringTrainLengthAtReverseTime
-    if testScenario.tunnelUsageType.name == TunnelUsageType.onceCommitted.name then
-        -- No part of the train has entered yet.
-        enteringTrainLengthAtReverseTime = #testScenario.carriages
-    elseif testScenario.tunnelUsageType.name == TunnelUsageType.carriageEntering.name then
+    if testScenario.tunnelUsageType.name == TunnelUsageType.carriageEntering.name then
         enteringTrainLengthAtReverseTime = #testScenario.carriages - testScenario.reverseOnCarriageNumber
     elseif testScenario.tunnelUsageType.name == TunnelUsageType.carriageLeaving.name then
         -- The tunnel is 10 carriages long.
