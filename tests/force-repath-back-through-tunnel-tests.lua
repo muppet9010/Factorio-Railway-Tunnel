@@ -12,8 +12,8 @@ local TrainManagerFuncs = require("scripts/train-manager-functions")
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
 local SpecificTrainTypesFilter = {"<>", "><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
 local SpecificTunnelUsageTypesFilter = {
-    --"beforeCommitted"
-    "carriageEntering",
+    --"beforeCommitted",
+    --"carriageEntering",
     "carriageLeaving",
     "leftTunnel"
 } -- Pass in array of TunnelUsageType keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
