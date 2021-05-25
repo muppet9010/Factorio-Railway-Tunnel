@@ -660,20 +660,20 @@ Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, is
     return keysFound
 end
 
-Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value, returnMultipleResults, isValueAList)
+Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
-    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local keysFound = {}
     for k, innerTable in pairs(theTable) do
         if not isValueAList then
-            if innerTable[key] ~= nil and innerTable[key] == value then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
                 if not returnMultipleResults then
                     return k
                 end
                 table.insert(keysFound, k)
             end
         else
-            if innerTable[key] ~= nil and innerTable[key] == value then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
                 if not returnMultipleResults then
                     return k
                 end
@@ -684,21 +684,21 @@ Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value, returnMultip
     return keysFound
 end
 
-Utils.GetTableValueWithInnerKeyValue = function(theTable, key, value, returnMultipleResults, isValueAList)
+Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
-    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local valuesFound = {}
     for _, innerTable in pairs(theTable) do
         if not isValueAList then
-            if innerTable[key] ~= nil and innerTable[key] == value then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
                 if not returnMultipleResults then
                     return innerTable
                 end
                 table.insert(valuesFound, innerTable)
             end
         else
-            for _, valueInList in pairs(value) do
-                if innerTable[key] ~= nil and innerTable[key] == valueInList then
+            for _, valueInList in pairs(innerValue) do
+                if innerTable[innerKey] ~= nil and innerTable[innerKey] == valueInList then
                     if not returnMultipleResults then
                         return innerTable
                     end

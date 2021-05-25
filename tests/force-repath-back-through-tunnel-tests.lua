@@ -10,12 +10,11 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
-local SpecificTrainTypesFilter = {"<>", "><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {"><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
 local SpecificTunnelUsageTypesFilter = {
     --"beforeCommitted",
     --"carriageEntering",
-    "carriageLeaving",
-    "leftTunnel"
+    "carriageLeaving"
 } -- Pass in array of TunnelUsageType keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
 
 Test.RunTime = 1200
@@ -302,8 +301,7 @@ local TrainTypes = {
 local TunnelUsageType = {
     beforeCommitted = {name = "beforeCommitted", perCarriage = false},
     carriageEntering = {name = "carriageEntering", perCarriage = true}, -- This can overlap with carriageLeaving.
-    carriageLeaving = {name = "carriageLeaving", perCarriage = true}, -- This can overlap with carriageEntering.
-    leftTunnel = {name = "leftTunnel", perCarriage = false}
+    carriageLeaving = {name = "carriageLeaving", perCarriage = true} -- This can overlap with carriageEntering.
 }
 local ResultStates = {
     NotReachTunnel = "NotReachTunnel",
@@ -376,6 +374,8 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     testData.lastTrainAction = nil -- Populated by the last TunnelUsageChanged action.
     testData.lastTrainChangeReason = nil -- Populated by the last TunnelUsageChanged changeReason.
+    testData.previousTrainAction = nil -- Populated by the previous (last + 1) TunnelUsageChanged action.
+    testData.previousTrainChangeReason = nil -- Populated by the previous (last + 1) TunnelUsageChanged changeReason.
 
     game.print("Expected test result: " .. testData.testScenario.expectedResult)
 
@@ -413,10 +413,14 @@ Test.EveryTick = function(event)
                 return
             end
         end
-        if testData.lastTrainAction == "Terminated" and testData.lastTrainChangeReason == "AbortedApproach" then
-            TestFunctions.TestCompleted(testName)
-        else
-            TestFunctions.TestFailed(testName, "last tunnel usage state wasn't AbortedApproach")
+        -- See if we have moved past the start approaching action on to another action. If not moved passed start approaching then continue the test.
+        if testData.previousTrainAction == "StartApproaching" then
+            -- Check latest action is the expected one.
+            if testData.lastTrainAction == "Terminated" and testData.lastTrainChangeReason == "AbortedApproach" then
+                TestFunctions.TestCompleted(testName)
+            else
+                TestFunctions.TestFailed(testName, "last tunnel usage state wasn't AbortedApproach")
+            end
         end
     elseif testData.testScenario.expectedResult == ResultStates.PullToFrontOfTunnel then
         local inspectionArea = {left_top = {x = testData.leavingPortal.position.x - 20, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x - 18, y = testData.leavingPortal.position.y}}
@@ -462,14 +466,14 @@ Test.TunnelUsageChanged = function(event)
     local testName, testData = event.testName, TestFunctions.GetTestDataObject(event.testName)
     if testData.managedTrainId == 0 and event.action == "StartApproaching" and testData.train.id == event.enteringTrain.id then
         -- Keep hold of managed train id.
-        testData.managedTrainId = event.trainTunnelUsageId
+        testData.managedTrainId = event.tunnelUsageId
     end
-    if testData.managedTrainId ~= event.trainTunnelUsageId then
-        if event.replacedTrainTunnelUsageId ~= nil and testData.managedTrainId == event.replacedTrainTunnelUsageId then
+    if testData.managedTrainId ~= event.tunnelUsageId then
+        if event.replacedtunnelUsageId ~= nil and testData.managedTrainId == event.replacedtunnelUsageId then
             -- Train tunnel usage entry has been replaced by another one.
-            testData.managedTrainId = event.trainTunnelUsageId
-            testData.oldManagedTrainId = event.replacedTrainTunnelUsageId
-        elseif testData.oldManagedTrainId == event.trainTunnelUsageId then
+            testData.managedTrainId = event.tunnelUsageId
+            testData.oldManagedTrainId = event.replacedtunnelUsageId
+        elseif testData.oldManagedTrainId == event.tunnelUsageId then
             -- This old managed train id is expected and can be ignored entirely.
             return
         else
@@ -477,6 +481,7 @@ Test.TunnelUsageChanged = function(event)
         end
     end
     local testTunnelUsageType = testData.testScenario.tunnelUsageType
+    testData.previousTrainAction, testData.previousTrainChangeReason = testData.lastTrainAction, testData.lastTrainChangeReason
     testData.lastTrainAction, testData.lastTrainChangeReason = event.action, event.changeReason
 
     if testData.trackRemoved then
@@ -508,13 +513,11 @@ Test.TunnelUsageChanged = function(event)
         if event.action ~= "LeavingCarriageAdded" then
             return
         else
-            if (testData.testScenario.reverseOnCarriageNumber) ~= #event.leavingTrain.carriages then
+            local carriagesToIgnore = remote.call("railway_tunnel", "get_temporary_carriage_names")
+            local leavingTrainFakeCarriages = Utils.GetTableValueWithInnerKeyValue(event.leavingTrain.carriages, "name", carriagesToIgnore, true, true)
+            if (testData.testScenario.reverseOnCarriageNumber) ~= (#event.leavingTrain.carriages - #leavingTrainFakeCarriages) then
                 return
             end
-        end
-    elseif testTunnelUsageType.name == TunnelUsageType.leftTunnel.name then
-        if event.action ~= "FullyLeft" then
-            return
         end
     end
 
@@ -631,11 +634,6 @@ Test.CalculateExpectedResult = function(testScenario)
     if testScenario.backwardsLocoCarriageNumber == 0 then
         -- No reversing loco in train. So no other checks are needed.
         return ResultStates.PullToFrontOfTunnel
-    end
-
-    if testScenario.tunnelUsageType.name == TunnelUsageType.leftTunnel.name then
-        -- Train has has left tunnel so nothing can be underground or entering. So no other checks are needed.
-        return ResultStates.ReachStation
     end
 
     -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.

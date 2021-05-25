@@ -96,8 +96,14 @@ TrainManager.OnLoad = function()
             get_tunnel_usage_changed_event_id = function()
                 return tunnelUsageChangedEventId
             end,
-            get_train_tunnel_usage_details = function(trainManagerEntryId)
-                return TrainManager.GetTrainTunnelUsageRemote(trainManagerEntryId)
+            get_tunnel_usage_entry = function(trainManagerEntryId)
+                return TrainManager.Remote_GetTunnelUsageEntry(trainManagerEntryId)
+            end,
+            get_a_trains_tunnel_usage_entry = function(trainId)
+                return TrainManager.Remote_GetATrainsTunnelUsageEntry(trainId)
+            end,
+            get_temporary_carriage_names = function()
+                return TrainManager.Remote_GetTemporaryCarriageNames()
             end
         }
     )
@@ -132,10 +138,10 @@ TrainManager.RegisterTrainApproaching = function(enteringTrain, aboveEntrancePor
     local trainLeftEntry = global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainManagerEntry.enteringTrain.id]
     if trainLeftEntry ~= nil then
         -- Terminate the old tunnel usage that was delayed until this point. Don't try to reverse the tunnel usage as this event has naturally happened and the old tunnel usage was effectively over anyways.
-        TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.StartApproaching, nil, trainLeftEntry.id)
+        TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.StartApproaching, nil, trainLeftEntry.id)
         TrainManager.TerminateTunnelTrip(trainLeftEntry, TrainManager.TunnelUsageChangeReason.ReversedAfterLeft)
     else
-        TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.StartApproaching)
+        TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.StartApproaching)
     end
 end
 
@@ -191,7 +197,7 @@ TrainManager.ProcessManagedTrains = function()
 
     -- Raise any events from this tick for external listener mods to react to.
     for _, eventData in pairs(global.trainManager.eventsToRaise) do
-        eventData = Utils.TableMerge({eventData, TrainManager.GetTrainTunnelUsageRemote(eventData.trainTunnelUsageId)})
+        eventData = Utils.TableMerge({eventData, TrainManager.Remote_GetTunnelUsageEntryObjectAttributes(eventData.tunnelUsageId)})
         -- Populate the leavingTrain attribute with the leftTrain value when the leavingTrain value isn't valid. Makes handling the events nicer by hiding this internal code oddity.
         if (eventData.leavingTrain == nil or not eventData.leavingTrain.valid) and (eventData.leftTrain ~= nil and eventData.leftTrain.valid) then
             eventData.leavingTrain = eventData.leftTrain
@@ -227,7 +233,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
             local enteringTrainReversePushingLoco, reverseLocoListName, enteringTrainRearCarriage
             if enteringTrain.speed > 0 then
                 reverseLocoListName = "back_movers"
-                enteringTrainRearCarriage = enteringTrain.rear_stock
+                enteringTrainRearCarriage = enteringTrain.back_stock
             elseif enteringTrain.speed < 0 then
                 reverseLocoListName = "front_movers"
                 enteringTrainRearCarriage = enteringTrain.front_stock
@@ -235,9 +241,8 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
                 error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train")
             end
             if #enteringTrain.locomotives[reverseLocoListName] == 0 then
-                enteringTrainReversePushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(enteringTrainRearCarriage, Utils.BoundFloatValueWithinRange(enteringTrain.front_stock.orientation + 0.5, 0, 1))
+                enteringTrainReversePushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(enteringTrainRearCarriage, Utils.BoundFloatValueWithinRange(enteringTrain.front_stock.orientation + 0.5, 0, 1))
                 enteringTrain = trainManagerEntry.enteringTrain -- Update as the reference will have been broken.
-                error("code leg never tested since written") -- Written but never been hit, assume its correct...
             end
 
             -- Set a path with the new train
@@ -320,7 +325,7 @@ TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
         -- Update local variable as new train number after removing carriage.
         enteringTrain = trainManagerEntry.enteringTrain
 
-        TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.EnteringCarriageRemoved)
+        TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.EnteringCarriageRemoved)
     end
 
     if not enteringTrain.valid then
@@ -331,7 +336,7 @@ TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
         trainManagerEntry.enteringTrainId = nil
         trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity = nil
         Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", trainManagerEntry)
-        TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.FullyEntered)
+        TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.FullyEntered)
     end
 end
 
@@ -359,8 +364,8 @@ TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
     -- Follow up items post train creation.
     PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
-    TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.StartedLeaving)
-    TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.LeavingCarriageAdded)
+    TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.StartedLeaving)
+    TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.LeavingCarriageAdded)
     TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
     trainManagerEntry.undergroundTrainSetsSpeed = true
 
@@ -402,7 +407,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
 
             -- Follow up items post leaving train carriatge addition.
             PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nextSourceCarriageEntity, placedCarriage)
-            TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.LeavingCarriageAdded)
+            TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.LeavingCarriageAdded)
 
             -- Set the trains speed back to what it was before we added the carriage. This will update the global facing forwards state and correct any speed loss when the carriage was added (base Factorio behavour).
             TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, "leavingTrain", leavingAbsoluteSpeedBeforeCarriageAttachment)
@@ -500,7 +505,7 @@ TrainManager.TrainLeavingCompleted = function(trainManagerEntry)
 
     TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry, defines.signal_state.open) -- Reset the underground Exit signal state to open for the next train.
 
-    TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.FullyLeft)
+    TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.FullyLeft)
 end
 
 TrainManager.TrainLeftTunnelOngoing = function(trainManagerEntry)
@@ -661,7 +666,7 @@ TrainManager.CreateFirstCarriageForLeavingTrain = function(trainManagerEntry)
 
     -- Add a pushing loco if needed.
     if not TrainManagerFuncs.CarriageIsAPushingLoco(placedCarriage, trainManagerEntry.trainTravelOrientation) then
-        trainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
+        trainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(placedCarriage, trainManagerEntry.trainTravelOrientation)
     end
 
     if trainManagerEntry.leavingTrain.speed > 0 then
@@ -696,7 +701,7 @@ TrainManager.AddCarriageToLeavingTrain = function(trainManagerEntry, nextSourceC
 
     -- If train had a pushing loco before and still needs one, add one back.
     if hadPushingLoco and (not TrainManagerFuncs.CarriageIsAPushingLoco(placedCarriage, trainManagerEntry.trainTravelOrientation)) then
-        trainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(placedCarriage, trainManagerEntry.trainTravelOrientation)
+        trainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(placedCarriage, trainManagerEntry.trainTravelOrientation)
     end
 
     return placedCarriage
@@ -835,7 +840,7 @@ TrainManager.TerminateTunnelTrip = function(trainManagerEntry, tunnelUsageChange
         TrainManager.DestroyDummyTrain(trainManagerEntry)
     end
     Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
-    TrainManager.TunnelUsageChangedRemote(trainManagerEntry.id, TrainManager.TunnelUsageAction.Terminated, tunnelUsageChangeReason)
+    TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.Terminated, tunnelUsageChangeReason)
 end
 
 TrainManager.TidyManagedTrainGlobals = function(trainManagerEntry)
@@ -894,6 +899,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.enteringTrain = oldTrainManagerEntry.leavingTrain
         newTrainManagerEntry.enteringTrainId = oldTrainManagerEntry.leavingTrainId
         newTrainManagerEntry.enteringTrainForwards = not oldTrainManagerEntry.leavingTrainForwards
+        global.trainManager.enteringTrainIdToManagedTrain[newTrainManagerEntry.enteringTrainId] = newTrainManagerEntry
     else
         newTrainManagerEntry.enteringTrainState = EnteringTrainStates.finished
         Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", newTrainManagerEntry)
@@ -907,14 +913,19 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.leavingTrainId = oldTrainManagerEntry.enteringTrainId
         newTrainManagerEntry.leavingTrainForwards = not oldTrainManagerEntry.enteringTrainForwards
         newTrainManagerEntry.leavingTrainCarriagesPlaced = #newTrainManagerEntry.leavingTrain.carriages
+        global.trainManager.leavingTrainIdToManagedTrain[newTrainManagerEntry.leavingTrainId] = newTrainManagerEntry
         if not TrainManagerFuncs.DoesTrainHaveAPushingLoco(newTrainManagerEntry.leavingTrain, newTrainManagerEntry.trainTravelOrientation) then
             local rearCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(newTrainManagerEntry.leavingTrain, not newTrainManagerEntry.leavingTrainForwards)
-            newTrainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToEndOfTrain(rearCarriage, newTrainManagerEntry.trainTravelOrientation)
-            error("Test and review this code") -- Written early before reached the right test, so not tried this leg.
+            newTrainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(rearCarriage, newTrainManagerEntry.trainTravelOrientation)
         end
         newTrainManagerEntry.leavingTrainStoppingSignal = nil -- Intentionally reset this value.
         newTrainManagerEntry.leavingTrainStoppingStation = nil -- Intentionally reset this value.
         Interfaces.Call("Tunnel.TrainStartedExitingTunnel", newTrainManagerEntry)
+
+        -- If the old dummy train had the schedule then apply it to the new leaving train. If the old entering train had the schedule then the new leaving train already has it.
+        if oldTrainManagerEntry.dummyTrain ~= nil then
+            TrainManagerFuncs.TrainSetSchedule(newTrainManagerEntry.leavingTrain, oldTrainManagerEntry.dummyTrain.schedule, false, newTrainManagerEntry.scheduleTarget, false)
+        end
     elseif oldTrainManagerEntry.enteringTrainState == EnteringTrainStates.finished then
         newTrainManagerEntry.leavingTrainState = LeavingTrainStates.pre
         local scheduleSourceTrain
@@ -929,9 +940,10 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         global.trainManager.dummyTrainIdToManagedTrain[newTrainManagerEntry.dummyTrain.id] = newTrainManagerEntry
     end
 
-    -- Don't need to handle any leftTrain as the terminate of old tunnel trip will tidy it up. We don't need to create a leaving train entry for the reversed train.
+    -- Don't need to handle any leftTrain as the termination of old tunnel trip will tidy it up. We don't need to create a leaving train entry for the reversed train.
     newTrainManagerEntry.leftTrain = nil
     newTrainManagerEntry.leftTrainId = nil
+    -- global.trainManager.trainLeftTunnelTrainIdToManagedTrain -- TODO: left train should be handled - work through all combinations, above comment may be wrong.
 
     if oldTrainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.approaching then
         newTrainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.leaving -- TODO: not sure on this or if the reversed train will be in the left state ?
@@ -952,19 +964,12 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         --TODO: PlayerContainers globals needs handling in addition to the below list in the trainManagerEntry.
     enteringCarriageIdToUndergroundCarriageEntity = Table of the entering carriage unit number to the underground carriage entity for each carriage in the train. Currently used for tracking players riding in a train when it enters.
     ]]
-    if newTrainManagerEntry.enteringTrain then
-        global.trainManager.enteringTrainIdToManagedTrain[newTrainManagerEntry.enteringTrainId] = newTrainManagerEntry
-    end
-    if newTrainManagerEntry.leavingTrain then
-        global.trainManager.leavingTrainIdToManagedTrain[newTrainManagerEntry.leavingTrainId] = newTrainManagerEntry
-    end
-
     -- Update underground trains path and speed. Variable state done previously.
     local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", newTrainManagerEntry.tunnel.undergroundTunnel, newTrainManagerEntry.trainTravelOrientation)
     TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(newTrainManagerEntry.undergroundTrain, undergroundTrainEndScheduleTargetPos)
     TrainManager.SetAbsoluteTrainSpeed(newTrainManagerEntry, "undergroundTrain", 0)
 
-    TrainManager.TunnelUsageChangedRemote(newTrainManagerEntry.id, TrainManager.TunnelUsageAction.ReversedDuringUse, TrainManager.TunnelUsageChangeReason.ForwardPathLost, oldTrainManagerEntry.id)
+    TrainManager.Remote_TunnelUsageChanged(newTrainManagerEntry.id, TrainManager.TunnelUsageAction.ReversedDuringUse, TrainManager.TunnelUsageChangeReason.ForwardPathLost, oldTrainManagerEntry.id)
 
     -- Check if another train has grabbed out reservation when the path was lost. If so reset their reservation claim.
     -- We can't avoid this path lost even if we react to the event, the other train will have already bene given the path and stated.
@@ -1035,30 +1040,17 @@ TrainManager.TunnelUsageChangeReason = {
     CompletedTunnelUsage = "CompletedTunnelUsage"
 }
 
-TrainManager.TunnelUsageChangedRemote = function(trainManagerEntryId, action, changeReason, replacedTrainTunnelUsageId)
-    -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
-    -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.
-    local data = {
-        trainTunnelUsageId = trainManagerEntryId,
-        name = "RailwayTunnel.TunnelUsageChanged",
-        action = action,
-        changeReason = changeReason,
-        replacedTrainTunnelUsageId = replacedTrainTunnelUsageId
-    }
-    table.insert(global.trainManager.eventsToRaise, data)
-end
-
-TrainManager.GetTrainTunnelUsageRemote = function(trainManagerEntryId)
+TrainManager.Remote_GetTunnelUsageEntryObjectAttributes = function(trainManagerEntryId)
     local trainManagerEntry = global.trainManager.managedTrains[trainManagerEntryId]
     if trainManagerEntry == nil then
         return {
-            trainTunnelUsageId = trainManagerEntryId,
+            tunnelUsageId = trainManagerEntryId,
             valid = false
         }
     else
         -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
         return {
-            trainTunnelUsageId = trainManagerEntryId,
+            tunnelUsageId = trainManagerEntryId,
             valid = true,
             primaryState = trainManagerEntry.primaryTrainPartName,
             enteringTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.enteringTrain),
@@ -1067,6 +1059,40 @@ TrainManager.GetTrainTunnelUsageRemote = function(trainManagerEntryId)
             leftTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.leftTrain)
         }
     end
+end
+
+TrainManager.Remote_TunnelUsageChanged = function(trainManagerEntryId, action, changeReason, replacedtunnelUsageId)
+    -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
+    -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.
+    local data = {
+        tunnelUsageId = trainManagerEntryId,
+        name = "RailwayTunnel.TunnelUsageChanged",
+        action = action,
+        changeReason = changeReason,
+        replacedtunnelUsageId = replacedtunnelUsageId
+    }
+    table.insert(global.trainManager.eventsToRaise, data)
+end
+
+TrainManager.Remote_GetTunnelUsageEntry = function(trainManagerEntryId)
+    return TrainManager.Remote_GetTunnelUsageEntryObjectAttributes(trainManagerEntryId)
+end
+
+TrainManager.Remote_GetATrainsTunnelUsageEntry = function(trainId)
+    local trainManagerEntry = global.trainManager.enteringTrainIdToManagedTrain[trainId] or global.trainManager.dummyTrainIdToManagedTrain[trainId] or global.trainManager.leavingTrainIdToManagedTrain[trainId] or global.trainManager.trainLeftTunnelTrainIdToManagedTrain[trainId]
+    if trainManagerEntry ~= nil then
+        return TrainManager.Remote_GetTunnelUsageEntryObjectAttributes(trainManagerEntry.id)
+    else
+        return nil
+    end
+end
+
+TrainManager.Remote_GetTemporaryCarriageNames = function()
+    return {
+        ["railway_tunnel-tunnel_portal_pushing_locomotive"] = "railway_tunnel-tunnel_portal_pushing_locomotive",
+        ["railway_tunnel-tunnel_exit_dummy_locomotive"] = "railway_tunnel-tunnel_exit_dummy_locomotive",
+        ["railway_tunnel-tunnel_portal_blocking_locomotive"] = "railway_tunnel-tunnel_portal_blocking_locomotive"
+    }
 end
 
 return TrainManager

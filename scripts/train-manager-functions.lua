@@ -35,7 +35,7 @@ TrainManagerFuncs.DoesTrainHaveAPushingLoco = function(train, trainOrientation)
     return false
 end
 
-TrainManagerFuncs.AddPushingLocoToEndOfTrain = function(lastCarriage, trainOrientation)
+TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOrientation)
     local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
     local pushingLocoPlacementPosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainOrientation, lastCarriage, pushingLocoEntityName)
     local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = pushingLocoEntityName, position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
