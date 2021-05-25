@@ -168,7 +168,7 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
 
-    local wagonsToIgnore = {["railway_tunnel-tunnel_portal_pushing_locomotive"] = "railway_tunnel-tunnel_portal_pushing_locomotive"}
+    local wagonsToIgnore = remote.call("railway_tunnel", "get_temporary_carriage_names")
 
     -- If dummy/pushing locos are allowed then check the train ends and remove them if found, so they don't trigger a fail in comparison. Don't remove any from within the train as they shouldn't be there.
     if allowPartialCurrentSnapshot then

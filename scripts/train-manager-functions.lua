@@ -18,7 +18,7 @@ TrainManagerFuncs.IsTrainHealthlyState = function(train)
     end
 end
 
-TrainManagerFuncs.CarriageIsAPushingLoco = function(carriage, trainOrientation)
+TrainManagerFuncs.CarriageIsAForwardsLoco = function(carriage, trainOrientation)
     return carriage.type == "locomotive" and carriage.orientation == trainOrientation
 end
 
@@ -26,13 +26,30 @@ TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
     return carriage.type == "locomotive" and carriage.orientation ~= trainOrientation
 end
 
-TrainManagerFuncs.DoesTrainHaveAPushingLoco = function(train, trainOrientation)
+TrainManagerFuncs.DoesTrainHaveAForwardsLoco = function(train, trainOrientation)
     for _, carriage in pairs(train.carriages) do
-        if TrainManagerFuncs.CarriageIsAPushingLoco(carriage, trainOrientation) then
+        if TrainManagerFuncs.CarriageIsAForwardsLoco(carriage, trainOrientation) then
             return true
         end
     end
     return false
+end
+
+TrainManagerFuncs.RemoveAnyPushingLocosFromTrain = function(train)
+    -- Pushing locos should only be at either end of the train.
+    local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
+    local safeTrainCarriage = train.back_stock -- An entity to hold on to so we can get the train if we have to delete a carriage and the train ref becomes invalid.
+    local aPushingLocoWasRemoved = false
+    if train.front_stock.name == pushingLocoEntityName then
+        train.front_stock.destroy()
+        train = safeTrainCarriage.train
+        aPushingLocoWasRemoved = true
+    end
+    if train.back_stock.name == pushingLocoEntityName then
+        train.back_stock.destroy()
+        aPushingLocoWasRemoved = true
+    end
+    return aPushingLocoWasRemoved
 end
 
 TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOrientation)
