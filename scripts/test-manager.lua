@@ -30,8 +30,8 @@ local KeepRunningTest = false -- If enabled the first test run will not stop whe
 local TestsToRun = {
     demo = {enabled = false, testScript = require("tests/demo"), notInAllTests = true},
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
-    ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
+    ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")},
+    ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")},
     ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
     DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
@@ -180,12 +180,7 @@ TestManager.RunTests = function()
 
     for testName, test in pairs(global.testManager.testsToRun) do
         if ((AllTests and not test.notInAllTests) or test.enabled) and test.runLoopsCount < test.runLoopsMax then
-            if PlayerStartingZoom ~= nil then
-                -- Set zoom on every test start. Makes loading a save before a test easier.
-                for _, player in pairs(game.connected_players) do
-                    player.zoom = PlayerStartingZoom
-                end
-            end
+            TestManager.PrepPlayersForNextTest()
             test.runLoopsCount = test.runLoopsCount + 1
             game.print("Starting Test:   " .. TestManager.GetTestDisplayName(testName), {0, 1, 1, 1})
             if global.testManager.justLogAllTests then
@@ -197,6 +192,8 @@ TestManager.RunTests = function()
                 EventScheduler.ScheduleEventOnce(game.tick + test.runTime, "TestManager.WaitForPlayerThenRunTests", nil, {currentTestName = testName})
             end
             global.testManager.playerForce.chart_all(global.testManager.testSurface)
+
+            -- Only start 1 test at a time.
             return
         end
     end
@@ -249,6 +246,25 @@ end
 TestManager.LogTestOutcome = function(text)
     if global.testManager.justLogAllTests then
         game.write_file("RailwayTunnel_Tests.txt", text .. "\r\n", true)
+    end
+end
+
+TestManager.PrepPlayersForNextTest = function()
+    for _, player in pairs(game.connected_players) do
+        -- Put the player back to 0,0 before each test. They can get left in odd places after riding trains.
+        local playerWasInEditor = player.controller_type == defines.controllers.editor
+        if playerWasInEditor then
+            player.toggle_map_editor()
+        end
+        player.character.teleport({0, 0})
+        if playerWasInEditor then
+            player.toggle_map_editor()
+        end
+
+        if PlayerStartingZoom ~= nil then
+            -- Set zoom on every test start. Makes loading a save before a test easier.
+            player.zoom = PlayerStartingZoom
+        end
     end
 end
 

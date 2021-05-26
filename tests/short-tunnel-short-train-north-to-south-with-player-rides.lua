@@ -1,10 +1,11 @@
--- Sends a short train from the south to the north.
+-- Sends a short train from the south to the north. First loop player watches, second loop player rides the train.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
 Test.RunTime = 1800
+Test.RunLoopsMax = 2
 
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
@@ -27,6 +28,17 @@ Test.Start = function(testName)
     end
 
     local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+
+    -- Put the player in a carriage on the 2nd loop.
+    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    if testManagerEntry.runLoopsCount == 2 then
+        local player = game.connected_players[1]
+        if player ~= nil then
+            train.carriages[2].set_driver(player)
+        else
+            game.print("No player found to set as driver, test continuing regardless")
+        end
+    end
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.northStationReached = false

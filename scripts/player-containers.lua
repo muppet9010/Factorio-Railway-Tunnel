@@ -64,6 +64,7 @@ end
 
 PlayerContainers.OnToggleDrivingInputAfterChangedState = function(event)
     -- Triggers after the OnPlayerDrivingChangedState() has run for this if it is going to.
+    -- When the player is in editor mode the game announces the player entering and leaving vehicles. This doesn't happen in freeplay mode.
     local player = game.get_player(event.instanceId)
     local details = global.playerContainers.playerTryLeaveVehicle[player.index]
     if details == nil then

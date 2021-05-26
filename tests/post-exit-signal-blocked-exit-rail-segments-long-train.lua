@@ -20,7 +20,7 @@ Test.OnLoad = function(testName)
 end
 
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 24}, testName)
 
     -- Get the trains/wagons. The blocking wagons are the single carriage trains sorted south to north.
     local movingTrain, blockingWagons = nil, {}

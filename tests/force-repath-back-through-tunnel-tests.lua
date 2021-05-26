@@ -10,12 +10,13 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
-local SpecificTrainTypesFilter = {"<>", "><"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {"<------", "------<", "---<---"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
 local SpecificTunnelUsageTypesFilter = {
     "beforeCommitted",
     "carriageEntering",
     "carriageLeaving"
-} -- Pass in array of TunnelUsageType keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
+} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
+local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
 
 Test.RunTime = 1200
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -24,10 +25,11 @@ Test.TestScenarios = {} -- Populated when script loaded.
     {
         trainText = trainType.text so the train makeup in symbols.
         carriages = fully populated list of carriage requirements from trainType.carriages.
-        tunnelUsageType = TunnelUsageType object reference for the test.
+        tunnelUsageType = TunnelUsageTypes object reference for the test.
         reverseOnCarriageNumber = the carriage number to reverse the train on. For non perCarriage tests (TunnelUsageType) this value will be ignored.
         backwardsLocoCarriageNumber = the carriage number of the backwards facing loco. Will be 0 for trains with no backwards locos.
         expectedResult = the expected result of this test (ResultStates).
+        playerInCarriageNumber = the carriage number that the player is riding in, or nil for none.
     }
 ]]
 Test.OnLoad = function(testName)
@@ -298,15 +300,21 @@ local TrainTypes = {
         }
     }
 }
-local TunnelUsageType = {
+local TunnelUsageTypes = {
     beforeCommitted = {name = "beforeCommitted", perCarriage = false},
     carriageEntering = {name = "carriageEntering", perCarriage = true}, -- This can overlap with carriageLeaving.
     carriageLeaving = {name = "carriageLeaving", perCarriage = true} -- This can overlap with carriageEntering.
 }
+local PlayerInCarriageTypes = {
+    none = "none",
+    first = "first",
+    last = "last"
+}
 local ResultStates = {
-    NotReachTunnel = "NotReachTunnel",
-    PullToFrontOfTunnel = "PullToFrontOfTunnel",
-    ReachStation = "ReachStation"
+    notReachTunnel = "notReachTunnel",
+    pullToFrontOfTunnel = "pullToFrontOfTunnel",
+    reachStation = "reachStation",
+    stopPostTunnel = "stopPostTunnel" -- has left the tunnel when path removed and can't get back to station, so just stops where it is.
 }
 
 Test.GetTestDisplayName = function(testName)
@@ -315,9 +323,14 @@ Test.GetTestDisplayName = function(testName)
 
     local carriageText = ""
     if testScenario.tunnelUsageType.perCarriage then
-        carriageText = "     carriage " .. testScenario.reverseOnCarriageNumber
+        carriageText = "     on carriage " .. testScenario.reverseOnCarriageNumber
     end
-    local displayName = testName .. "     " .. testScenario.trainText .. "     " .. testScenario.tunnelUsageType.name .. carriageText
+    local playerInCarriageText = ""
+    if testScenario.playerInCarriageNumber ~= nil then
+        playerInCarriageText = "      player in carriage " .. testScenario.playerInCarriageNumber
+    end
+
+    local displayName = testName .. "     " .. testScenario.trainText .. "     " .. testScenario.tunnelUsageType.name .. carriageText .. playerInCarriageText .. "    Expected result: " .. testScenario.expectedResult
 
     return displayName
 end
@@ -326,7 +339,7 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd, stationStart, stationStayHere
@@ -355,7 +368,7 @@ Test.Start = function(testName)
 
     local trackToRemove = stationEnd.surface.find_entity("straight-rail", {x = leavingPortal.position.x - 60, y = leavingPortal.position.y})
 
-    local train = Test.BuildTrain(stationStart, testScenario.carriages, stationEnd)
+    local train = Test.BuildTrain(stationStart, testScenario.carriages, stationEnd, testScenario.playerInCarriageNumber)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationStart = stationStart
@@ -376,8 +389,6 @@ Test.Start = function(testName)
     testData.lastTrainChangeReason = nil -- Populated by the last TunnelUsageChanged changeReason.
     testData.previousTrainAction = nil -- Populated by the previous (last + 1) TunnelUsageChanged action.
     testData.previousTrainChangeReason = nil -- Populated by the previous (last + 1) TunnelUsageChanged changeReason.
-
-    game.print("Expected test result: " .. testData.testScenario.expectedResult)
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
     TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
@@ -400,9 +411,9 @@ Test.EveryTick = function(event)
     end
 
     local endStationTrain = testData.stationEnd.get_stopped_train()
-    if testData.testScenario.expectedResult == ResultStates.NotReachTunnel then
+    if testData.testScenario.expectedResult == ResultStates.notReachTunnel then
         -- This outcome can be checked instantly after the path out of tunnel broken. As the train never entered the tunnel the old testData.train reference should be valid still.
-        -- Depending on exactly where the train stopped and its length it may/not be able to reach the end station. So can't check this at present.
+        -- Depending on exactly where the train stopped its makeup and its length it may/not be able to reach the end station. So can't check this at present.
         if testData.train == nil or not testData.train.valid then
             TestFunctions.TestFailed(testName, "train reference should still exist from test start")
             return
@@ -414,16 +425,16 @@ Test.EveryTick = function(event)
             end
         end
         -- See if we have moved past the start approaching action on to another action. If not moved passed start approaching then continue the test.
-        if testData.previousTrainAction == "StartApproaching" then
+        if testData.previousTrainAction == "startApproaching" then
             -- Check latest action is the expected one.
-            if testData.lastTrainAction == "Terminated" and testData.lastTrainChangeReason == "AbortedApproach" then
+            if testData.lastTrainAction == "terminated" and testData.lastTrainChangeReason == "abortedApproach" then
                 TestFunctions.TestCompleted(testName)
             else
-                TestFunctions.TestFailed(testName, "last tunnel usage state wasn't AbortedApproach")
+                TestFunctions.TestFailed(testName, "last tunnel usage state wasn't abortedApproach")
             end
         end
-    elseif testData.testScenario.expectedResult == ResultStates.PullToFrontOfTunnel then
-        local inspectionArea = {left_top = {x = testData.leavingPortal.position.x - 20, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x - 18, y = testData.leavingPortal.position.y}}
+    elseif testData.testScenario.expectedResult == ResultStates.pullToFrontOfTunnel then
+        local inspectionArea = {left_top = {x = testData.leavingPortal.position.x - 20, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x - 18, y = testData.leavingPortal.position.y}} -- Inspection area needs to find trains that have pulled to the end of the tunnel.
         local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = {"locomotive", "cargo-wagon"}, limit = 1}
         local carriageFound, trainFound = carriagesInInspectionArea[1], nil
         if carriageFound ~= nil then
@@ -432,17 +443,19 @@ Test.EveryTick = function(event)
         if trainFound == nil then
             return
         end
-        if trainFound.state == defines.train_state.path_lost then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(endStationTrain)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
-                TestFunctions.TestFailed(testName, "train pulled to front of tunnel, but with train differences in the emerged train so far")
-                return
+        if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
+            -- The stayHere train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
+            if testData.stayHereTrain.state == defines.train_state.destination_full then
+                TestFunctions.TestFailed(testName, "stay here train should have got a reservation to the end station as the main train lost its")
             end
             TestFunctions.TestCompleted(testName)
         elseif endStationTrain ~= nil then
-            TestFunctions.TestFailed(testName, "train reached end station")
+            if endStationTrain.id ~= testData.stayHereTrain.id then
+                -- If a train other than the stay here train reaches the end station something has gone wrong. The stay here train can move in this test as the main train's path and reservation is expected to be lost.
+                TestFunctions.TestFailed(testName, "train reached end station")
+            end
         end
-    elseif testData.testScenario.expectedResult == ResultStates.ReachStation then
+    elseif testData.testScenario.expectedResult == ResultStates.reachStation then
         if endStationTrain ~= nil then
             if not Utils.ArePositionsTheSame(testData.stayHereTrain.carriages[1].position, testData.stayHereTrainCarriage1StartingPosition) then
                 TestFunctions.TestFailed(testName, "Stay Here train wasn't where it started")
@@ -459,12 +472,36 @@ Test.EveryTick = function(event)
             end
             TestFunctions.TestCompleted(testName)
         end
+    elseif testData.testScenario.expectedResult == ResultStates.stopPostTunnel then
+        local inspectionArea = {left_top = {x = testData.leavingPortal.position.x + 5, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x + 10, y = testData.leavingPortal.position.y}} -- Inspection area needs to find trains that were fully left and then just stopped dead. So a carraige will be right after leaving the portal if the train stopped at this time.
+        local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = {"locomotive", "cargo-wagon"}, limit = 1}
+        local carriageFound, trainFound = carriagesInInspectionArea[1], nil
+        if carriageFound ~= nil then
+            trainFound = carriageFound.train
+        end
+        if trainFound == nil then
+            return
+        end
+        if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
+            -- The stayHere train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
+            if testData.stayHereTrain.state == defines.train_state.destination_full then
+                TestFunctions.TestFailed(testName, "stay here train should have got a reservation to the end station as the main train lost its")
+            end
+            TestFunctions.TestCompleted(testName)
+        elseif endStationTrain ~= nil then
+            if endStationTrain.id ~= testData.stayHereTrain.id then
+                -- If a train other than the stay here train reaches the end station something has gone wrong. The stay here train can move in this test as the main train's path and reservation is expected to be lost.
+                TestFunctions.TestFailed(testName, "train reached end station")
+            end
+        end
+    else
+        error("unsupported testScenario.expectedResult: " .. testData.testScenario.expectedResult)
     end
 end
 
 Test.TunnelUsageChanged = function(event)
     local testName, testData = event.testName, TestFunctions.GetTestDataObject(event.testName)
-    if testData.managedTrainId == 0 and event.action == "StartApproaching" and testData.train.id == event.enteringTrain.id then
+    if testData.managedTrainId == 0 and event.action == "startApproaching" and testData.train.id == event.enteringTrain.id then
         -- Keep hold of managed train id.
         testData.managedTrainId = event.tunnelUsageId
     end
@@ -490,12 +527,12 @@ Test.TunnelUsageChanged = function(event)
     end
 
     -- Check test type and usage change type to see if the desired state has been reached.
-    if testTunnelUsageType.name == TunnelUsageType.beforeCommitted.name then
-        if event.action ~= "StartApproaching" then
+    if testTunnelUsageType.name == TunnelUsageTypes.beforeCommitted.name then
+        if event.action ~= "startApproaching" then
             return
         end
-    elseif testTunnelUsageType.name == TunnelUsageType.carriageEntering.name then
-        if event.action ~= "EnteringCarriageRemoved" then
+    elseif testTunnelUsageType.name == TunnelUsageTypes.carriageEntering.name then
+        if event.action ~= "enteringCarriageRemoved" then
             return
         else
             -- reverseOnCarriageNumber counts the carriage number manipulated, but enteringTrain is post carriage removal.
@@ -509,8 +546,8 @@ Test.TunnelUsageChanged = function(event)
                 return
             end
         end
-    elseif testTunnelUsageType.name == TunnelUsageType.carriageLeaving.name then
-        if event.action ~= "LeavingCarriageAdded" then
+    elseif testTunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name then
+        if event.action ~= "leavingCarriageAdded" then
             return
         else
             local carriagesToIgnore = remote.call("railway_tunnel", "get_temporary_carriage_names")
@@ -528,7 +565,7 @@ Test.TunnelUsageChanged = function(event)
 end
 
 Test.GenerateTestScenarios = function()
-    local trainTypesToTest, tunnelUsageTypesToTest
+    local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest
 
     if DoSpecificTrainTests then
         -- Adhock testing option.
@@ -546,17 +583,26 @@ Test.GenerateTestScenarios = function()
             end
         end
         if Utils.IsTableEmpty(SpecificTunnelUsageTypesFilter) then
-            tunnelUsageTypesToTest = TunnelUsageType
+            tunnelUsageTypesToTest = TunnelUsageTypes
         else
             tunnelUsageTypesToTest = {}
             for _, usageTypeName in pairs(SpecificTunnelUsageTypesFilter) do
-                tunnelUsageTypesToTest[usageTypeName] = TunnelUsageType[usageTypeName]
+                tunnelUsageTypesToTest[usageTypeName] = TunnelUsageTypes[usageTypeName]
+            end
+        end
+        if Utils.IsTableEmpty(SpecificPlayerInCarriageTypesFilter) then
+            playerInCarriagesTypesToTest = PlayerInCarriageTypes
+        else
+            playerInCarriagesTypesToTest = {}
+            for _, playerInCarriageType in pairs(SpecificPlayerInCarriageTypesFilter) do
+                playerInCarriagesTypesToTest[playerInCarriageType] = PlayerInCarriageTypes[playerInCarriageType]
             end
         end
     else
         -- Full testing suite.
         trainTypesToTest = TrainTypes
-        tunnelUsageTypesToTest = TunnelUsageType
+        tunnelUsageTypesToTest = TunnelUsageTypes
+        playerInCarriagesTypesToTest = PlayerInCarriageTypes
     end
 
     -- Do each iteration of train type and tunnel usage. Each wagon entering/leaving the tunnel is a test.
@@ -582,34 +628,57 @@ Test.GenerateTestScenarios = function()
 
             -- 1 test per carriage in train.
             for carriageCount = 1, maxCarriageCount do
-                local scenario = {
-                    trainText = trainType.text,
-                    carriages = fullCarriageArray,
-                    tunnelUsageType = tunnelUsageType,
-                    reverseOnCarriageNumber = carriageCount, -- On non perCarriage tests this value will be ignored.
-                    backwardsLocoCarriageNumber = backwardsLocoCarriageNumber
-                }
-                scenario.expectedResult = Test.CalculateExpectedResult(scenario)
+                -- 1 test per playerInCarriage state for each carriage.
+                for _, playerInCarriage in pairs(playerInCarriagesTypesToTest) do
+                    local playerCarriageNumber
+                    if playerInCarriage == PlayerInCarriageTypes.none then
+                        playerCarriageNumber = nil
+                    elseif playerInCarriage == PlayerInCarriageTypes.first then
+                        playerCarriageNumber = 1
+                    elseif playerInCarriage == PlayerInCarriageTypes.last then
+                        playerCarriageNumber = #fullCarriageArray
+                    end
 
-                Test.RunLoopsMax = Test.RunLoopsMax + 1
-                table.insert(Test.TestScenarios, scenario)
+                    local scenario = {
+                        trainText = trainType.text,
+                        carriages = fullCarriageArray,
+                        tunnelUsageType = tunnelUsageType,
+                        reverseOnCarriageNumber = carriageCount, -- On non perCarriage tests this value will be ignored.
+                        backwardsLocoCarriageNumber = backwardsLocoCarriageNumber,
+                        playerInCarriageNumber = playerCarriageNumber
+                    }
+                    scenario.expectedResult = Test.CalculateExpectedResult(scenario)
+
+                    Test.RunLoopsMax = Test.RunLoopsMax + 1
+                    table.insert(Test.TestScenarios, scenario)
+                end
             end
         end
     end
 end
 
-Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
+Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, playerInCarriageNumber)
     -- Build the train from the station heading west. Give each loco fuel, set target schedule and to automatic.
     local placedCarriage
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = -0.5, y = 2}) -- offset to position first carriage correctly.
-    for i, carriageDetails in pairs(carriagesDetails) do
+    for carriageNumber, carriageDetails in pairs(carriagesDetails) do
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
         if carriageDetails.name == "locomotive" then
             placedCarriage.insert({name = "rocket-fuel", count = 10})
         end
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
+
+        -- Place the player in this carriage if set.
+        if playerInCarriageNumber ~= nil and playerInCarriageNumber == carriageNumber then
+            local player = game.connected_players[1]
+            if player ~= nil then
+                placedCarriage.set_driver(player)
+            else
+                game.print("No player found to set as driver, test continuing regardless")
+            end
+        end
     end
 
     local train = placedCarriage.train
@@ -626,30 +695,35 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation)
 end
 
 Test.CalculateExpectedResult = function(testScenario)
-    if testScenario.tunnelUsageType.name == TunnelUsageType.beforeCommitted.name then
-        -- Train hasn't committed to using the tunnel. So no other checks are needed.
-        return ResultStates.NotReachTunnel
+    -- Train hasn't committed to using the tunnel. So no other checks are needed.
+    if testScenario.tunnelUsageType.name == TunnelUsageTypes.beforeCommitted.name then
+        return ResultStates.notReachTunnel
     end
 
+    -- No reversing loco in train.
     if testScenario.backwardsLocoCarriageNumber == 0 then
-        -- No reversing loco in train. So no other checks are needed.
-        return ResultStates.PullToFrontOfTunnel
+        if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name and testScenario.reverseOnCarriageNumber == #testScenario.carriages then
+            -- train has left and with no reverse loco it just stops here.
+            return ResultStates.stopPostTunnel
+        else
+            return ResultStates.pullToFrontOfTunnel
+        end
     end
 
     -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.
     local enteringTrainLengthAtReverseTime
-    if testScenario.tunnelUsageType.name == TunnelUsageType.carriageEntering.name then
+    if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageEntering.name then
         enteringTrainLengthAtReverseTime = #testScenario.carriages - testScenario.reverseOnCarriageNumber
-    elseif testScenario.tunnelUsageType.name == TunnelUsageType.carriageLeaving.name then
+    elseif testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name then
         -- The tunnel is 10 carriages long.
         enteringTrainLengthAtReverseTime = (#testScenario.carriages - 10) - testScenario.reverseOnCarriageNumber
     end
     if enteringTrainLengthAtReverseTime > 5 then
         -- Rear of train is right (wrong) side of reverse curve.
-        return ResultStates.PullToFrontOfTunnel
+        return ResultStates.pullToFrontOfTunnel
     else
         -- Rear of train is left (happy) side of reverse curve.
-        return ResultStates.ReachStation
+        return ResultStates.reachStation
     end
 end
 
