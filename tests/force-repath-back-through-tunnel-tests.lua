@@ -10,10 +10,10 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
-local SpecificTrainTypesFilter = {"<------", "------<", "---<---"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {"<------"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
 local SpecificTunnelUsageTypesFilter = {
-    "beforeCommitted",
-    "carriageEntering",
+    --"beforeCommitted",
+    --"carriageEntering",
     "carriageLeaving"
 } -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
 local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
@@ -435,12 +435,8 @@ Test.EveryTick = function(event)
         end
     elseif testData.testScenario.expectedResult == ResultStates.pullToFrontOfTunnel then
         local inspectionArea = {left_top = {x = testData.leavingPortal.position.x - 20, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x - 18, y = testData.leavingPortal.position.y}} -- Inspection area needs to find trains that have pulled to the end of the tunnel.
-        local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = {"locomotive", "cargo-wagon"}, limit = 1}
-        local carriageFound, trainFound = carriagesInInspectionArea[1], nil
-        if carriageFound ~= nil then
-            trainFound = carriageFound.train
-        end
-        if trainFound == nil then
+        local trainFound = TestFunctions.GetTrainInArea(inspectionArea)
+        if not trainFound then
             return
         end
         if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
@@ -474,12 +470,8 @@ Test.EveryTick = function(event)
         end
     elseif testData.testScenario.expectedResult == ResultStates.stopPostTunnel then
         local inspectionArea = {left_top = {x = testData.leavingPortal.position.x + 5, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x + 10, y = testData.leavingPortal.position.y}} -- Inspection area needs to find trains that were fully left and then just stopped dead. So a carraige will be right after leaving the portal if the train stopped at this time.
-        local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = {"locomotive", "cargo-wagon"}, limit = 1}
-        local carriageFound, trainFound = carriagesInInspectionArea[1], nil
-        if carriageFound ~= nil then
-            trainFound = carriageFound.train
-        end
-        if trainFound == nil then
+        local trainFound = TestFunctions.GetTrainInArea(inspectionArea)
+        if not trainFound then
             return
         end
         if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then

@@ -50,7 +50,7 @@ TrainManager.CreateGlobals = function()
             leavingTrainCarriagesPlaced = count of how many carriages placed so far in the above train while its leaving.
             leavingTrainPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
             leavingTrainStoppingSignal = the LuaSignal that the leaving train is currently stopping at beyond the portal, or nil.
-            leavingTrainStoppingStation = the LuaStation that the leaving train is currently stopping at beyond the portal, or nil.
+            leavingTrainStoppingSchedule = the LuaRail that the leaving train is currently stopping at beyond the portal, or nil.
 
             leftTrain = LuaTrain of the train thats left the tunnel.
             leftTrainId = The LuaTrain ID of the leftTrain.
@@ -384,9 +384,9 @@ end
 TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
     TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
 
-    -- Handle if the train is stopping at a signal or station. Updates trainManagerEntry.undergroundTrainSetsSpeed and the underground train path if required.
-    TrainManager.HandleLeavingTrainStoppingAtSignalStation(trainManagerEntry, "signal")
-    TrainManager.HandleLeavingTrainStoppingAtSignalStation(trainManagerEntry, "station")
+    -- Handle if the train is stopping at a signal or scheduled stop (train-stop or rail). Updates trainManagerEntry.undergroundTrainSetsSpeed and the underground train path if required.
+    TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(trainManagerEntry, "signal")
+    TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(trainManagerEntry, "schedule")
 
     -- Get the desired speed for this tick.
     local desiredSpeed
@@ -449,7 +449,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
     end
 end
 
-TrainManager.HandleLeavingTrainStoppingAtSignalStation = function(trainManagerEntry, arriveAtName)
+TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerEntry, arriveAtName)
     -- Handles a train leaving a tunnel arriving at a station/signal based on input. Updated global state data that impacts TrainManager.TrainLeavingOngoing(): trainManagerEntry.undergroundTrainSetsSpeed and underground train path target. Is a black box to calling functions otherwise.
 
     local trainStoppingEntityAttributeName, stoppingTargetEntityAttributeName, arriveAtReleventStoppingTarget
@@ -457,12 +457,13 @@ TrainManager.HandleLeavingTrainStoppingAtSignalStation = function(trainManagerEn
         trainStoppingEntityAttributeName = "signal"
         stoppingTargetEntityAttributeName = "leavingTrainStoppingSignal"
         arriveAtReleventStoppingTarget = trainManagerEntry.leavingTrain.state == defines.train_state.arrive_signal and trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName].unit_number ~= trainManagerEntry.aboveExitPortalEntrySignalOut.entity.unit_number
-    elseif arriveAtName == "station" then
-        trainStoppingEntityAttributeName = "path_end_stop"
-        stoppingTargetEntityAttributeName = "leavingTrainStoppingStation"
+    elseif arriveAtName == "schedule" then
+        -- Type of schedule includes both train-stop's and rail's. But we can always just use the end rail attribute for both.
+        trainStoppingEntityAttributeName = "path_end_rail"
+        stoppingTargetEntityAttributeName = "leavingTrainStoppingSchedule"
         arriveAtReleventStoppingTarget = trainManagerEntry.leavingTrain.state == defines.train_state.arrive_station
     else
-        error("TrainManager.HandleLeavingTrainStoppingAtSignalStation() unsuported arriveAtName: " .. arriveAtName)
+        error("TrainManager.HandleLeavingTrainStoppingAtSignalSchedule() unsuported arriveAtName: " .. arriveAtName)
     end
 
     -- 1: If leaving train is now arriving at a relvent stopping target. Relevent target is either any station or a signal other than the entrance out signal on the current exit portal. If relevent then check state in detail as we may need to update the underground train stop point.
@@ -486,7 +487,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalStation = function(trainManagerEn
         if trainManagerEntry[stoppingTargetEntityAttributeName] == nil then
             -- The above ground and underground trains will never be exactly relational to one another as they change speed each tick differently before they are re-aligned. So the underground train should be targetted as an offset from its current location and when the above train is very near the stopping target the above train can take over setting speed to manage the final pulling up.
             trainManagerEntry[stoppingTargetEntityAttributeName] = trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName]
-            local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
+            local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTarget)
             TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainTargetPosition)
             trainManagerEntry.undergroundTrainSetsSpeed = true
@@ -650,18 +651,24 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved)
         if managedTrain.tunnel.id == tunnelRemoved.id then
             if managedTrain.enteringTrainId ~= nil then
                 global.trainManager.enteringTrainIdToManagedTrain[managedTrain.enteringTrainId] = nil
-                managedTrain.enteringTrain.manual_mode = true
-                managedTrain.enteringTrain.speed = 0
-                if managedTrain.dummyTrain ~= nil then
-                    managedTrain.enteringTrain.schedule = managedTrain.dummyTrain.schedule
-                elseif managedTrain.leavingTrain ~= nil then
-                    managedTrain.enteringTrain.schedule = managedTrain.leavingTrain.schedule
+                if managedTrain.enteringTrain ~= nil and managedTrain.enteringTrain.valid then
+                    managedTrain.enteringTrain.manual_mode = true
+                    managedTrain.enteringTrain.speed = 0
+
+                    -- Try to recover a schedule to the entering train.
+                    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
+                        managedTrain.enteringTrain.schedule = managedTrain.dummyTrain.schedule
+                    elseif managedTrain.leavingTrain ~= nil and managedTrain.leavingTrain.valid then
+                        managedTrain.enteringTrain.schedule = managedTrain.leavingTrain.schedule
+                    end
                 end
             end
             if managedTrain.leavingTrainId ~= nil then
                 global.trainManager.leavingTrainIdToManagedTrain[managedTrain.leavingTrainId] = nil
-                managedTrain.leavingTrain.manual_mode = true
-                managedTrain.leavingTrain.speed = 0
+                if managedTrain.leavingTrain ~= nil and managedTrain.leavingTrain.valid then
+                    managedTrain.leavingTrain.manual_mode = true
+                    managedTrain.leavingTrain.speed = 0
+                end
             end
             TrainManager.DestroyDummyTrain(managedTrain)
 
@@ -793,7 +800,7 @@ end
 
 TrainManager.GetUndergroundFirstWagonPosition = function(trainManagerEntry)
     -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail(trainManagerEntry.enteringTrain, trainManagerEntry.aboveEntrancePortalEndSignal.entity, trainManagerEntry.enteringTrainForwards)
+    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(trainManagerEntry.enteringTrain, trainManagerEntry.aboveEntrancePortalEndSignal.entity, trainManagerEntry.enteringTrainForwards)
 
     -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
     local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(trainManagerEntry.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})
@@ -975,7 +982,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
             end
         end
         newTrainManagerEntry.leavingTrainStoppingSignal = nil -- Intentionally reset this value.
-        newTrainManagerEntry.leavingTrainStoppingStation = nil -- Intentionally reset this value.
+        newTrainManagerEntry.leavingTrainStoppingSchedule = nil -- Intentionally reset this value.
         Interfaces.Call("Tunnel.TrainStartedExitingTunnel", newTrainManagerEntry)
 
         -- If the old dummy train had the schedule then apply it to the new leaving train. If the old entering train had the schedule then the new leaving train already has it.

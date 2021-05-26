@@ -409,12 +409,10 @@ TunnelPortals.OnDiedEntity = function(event)
         return
     end
 
-    if portal.tunnel == nil then
-        TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
-    else
+    if portal.tunnel ~= nil then
         Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
-        TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
     end
+    TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
 end
 
 TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)

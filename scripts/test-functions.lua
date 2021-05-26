@@ -215,6 +215,28 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
     return false
 end
 
+-- Searches the test surface for the first train found within the search bounding box.
+TestFunctions.GetTrainInArea = function(searchBoundingBox)
+    local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = searchBoundingBox, name = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}, limit = 1}
+    local carriageFound = carriagesInInspectionArea[1]
+    if carriageFound ~= nil then
+        return carriageFound.train
+    else
+        return nil
+    end
+end
+
+-- Searches the test surface for the first train found at the search position.
+TestFunctions.GetTrainAtPosition = function(searchPosition)
+    local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {position = searchPosition, name = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}, limit = 1}
+    local carriageFound = carriagesInInspectionArea[1]
+    if carriageFound ~= nil then
+        return carriageFound.train
+    else
+        return nil
+    end
+end
+
 -- Builds a given blueprint string centered on the given position and returns a list of all build entities. Also starts any placed trains (set to automatic mode). To aid train comparison locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
     -- Utility function to build a blueprint from a string on the test surface.

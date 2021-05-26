@@ -180,16 +180,18 @@ TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fa
     leavingTrain.schedule = newSchedule
 end
 
-TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail = function(train, targetEntity, trainGoingForwards)
-    -- This measures to the nearest edge of the target's rail, so doesn't include any of the target's rail's length.
+TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, targetEntity, trainGoingForwards)
+    -- This measures to the nearest edge of the target's rail, so doesn't include any of the target's rail's length. The targetEntity can be a rail itself or an entity connected to a rail.
 
     local targetRails
     if targetEntity.type == "train-stop" then
         targetRails = {targetEntity.connected_rail} -- A station as the stopping target can only be on 1 rail at a time.
     elseif targetEntity.type == "rail-signal" or targetEntity.type == "rail-chain-signal" then
         targetRails = targetEntity.get_connected_rails() -- A signal as the stopping target can be on multiple rails at once, however, only 1 will be in our path list.
+    elseif targetEntity.type == "straight-rail" or targetEntity.type == "curved-rail" then
+        targetRails = {targetEntity} -- The target is a rail itself, rather than an entity attached to a rail.
     else
-        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail() doesn't support targetEntity type: " .. targetEntity.type)
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support targetEntity type: " .. targetEntity.type)
     end
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
@@ -213,7 +215,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail = function(train, t
     elseif leadCarriage.speed < 0 then
         leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
     else
-        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetsRail() doesn't support 0 speed train")
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train")
     end
     local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
     local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
