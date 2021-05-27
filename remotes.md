@@ -9,17 +9,19 @@ Tunnel Usage Entry Object Attributes
 ----------------
 
 The common attributes that are returned giving details about a tunnel usage entry by many of the mods events and remote interfaces.
-    - tunnelUsageId = id of the tunnel usage details (INT). Always present.
-    - valid = if the tunnel usage entry is still using the tunnel (BOOLEAN). If its false then all other return attributes will be nil.
-    - primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
-    - enteringTrain = LuaTrain of the train still entering the tunnel if it exists, otherwise nil. Exists from "startApproaching" to the final "enteringCarriageRemoved" and "fullyEntered" action events.
-    - undergroundTrain = LuaTrain of the complete train underground if it exists, otherwise nil. Exists from "startApproaching" to the final "leavingCarriageAdded" and "fullyLeft" action events.
-    - leavingTrain = LuaTrain of the train while partially leaving the tunnel if it exists, otherwise nil. Exists from the " startedLeaving" and first "leavingCarriageAdded" action events until the tunnel usage is "terminated".
+- tunnelUsageId = id of the tunnel usage details (INT). Always present.
+- valid = if the tunnel usage entry is still using the tunnel (BOOLEAN). If its false then all other return attributes will be nil.
+- primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
+- enteringTrain = LuaTrain of the train still entering the tunnel if it exists, otherwise nil. Exists from "startApproaching" to the final "enteringCarriageRemoved" and "fullyEntered" action events.
+- undergroundTrain = LuaTrain of the complete train underground if it exists, otherwise nil. Exists from "startApproaching" to the final "leavingCarriageAdded" and "fullyLeft" action events.
+- leavingTrain = LuaTrain of the train while partially leaving the tunnel if it exists, otherwise nil. Exists from the " startedLeaving" and first "leavingCarriageAdded" action events until the tunnel usage is "terminated".
 
 
 
 Tunnel Usage Changed Event
 --------------
+
+Get a custom event id via a remote interface call that can be registered to be notified when a tunnel usage instance's state changes. The event will be raised for all changes to tunnel usage primaryState and changes to trains composition, i.e. when a carriage is added or removed from either the entering or leaving train.
 
 **Remote interface to get custom event id**
 - Interface Name: get_tunnel_usage_changed_event_id
@@ -30,7 +32,7 @@ Tunnel Usage Changed Event
     - Factorio event id.
 
 **Custom event raised**
-- Description: Event raised every time a tunnel usage details change. This will occur for changes to primaryState and changes to trains, i.e. when a carriage is added/removed from the entering/leaving train. Any instances of this event are raised at the end of the tunnel's usage processing each tick, so train states should be stable.
+- Description: Event raised every time a tunnel usage details change. Any instances of this event are raised at the end of the tunnel's usage processing each tick, so train states should be stable.
 - Event Attributes:
     - Tunnel Usage Entry Object Attributes for this tunnel usage.
     - action: the action that occured (STRING):
