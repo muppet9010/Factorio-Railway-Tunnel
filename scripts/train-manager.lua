@@ -51,6 +51,7 @@ TrainManager.CreateGlobals = function()
             leavingTrainPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
             leavingTrainStoppingSignal = the LuaSignal that the leaving train is currently stopping at beyond the portal, or nil.
             leavingTrainStoppingSchedule = the LuaRail that the leaving train is currently stopping at beyond the portal, or nil.
+            leavingTrainExpectedBadState = if the leaving train is in a bad state and it can't be corrected. Avoids repeating checks or trying bad actions.
 
             leftTrain = LuaTrain of the train thats left the tunnel.
             leftTrainId = The LuaTrain ID of the leftTrain.
@@ -182,8 +183,18 @@ TrainManager.ProcessManagedTrains = function()
                 -- Only runs for the first carriage and then changes to the ongoing for the remainder.
                 TrainManager.TrainLeavingFirstCarriage(trainManagerEntry)
             elseif trainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
-                -- Check if the leaving train is in a good state before we check to add any new wagons to it.
-                if not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
+                -- Check the leaving trains state and react accordingly
+                if trainManagerEntry.leavingTrainExpectedBadState then
+                    -- The train is known to have reached a bad state and is staying in it. We need to monitor the leaving train returning to a healthy state, rather than try to fix the bad state.
+                    if TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
+                        -- Leaving train is healthy again so return everything to active.
+                        -- TODO: this isn't right in every case, but its inclusion is a step forwards.
+                        trainManagerEntry.undergroundTrainSetsSpeed = true
+                        trainManagerEntry.undergroundTrain.manual_mode = false
+                        trainManagerEntry.leavingTrainExpectedBadState = false
+                    end
+                elseif not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
+                    -- Check if the leaving train is in a good state before we check to add any new wagons to it.
                     TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.leavingTrain)
                     skipThisTick = true
                 else
@@ -282,8 +293,25 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
         end
     end
 
-    -- Handle train that can't go backwards so just pull the train forwards to the end of the tunnel, nothing else can be done.
-    TrainManagerFuncs.MoveLeavingTrainToFallbackPosition(trainWithBadState, trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1])
+    -- Handle train that can't go backwards, so just pull the train forwards to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train. The train has already lost any station reservation it had.
+    local newSchedule = trainWithBadState.schedule
+    local fallbackTargetRail = trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
+    local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
+    table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
+    trainWithBadState.schedule = newSchedule
+    if not trainWithBadState.has_path then
+        -- The train can't reach the end of the tunnel portal track. This only occurs if the train is on or past the track. In this case the train should just stop where it is and wait.
+
+        -- Reset the above schedule and the train will go in to no-path or destination full states until it can move off some time in the future.
+        table.remove(newSchedule.records, 1)
+        trainWithBadState.schedule = newSchedule
+
+        -- Set the above ground train as setting the speed. Underground needs to stay still until the above train reactivates it.
+        trainManagerEntry.undergroundTrainSetsSpeed = false
+        trainManagerEntry.undergroundTrain.manual_mode = true
+        trainManagerEntry.undergroundTrain.speed = 0
+        trainManagerEntry.leavingTrainExpectedBadState = true
+    end
 end
 
 TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
@@ -743,7 +771,8 @@ TrainManager.CreateTrainManagerEntryObject = function(enteringTrain, aboveEntran
         tunnel = aboveEntrancePortalEndSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(aboveEntrancePortalEndSignal.entity.direction + 4),
         enteringCarriageIdToUndergroundCarriageEntity = {},
-        leavingCarriageIdToUndergroundCarriageEntity = {}
+        leavingCarriageIdToUndergroundCarriageEntity = {},
+        leavingTrainExpectedBadState = false
     }
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1
     global.trainManager.managedTrains[trainManagerEntry.id] = trainManagerEntry
@@ -898,7 +927,7 @@ TrainManager.Check0SpeedTrainGoingExpectedDirection = function(trainManagerEntry
     -- This may end up with the train having a 0 speed if its pointing the wrong way. So the calling function needs to correct the train state if FALSE is returned.
     trainManagerEntry[trainAttributeName].manual_mode = true
     TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, trainAttributeName, desiredSpeed)
-    TrainManagerFuncs.TrainSetSchedule(trainManagerEntry[trainAttributeName], scheduleBackup, isManualBackup, targetStopBackup)
+    TrainManagerFuncs.TrainSetSchedule(trainManagerEntry[trainAttributeName], scheduleBackup, isManualBackup, targetStopBackup, true) -- Don't force validation.
     if trainManagerEntry[trainAttributeName].speed == 0 then
         return false
     else

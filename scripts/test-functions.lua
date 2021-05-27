@@ -48,7 +48,8 @@ TestFunctions.TestCompleted = function(testName)
     end
     EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
     if not global.testManager.keepRunningTest then
-        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests")
+        local delay = 1 + global.testManager.continueTestAfterCompletioTicks
+        EventScheduler.ScheduleEventOnce(game.tick + delay, "TestManager.WaitForPlayerThenRunTests")
     end
 end
 

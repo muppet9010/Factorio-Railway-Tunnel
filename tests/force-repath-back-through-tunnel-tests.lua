@@ -15,8 +15,9 @@ local SpecificTunnelUsageTypesFilter = {
     --"beforeCommitted",
     --"carriageEntering",
     "carriageLeaving"
-} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
-local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table for all tests. Only used when DoSpecificTrainTests is true.
+} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
+local SpecificReverseOnCarriageNumberFilter = {5} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
+local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table for all player riding scenarios. Only used when DoSpecificTrainTests is true.
 
 Test.RunTime = 1200
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -342,14 +343,14 @@ Test.Start = function(testName)
     local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
-    local stationEnd, stationStart, stationStayHere
+    local stationEnd, stationStart, stationReservationCompetitorStart
     for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Start" then
             stationStart = stationEntity
         elseif stationEntity.backer_name == "StayHere" then
-            stationStayHere = stationEntity
+            stationReservationCompetitorStart = stationEntity
         end
     end
 
@@ -373,14 +374,14 @@ Test.Start = function(testName)
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationStart = stationStart
     testData.stationEnd = stationEnd
-    testData.stationStayHere = stationStayHere
+    testData.stationReservationCompetitorStart = stationReservationCompetitorStart
     testData.trackToRemove = trackToRemove
     testData.trackRemoved = false
     testData.enteringPortal = enteringPortal
     testData.leavingPortal = leavingPortal
     testData.train = train
-    testData.stayHereTrain = stationStayHere.get_train_stop_trains()[1]
-    testData.stayHereTrainCarriage1StartingPosition = testData.stayHereTrain.carriages[1].position
+    testData.reservationCompetitorTrain = stationReservationCompetitorStart.get_train_stop_trains()[1]
+    testData.reservationCompetitorTrainCarriage1StartingPosition = testData.reservationCompetitorTrain.carriages[1].position
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
     testData.managedTrainId = 0 -- Tracks current managed train id for tunnel usage.
     testData.oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
@@ -440,25 +441,25 @@ Test.EveryTick = function(event)
             return
         end
         if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
-            -- The stayHere train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
-            if testData.stayHereTrain.state == defines.train_state.destination_full then
-                TestFunctions.TestFailed(testName, "stay here train should have got a reservation to the end station as the main train lost its")
+            -- The reservation competitor train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
+            if testData.reservationCompetitorTrain.state == defines.train_state.destination_full then
+                TestFunctions.TestFailed(testName, "reservation competitor train should have got a reservation to the end station as the main train lost its")
             end
             TestFunctions.TestCompleted(testName)
         elseif endStationTrain ~= nil then
-            if endStationTrain.id ~= testData.stayHereTrain.id then
-                -- If a train other than the stay here train reaches the end station something has gone wrong. The stay here train can move in this test as the main train's path and reservation is expected to be lost.
+            if endStationTrain.id ~= testData.reservationCompetitorTrain.id then
+                -- If a train other than the reservation competitor train reaches the end station something has gone wrong. The reservation competitor train can move in this test as the main train's path and reservation is expected to be lost.
                 TestFunctions.TestFailed(testName, "train reached end station")
             end
         end
     elseif testData.testScenario.expectedResult == ResultStates.reachStation then
         if endStationTrain ~= nil then
-            if not Utils.ArePositionsTheSame(testData.stayHereTrain.carriages[1].position, testData.stayHereTrainCarriage1StartingPosition) then
-                TestFunctions.TestFailed(testName, "Stay Here train wasn't where it started")
+            if not Utils.ArePositionsTheSame(testData.reservationCompetitorTrain.carriages[1].position, testData.reservationCompetitorTrainCarriage1StartingPosition) then
+                TestFunctions.TestFailed(testName, "reservation competitor train wasn't where it started")
                 return
             end
-            if testData.stayHereTrain.state ~= defines.train_state.destination_full then
-                TestFunctions.TestFailed(testName, "Stay Here train wasn't in desitination full state")
+            if testData.reservationCompetitorTrain.state ~= defines.train_state.destination_full then
+                TestFunctions.TestFailed(testName, "reservation competitor train wasn't in desitination full state")
                 return
             end
             local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(endStationTrain)
@@ -475,14 +476,14 @@ Test.EveryTick = function(event)
             return
         end
         if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
-            -- The stayHere train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
-            if testData.stayHereTrain.state == defines.train_state.destination_full then
-                TestFunctions.TestFailed(testName, "stay here train should have got a reservation to the end station as the main train lost its")
+            -- The reservation competitor train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
+            if testData.reservationCompetitorTrain.state == defines.train_state.destination_full then
+                TestFunctions.TestFailed(testName, "reservation competitor train should have got a reservation to the end station as the main train lost its")
             end
             TestFunctions.TestCompleted(testName)
         elseif endStationTrain ~= nil then
-            if endStationTrain.id ~= testData.stayHereTrain.id then
-                -- If a train other than the stay here train reaches the end station something has gone wrong. The stay here train can move in this test as the main train's path and reservation is expected to be lost.
+            if endStationTrain.id ~= testData.reservationCompetitorTrain.id then
+                -- If a train other than the reservation competitor train reaches the end station something has gone wrong. The reservation competitor train can move in this test as the main train's path and reservation is expected to be lost.
                 TestFunctions.TestFailed(testName, "train reached end station")
             end
         end
@@ -618,8 +619,19 @@ Test.GenerateTestScenarios = function()
                 maxCarriageCount = #fullCarriageArray
             end
 
+            -- Handle if SpecificReverseOnCarriageNumberFilter is set
+            local carriageNumbersToTest = {}
+            if Utils.IsTableEmpty(SpecificReverseOnCarriageNumberFilter) then
+                -- Do all carriage numbers in this train.
+                for carriageCount = 1, maxCarriageCount do
+                    table.insert(carriageNumbersToTest, carriageCount)
+                end
+            else
+                carriageNumbersToTest = SpecificReverseOnCarriageNumberFilter
+            end
+
             -- 1 test per carriage in train.
-            for carriageCount = 1, maxCarriageCount do
+            for _, carriageCount in pairs(carriageNumbersToTest) do
                 -- 1 test per playerInCarriage state for each carriage.
                 for _, playerInCarriage in pairs(playerInCarriagesTypesToTest) do
                     local playerCarriageNumber
@@ -695,7 +707,10 @@ Test.CalculateExpectedResult = function(testScenario)
     -- No reversing loco in train.
     if testScenario.backwardsLocoCarriageNumber == 0 then
         if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name and testScenario.reverseOnCarriageNumber == #testScenario.carriages then
-            -- train has left and with no reverse loco it just stops here.
+            -- train has fully left and with no reverse loco it just stops here.
+            return ResultStates.stopPostTunnel
+        elseif testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name and testScenario.reverseOnCarriageNumber >= 5 then
+            -- 5+ carriages have left and so the lead carriage is past the point it would pull to end of portal. So with no reverse loco's the train just stops here
             return ResultStates.stopPostTunnel
         else
             return ResultStates.pullToFrontOfTunnel
@@ -710,8 +725,8 @@ Test.CalculateExpectedResult = function(testScenario)
         -- The tunnel is 10 carriages long.
         enteringTrainLengthAtReverseTime = (#testScenario.carriages - 10) - testScenario.reverseOnCarriageNumber
     end
-    if enteringTrainLengthAtReverseTime > 5 then
-        -- Rear of train is right (wrong) side of reverse curve.
+    if enteringTrainLengthAtReverseTime >= 6 then
+        -- Rear of train is east (wrong) side of reverse curve.
         return ResultStates.pullToFrontOfTunnel
     else
         -- Rear of train is left (happy) side of reverse curve.

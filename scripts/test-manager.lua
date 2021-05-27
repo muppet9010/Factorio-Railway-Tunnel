@@ -25,6 +25,7 @@ local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
 local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking.
+local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 
 -- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
 local TestsToRun = {
@@ -70,6 +71,7 @@ TestManager.CreateGlobals = function()
     global.testManager.testsToRun = global.testManager.testsToRun or {} -- Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests
     global.testManager.keepRunningTest = KeepRunningTest
+    global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60
 end
 
 TestManager.OnLoad = function()
@@ -155,9 +157,13 @@ TestManager.WaitForPlayerThenRunTests = function(event)
             return
         end
     end
-    if WaitForPlayerAtEndOfEachTest or (global.testManager.justLogAllTests and event.data.firstLoad) then
+    if WaitForPlayerAtEndOfEachTest or event.data.firstLoad then
         if event.data.firstLoad then
-            game.print("Testing started paused in editor mode - will pause at the end of each test")
+            if WaitForPlayerAtEndOfEachTest then
+                game.print("Testing started paused in editor mode - will pause at the end of each test")
+            else
+                game.print("Testing started paused in editor mode")
+            end
         end
         game.tick_paused = true
         EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests")

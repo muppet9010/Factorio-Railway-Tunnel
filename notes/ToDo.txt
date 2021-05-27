@@ -1,8 +1,9 @@
 Next:
-    - Test with train set to go to rail tile on other side of tunnel, not station. Don't believe it will work.
+    - Need tests for all reversal trains can't path backwards immediately. But after a short wait can path backwards or forwards. Forward only trains should be able to path forwards after a short wait. Must confirm stopped state is reached as expected and held for X seconds before the pathing option is introduced.
     - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Needs to support a train being able to reverse while in the tunnel back out. The train should retain its station reservation if it can path to its target, as this is what happens to a double ended train in the a regular track segment if there is an alternatitve route to target. Only if the train can't reach the target at all does it pull to the end of the portal and then it can sit and no path. Automated test types:
         - Train types (heading west): <, <>, <-->, <>----, ----<>
         - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
+    - Add a release flag on control as factorio global variable. Have the main logic loops run in try/catch if not release and no debugger attached (lua global variables). For when giving debug versions out to log train manager entry data to log file on error. Will make slower so won't want on release version.
     - Sync Utils to repo from this mod.
 
 Soon:

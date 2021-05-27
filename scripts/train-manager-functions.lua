@@ -11,6 +11,7 @@ TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
 end
 
 TrainManagerFuncs.IsTrainHealthlyState = function(train)
+    -- Uses state and not LuaTrain.has_path, as a train waiting at a station doesn't have a path, but is a healthy state.
     if train.state == defines.train_state.no_path or train.state == defines.train_state.path_lost then
         return false
     else
@@ -169,15 +170,6 @@ TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leaving
     end
     local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
     return nextSourceCarriageEntity
-end
-
-TrainManagerFuncs.MoveLeavingTrainToFallbackPosition = function(leavingTrain, fallbackTargetRail)
-    -- Set the train to move to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train.
-    -- This action does loose any station reservation it had, but it would have already lost its path to reach this code block.
-    local newSchedule = leavingTrain.schedule
-    local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
-    table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
-    leavingTrain.schedule = newSchedule
 end
 
 TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, targetEntity, trainGoingForwards)
