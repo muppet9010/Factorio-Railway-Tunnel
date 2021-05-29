@@ -3,6 +3,7 @@ local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
+local Colors = require("utility/colors")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -147,7 +148,7 @@ TestManager.WaitForPlayerThenRunTests = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
         TestManager.GetTestScript(currentTestName).Stop(currentTestName)
-        game.print("Test NOT Completed: " .. TestManager.GetTestDisplayName(currentTestName), {1, 0, 0, 1})
+        game.print("Test NOT Completed: " .. TestManager.GetTestDisplayName(currentTestName), Colors.red)
         TestManager.LogTestOutcome("Test NOT Completed")
         local testObject = global.testManager.testsToRun[currentTestName]
         if not global.testManager.justLogAllTests then
@@ -189,7 +190,7 @@ TestManager.RunTests = function()
         if ((AllTests and not test.notInAllTests) or test.enabled) and test.runLoopsCount < test.runLoopsMax then
             TestManager.PrepPlayersForNextTest()
             test.runLoopsCount = test.runLoopsCount + 1
-            game.print("Starting Test:   " .. TestManager.GetTestDisplayName(testName), {0, 1, 1, 1})
+            game.print("Starting Test:   " .. TestManager.GetTestDisplayName(testName), Colors.cyan)
             if global.testManager.justLogAllTests then
                 game.write_file("RailwayTunnel_Tests.txt", TestManager.GetTestDisplayName(testName) .. "   =   ", true)
             end
@@ -209,7 +210,7 @@ TestManager.RunTests = function()
     for _, player in pairs(game.connected_players) do
         player.clear_console()
     end
-    game.print("All Tests Done", {0, 1, 0, 1})
+    game.print("All Tests Done", Colors.lightgreen)
 end
 
 TestManager.GetTestDisplayName = function(testName)

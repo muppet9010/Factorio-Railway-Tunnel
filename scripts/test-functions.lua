@@ -3,6 +3,7 @@ local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
+local Colors = require("utility/colors")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -38,7 +39,7 @@ end
 
 -- Complete the current test. arguments: the test name.
 TestFunctions.TestCompleted = function(testName)
-    game.print("Completed Test", {0, 1, 0, 1})
+    game.print("Completed Test", Colors.lightgreen)
     Interfaces.Call("TestManager.LogTestOutcome", "Test Completed")
     local testManagerData = global.testManager.testsToRun[testName]
     Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
@@ -55,7 +56,7 @@ end
 
 -- Fail the current test. arguments: the test name, the text reason that is shown on screen.
 TestFunctions.TestFailed = function(testName, errorText)
-    game.print("Failure Message: " .. errorText, {1, 0, 0, 1})
+    game.print("Failure Message: " .. errorText, Colors.red)
     Interfaces.Call("TestManager.LogTestOutcome", "Test Failed: " .. errorText)
     local testManagerData = global.testManager.testsToRun[testName]
     Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
