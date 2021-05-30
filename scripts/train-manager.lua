@@ -250,18 +250,19 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
 
             -- Add a reverse loco to the entering train if needed to test the path.
             -- At this point the trainManageEntry object's data is from before the reversal; so we have to handle the remaining entering train and work out its new direction before seeing if we need to add temporary pathing loco.
-            local enteringTrainReversePushingLoco, reverseLocoListName, enteringTrainRearCarriage
+            local enteringTrainReversePushingLoco, reverseLocoListName, enteringTrainFrontCarriage
             if enteringTrain.speed > 0 then
                 reverseLocoListName = "back_movers"
-                enteringTrainRearCarriage = enteringTrain.back_stock
+                enteringTrainFrontCarriage = enteringTrain.front_stock
             elseif enteringTrain.speed < 0 then
                 reverseLocoListName = "front_movers"
-                enteringTrainRearCarriage = enteringTrain.front_stock
+                enteringTrainFrontCarriage = enteringTrain.back_stock
             else
                 error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train")
             end
             if #enteringTrain.locomotives[reverseLocoListName] == 0 then
-                enteringTrainReversePushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(enteringTrainRearCarriage, Utils.BoundFloatValueWithinRange(enteringTrain.front_stock.orientation + 0.5, 0, 1))
+                -- Put the loco at the front of the leaving train backwards to the trains current orientation. As we want to test reversing the trains current direction.
+                enteringTrainReversePushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(enteringTrainFrontCarriage, Utils.BoundFloatValueWithinRange(trainManagerEntry.trainTravelOrientation + 0.5, 0, 1))
                 enteringTrain = trainManagerEntry.enteringTrain -- Update as the reference will have been broken.
             end
 
@@ -310,27 +311,27 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
     table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
     trainWithBadState.schedule = newSchedule
 
+    local movingToEndOfPortal = true
     if not trainWithBadState.has_path then
         -- Check if the train can reach the end of the tunnel portal track. If it can't then the train is past the target track point. In this case the train should just stop where it is and wait.
 
         -- Reset the above schedule and the train will go in to no-path or destination full states until it can move off some time in the future.
         table.remove(newSchedule.records, 1)
         trainWithBadState.schedule = newSchedule
-
-        -- Set the above ground train as setting the speed. Underground needs to stay still until the above train reactivates it.
-        trainManagerEntry.undergroundTrainSetsSpeed = false
-        trainManagerEntry.undergroundTrain.manual_mode = true
-        trainManagerEntry.undergroundTrain.speed = 0
-        trainManagerEntry.leavingTrainExpectedBadState = true
-        trainManagerEntry.leavingTrainAtEndOfPortalTrack = false
+        movingToEndOfPortal = false
     elseif trainWithBadState.path.total_distance - trainWithBadState.path.travelled_distance <= 4 then
         -- Train has reached end of portal already and if its hit this it can't reverse, so don't try and schedule it anywhere.
+        movingToEndOfPortal = false
+    end
 
+    -- Not moving to end of portal so do some more tagging of the trains state for future ticks usage.
+    if not movingToEndOfPortal then
         -- Set the above ground train as setting the speed. Underground needs to stay still until the above train reactivates it.
         trainManagerEntry.undergroundTrainSetsSpeed = false
         trainManagerEntry.undergroundTrain.manual_mode = true
         trainManagerEntry.undergroundTrain.speed = 0
 
+        -- Work out the correct persistent state to tag the train as. Will affect what repathing checks are done per tick going forwards.
         if #trainManagerEntry.undergroundTrain.locomotives[undergroundTrainReverseLocoListName] > 0 then
             -- Train can conceptually repath backwards so let this modded backwards path check keep on trying.
             trainManagerEntry.leavingTrainExpectedBadState = false

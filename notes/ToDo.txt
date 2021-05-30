@@ -1,13 +1,10 @@
 Next:
-    - Add reservation train to the stoppign at signals post tunnel test. Competitor train should never move.
-    - A train exiting the tunnel can repath and decide to turn around and go back into the tunnel, for example if the player removes a piece of rail from the track leading away from the tunnel and there's another path to the next schedule destination. Needs to support a train being able to reverse while in the tunnel back out. The train should retain its station reservation if it can path to its target, as this is what happens to a double ended train in the a regular track segment if there is an alternatitve route to target. Only if the train can't reach the target at all does it pull to the end of the portal and then it can sit and no path. Automated test types:
-        - Train types (heading west): <, <>, <-->, <>----, ----<>
-        - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
     - Add a release flag on control as factorio global variable. Have the main logic loops run in try/catch if not release and no debugger attached (lua global variables). For when giving debug versions out to log train manager entry data to log file on error. Will make slower so won't want on release version.
     - Sync Utils to repo from this mod.
 
 Soon:
-    - Low fuel icon flickers in some repathing tests.
+    - Add reservation train to the stopping at signals post tunnel test. Competitor train should never move.
+    - Low fuel icon flickers in some tests, i.e. "path to rail" test.
     - Player can rotate (R) a portal entity after placed and this breaks our inner logic. No reason for this to be possible, so try to just block it.
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
