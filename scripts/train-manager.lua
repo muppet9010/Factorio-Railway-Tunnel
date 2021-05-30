@@ -185,10 +185,9 @@ TrainManager.ProcessManagedTrains = function()
             elseif trainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
                 -- Check the leaving trains state and react accordingly
                 if trainManagerEntry.leavingTrainExpectedBadState then
-                    -- The train is known to have reached a bad state and is staying in it. We need to monitor the leaving train returning to a healthy state, rather than try to fix the bad state.
-                    if TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
-                        -- Leaving train is healthy again so return everything to active.
-                        -- TODO: this isn't right in every case, but its inclusion is a step forwards.
+                    -- The train is known to have reached a bad state and is staying in it. We need to monitor the leaving train returning to a healthy state with a path, rather than try to fix the bad state.
+                    if TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) and trainManagerEntry.leavingTrain.has_path then
+                        -- Leaving train is healthy again with a path so return everything to active.
                         trainManagerEntry.undergroundTrainSetsSpeed = true
                         trainManagerEntry.undergroundTrain.manual_mode = false
                         trainManagerEntry.leavingTrainExpectedBadState = false
@@ -229,6 +228,10 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
     if trainManagerEntry.undergroundTrain.speed > 0 then
         undergroundTrainReverseLocoListName = "back_movers"
     elseif trainManagerEntry.undergroundTrain.speed < 0 then
+        undergroundTrainReverseLocoListName = "front_movers"
+    elseif trainManagerEntry.undergroundTrainForwards then
+        undergroundTrainReverseLocoListName = "back_movers"
+    elseif not trainManagerEntry.undergroundTrainForwards then
         undergroundTrainReverseLocoListName = "front_movers"
     else
         error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed underground train")
@@ -299,9 +302,18 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
     local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
     table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
     trainWithBadState.schedule = newSchedule
-    if not trainWithBadState.has_path then
-        -- The train can't reach the end of the tunnel portal track. This only occurs if the train is on or past the track. In this case the train should just stop where it is and wait.
 
+    -- Check if the train can reach the end of the tunnel portal track. If it can't then the train is past the target track point.
+    local badStateReached = false
+    if not trainWithBadState.has_path then
+        -- In this case the train should just stop where it is and wait.
+        badStateReached = true
+    elseif trainWithBadState.path.total_distance - trainWithBadState.path.travelled_distance <= 4 then
+        -- Train has reached end of portal already and if its hit this it can't reverse, so stop trying to fix it.
+        badStateReached = true
+    end
+
+    if badStateReached then
         -- Reset the above schedule and the train will go in to no-path or destination full states until it can move off some time in the future.
         table.remove(newSchedule.records, 1)
         trainWithBadState.schedule = newSchedule
@@ -398,7 +410,8 @@ TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
     TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.startedLeaving)
     TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.leavingCarriageAdded)
-    TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
+    --TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
+    TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry, defines.signal_state.open) -- Reset the underground Exit signal state to open for the next train. -- TODO: changed
     trainManagerEntry.undergroundTrainSetsSpeed = true
 
     -- Check if all train wagons placed and train fully left the tunnel, otherwise set state for future carriages with the ongoing state.
@@ -410,7 +423,7 @@ TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
 end
 
 TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
-    TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
+    --TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry) -- TODO: changed
 
     -- Handle if the train is stopping at a signal or scheduled stop (train-stop or rail). Updates trainManagerEntry.undergroundTrainSetsSpeed and the underground train path if required.
     TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(trainManagerEntry, "signal")
@@ -939,6 +952,9 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     -- The managed train is going to reverse and go out of the tunnel the way it came in. Will be lodged as a new managed train so that old managed trains logic can be closed off.
     -- This function can't be reached if the train isn't committed, so no need to handle EnteringTrainStates.approaching.
 
+    -- Release the tunnel from the old train manager. Later in this function it will be reclaimed accordingly.
+    Interfaces.Call("Tunnel.TrainReleasedTunnel", oldTrainManagerEntry)
+
     local newTrainManagerEntry = {
         id = global.trainManager.nextManagedTrainId
     }
@@ -963,10 +979,6 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     newTrainManagerEntry.tunnel = oldTrainManagerEntry.tunnel
     newTrainManagerEntry.undergroundTunnel = oldTrainManagerEntry.undergroundTunnel
     newTrainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(newTrainManagerEntry.aboveExitPortal.portalEntrancePosition, newTrainManagerEntry.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
-
-    -- Release the tunnel from the old train manager and set it to be claimed by new train before anything state related is applied on top.
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", oldTrainManagerEntry)
-    Interfaces.Call("Tunnel.TrainReservedTunnel", newTrainManagerEntry)
 
     -- Handle new entering train now all pre-req data set up.
     if oldTrainManagerEntry.leavingTrainState == LeavingTrainStates.leavingFirstCarriage or oldTrainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
@@ -1019,6 +1031,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
             TrainManagerFuncs.TrainSetSchedule(newTrainManagerEntry.leavingTrain, oldTrainManagerEntry.dummyTrain.schedule, false, newTrainManagerEntry.scheduleTarget, false)
         end
     elseif oldTrainManagerEntry.enteringTrainState == EnteringTrainStates.finished then
+        Interfaces.Call("Tunnel.TrainReservedTunnel", newTrainManagerEntry) -- Claim the exit portal as no train leaving yet.
         newTrainManagerEntry.leavingTrainState = LeavingTrainStates.pre
         local scheduleSourceTrain
         if oldTrainManagerEntry.leavingTrain ~= nil then
@@ -1090,7 +1103,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
 end
 
 TrainManager.UpdatePortalExitSignalPerTick = function(trainManagerEntry, forceSignalState)
-    -- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Primary speed limiter before leaving train has got to a significant size and escaped the portal signals as  a very small leaving/dummy train will have low breaking distance and thus very short signal block reservation/detecting distances.
+    -- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Primary speed limiter before leaving train has got to a significant size and escaped the portal signals as a very small leaving/dummy train will have low breaking distance and thus very short signal block reservation/detecting distances.
     -- Close the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
     -- forceSignalState is optional and when set will be applied rather than the aboveground exit signal state.
     local exitPortalOutSignal = trainManagerEntry.aboveExitPortalEntrySignalOut

@@ -1,10 +1,11 @@
 --[[
-    Does a range of tests for the different situations of when a train tries to reverse down a tunnel when a piece of track after the tunnel is removed:
+    Does a range of tests for the different situations of when a train tries to reverse down a tunnel when a piece of track in its forwards path is removed:
         - Train types (heading west): <, <----, ----<, <>, <-->, <>----, ----<>
         - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
-        - Reverse track path being present at start, added after a delay or never. Forwards track being returned after a delay or never.
+        - Reverse track path being present at start, added after a delay or never.
+        - Forwards track being returned after a delay or never.
         - Player riding in no carriage, first carriage or last carriage.
-    After the correct reaction state for the fowards track removal occurs a follow up piece of track forwards, behind or neither is added and this resulting state checked. This way we know the train recovers from the loss of initial path correctly as well.
+    After the correct reaction state for the fowards track removal occurs, a piece of track (either forwards or behind) is added and this resulting state checked. This way we know the train recovers from the loss of initial path correctly as well.
     Theres a second train trying to path to the same station with a train limit of 1. This second train should never move if the reservation isn't lost. Some tests it is expected to move.
 ]]
 local Test = {}
@@ -16,22 +17,22 @@ local Colors = require("utility/colors")
 local ExcludeNonPositiveOutcomes = false -- If TRUE Skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Examples include reverse tests for trains with no backwards locos or per carriage tests when the expected outcome is the same.
 
 local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
-local SpecificTrainTypesFilter = {"<------"}
---{"<", "<>", "<------", "<>------"} -- Pass in array of TrainTypes text (--<--) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {"<------>"}
+--{"<", "<>", "<------", "<------>", "<>------"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
 local SpecificTunnelUsageTypesFilter = {
     --"beforeCommitted",
     "carriageEntering"
     --"carriageLeaving"
 } -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
-local SpecificReverseOnCarriageNumberFilter = {1} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
-local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table for all player riding scenarios. Only used when DoSpecificTrainTests is true.
+local SpecificReverseOnCarriageNumberFilter = {5} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
 local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of true/fale to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
+local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
+local SpecificStationReservationCompetitorTrainExists = {true} -- Pass in array of true/false to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
+local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table for all player riding scenarios. Only used when DoSpecificTrainTests is true.
 
 local DebugTestScenarioOutput = true -- If true writes out the test scenario list details to a csv in script-output for inspection in Excel.
 
-Test.RunTime = 1200
+Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
 Test.TestScenarios = {} -- Populated when script loaded.
 --[[
@@ -58,8 +59,8 @@ end
 -- Blueprint is just track, tunnel and stations. No train as these are dynamicly placed.
 local blueprintString = "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"
 
--- Orientation 0.75 is forwards, 0.25 is backwards.
--- Trains should be 6+ carriages long as otherwise when entering they never go longer than the backwards track points.
+-- Orientation 0.75 is forwards, 0.25 is backwards. As the trains are all heading east to west (left).
+-- Long trains should be 6+ carriages long as otherwise when entering they never go longer than the backwards track points.
 local TrainTypes = {
     {
         text = "<",
@@ -344,7 +345,7 @@ local ResultStates = {
     notReachTunnel = "notReachTunnel",
     pullToFrontOfTunnel = "pullToFrontOfTunnel",
     reachStation = "reachStation",
-    stopPostTunnel = "stopPostTunnel", -- has left the tunnel when path removed and can't get back to station, so just stops where it is.
+    stopPostTunnel = "stopPostTunnel", -- is leaving/left the tunnel when path removed and can't get back to station. Its beyond the front of portal position so just stops where it is. May or not have fully left the tunnel when this occurs.
     beforeCommittedUnknownOutcome = "beforeCommittedUnknownOutcome" -- Is a variable result as we can't calculate which one before run time.
 }
 
@@ -947,7 +948,7 @@ Test.CalculateExpectedResults = function(testScenario)
             -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.
             local enteringTrainLengthAtReverseTime
             if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageEntering.name then
-                enteringTrainLengthAtReverseTime = #testScenario.carriages - testScenario.reverseOnCarriageNumber
+                enteringTrainLengthAtReverseTime = #testScenario.carriages - (testScenario.reverseOnCarriageNumber - 1) -- While it occurs on the carriages removal, the entering train is in the same position as before the carraige was removed. Thus -1 from the number removed.
             elseif testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name then
                 -- The tunnel is 10 carriages long.
                 enteringTrainLengthAtReverseTime = (#testScenario.carriages - 10) - testScenario.reverseOnCarriageNumber
@@ -1181,10 +1182,10 @@ Test.WriteTestScenariosToFile = function()
 
     -- Ignores playerInCarriageNumber
     local fileName = "TestScenarios.csv"
-    game.write_file(fileName, "train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,afterTrackRemovedResult,afterTrackReturnedResult" .. "\r\n", false)
+    game.write_file(fileName, "#,train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,afterTrackRemovedResult,afterTrackReturnedResult" .. "\r\n", false)
 
-    for _, test in pairs(Test.TestScenarios) do
-        game.write_file(fileName, tostring(test.trainText) .. "," .. tostring(test.tunnelUsageType.name) .. "," .. tostring(test.reverseOnCarriageNumber) .. "," .. tostring(test.backwardsLocoCarriageNumber) .. "," .. tostring(test.forwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.backwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.stationReservationCompetitorTrainExist) .. "," .. tostring(test.afterTrackRemovedResult) .. "," .. tostring(test.afterTrackReturnedResult) .. "\r\n", true)
+    for testIndex, test in pairs(Test.TestScenarios) do
+        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.trainText) .. "," .. tostring(test.tunnelUsageType.name) .. "," .. tostring(test.reverseOnCarriageNumber) .. "," .. tostring(test.backwardsLocoCarriageNumber) .. "," .. tostring(test.forwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.backwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.stationReservationCompetitorTrainExist) .. "," .. tostring(test.afterTrackRemovedResult) .. "," .. tostring(test.afterTrackReturnedResult) .. "\r\n", true)
     end
 end
 

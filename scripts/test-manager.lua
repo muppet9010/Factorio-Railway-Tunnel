@@ -43,10 +43,10 @@ local TestsToRun = {
     TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
-    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-    InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
-    PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
-    PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
+    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+    InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
+    PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = true, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
+    PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = true, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
     PathToRail = {enabled = false, testScript = require("tests.path-to-rail")},
     ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests")}
 }
