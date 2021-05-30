@@ -51,7 +51,8 @@ TrainManager.CreateGlobals = function()
             leavingTrainPushingLoco = Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
             leavingTrainStoppingSignal = the LuaSignal that the leaving train is currently stopping at beyond the portal, or nil.
             leavingTrainStoppingSchedule = the LuaRail that the leaving train is currently stopping at beyond the portal, or nil.
-            leavingTrainExpectedBadState = if the leaving train is in a bad state and it can't be corrected. Avoids repeating checks or trying bad actions.
+            leavingTrainExpectedBadState = if the leaving train is in a bad state and it can't be corrected. Avoids any repeating checks or trying bad actions, and just waits for the train to naturally path itself.
+            leavingTrainAtEndOfPortalTrack = if the leaving train is in a bad state and has reached the end of the portal track. It still needs to be checked for rear paths every tick via the mod.
 
             leftTrain = LuaTrain of the train thats left the tunnel.
             leftTrainId = The LuaTrain ID of the leftTrain.
@@ -191,6 +192,7 @@ TrainManager.ProcessManagedTrains = function()
                         trainManagerEntry.undergroundTrainSetsSpeed = true
                         trainManagerEntry.undergroundTrain.manual_mode = false
                         trainManagerEntry.leavingTrainExpectedBadState = false
+                        trainManagerEntry.leavingTrainAtEndOfPortalTrack = false
                     end
                 elseif not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
                     -- Check if the leaving train is in a good state before we check to add any new wagons to it.
@@ -296,6 +298,11 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
         end
     end
 
+    if trainManagerEntry.leavingTrainAtEndOfPortalTrack then
+        -- Train is already at end of track so don't change its schedule.
+        return
+    end
+
     -- Handle train that can't go backwards, so just pull the train forwards to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train. The train has already lost any station reservation it had.
     local newSchedule = trainWithBadState.schedule
     local fallbackTargetRail = trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
@@ -303,17 +310,9 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
     table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
     trainWithBadState.schedule = newSchedule
 
-    -- Check if the train can reach the end of the tunnel portal track. If it can't then the train is past the target track point.
-    local badStateReached = false
     if not trainWithBadState.has_path then
-        -- In this case the train should just stop where it is and wait.
-        badStateReached = true
-    elseif trainWithBadState.path.total_distance - trainWithBadState.path.travelled_distance <= 4 then
-        -- Train has reached end of portal already and if its hit this it can't reverse, so stop trying to fix it.
-        badStateReached = true
-    end
+        -- Check if the train can reach the end of the tunnel portal track. If it can't then the train is past the target track point. In this case the train should just stop where it is and wait.
 
-    if badStateReached then
         -- Reset the above schedule and the train will go in to no-path or destination full states until it can move off some time in the future.
         table.remove(newSchedule.records, 1)
         trainWithBadState.schedule = newSchedule
@@ -323,6 +322,24 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
         trainManagerEntry.undergroundTrain.manual_mode = true
         trainManagerEntry.undergroundTrain.speed = 0
         trainManagerEntry.leavingTrainExpectedBadState = true
+        trainManagerEntry.leavingTrainAtEndOfPortalTrack = false
+    elseif trainWithBadState.path.total_distance - trainWithBadState.path.travelled_distance <= 4 then
+        -- Train has reached end of portal already and if its hit this it can't reverse, so don't try and schedule it anywhere.
+
+        -- Set the above ground train as setting the speed. Underground needs to stay still until the above train reactivates it.
+        trainManagerEntry.undergroundTrainSetsSpeed = false
+        trainManagerEntry.undergroundTrain.manual_mode = true
+        trainManagerEntry.undergroundTrain.speed = 0
+
+        if #trainManagerEntry.undergroundTrain.locomotives[undergroundTrainReverseLocoListName] > 0 then
+            -- Train can conceptually repath backwards so let this modded backwards path check keep on trying.
+            trainManagerEntry.leavingTrainExpectedBadState = false
+            trainManagerEntry.leavingTrainAtEndOfPortalTrack = true
+        else
+            -- Train can't repath backwards, so just wait for a natural path to be found.
+            trainManagerEntry.leavingTrainExpectedBadState = true
+            trainManagerEntry.leavingTrainAtEndOfPortalTrack = false
+        end
     end
 end
 
@@ -410,8 +427,7 @@ TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", trainManagerEntry)
     TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.startedLeaving)
     TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.leavingCarriageAdded)
-    --TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
-    TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry, defines.signal_state.open) -- Reset the underground Exit signal state to open for the next train. -- TODO: changed
+    TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry, defines.signal_state.open) -- Reset the underground Exit signal state as the leaving train will now detect any signals.
     trainManagerEntry.undergroundTrainSetsSpeed = true
 
     -- Check if all train wagons placed and train fully left the tunnel, otherwise set state for future carriages with the ongoing state.
@@ -423,8 +439,6 @@ TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
 end
 
 TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
-    --TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry) -- TODO: changed
-
     -- Handle if the train is stopping at a signal or scheduled stop (train-stop or rail). Updates trainManagerEntry.undergroundTrainSetsSpeed and the underground train path if required.
     TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(trainManagerEntry, "signal")
     TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(trainManagerEntry, "schedule")
@@ -491,13 +505,12 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
 end
 
 TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerEntry, arriveAtName)
-    -- Handles a train leaving a tunnel arriving at a station/signal based on input. Updated global state data that impacts TrainManager.TrainLeavingOngoing(): trainManagerEntry.undergroundTrainSetsSpeed and underground train path target. Is a black box to calling functions otherwise.
-
+    -- Handles a train leaving a tunnel arriving at a station/signal based on input. Updated global state data that impacts TrainManager.TrainLeavingOngoing(): trainManagerEntry.undergroundTrainSetsSpeed and underground train path target.
     local trainStoppingEntityAttributeName, stoppingTargetEntityAttributeName, arriveAtReleventStoppingTarget
     if arriveAtName == "signal" then
         trainStoppingEntityAttributeName = "signal"
         stoppingTargetEntityAttributeName = "leavingTrainStoppingSignal"
-        arriveAtReleventStoppingTarget = trainManagerEntry.leavingTrain.state == defines.train_state.arrive_signal and trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName].unit_number ~= trainManagerEntry.aboveExitPortalEntrySignalOut.entity.unit_number
+        arriveAtReleventStoppingTarget = trainManagerEntry.leavingTrain.state == defines.train_state.arrive_signal
     elseif arriveAtName == "schedule" then
         -- Type of schedule includes both train-stop's and rail's. But we can always just use the end rail attribute for both.
         trainStoppingEntityAttributeName = "path_end_rail"
@@ -507,7 +520,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
         error("TrainManager.HandleLeavingTrainStoppingAtSignalSchedule() unsuported arriveAtName: " .. arriveAtName)
     end
 
-    -- 1: If leaving train is now arriving at a relvent stopping target. Relevent target is either any station or a signal other than the entrance out signal on the current exit portal. If relevent then check state in detail as we may need to update the underground train stop point.
+    -- 1: If leaving train is now arriving at a relvent stopping target (station or signal) check state in detail as we may need to update the underground train stop point.
     -- 2: Once the leaving train is stopped at a relevent stopping target, clear out stopping target arriving state.
     -- 3: Otherwise check for moving away states and if there was a preivous stopping state to be finished.
     if arriveAtReleventStoppingTarget then
@@ -545,6 +558,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
         -- If the train was stopped/stopping at a stopping target and now is back on the path, return to underground train setting speed and assume everything is back to normal.
         trainManagerEntry[stoppingTargetEntityAttributeName] = nil
         trainManagerEntry.undergroundTrainSetsSpeed = true
+        trainManagerEntry.undergroundTrain.manual_mode = false
         local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", trainManagerEntry.tunnel.undergroundTunnel, trainManagerEntry.trainTravelOrientation)
         TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainEndScheduleTargetPos)
     end
@@ -785,7 +799,8 @@ TrainManager.CreateTrainManagerEntryObject = function(enteringTrain, aboveEntran
         trainTravelDirection = Utils.LoopDirectionValue(aboveEntrancePortalEndSignal.entity.direction + 4),
         enteringCarriageIdToUndergroundCarriageEntity = {},
         leavingCarriageIdToUndergroundCarriageEntity = {},
-        leavingTrainExpectedBadState = false
+        leavingTrainExpectedBadState = false,
+        leavingTrainAtEndOfPortalTrack = false
     }
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1
     global.trainManager.managedTrains[trainManagerEntry.id] = trainManagerEntry
@@ -964,11 +979,14 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     newTrainManagerEntry.undergroundTrainState = oldTrainManagerEntry.undergroundTrainState
     newTrainManagerEntry.undergroundTrain = oldTrainManagerEntry.undergroundTrain
     newTrainManagerEntry.undergroundTrainSetsSpeed = true -- Intentionally reset this value.
+    newTrainManagerEntry.undergroundTrain.manual_mode = false -- Start the underground train running if it was stopped.
     newTrainManagerEntry.undergroundTrainForwards = not oldTrainManagerEntry.undergroundTrainForwards
 
     newTrainManagerEntry.trainTravelDirection = Utils.LoopDirectionValue(oldTrainManagerEntry.trainTravelDirection + 4)
     newTrainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(newTrainManagerEntry.trainTravelDirection)
     newTrainManagerEntry.scheduleTarget = oldTrainManagerEntry.scheduleTarget
+    newTrainManagerEntry.leavingTrainExpectedBadState = false
+    newTrainManagerEntry.leavingTrainAtEndOfPortalTrack = false
 
     newTrainManagerEntry.aboveSurface = oldTrainManagerEntry.aboveSurface
     newTrainManagerEntry.aboveEntrancePortal = oldTrainManagerEntry.aboveExitPortal

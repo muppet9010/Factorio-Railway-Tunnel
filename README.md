@@ -16,6 +16,7 @@ Usage Notes
 
 - The train signal reservation for leaving a tunnel may be sub optimal and so it's advised to have some track and a signal block for the train to emerge in to. The train may also pull up to a blocking signal slowly when leaving a tunnel.
 - Trains using a tunnel will never be exactly aligned for the entering and leaving parts, but will be very close.This is a technical limitation of how the mod syncs train speeds each tick and isn't a bug.
+- If a train is using a tunnel and some track in its path is removed, it will try and repath like normal Factorio (forwards/backwards) from the tunnel. If it can't path it will pull to the front of the tunnel so it can be accessed by the player easier.
 
 Contributors
 ===============
