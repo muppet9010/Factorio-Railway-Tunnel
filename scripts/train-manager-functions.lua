@@ -380,4 +380,27 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
     )
 end
 
+TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(train, expectedOrientation, oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber, trainWasFacingForwards)
+    -- Checks if a train is still facing in the expected direction (front and back stock). For use after changing a trains composition as this regenerates these attributes. Doesn't consider speed +/- of the train.
+
+    -- Check trains make up depending on its length.
+    if #train.carriages == 1 then
+        -- A single carriage train will have the same carriage referenced by front and back stock attributes. So just use its orientation to decide if its facing the expected direction.
+        if train.carriages[1].orientation == expectedOrientation then
+            return trainWasFacingForwards
+        else
+            return not trainWasFacingForwards
+        end
+    else
+        -- With >= 2 carriages we can check if either the trains front or back stock attributes have renamed the same (train direction not rotated).
+        if train.front_stock.unit_number == oldFrontCarriageUnitNumber or train.back_stock.unit_number == oldBackCarriageUnitNumber then
+            -- One end changed as was a pushing loco, but other is the same, so train still same direction.
+            return true
+        else
+            -- Neither are the same so the train must have reversed direction.
+            return false
+        end
+    end
+end
+
 return TrainManagerFuncs

@@ -454,12 +454,13 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
 
     -- Check if the leaving train has stopped, but the underground train is moving. This should only occur when the leaving train has lost its path and naturally is pathing back through the tunnel. As otherwise the state check would have caught it already this tick.
     if desiredSpeed ~= 0 and trainManagerEntry.leavingTrain.speed == 0 then
-        -- Theres nothing broken with the state, but the mod doesn't expect it so we need to correct this.
-        local scheduleBackup, isManualBackup, targetStopBackup = trainManagerEntry.leavingTrain.schedule, trainManagerEntry.leavingTrain.manual_mode, trainManagerEntry.leavingTrain.path_end_stop
+        -- Theres nothing broken with the state, but the mod doesn't expect it so we need to identify if the train is reversing on its own accord.
 
+        -- The test will affect the trains schedule so take a backup first. We have to do this rather than a front/rear stock check as theres no train composition change to test around here. Its just waht the base game thinks the train is doing.
+        local scheduleBackup, isManualBackup, targetStop = trainManagerEntry.leavingTrain.schedule, trainManagerEntry.leavingTrain.manual_mode, trainManagerEntry.leavingTrain.path_end_stop
         -- Carefully set the speed and schedule to see if the train is pointing in the expected direction when it wants to path or not.
         -- The leaving train is moving opposite to the underground train (desiredSpeed). So handle the reversal and stop processing. If the speed isn't lost then this is the more normal usage case and so can just be left as is. We just double set the speed this 1 tick, no harm done.
-        local isTrainGoingExpectedDirection = TrainManager.Check0SpeedTrainGoingExpectedDirection(trainManagerEntry, "leavingTrain", desiredSpeed, scheduleBackup, isManualBackup, targetStopBackup)
+        local isTrainGoingExpectedDirection = TrainManager.Check0SpeedTrainWithLocoGoingExpectedDirection(trainManagerEntry, "leavingTrain", desiredSpeed, scheduleBackup, isManualBackup, targetStop)
         if not isTrainGoingExpectedDirection then
             TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
             return
@@ -544,6 +545,14 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
             trainManagerEntry[stoppingTargetEntityAttributeName] = trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName]
             local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTarget)
+
+            -- Avoid looking for a rail exactly on the deviding line between 2 tracks.
+            if undergroundTrainTargetPosition[trainManagerEntry.tunnel.railAlignmentAxis] % 1 < 0.1 then
+                undergroundTrainTargetPosition[trainManagerEntry.tunnel.railAlignmentAxis] = math.floor(undergroundTrainTargetPosition[trainManagerEntry.tunnel.railAlignmentAxis]) + 0.1
+            elseif undergroundTrainTargetPosition[trainManagerEntry.tunnel.railAlignmentAxis] % 1 > 0.9 then
+                undergroundTrainTargetPosition[trainManagerEntry.tunnel.railAlignmentAxis] = math.floor(undergroundTrainTargetPosition[trainManagerEntry.tunnel.railAlignmentAxis]) + 0.9
+            end
+
             TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(trainManagerEntry.undergroundTrain, undergroundTrainTargetPosition)
             trainManagerEntry.undergroundTrainSetsSpeed = true
         elseif trainManagerEntry.undergroundTrainSetsSpeed then
@@ -951,12 +960,13 @@ TrainManager.TidyManagedTrainGlobals = function(trainManagerEntry)
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
 end
 
-TrainManager.Check0SpeedTrainGoingExpectedDirection = function(trainManagerEntry, trainAttributeName, desiredSpeed, scheduleBackup, isManualBackup, targetStopBackup)
-    -- This is the only known way to check which way a train with 0 speed is really wanting to go. As the LuaTrain attributes only update when the train has a speed.
+TrainManager.Check0SpeedTrainWithLocoGoingExpectedDirection = function(trainManagerEntry, trainAttributeName, desiredSpeed, scheduleBackup, isManualBackup, targetStop)
+    -- This requires the train to have a locomotive so that it can be given a path.
+    -- This is the only known way to check which way a train with 0 speed and makign no carriage changes is really wanting to go. As the LuaTrain attributes only update when the train has a speed or a carriage is added/removed.
     -- This may end up with the train having a 0 speed if its pointing the wrong way. So the calling function needs to correct the train state if FALSE is returned.
     trainManagerEntry[trainAttributeName].manual_mode = true
     TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, trainAttributeName, desiredSpeed)
-    TrainManagerFuncs.TrainSetSchedule(trainManagerEntry[trainAttributeName], scheduleBackup, isManualBackup, targetStopBackup, true) -- Don't force validation.
+    TrainManagerFuncs.TrainSetSchedule(trainManagerEntry[trainAttributeName], scheduleBackup, isManualBackup, targetStop, true) -- Don't force validation.
     if trainManagerEntry[trainAttributeName].speed == 0 then
         return false
     else
@@ -1005,14 +1015,14 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.enteringTrain = oldTrainManagerEntry.leavingTrain
         newTrainManagerEntry.enteringTrainId = oldTrainManagerEntry.leavingTrainId
         global.trainManager.enteringTrainIdToManagedTrain[newTrainManagerEntry.enteringTrainId] = newTrainManagerEntry
-
-        -- If pushing loco's are removed they may corrupt out cached Forwards state. So check if this has happened. It will corrupt the train schedule so back this up first incase we need to re-apply it.
-        local scheduleBackup, isManualBackup, targetStopBackup = newTrainManagerEntry.enteringTrain.schedule, newTrainManagerEntry.enteringTrain.manual_mode, newTrainManagerEntry.enteringTrain.path_end_stop
-        local aPushingLocoWasRemoved = TrainManagerFuncs.RemoveAnyPushingLocosFromTrain(newTrainManagerEntry.enteringTrain)
         newTrainManagerEntry.enteringTrainForwards = not oldTrainManagerEntry.leavingTrainForwards
-        if aPushingLocoWasRemoved then
-            -- Pushing loco was removed so need to do tests to confirm if forwards was just reversed. Carefully set the speed and track the results to confirm the situation.
-            local trainGoingExpectedDirection = TrainManager.Check0SpeedTrainGoingExpectedDirection(newTrainManagerEntry, "enteringTrain", 1, scheduleBackup, isManualBackup, targetStopBackup)
+
+        -- Old leaving train has an exiting pushing loco. We need to
+        if oldTrainManagerEntry.leavingTrainPushingLoco ~= nil then
+            -- When pushing loco's are removed they may corrupt out cached Forwards state. So check if the trains idea of its front and back is changed and update accordingly.
+            local oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber = newTrainManagerEntry.enteringTrain.front_stock.unit_number, newTrainManagerEntry.enteringTrain.back_stock.unit_number
+            TrainManagerFuncs.RemoveAnyPushingLocosFromTrain(newTrainManagerEntry.enteringTrain)
+            local trainGoingExpectedDirection = TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange(newTrainManagerEntry.enteringTrain, newTrainManagerEntry.trainTravelOrientation, oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber, newTrainManagerEntry.enteringTrainForwards)
             if not trainGoingExpectedDirection then
                 newTrainManagerEntry.enteringTrainForwards = not newTrainManagerEntry.enteringTrainForwards
             end
@@ -1032,14 +1042,17 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.leavingTrainCarriagesPlaced = #newTrainManagerEntry.leavingTrain.carriages
         global.trainManager.leavingTrainIdToManagedTrain[newTrainManagerEntry.leavingTrainId] = newTrainManagerEntry
         if not TrainManagerFuncs.DoesTrainHaveAForwardsLoco(newTrainManagerEntry.leavingTrain, newTrainManagerEntry.trainTravelOrientation) then
-            local rearCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(newTrainManagerEntry.leavingTrain, not newTrainManagerEntry.leavingTrainForwards)
-            local scheduleBackup, isManualBackup, targetStopBackup = newTrainManagerEntry.leavingTrain.schedule, newTrainManagerEntry.leavingTrain.manual_mode, newTrainManagerEntry.leavingTrain.path_end_stop
+            local rearCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(newTrainManagerEntry.leavingTrain, not newTrainManagerEntry.leavingTrainForwards) -- TODO: This is giving wrong result in this specific case. No no loco in train the cause?
+            local scheduleBackup, isManualBackup, targetStopBackup = newTrainManagerEntry.leavingTrain.schedule, newTrainManagerEntry.leavingTrain.manual_mode, newTrainManagerEntry.scheduleTarget
+            -- When pushing loco is added it may corrupt out cached Forwards state. So check if the trains idea of its front and back is changed and update accordingly.
+            local oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber = newTrainManagerEntry.leavingTrain.front_stock.unit_number, newTrainManagerEntry.leavingTrain.back_stock.unit_number
             newTrainManagerEntry.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(rearCarriage, newTrainManagerEntry.trainTravelOrientation)
-            -- Pushing loco was added so need to do tests to confirm if forwards was just reversed. Carefully set the speed and track the results to confirm the situation.
-            local trainGoingExpectedDirection = TrainManager.Check0SpeedTrainGoingExpectedDirection(newTrainManagerEntry, "leavingTrain", 1, scheduleBackup, isManualBackup, targetStopBackup)
+            local trainGoingExpectedDirection = TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange(newTrainManagerEntry.leavingTrain, newTrainManagerEntry.trainTravelOrientation, oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber, newTrainManagerEntry.leavingTrainForwards)
             if not trainGoingExpectedDirection then
                 newTrainManagerEntry.leavingTrainForwards = not newTrainManagerEntry.leavingTrainForwards
             end
+            -- Set the schedule state back as addign the carriage will have affected it.
+            TrainManagerFuncs.TrainSetSchedule(newTrainManagerEntry.leavingTrain, scheduleBackup, isManualBackup, targetStopBackup)
         end
         newTrainManagerEntry.leavingTrainStoppingSignal = nil -- Intentionally reset this value.
         newTrainManagerEntry.leavingTrainStoppingSchedule = nil -- Intentionally reset this value.

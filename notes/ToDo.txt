@@ -19,12 +19,11 @@ Later:
     - Handle very very long trains:
         - Place rails under the underground train carriages if its a very long train, Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag).
         - Confirm that if a train leaving is slowed and it is still entering that the entering train keeps in sync correctly. Should just work.
-    - Handle trains being destroyed as they go in/come out of the tunnel.
     - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
     - Block train wagons being placed on invisible rails and on portals entrance track. Will have to do this via events and can't make placement invalid without blocking trains from crossing.
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
     - Check entering artillery trains stopped going in to the tunnel when the head has stopped coming out (signal). In vanialla an artillery train not stopped at station or in manual won't fire.
-    - Add tests for all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains and when the carriages, portals and tunnels are destroyed.
+    - Handle and add tests for all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains and when the carriages, portals and tunnels are destroyed (player with body, not editor mode) - PlayerContainers.On_TunnelRemoved().
     - Look at merging the trainId tracking lists in to a single list with attributes for the "type". Low priority and just to make code neater: global.trainManager.enteringTrainIdToManagedTrain, global.trainManager.leavingTrainIdToManagedTrain, global.trainManager.trainLeftTunnelTrainIdToManagedTrain.
 
 NICE TO HAVE:

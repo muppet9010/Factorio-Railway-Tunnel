@@ -178,7 +178,11 @@ PlayerContainers.On_TunnelRemoved = function(undergroundTrain)
         for _, undergroundCarriage in pairs(undergroundTrain.carriages) do
             local playerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number]
             if playerContainer ~= nil then
-                playerContainer.player.destroy()
+                playerContainer.entity.set_driver(nil)
+                local player = playerContainer.player
+                if player.character ~= nil then
+                    player.character.die()
+                end
                 PlayerContainers.RemovePlayerContainer(playerContainer)
             end
         end
