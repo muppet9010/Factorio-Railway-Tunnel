@@ -7,6 +7,8 @@
         - Player riding in no carriage, first carriage or last carriage.
     After the correct reaction state for the fowards track removal occurs, a piece of track (either forwards or behind) is added and this resulting state checked. This way we know the train recovers from the loss of initial path correctly as well.
     Theres a second train trying to path to the same station with a train limit of 1. This second train should never move if the reservation isn't lost. Some tests it is expected to move.
+
+    Note: don't run the whole tets suite or large numbers of tests with debuigger attached as it will take a while to start.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -15,19 +17,18 @@ local TrainManagerFuncs = require("scripts/train-manager-functions")
 local Colors = require("utility/colors")
 
 local ExcludeNonPositiveOutcomes = false -- If TRUE skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Skips all player riding tests as these concepts are included in some other tests.
-local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Noramlly FALSE as this is a specific sub collection of tests really.
+local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
 local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
---TODO: "<------------>" do all of these trains tests as all other train test (full) pass.
-local SpecificTrainTypesFilter = {"<------------>"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
-local SpecificTunnelUsageTypesFilter = {"carriageLeaving"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
-local SpecificReverseOnCarriageNumberFilter = {1} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
-local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificStationReservationCompetitorTrainExists = {true} -- Pass in array of true/false to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
-local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table to honor the main "DoPlayerInCarriageTests" setting to dictate the type of player in train tests done. Only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTunnelUsageTypesFilter = {} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
+local SpecificReverseOnCarriageNumberFilter = {} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
+local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is true.
+local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
+local SpecificStationReservationCompetitorTrainExists = {} -- Pass in array of true/false to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
+local SpecificPlayerInCarriageTypesFilter = {} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is true.
 
-local DebugOutputTestScenarioDetails = false -- If true writes out the test scenario details to a csv in script-output for inspection in Excel.
+local DebugOutputTestScenarioDetails = true -- If true writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -251,7 +252,7 @@ local TrainTypes = {
             },
             {
                 name = "cargo-wagon",
-                orientation = 0.75,
+                orientation = 0.25,
                 count = 6
             }
         }
@@ -261,7 +262,7 @@ local TrainTypes = {
         carriages = {
             {
                 name = "cargo-wagon",
-                orientation = 0.25,
+                orientation = 0.75,
                 count = 6
             },
             {
@@ -279,7 +280,7 @@ local TrainTypes = {
         carriages = {
             {
                 name = "cargo-wagon",
-                orientation = 0.25,
+                orientation = 0.75,
                 count = 3
             },
             {
@@ -292,7 +293,7 @@ local TrainTypes = {
             },
             {
                 name = "cargo-wagon",
-                orientation = 0.75,
+                orientation = 0.25,
                 count = 3
             }
         }
@@ -313,6 +314,91 @@ local TrainTypes = {
                 name = "locomotive",
                 orientation = 0.25,
                 none = "none"
+            }
+        },
+        startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
+    },
+    {
+        text = ">------------<",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.25
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 12
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75,
+                none = "none"
+            }
+        },
+        startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
+    },
+    {
+        text = "<>------------",
+        carriages = {
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25,
+                none = "none"
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 12
+            }
+        },
+        startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
+    },
+    {
+        text = "------------<>",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 12
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25,
+                none = "none"
+            }
+        },
+        startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
+    },
+    {
+        text = "------<>------",
+        carriages = {
+            {
+                name = "cargo-wagon",
+                orientation = 0.25,
+                count = 6
+            },
+            {
+                name = "locomotive",
+                orientation = 0.75
+            },
+            {
+                name = "locomotive",
+                orientation = 0.25,
+                none = "none"
+            },
+            {
+                name = "cargo-wagon",
+                orientation = 0.75,
+                count = 6
             }
         },
         startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
@@ -404,7 +490,7 @@ Test.Start = function(testName)
         end
     end
 
-    local forwardsTrackToRemove = stationEnd.surface.find_entity("straight-rail", {x = leavingPortal.position.x - 72, y = leavingPortal.position.y - 12})
+    local forwardsTrackToRemove = stationEnd.surface.find_entity("straight-rail", {x = leavingPortal.position.x, y = leavingPortal.position.y - 24}) -- Allows really 23 carriages to be out of the tunnel. Easily enough for current tests.
     local forwardsTrackToAddPosition = forwardsTrackToRemove.position
     local backwardsTrackToRemove = stationEnd.surface.find_entity("straight-rail", {x = enteringPortal.position.x + 38, y = enteringPortal.position.y - 12})
     local backwardsTrackToAddPosition = backwardsTrackToRemove.position
@@ -443,11 +529,15 @@ Test.Start = function(testName)
     testData.managedTrainId = 0 -- Tracks current managed train id for tunnel usage.
     testData.oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
     testData.testScenario = testScenario
-    testData.lastTrainAction = nil -- Populated by the last TunnelUsageChanged action.
-    testData.lastTrainChangeReason = nil -- Populated by the last TunnelUsageChanged changeReason.
-    testData.previousTrainAction = nil -- Populated by the previous (last + 1) TunnelUsageChanged action.
-    testData.previousTrainChangeReason = nil -- Populated by the previous (last + 1) TunnelUsageChanged changeReason.
-
+    testData.actions = {}
+    --[[
+        A list of actions and how many times they have occured. Populated as the events come in.
+        [actionName] = {
+            name = the action name string, same as the key in the table.
+            count = how many times the event has occured.
+            recentChangeReason = the last change reason text for this action if there was one. Only occurs on single fire actions.
+        }
+    --]]
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
     TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
 end
@@ -459,11 +549,6 @@ end
 Test.TunnelUsageChanged = function(event)
     local testName, testData = event.testName, TestFunctions.GetTestDataObject(event.testName)
 
-    -- Ignore fullyEntered and fullyLeft action events as they mess up our carriage tracking.
-    if event.action == "fullyEntered" or event.action == "fullyLeft" then
-        return
-    end
-
     if testData.managedTrainId == 0 and event.action == "startApproaching" then
         -- Keep hold of managed train id.
         testData.managedTrainId = event.tunnelUsageId
@@ -473,6 +558,7 @@ Test.TunnelUsageChanged = function(event)
             -- Tracked tunnel usage entry has been replaced by another one. Update tracked id and flag old id for ignoring.
             testData.managedTrainId = event.tunnelUsageId
             testData.oldManagedTrainId = event.replacedtunnelUsageId
+            testData.actions = {}
         elseif testData.oldManagedTrainId == event.tunnelUsageId then
             -- This old managed train id is expected and can be ignored entirely.
             return
@@ -480,17 +566,28 @@ Test.TunnelUsageChanged = function(event)
             TestFunctions.TestFailed(testName, "tunnel event for unexpected train id received")
         end
     end
-    testData.previousTrainAction, testData.previousTrainChangeReason = testData.lastTrainAction, testData.lastTrainChangeReason
-    testData.lastTrainAction, testData.lastTrainChangeReason = event.action, event.changeReason
+
+    -- Record the action and tunnel usage entry for later reference.
+    local actionListEntry = testData.actions[event.action]
+    if actionListEntry then
+        actionListEntry.count = actionListEntry.count + 1
+        actionListEntry.recentChangeReason = event.changeReason
+    else
+        testData.actions[event.action] = {
+            name = event.action,
+            count = 1,
+            recentChangeReason = event.changeReason
+        }
+    end
     testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, leavingTrain = event.leavingTrain}
 end
 
 Test.ResetTunnelUsageDetails = function(testData)
     -- Called once a tunnel usage is confirmed ended (Terminated) ad the state check has completed its use of the data.
     testData.managedTrainId = 0
-    testData.lastTrainAction, testData.lastTrainChangeReason, testData.previousTrainAction, testData.previousTrainChangeReason = nil, nil, nil, nil -- reset for new tunnel usage entry.
     testData.oldManagedTrainId = nil
     testData.tunnelUsageEntry = nil
+    testData.actions = {}
 end
 
 Test.EveryTick = function(event)
@@ -524,7 +621,7 @@ Test.EveryTick = function(event)
             local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
             testData.trackAdded = true
             if testData.testScenario.forwardsPathingOptionAfterTunnelType == ForwardsPathingOptionAfterTunnelTypes.delayed then
-                surface.create_entity({name = "straight-rail", position = testData.forwardsTrackToAddPosition, direction = defines.direction.north, force = force})
+                surface.create_entity({name = "straight-rail", position = testData.forwardsTrackToAddPosition, direction = defines.direction.east, force = force})
             end
             if testData.testScenario.backwardsPathingOptionAfterTunnelType == BackwardsPathingOptionAfterTunnelTypes.delayed then
                 surface.create_entity({name = "straight-rail", position = testData.backwardsTrackToAddPosition, direction = defines.direction.north, force = force})
@@ -541,37 +638,27 @@ Test.EveryTick = function(event)
 end
 
 Test.ShouldForwardsRailBeRemoved = function(testData)
+    -- Funcition is only safe to be called repeatedly before it returns true. Once true it should never be called again as it will likely just re-trigger every tick.
     local testScenario, testTunnelUsageType = testData.testScenario, testData.testScenario.tunnelUsageType
 
     -- Check test type and usage change type to see if the desired state has been reached.
     if testTunnelUsageType.name == TunnelUsageTypes.beforeCommitted.name then
-        if testData.lastTrainAction ~= "startApproaching" then
+        if testData.actions["startApproaching"] ~= nil and testData.actions["startApproaching"].count == 1 then
+            return true
+        else
             return false
         end
     elseif testTunnelUsageType.name == TunnelUsageTypes.carriageEntering.name then
-        if testData.lastTrainAction ~= "enteringCarriageRemoved" then
-            return false
+        if testData.actions["enteringCarriageRemoved"] ~= nil and testData.actions["enteringCarriageRemoved"].count == testScenario.reverseOnCarriageNumber then
+            return true
         else
-            -- reverseOnCarriageNumber counts the carriage number manipulated, but enteringTrain is post carriage removal.
-            local trainCarriageCount
-            if testData.tunnelUsageEntry.enteringTrain ~= nil then
-                trainCarriageCount = #testScenario.carriages - #testData.tunnelUsageEntry.enteringTrain.carriages
-            else
-                trainCarriageCount = #testScenario.carriages
-            end
-            if (testScenario.reverseOnCarriageNumber) ~= trainCarriageCount then
-                return false
-            end
+            return false
         end
     elseif testTunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name then
-        if testData.lastTrainAction ~= "leavingCarriageAdded" then
-            return false
+        if testData.actions["leavingCarriageAdded"] ~= nil and testData.actions["leavingCarriageAdded"].count == testScenario.reverseOnCarriageNumber then
+            return true
         else
-            local carriagesToIgnore = remote.call("railway_tunnel", "get_temporary_carriage_names")
-            local leavingTrainFakeCarriages = Utils.GetTableValueWithInnerKeyValue(testData.tunnelUsageEntry.leavingTrain.carriages, "name", carriagesToIgnore, true, true)
-            if (testScenario.reverseOnCarriageNumber) ~= (#testData.tunnelUsageEntry.leavingTrain.carriages - #leavingTrainFakeCarriages) then
-                return false
-            end
+            return false
         end
     end
 
@@ -595,9 +682,9 @@ Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData
             end
         end
         -- See if we have moved past the start approaching action on to another action. If not moved passed start approaching then continue the test.
-        if testData.previousTrainAction == "startApproaching" then
+        if testData.actions["startApproaching"] ~= nil then
             -- Check latest action is the expected one.
-            if testData.lastTrainAction == "terminated" and testData.lastTrainChangeReason == "abortedApproach" then
+            if testData.actions["terminated"] ~= nil and testData.actions["terminated"].recentChangeReason == "abortedApproach" then
                 Test.ResetTunnelUsageDetails(testData)
                 return true
             else
@@ -634,7 +721,7 @@ Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData
                 TestFunctions.TestFailed(testName, "train reached end station")
                 return false
             end
-            if testData.lastTrainAction == "reversedDuringUse" and trainFound.speed == 0 and testData.testScenario.afterTrackReturnedResult == ResultStates.reachStation then
+            if testData.actions["reversedDuringUse"] ~= nil and trainFound.speed == 0 and testData.testScenario.afterTrackReturnedResult == ResultStates.reachStation then
                 -- The train has been reversed and has 0 speed when found at/straddling the end of the portal track. If the next action is to arrive at the station then this current state is the train having pulled to the end of the track and instantly is heading to the station (has a path).
                 return true
             elseif (trainFound.state == defines.train_state.no_path or trainFound.state == defines.train_state.path_lost) and trainFound.speed == 0 then
@@ -740,6 +827,16 @@ end
 Test.GenerateTestScenarios = function()
     local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest
 
+    -- Player riding in carriage has extra on/off variable so handle first.
+    local limitedplayerInCarriagesTypes
+    if DoPlayerInCarriageTests then
+        -- Do all the player in train tests.
+        limitedplayerInCarriagesTypes = PlayerInCarriageTypes
+    else
+        -- Just do the no player in train test in this situation.
+        limitedplayerInCarriagesTypes = {none = "none"}
+    end
+
     if DoSpecificTrainTests then
         -- Adhock testing option.
         if Utils.IsTableEmpty(SpecificTrainTypesFilter) then
@@ -764,7 +861,7 @@ Test.GenerateTestScenarios = function()
             end
         end
         if Utils.IsTableEmpty(SpecificPlayerInCarriageTypesFilter) then
-            playerInCarriagesTypesToTest = PlayerInCarriageTypes
+            playerInCarriagesTypesToTest = limitedplayerInCarriagesTypes
         else
             playerInCarriagesTypesToTest = {}
             for _, playerInCarriageType in pairs(SpecificPlayerInCarriageTypesFilter) do
@@ -803,13 +900,7 @@ Test.GenerateTestScenarios = function()
         forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
         backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
         stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
-        if DoPlayerInCarriageTests then
-            -- Do all the player in train tests.
-            playerInCarriagesTypesToTest = PlayerInCarriageTypes
-        else
-            -- Just do the no player in train test in this situation.
-            playerInCarriagesTypesToTest = {none = "none"}
-        end
+        playerInCarriagesTypesToTest = limitedplayerInCarriagesTypes
     end
 
     -- Do each iteration of train type, tunnel usage, forward pathing and backwards pathing options. Each wagon entering/leaving the tunnel is a test.

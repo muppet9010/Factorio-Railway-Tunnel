@@ -90,7 +90,7 @@ TrainManagerFuncs.SetTrainToAuto = function(train, targetStop)
     end
 end
 
-TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, sourceTrain, skipScheduling, backupScheduleTarget)
+TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, scheduleTarget, skipScheduling)
     skipScheduling = skipScheduling or false
     local locomotive =
         exitPortalEntity.surface.create_entity {
@@ -106,7 +106,7 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, sourceTrain, ski
     locomotive.burner.remaining_burning_fuel = 4000000
     local dummyTrain = locomotive.train
     if not skipScheduling then
-        TrainManagerFuncs.TrainSetSchedule(dummyTrain, sourceTrain.schedule, false, sourceTrain.path_end_stop or backupScheduleTarget)
+        TrainManagerFuncs.TrainSetSchedule(dummyTrain, trainSchedule, false, scheduleTarget)
         if dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
             error("dummy train has unexpected state " .. tonumber(dummyTrain.state))

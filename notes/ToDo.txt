@@ -1,6 +1,8 @@
 Next:
     - Add a release flag on control as factorio global variable. Have the main logic loops run in try/catch if not release and no debugger attached (lua global variables). For when giving debug versions out to log train manager entry data to log file on error. Will make slower so won't want on release version.
-    - Sync Utils to repo from this mod.
+    - Sync Utils to repo from this mod when v0.0.3 is done for alpha release.
+    - Review TODO list to make it end user friendly.
+    - Check the mod is MP safe still.
 
 Soon:
     - Add reservation train to the stopping at signals post tunnel test. Competitor train should never move.
@@ -14,6 +16,7 @@ Soon:
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities).
 
 Later:
+    - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.
     - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.
     - Handle 2 trains both entering the tunnel at once.
     - Handle very very long trains:
