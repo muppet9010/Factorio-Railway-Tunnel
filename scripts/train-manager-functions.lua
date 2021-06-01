@@ -381,7 +381,7 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
 end
 
 TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(train, expectedOrientation, oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber, trainWasFacingForwards)
-    -- Checks if a train is still facing in the expected direction (front and back stock). For use after changing a trains composition as this regenerates these attributes. Doesn't consider speed +/- of the train.
+    -- Checks if a train is still facing in the expected direction (front and back stock). For use after changing a trains composition as this regenerates these attributes. Works with 0 speed trains as doesn't require or consider train speed +/-.
 
     -- Check trains make up depending on its length.
     if #train.carriages == 1 then

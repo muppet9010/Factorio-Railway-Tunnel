@@ -376,7 +376,8 @@ TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
     -- trainManagerEntry.enteringTrainForwards has been updated for us by SetAbsoluteTrainSpeed().
     local nextCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, trainManagerEntry.enteringTrainForwards)
 
-    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
+    -- Only try to remove a carriage if there is a speed. A 0 speed entering train can occur when a leaving train reverses.
+    if enteringTrain.speed ~= 0 and Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
         -- Handle any player in the train carriage.
         local driver = nextCarriage.get_driver()
         if driver ~= nil then
@@ -386,6 +387,15 @@ TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
         nextCarriage.destroy()
         -- Update local variable as new train number after removing carriage.
         enteringTrain = trainManagerEntry.enteringTrain
+
+        -- Removing a carriage can flip the trains direction. Only detect if there is a non 0 speed.
+        if enteringTrain ~= nil and enteringTrain.valid and enteringTrain.speed ~= 0 then
+            local positiveSpeed = enteringTrain.speed > 0
+            if positiveSpeed ~= trainManagerEntry.enteringTrainForwards then
+                -- Speed and cached forwards state don't match, so flip cached forwards state.
+                trainManagerEntry.enteringTrainForwards = not trainManagerEntry.enteringTrainForwards
+            end
+        end
 
         TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.enteringCarriageRemoved)
     end
@@ -1042,7 +1052,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.leavingTrainCarriagesPlaced = #newTrainManagerEntry.leavingTrain.carriages
         global.trainManager.leavingTrainIdToManagedTrain[newTrainManagerEntry.leavingTrainId] = newTrainManagerEntry
         if not TrainManagerFuncs.DoesTrainHaveAForwardsLoco(newTrainManagerEntry.leavingTrain, newTrainManagerEntry.trainTravelOrientation) then
-            local rearCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(newTrainManagerEntry.leavingTrain, not newTrainManagerEntry.leavingTrainForwards) -- TODO: This is giving wrong result in this specific case. No no loco in train the cause?
+            local rearCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(newTrainManagerEntry.leavingTrain, not newTrainManagerEntry.leavingTrainForwards)
             local scheduleBackup, isManualBackup, targetStopBackup = newTrainManagerEntry.leavingTrain.schedule, newTrainManagerEntry.leavingTrain.manual_mode, newTrainManagerEntry.scheduleTarget
             -- When pushing loco is added it may corrupt out cached Forwards state. So check if the trains idea of its front and back is changed and update accordingly.
             local oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber = newTrainManagerEntry.leavingTrain.front_stock.unit_number, newTrainManagerEntry.leavingTrain.back_stock.unit_number

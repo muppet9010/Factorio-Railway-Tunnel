@@ -144,7 +144,8 @@ TestFunctions.GetSnapshotOfTrain = function(train)
         }
 
         -- A train on a curve will have the same facing carriages roughly on the same orientation as the ones each side.
-        if (realCarriage.orientation > previousCarriageOrientation - 0.25 and realCarriage.orientation < previousCarriageOrientation + 0.25) then
+        -- Handle the number wraping within 1 and 0. If its closer < 0.25 either way then its facing same direction, > 0.25 and < 0.75 then its facing away.
+        if (realCarriage.orientation > previousCarriageOrientation - 0.25 and realCarriage.orientation < previousCarriageOrientation + 0.25) or realCarriage.orientation > previousCarriageOrientation + 0.75 or realCarriage.orientation < previousCarriageOrientation - 0.75 then
             snapCarriage.facingForwards = previousCarriageFacingFowards
         else
             snapCarriage.facingForwards = not previousCarriageFacingFowards
