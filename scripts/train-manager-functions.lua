@@ -199,7 +199,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
         end
     end
 
-    -- Add the remaining part of the first rail being used by the lead carriage. Carriage uses the lead joint as when it is "on" a rail piece. This isn't quite perfect when carriage is on a corner, but far closer than just the whole rail. In testing up to 0.5 tiles wrong for curves, but trains drift during tunnel use from speed as well so...
+    -- Add the remaining part of the first rail being used by the lead carriage. Carriage uses the lead joint as when it is "on" a rail piece. This isn't quite perfect when carriage is on a corner, but far closer than just the whole rail. In testing up to 0.5 tiles wrong for curves, but trains drift during tunnel use from speed as well so.
     local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(train, trainGoingForwards)
     local leadCarriageForwardOrientation
     if leadCarriage.speed > 0 then
@@ -401,6 +401,152 @@ TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(tr
             return false
         end
     end
+end
+
+TrainManagerFuncs.RunFunctionAndCatchErrors = function(functionRef, ...)
+    -- Doesn't support returning values to caller as can't do this for unknown argument count.
+    -- Uses a random number in file name to try and avoid overlapping errors in real game. If save is reloaded and nothing different done by player will be the same result however.
+
+    -- If its not a debug release just run the function normally and return any results.
+    if not global.debugRelease then
+        functionRef(...)
+        return
+    end
+
+    local errorHandlerFunc = function(errorMessage)
+        local errorObject = {message = errorMessage, stacktrace = debug.traceback()}
+        return errorObject
+    end
+
+    local args = {...}
+
+    -- Is in debug mode so catch any errors and log state data.
+    -- Only produces correct stack traces in regular Factorio, not in debugger as this adds extra lines to the stacktrace.
+    local success, errorObject = xpcall(functionRef, errorHandlerFunc, ...)
+    if success then
+        return
+    else
+        local logFileName = "railway_tunnel error details - " .. tostring(math.random() .. ".log")
+        local contents = ""
+        local AddLineToContents = function(text)
+            contents = contents .. text .. "\r\n"
+        end
+        AddLineToContents("Error: " .. errorObject.message)
+
+        -- Tidy the stacktrace up by removing the indented (\9) lines that relate to this xpcall function. Makes the stack trace read more naturally ignoring this function.
+        local newStackTrace, lineCount, rawxpcallLine = "stacktrace:\n", 1, nil
+        for line in string.gmatch(errorObject.stacktrace, "(\9[^\n]+)\n") do
+            local skipLine = false
+            if lineCount == 1 then
+                skipLine = true
+            elseif string.find(line, "(...tail calls...)") then
+                skipLine = true
+            elseif string.find(line, "rawxpcall") or string.find(line, "xpcall") then
+                skipLine = true
+                rawxpcallLine = lineCount + 1
+            elseif lineCount == rawxpcallLine then
+                skipLine = true
+            end
+            if not skipLine then
+                newStackTrace = newStackTrace .. line .. "\n"
+            end
+            lineCount = lineCount + 1
+        end
+        AddLineToContents(newStackTrace)
+
+        AddLineToContents("")
+        AddLineToContents("Function call arguments:")
+        for index, arg in pairs(args) do
+            AddLineToContents(Utils.TableContentsToJSON(TrainManagerFuncs.PrintThingsDetails(arg), index))
+        end
+
+        game.write_file(logFileName, contents, false) -- Wipe file if it exists from before.
+        error(errorObject.message .. "\n" .. newStackTrace, 0)
+    end
+end
+
+TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
+    _tablesLogged = _tablesLogged or {} -- Internal variable passed when self referencing to avoid loops.
+
+    -- Simple values just get returned.
+    if type(thing) ~= "table" then
+        return tostring(thing)
+    end
+
+    -- Handle specific Factorio Lua objects
+    if thing.object_name ~= nil then
+        -- Invalid things are returned in safe way.
+        if not thing.valid then
+            return {
+                object_name = thing.object_name,
+                valid = thing.valid
+            }
+        end
+
+        if thing.object_name == "LuaEntity" then
+            local entityDetails = {
+                object_name = thing.object_name,
+                valid = thing.valid,
+                type = thing.type,
+                name = thing.name,
+                unit_number = thing.unit_number,
+                position = thing.position,
+                direction = thing.direction,
+                orientation = thing.orientation,
+                health = thing.health,
+                color = thing.color,
+                speed = thing.speed,
+                backer_name = thing.backer_name
+            }
+            if thing.type == "locomotive" or thing.type == "cargo-wagon" or thing.type == "fluid-wagon" or thing.type == "artillery-wagon" then
+                entityDetails.trainId = thing.train.id
+            end
+
+            return entityDetails
+        elseif thing.object_name == "LuaTrain" then
+            local carriages = {}
+            for i, carriage in pairs(thing.carriages) do
+                carriages[i] = TrainManagerFuncs.PrintThingsDetails(carriage, _tablesLogged)
+            end
+            return {
+                object_name = thing.object_name,
+                valid = thing.valid,
+                id = thing.id,
+                state = thing.state,
+                schedule = thing.schedule,
+                manual_mode = thing.manual_mode,
+                has_path = thing.has_path,
+                speed = thing.speed,
+                signal = TrainManagerFuncs.PrintThingsDetails(thing.signal, _tablesLogged),
+                station = TrainManagerFuncs.PrintThingsDetails(thing.station, _tablesLogged),
+                carriages = carriages
+            }
+        else
+            -- Other Lua object.
+            return {
+                object_name = thing.object_name,
+                valid = thing.valid
+            }
+        end
+    end
+
+    -- Is just a general table so return all its keys.
+    local returnedSafeTable = {}
+    _tablesLogged[thing] = "logged"
+    for key, value in pairs(thing) do
+        if _tablesLogged[key] ~= nil or _tablesLogged[value] ~= nil then
+            local valueIdText
+            if value.id ~= nil then
+                valueIdText = "ID: " .. value.id
+            else
+                valueIdText = "no ID"
+            end
+            returnedSafeTable[key] = "circular table reference - " .. valueIdText
+        else
+            returnedSafeTable[key] = TrainManagerFuncs.PrintThingsDetails(value, _tablesLogged)
+        end
+    end
+    return returnedSafeTable
 end
 
 return TrainManagerFuncs

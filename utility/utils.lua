@@ -614,7 +614,7 @@ Utils._TableContentsToJSON = function(targetTable, name, singleLineOutput, table
             table_contents = table_contents .. indentstring .. tostring(key) .. ":" .. tostring(value)
         end
     else
-        table_contents = indentstring .. '"empty"'
+        table_contents = indentstring .. ""
     end
     if indent == 1 then
         local resultString = ""

@@ -18,12 +18,12 @@ local Colors = require("utility/colors")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
-local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
+local DoTests = false -- Enable test mode and does the enabled tests below if TRUE.
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking.
 
-local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
-local JustLogAllTests = true -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
+local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
+local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
@@ -49,7 +49,7 @@ local TestsToRun = {
     PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
     PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
     PathToRail = {enabled = false, testScript = require("tests.path-to-rail")},
-    ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests")}
+    ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

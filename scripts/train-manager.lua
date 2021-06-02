@@ -86,7 +86,12 @@ TrainManager.CreateGlobals = function()
 end
 
 TrainManager.OnLoad = function()
-    Interfaces.RegisterInterface("TrainManager.RegisterTrainApproaching", TrainManager.RegisterTrainApproaching)
+    Interfaces.RegisterInterface(
+        "TrainManager.RegisterTrainApproaching",
+        function(...)
+            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.RegisterTrainApproaching, ...)
+        end
+    )
     EventScheduler.RegisterScheduledEventType("TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManager.TrainTracking_OnTrainCreated)
     Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
@@ -149,66 +154,9 @@ TrainManager.RegisterTrainApproaching = function(enteringTrain, aboveEntrancePor
 end
 
 TrainManager.ProcessManagedTrains = function()
+    -- Loop over each train and process it.
     for _, trainManagerEntry in pairs(global.trainManager.managedTrains) do
-        local skipThisTick = false -- Used to provide a "continue" ability as some actions could leave the trains in a weird state this tick and thus error on later functions in the process.
-
-        -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
-        if not skipThisTick and trainManagerEntry.dummyTrain ~= nil and not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.dummyTrain) then
-            TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.dummyTrain)
-            skipThisTick = true
-        end
-
-        if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.approaching then
-            -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
-            if trainManagerEntry.enteringTrain.state ~= defines.train_state.arrive_signal or trainManagerEntry.enteringTrain.signal ~= trainManagerEntry.aboveEntrancePortalEndSignal.entity then
-                TrainManager.TerminateTunnelTrip(trainManagerEntry, TrainManager.TunnelUsageChangeReason.abortedApproach)
-                skipThisTick = true
-            else
-                -- Keep on running until the train is committed to entering the tunnel.
-                TrainManager.TrainApproachingOngoing(trainManagerEntry)
-            end
-        end
-
-        if not skipThisTick and trainManagerEntry.enteringTrainState == EnteringTrainStates.entering then
-            -- Keep on running until the entire train has entered the tunnel. Ignores primary state.
-            TrainManager.TrainEnteringOngoing(trainManagerEntry)
-        end
-
-        if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.underground then
-            -- Run just while the underground train is the primary train part. Detects when the train can start leaving.
-            TrainManager.TrainUndergroundOngoing(trainManagerEntry)
-        end
-
-        if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving then
-            if trainManagerEntry.leavingTrainState == LeavingTrainStates.leavingFirstCarriage then
-                -- Only runs for the first carriage and then changes to the ongoing for the remainder.
-                TrainManager.TrainLeavingFirstCarriage(trainManagerEntry)
-            elseif trainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
-                -- Check the leaving trains state and react accordingly
-                if trainManagerEntry.leavingTrainExpectedBadState then
-                    -- The train is known to have reached a bad state and is staying in it. We need to monitor the leaving train returning to a healthy state with a path, rather than try to fix the bad state.
-                    if TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) and trainManagerEntry.leavingTrain.has_path then
-                        -- Leaving train is healthy again with a path so return everything to active.
-                        trainManagerEntry.undergroundTrainSetsSpeed = true
-                        trainManagerEntry.undergroundTrain.manual_mode = false
-                        trainManagerEntry.leavingTrainExpectedBadState = false
-                        trainManagerEntry.leavingTrainAtEndOfPortalTrack = false
-                    end
-                elseif not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
-                    -- Check if the leaving train is in a good state before we check to add any new wagons to it.
-                    TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.leavingTrain)
-                    skipThisTick = true
-                else
-                    -- Keep on running until the entire train has left the tunnel.
-                    TrainManager.TrainLeavingOngoing(trainManagerEntry)
-                end
-            end
-        end
-
-        if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving and trainManagerEntry.leavingTrainState == LeavingTrainStates.trainLeftTunnel then
-            -- Keep on running until the entire train has left the tunnel's exit rail segment.
-            TrainManager.TrainLeftTunnelOngoing(trainManagerEntry)
-        end
+        TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, trainManagerEntry)
     end
 
     -- Raise any events from this tick for external listener mods to react to.
@@ -222,6 +170,68 @@ TrainManager.ProcessManagedTrains = function()
         Events.RaiseEvent(eventData)
     end
     global.trainManager.eventsToRaise = {}
+end
+
+TrainManager.ProcessManagedTrain = function(trainManagerEntry)
+    local skipThisTick = false -- Used to provide a "continue" ability as some actions could leave the trains in a weird state this tick and thus error on later functions in the process.
+
+    -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
+    if not skipThisTick and trainManagerEntry.dummyTrain ~= nil and not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.dummyTrain) then
+        TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.dummyTrain)
+        skipThisTick = true
+    end
+
+    if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.approaching then
+        -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
+        if trainManagerEntry.enteringTrain.state ~= defines.train_state.arrive_signal or trainManagerEntry.enteringTrain.signal ~= trainManagerEntry.aboveEntrancePortalEndSignal.entity then
+            TrainManager.TerminateTunnelTrip(trainManagerEntry, TrainManager.TunnelUsageChangeReason.abortedApproach)
+            skipThisTick = true
+        else
+            -- Keep on running until the train is committed to entering the tunnel.
+            TrainManager.TrainApproachingOngoing(trainManagerEntry)
+        end
+    end
+
+    if not skipThisTick and trainManagerEntry.enteringTrainState == EnteringTrainStates.entering then
+        -- Keep on running until the entire train has entered the tunnel. Ignores primary state.
+        TrainManager.TrainEnteringOngoing(trainManagerEntry)
+    end
+
+    if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.underground then
+        -- Run just while the underground train is the primary train part. Detects when the train can start leaving.
+        TrainManager.TrainUndergroundOngoing(trainManagerEntry)
+    end
+
+    if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving then
+        if trainManagerEntry.leavingTrainState == LeavingTrainStates.leavingFirstCarriage then
+            -- Only runs for the first carriage and then changes to the ongoing for the remainder.
+            TrainManager.TrainLeavingFirstCarriage(trainManagerEntry)
+        elseif trainManagerEntry.leavingTrainState == LeavingTrainStates.leaving then
+            -- Check the leaving trains state and react accordingly
+            if trainManagerEntry.leavingTrainExpectedBadState then
+                -- The train is known to have reached a bad state and is staying in it. We need to monitor the leaving train returning to a healthy state with a path, rather than try to fix the bad state.
+                if TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) and trainManagerEntry.leavingTrain.has_path then
+                    -- Leaving train is healthy again with a path so return everything to active.
+                    trainManagerEntry.undergroundTrainSetsSpeed = true
+                    trainManagerEntry.undergroundTrain.manual_mode = false
+                    trainManagerEntry.leavingTrainExpectedBadState = false
+                    trainManagerEntry.leavingTrainAtEndOfPortalTrack = false
+                end
+            elseif not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
+                -- Check if the leaving train is in a good state before we check to add any new wagons to it.
+                TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.leavingTrain)
+                skipThisTick = true
+            else
+                -- Keep on running until the entire train has left the tunnel.
+                TrainManager.TrainLeavingOngoing(trainManagerEntry)
+            end
+        end
+    end
+
+    if not skipThisTick and trainManagerEntry.primaryTrainPartName == PrimaryTrainPartNames.leaving and trainManagerEntry.leavingTrainState == LeavingTrainStates.trainLeftTunnel then
+        -- Keep on running until the entire train has left the tunnel's exit rail segment.
+        TrainManager.TrainLeftTunnelOngoing(trainManagerEntry)
+    end
 end
 
 TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithBadState)

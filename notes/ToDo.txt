@@ -1,5 +1,4 @@
 Next:
-    - Add a release flag on control as factorio global variable. Have the main logic loops run in try/catch if not release and no debugger attached (lua global variables). For when giving debug versions out to log train manager entry data to log file on error. Will make slower so won't want on release version.
     - Sync Utils to repo from this mod when v0.0.3 is done for alpha release.
     - Review TODO list to make it end user friendly.
     - Check the mod is MP safe still.
