@@ -4,7 +4,7 @@ Utils.DeepCopy = factorioUtil.table.deepcopy
 Utils.TableMerge = factorioUtil.merge -- Takes an array of tables and returns a new table with copies of their contents
 
 Utils.Are2EntitiesTheSame = function(entity1, entity2)
-    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity.
+    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
     if not entity1.valid or not entity2.valid then
         return false
     end
@@ -20,6 +20,14 @@ Utils.Are2EntitiesTheSame = function(entity1, entity2)
         else
             return false
         end
+    end
+end
+
+Utils.ArePositionsTheSame = function(pos1, pos2)
+    if (pos1.x or pos1[1]) == (pos2.x or pos2[1]) and (pos1.y or pos1[2]) == (pos2.y or pos2[2]) then
+        return true
+    else
+        return false
     end
 end
 
@@ -311,10 +319,22 @@ Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
 end
 
 Utils.LoopIntValueWithinRange = function(value, min, max)
+    -- This steps through the ints with min and max being seperatee steps.
     if value > max then
         return min - (max - value) - 1
     elseif value < min then
         return max + (value - min) + 1
+    else
+        return value
+    end
+end
+
+Utils.BoundFloatValueWithinRange = function(value, min, max)
+    -- This treats the min and max values as equal when bounding: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
+    if value > max then
+        return min + (value - max)
+    elseif value < min then
+        return max - (value - min)
     else
         return value
     end
@@ -594,7 +614,7 @@ Utils._TableContentsToJSON = function(targetTable, name, singleLineOutput, table
             table_contents = table_contents .. indentstring .. tostring(key) .. ":" .. tostring(value)
         end
     else
-        table_contents = indentstring .. '"empty"'
+        table_contents = indentstring .. ""
     end
     if indent == 1 then
         local resultString = ""
@@ -616,22 +636,78 @@ Utils.FormatSurfacePositionTableToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
 end
 
-Utils.GetTableKeyWithValue = function(theTable, value)
+Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true).
+    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    local keysFound = {}
     for k, v in pairs(theTable) do
-        if v == value then
-            return k
+        if not isValueAList then
+            if v == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
+        else
+            if v == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
         end
     end
-    return nil
+    return keysFound
 end
 
-Utils.GetTableKeyWithInnerKeyValue = function(theTable, key, value)
-    for i, innerTable in pairs(theTable) do
-        if innerTable[key] ~= nil and innerTable[key] == value then
-            return i
+Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    local keysFound = {}
+    for k, innerTable in pairs(theTable) do
+        if not isValueAList then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
+        else
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
         end
     end
-    return nil
+    return keysFound
+end
+
+Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    local valuesFound = {}
+    for _, innerTable in pairs(theTable) do
+        if not isValueAList then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
+                if not returnMultipleResults then
+                    return innerTable
+                end
+                table.insert(valuesFound, innerTable)
+            end
+        else
+            for _, valueInList in pairs(innerValue) do
+                if innerTable[innerKey] ~= nil and innerTable[innerKey] == valueInList then
+                    if not returnMultipleResults then
+                        return innerTable
+                    end
+                    table.insert(valuesFound, innerTable)
+                end
+            end
+        end
+    end
+    return valuesFound
 end
 
 Utils.TableValuesToKey = function(tableWithValues)
@@ -641,6 +717,17 @@ Utils.TableValuesToKey = function(tableWithValues)
     local newTable = {}
     for _, value in pairs(tableWithValues) do
         newTable[value] = value
+    end
+    return newTable
+end
+
+Utils.TableInnerValueToKey = function(refTable, innerValueAttributeName)
+    if refTable == nil then
+        return nil
+    end
+    local newTable = {}
+    for _, value in pairs(refTable) do
+        newTable[value[innerValueAttributeName]] = value
     end
     return newTable
 end
@@ -1082,12 +1169,13 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     end
 end
 
-Utils.EmptyRotatedSprite = function()
+Utils.EmptyRotatedSprite = function(repeat_count)
     return {
         direction_count = 1,
         filename = "__core__/graphics/empty.png",
         width = 1,
-        height = 1
+        height = 1,
+        repeat_count = repeat_count or 1
     }
 end
 
@@ -1251,7 +1339,7 @@ Utils.DoesRecipeResultsIncludeItemName = function(recipePrototype, itemName)
         if recipeBase ~= nil then
             if recipeBase.result ~= nil and recipeBase.result == itemName then
                 return true
-            elseif recipeBase.results ~= nil and Utils.GetTableKeyWithInnerKeyValue(recipeBase.results, "name", itemName) ~= nil then
+            elseif recipeBase.results ~= nil and #Utils.GetTableKeyWithInnerKeyValue(recipeBase.results, "name", itemName) > 0 then
                 return true
             end
         end
@@ -1343,5 +1431,13 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
 end
 
 Utils.MaxTrainStopLimit = 4294967295 -- uint
+
+Utils.ReturnValidLuaObjectOrNil = function(luaObject)
+    if luaObject == nil or not luaObject.valid then
+        return nil
+    else
+        return luaObject
+    end
+end
 
 return Utils

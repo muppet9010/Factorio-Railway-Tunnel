@@ -86,7 +86,9 @@ TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killFor
     end
     local refEntity, railEntityCollisionBoxList = Utils.GetFirstTableValue(railEntityList), {}
     for _, railEntity in pairs(railEntityList) do
-        table.insert(railEntityCollisionBoxList, railEntity.bounding_box) -- Only supports straight track by design.
+        if railEntity.valid then
+            table.insert(railEntityCollisionBoxList, railEntity.bounding_box) -- Only supports straight track by design.
+        end
     end
     local searchArea = Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs(railEntityCollisionBoxList)
     local carriagesFound = refEntity.surface.find_entities_filtered {area = searchArea, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}

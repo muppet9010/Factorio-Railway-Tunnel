@@ -51,8 +51,8 @@ TunnelSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, "TunnelSegments.OnBuiltEntityGhost", segmentEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, "TunnelSegments.OnBuiltEntityGhost", segmentEntityGhostNames_Filter)
 
-    Interfaces.RegisterInterface("TunnelSegments.TunnelCompleted", TunnelSegments.TunnelCompleted)
-    Interfaces.RegisterInterface("TunnelSegments.TunnelRemoved", TunnelSegments.TunnelRemoved)
+    Interfaces.RegisterInterface("TunnelSegments.On_TunnelCompleted", TunnelSegments.On_TunnelCompleted)
+    Interfaces.RegisterInterface("TunnelSegments.On_TunnelRemoved", TunnelSegments.On_TunnelRemoved)
 end
 
 TunnelSegments.OnBuiltEntity = function(event)
@@ -188,7 +188,7 @@ TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, 
     return true, tunnelPortals, tunnelSegments
 end
 
-TunnelSegments.TunnelCompleted = function(segmentEntities, force, aboveSurface)
+TunnelSegments.On_TunnelCompleted = function(segmentEntities, force, aboveSurface)
     local segments = {}
 
     for _, segmentEntity in pairs(segmentEntities) do
@@ -313,14 +313,16 @@ TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.crossingRailEntities ~= nil then
         TunnelCommon.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
         for _, crossingRailEntity in pairs(segment.crossingRailEntities) do
-            crossingRailEntity.destroy()
+            if crossingRailEntity.valid then
+                crossingRailEntity.destroy()
+            end
         end
     end
     global.tunnelSegments.segmentPositions[segment.positionString] = nil
     global.tunnelSegments.segments[segment.id] = nil
 end
 
-TunnelSegments.TunnelRemoved = function(segment)
+TunnelSegments.On_TunnelRemoved = function(segment)
     segment.tunnel = nil
     for _, railEntity in pairs(segment.railEntities) do
         railEntity.destroy()
