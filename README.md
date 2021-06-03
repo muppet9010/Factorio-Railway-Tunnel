@@ -18,6 +18,13 @@ Usage Notes
 - Trains using a tunnel will never be exactly aligned for the entering and leaving parts, but will be very close. This is a technical limitation of how the mod syncs train speeds each tick and isn't a bug.
 - If a train is using a tunnel and some track in its path is removed, it will try and repath like normal Factorio (forwards/backwards) from the tunnel. If it can't path it will pull to the front of the tunnel so it can be accessed by the player easier.
 
+
+Debug Release
+==============
+
+In debug releases of the mod if an error occurs a full mod state dump will be done in to the clients Factorio Data "script-output" folder. This will be stated in the error message on screen at the time of the error. The file will be named "railway_tunnel error details - " and then a semi-random number. It should be provided with any bug report to the mod author.
+
+
 Contributors
 ===============
 

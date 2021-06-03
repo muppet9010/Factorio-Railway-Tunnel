@@ -16,7 +16,7 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 local Colors = require("utility/colors")
 
-local ExcludeNonPositiveOutcomes = false -- If TRUE skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Skips all player riding tests as these concepts are included in some other tests.
+local ExcludeNonPositiveOutcomes = true -- If TRUE skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Skips all player riding tests as these concepts are included in some other tests.
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
 local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.

@@ -1,5 +1,6 @@
 local TrainManagerFuncs = {}
 local Utils = require("utility/utils")
+local Logging = require("utility/logging")
 -- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
 
 TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
@@ -63,6 +64,9 @@ end
 
 TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection, refCarriageGoingForwards)
     local placedCarriage = refCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
+    if placedCarriage == nil then
+        error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
+    end
     if Utils.OrientationToDirection(placedCarriage.orientation) ~= newDirection then
         local wrongFrontOfTrain, correctFrontOfTrain
         if refCarriageGoingForwards then
@@ -109,7 +113,7 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, s
         TrainManagerFuncs.TrainSetSchedule(dummyTrain, trainSchedule, false, scheduleTarget)
         if dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
-            error("dummy train has unexpected state " .. tonumber(dummyTrain.state))
+            error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortalEntity position: " .. Logging.PositionToString(exitPortalEntity.position))
         end
     end
     return dummyTrain
@@ -129,7 +133,7 @@ TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetS
         TrainManagerFuncs.SetTrainToAuto(train, targetStop)
         if not skipStateCheck and not TrainManagerFuncs.IsTrainHealthlyState(train) then
             -- Any issue on the train from the previous tick should be detected by the state check. So this should only trigger after misplaced wagons.
-            error("train doesn't have positive state after setting schedule")
+            error("train doesn't have positive state after setting schedule.\ntrain id: " .. train.id .. "\nstate: " .. train.state)
         end
     else
         train.manual_mode = true
@@ -146,7 +150,7 @@ TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leaving
         leavingTrainRearCarriageIndex = 1
         leavingTrainRearCarriagePushingIndexMod = 1
     else
-        error("TrainManagerFuncs.GetRearCarriageOfLeavingTrain() doesn't support 0 speed")
+        error("TrainManagerFuncs.GetRearCarriageOfLeavingTrain() doesn't support 0 speed\nleavingTrain id: " .. leavingTrain.id)
     end
     if leavingTrainPushingLoco ~= nil then
         leavingTrainRearCarriageIndex = leavingTrainRearCarriageIndex + leavingTrainRearCarriagePushingIndexMod
@@ -166,7 +170,7 @@ TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leaving
         currentSourceTrainCarriageIndex = #sourceTrain.carriages - leavingTrainCarriagesPlaced
         nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
     else
-        error("TrainManagerFuncs.GetCarriageToAddToLeavingTrain() doesn't support 0 speed sourceTrain")
+        error("TrainManagerFuncs.GetCarriageToAddToLeavingTrain() doesn't support 0 speed sourceTrain\nsourceTrain id: " .. sourceTrain.id)
     end
     local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
     return nextSourceCarriageEntity
@@ -207,7 +211,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     elseif leadCarriage.speed < 0 then
         leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
     else
-        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train")
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end
     local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
     local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
@@ -358,7 +362,7 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
     elseif undergroundTrain.speed < 0 then
         leadCarriage = undergroundTrain.back_stock
     else
-        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.")
+        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.\nundergroundTrain id: " .. undergroundTrain.id)
     end
     local undergroundTrainOrientation
     if leadCarriage.speed > 0 then
@@ -366,7 +370,7 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
     elseif leadCarriage.speed < 0 then
         undergroundTrainOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
     else
-        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train")
+        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.\nundergroundTrain id: " .. undergroundTrain.id)
     end
     return Utils.ApplyOffsetToPosition(
         leadCarriage.position,
@@ -461,7 +465,7 @@ TrainManagerFuncs.RunFunctionAndCatchErrors = function(functionRef, ...)
         end
 
         game.write_file(logFileName, contents, false) -- Wipe file if it exists from before.
-        error(errorObject.message .. "\n" .. newStackTrace, 0)
+        error('Debug release: see log file in Factorio Data\'s "script-output" folder.\n' .. errorObject.message .. "\n" .. newStackTrace, 0)
     end
 end
 
