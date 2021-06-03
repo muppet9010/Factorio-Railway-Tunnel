@@ -7,7 +7,7 @@ Mod Features
 ===========
 
 - Trains will natively use tunnels just like any other track, no need to specially path via them. You can have a train stop part way in/out of a tunnel at a signal or station and then resume or reverse its journey.
-- The tunnel is a single block of rail and so only 1 train can use a tunnel at a time. Trains do prefer empty normal tracks over tunnels, but will use a tunnel over congested track.
+- The tunnel is a single block of rail and so only 1 train can use a tunnel at a time. Trains do prefer empty normal tracks over tunnels, but will use a tunnel over congested track (few trains or medium distance).
 - Tunnels are built by placing the entrance and exit pieces (rails outwards) and then building underground tunnel between them. When a tunnel is complete rail signals will appear on both ends of the tunnel. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel.
 
 
