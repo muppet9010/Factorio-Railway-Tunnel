@@ -31,4 +31,6 @@ CommonPrototypeFunctions.GetBlankCircuitConnectorSprites = function(rotations)
     return sprites
 end
 
+CommonPrototypeFunctions.TunnelMapColor = {r = 0.35, g = 0.35, b = 0.35}
+
 return CommonPrototypeFunctions

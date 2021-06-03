@@ -6,25 +6,32 @@ local Underground = require("scripts/underground")
 local TrainManager = require("scripts/train-manager")
 local TestManager = require("scripts/test-manager")
 local Force = require("scripts/force")
+local PlayerContainers = require("scripts/player-containers")
 
 local function CreateGlobals()
+    global.debugRelease = true -- If TRUE it runs key code in a try/catch. Makes code run slower technically.
+
+    Force.CreateGlobals()
     TrainManager.CreateGlobals()
     TunnelManager.CreateGlobals()
     TunnelPortals.CreateGlobals()
     TunnelSegments.CreateGlobals()
     Underground.CreateGlobals()
-    Force.CreateGlobals()
+    PlayerContainers.CreateGlobals()
 
     TestManager.CreateGlobals()
 end
 
 local function OnLoad()
     --Any Remote Interface registration calls can go in here or in root of control.lua
+    remote.remove_interface("railway_tunnel")
+
     TrainManager.OnLoad()
     TunnelManager.OnLoad()
     TunnelPortals.OnLoad()
     TunnelSegments.OnLoad()
     Underground.OnLoad()
+    PlayerContainers.OnLoad()
 
     TestManager.OnLoad()
 end
@@ -39,8 +46,9 @@ local function OnStartup()
     CreateGlobals()
     OnLoad()
     --OnSettingChanged(nil)
-    Underground.OnStartup()
     Force.OnStartup()
+    Underground.OnStartup()
+    TrainManager.OnStartup()
 
     TestManager.OnStartup()
 end

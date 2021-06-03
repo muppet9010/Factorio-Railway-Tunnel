@@ -14,15 +14,9 @@ Tunnel.CreateGlobals = function()
             id = unqiue id of the tunnel.
             alignment = either "horizontal" or "vertical".
             alignmentOrientation = the orientation value of either 0.25 (horizontal) or 0 (vertical), no concept of direction though.
+            railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel. Ref to the undergroundSurface global objects attribute.
             aboveSurface = LuaSurface of the main world surface.
-            underground = {
-                undergroundSurface = ref to underground surface globla object.
-                railEntities = table of rail LuaEntity.
-                tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
-                undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
-                surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
-                undergroundLeadInTiles = the tiles lead in of rail from 0
-            }
+            undergroundTunnel = reference to the underground tunnel global object.
             portals = table of the 2 portal global objects that make up this tunnel.
             segments = table of the segment global objects on the surface.
         }
@@ -44,21 +38,21 @@ end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
-    if train.state ~= defines.train_state.arrive_signal then
+    if not train.valid or train.state ~= defines.train_state.arrive_signal then
         return
     end
     local signal = train.signal
     if signal == nil or global.tunnel.endSignals[signal.unit_number] == nil then
         return
     end
-    Interfaces.Call("TrainManager.TrainEnteringInitial", train, global.tunnel.endSignals[signal.unit_number])
+    Interfaces.Call("TrainManager.RegisterTrainApproaching", train, global.tunnel.endSignals[signal.unit_number])
 end
 
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
 
-    local tunnelPortals = Interfaces.Call("TunnelPortals.TunnelCompleted", tunnelPortalEntities, force, aboveSurface)
-    local tunnelSegments = Interfaces.Call("TunnelSegments.TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
+    local tunnelPortals = Interfaces.Call("TunnelPortals.On_TunnelCompleted", tunnelPortalEntities, force, aboveSurface)
+    local tunnelSegments = Interfaces.Call("TunnelSegments.On_TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation = "vertical", 0
@@ -83,20 +77,22 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         segment.tunnel = tunnel
     end
 
-    tunnel.underground = Interfaces.Call("Underground.TunnelCompleted", tunnel)
+    tunnel.undergroundTunnel = Interfaces.Call("Underground.CreateUndergroundTunnel", tunnel)
+    tunnel.railAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.railAlignmentAxis
 end
 
 Tunnel.RemoveTunnel = function(tunnel)
-    Interfaces.Call("TrainManager.TunnelRemoved", tunnel)
+    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
     for _, portal in pairs(tunnel.portals) do
-        Interfaces.Call("TunnelPortals.TunnelRemoved", portal)
+        Interfaces.Call("TunnelPortals.On_TunnelRemoved", portal)
     end
     for _, segment in pairs(tunnel.segments) do
-        Interfaces.Call("TunnelSegments.TunnelRemoved", segment)
+        Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
     end
-    for _, undergroundRailEntity in pairs(tunnel.underground.railEntities) do
-        undergroundRailEntity.destroy()
-    end
+    -- This list isn't populated as we bulk clone, but we also don't want to delete rails. In the future we want to reuse them for future tunnels. We could use the on_entity_cloned event to track rails being cloned if we really needed to populate it.
+    --for _, undergroundRailEntity in pairs(tunnel.undergroundTunnel.railEntities) do
+    --    undergroundRailEntity.destroy()
+    --end
     global.tunnel.tunnels[tunnel.id] = nil
     table.insert(global.tunnel.removedTunnelIds, tunnel.id)
 end
@@ -110,20 +106,20 @@ Tunnel.DeregisterEndSignal = function(endSignal)
 end
 
 Tunnel.TrainReservedTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
 end
 
 Tunnel.TrainFinishedEnteringTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveEntrancePortal, trainManagerEntry)
 end
 
 Tunnel.TrainStartedExitingTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
 end
 
 Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceEntrancePortal, trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.surfaceExitPortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveEntrancePortal, trainManagerEntry)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
 end
 
 return Tunnel

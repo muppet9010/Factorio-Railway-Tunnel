@@ -12,6 +12,11 @@ data:extend(
         {
             type = "locomotive",
             name = "railway_tunnel-tunnel_portal_pushing_locomotive",
+            icon = "__base__/graphics/icons/locomotive.png",
+            icon_size = 64,
+            icon_mipmaps = 4,
+            flags = {"not-deconstructable", "not-upgradable", "not-blueprintable"},
+            subgroup = "railway_tunnel-hidden_locomotives",
             collision_box = {{-0.3, -0.7}, {0.3, 0.7}},
             collision_mask = CollisionMaskUtil.get_default_mask("locomotive"),
             --selection_box = {{-1, -2}, {1, 2}}, -- For testing when we need to select them
@@ -29,7 +34,8 @@ data:extend(
             reversing_power_modifier = 1,
             energy_source = {
                 type = "void"
-            }
+            },
+            allow_passengers = false
         }
     }
 )

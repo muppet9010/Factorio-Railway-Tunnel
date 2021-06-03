@@ -3,8 +3,8 @@ local factorioUtil = require("__core__/lualib/util")
 Utils.DeepCopy = factorioUtil.table.deepcopy
 Utils.TableMerge = factorioUtil.merge -- Takes an array of tables and returns a new table with copies of their contents
 
-function Utils.Are2EntitiesTheSame(entity1, entity2)
-    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity.
+Utils.Are2EntitiesTheSame = function(entity1, entity2)
+    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
     if not entity1.valid or not entity2.valid then
         return false
     end
@@ -23,7 +23,15 @@ function Utils.Are2EntitiesTheSame(entity1, entity2)
     end
 end
 
-function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructable, onlyKillable, entitiesExcluded)
+Utils.ArePositionsTheSame = function(pos1, pos2)
+    if (pos1.x or pos1[1]) == (pos2.x or pos2[1]) and (pos1.y or pos1[2]) == (pos2.y or pos2[2]) then
+        return true
+    else
+        return false
+    end
+end
+
+Utils.ReturnAllObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructible, onlyKillable, entitiesExcluded)
     -- Expand force affected to support range of opt in or opt out forces.
     local entitiesFound, filteredEntitiesFound = surface.find_entities(positionedBoundingBox), {}
     for k, entity in pairs(entitiesFound) do
@@ -39,7 +47,7 @@ function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionB
             end
             if not entityExcluded then
                 if (onlyForceAffected == nil) or (entity.force == onlyForceAffected) then
-                    if (not onlyDestructable) or (entity.destructible) then
+                    if (not onlyDestructible) or (entity.destructible) then
                         if (not onlyKillable) or (entity.health ~= nil) then
                             if (not collisionBoxOnlyEntities) or (Utils.IsCollisionBoxPopulated(entity.prototype.collision_box)) then
                                 table.insert(filteredEntitiesFound, entity)
@@ -53,7 +61,7 @@ function Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionB
     return filteredEntitiesFound
 end
 
-function Utils.KillAllKillableObjectsInArea(surface, positionedBoundingBox, killerEntity, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
+Utils.KillAllKillableObjectsInArea = function(surface, positionedBoundingBox, killerEntity, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
     --TODO: these should all support killing force being passed in.
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
         if killerEntity ~= nil then
@@ -64,7 +72,7 @@ function Utils.KillAllKillableObjectsInArea(surface, positionedBoundingBox, kill
     end
 end
 
-function Utils.KillAllObjectsInArea(surface, positionedBoundingBox, killerEntity, onlyForceAffected, entitiesExcluded)
+Utils.KillAllObjectsInArea = function(surface, positionedBoundingBox, killerEntity, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, false, onlyForceAffected, false, false, entitiesExcluded)) do
         if entity.destructible then
             if killerEntity ~= nil then
@@ -78,19 +86,19 @@ function Utils.KillAllObjectsInArea(surface, positionedBoundingBox, killerEntity
     end
 end
 
-function Utils.DestroyAllKillableObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
+Utils.DestroyAllKillableObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
         entity.destroy({dp_cliff_correction = true, raise_destroy = true})
     end
 end
 
-function Utils.DestroyAllObjectsInArea(surface, positionedBoundingBox, onlyForceAffected, entitiesExcluded)
+Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, false, onlyForceAffected, false, false, entitiesExcluded)) do
         entity.destroy({dp_cliff_correction = true, raise_destroy = true})
     end
 end
 
-function Utils.IsTableValidPosition(thing)
+Utils.IsTableValidPosition = function(thing)
     if thing.x ~= nil and thing.y ~= nil then
         if type(thing.x) == "number" and type(thing.y) == "number" then
             return true
@@ -108,7 +116,7 @@ function Utils.IsTableValidPosition(thing)
     end
 end
 
-function Utils.TableToProperPosition(thing)
+Utils.TableToProperPosition = function(thing)
     if thing.x ~= nil and thing.y ~= nil then
         if type(thing.x) == "number" and type(thing.y) == "number" then
             return thing
@@ -126,7 +134,7 @@ function Utils.TableToProperPosition(thing)
     end
 end
 
-function Utils.IsTableValidBoundingBox(thing)
+Utils.IsTableValidBoundingBox = function(thing)
     if thing.left_top ~= nil and thing.right_bottom ~= nil then
         if Utils.IsTableValidPosition(thing.left_top) and Utils.IsTableValidPosition(thing.right_bottom) then
             return true
@@ -144,7 +152,7 @@ function Utils.IsTableValidBoundingBox(thing)
     end
 end
 
-function Utils.TableToProperBoundingBox(thing)
+Utils.TableToProperBoundingBox = function(thing)
     if not Utils.IsTableValidBoundingBox(thing) then
         return nil
     elseif thing.left_top ~= nil and thing.right_bottom ~= nil then
@@ -154,7 +162,7 @@ function Utils.TableToProperBoundingBox(thing)
     end
 end
 
-function Utils.ApplyBoundingBoxToPosition(centrePos, boundingBox, orientation)
+Utils.ApplyBoundingBoxToPosition = function(centrePos, boundingBox, orientation)
     centrePos = Utils.TableToProperPosition(centrePos)
     boundingBox = Utils.TableToProperBoundingBox(boundingBox)
     if orientation == nil or orientation == 0 or orientation == 1 then
@@ -185,19 +193,19 @@ function Utils.ApplyBoundingBoxToPosition(centrePos, boundingBox, orientation)
     end
 end
 
-function Utils.RoundPosition(pos, numDecimalPlaces)
+Utils.RoundPosition = function(pos, numDecimalPlaces)
     return {x = Utils.RoundNumberToDecimalPlaces(pos.x, numDecimalPlaces), y = Utils.RoundNumberToDecimalPlaces(pos.y, numDecimalPlaces)}
 end
 
-function Utils.GetChunkPositionForTilePosition(pos)
+Utils.GetChunkPositionForTilePosition = function(pos)
     return {x = math.floor(pos.x / 32), y = math.floor(pos.y / 32)}
 end
 
-function Utils.GetLeftTopTilePositionForChunkPosition(chunkPos)
+Utils.GetLeftTopTilePositionForChunkPosition = function(chunkPos)
     return {x = chunkPos.x * 32, y = chunkPos.y * 32}
 end
 
-function Utils.RotatePositionAround0(orientation, position)
+Utils.RotatePositionAround0 = function(orientation, position)
     local deg = orientation * 360
     local rad = math.rad(deg)
     local cosValue = math.cos(rad)
@@ -207,7 +215,7 @@ function Utils.RotatePositionAround0(orientation, position)
     return {x = rotatedX, y = rotatedY}
 end
 
-function Utils.CalculateBoundingBoxFrom2Points(point1, point2)
+Utils.CalculateBoundingBoxFrom2Points = function(point1, point2)
     local minX, maxX, minY, maxY = nil, nil, nil, nil
     if minX == nil or point1.x < minX then
         minX = point1.x
@@ -236,7 +244,7 @@ function Utils.CalculateBoundingBoxFrom2Points(point1, point2)
     return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
 end
 
-function Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs(listOfBoundingBoxs)
+Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs = function(listOfBoundingBoxs)
     local minX, maxX, minY, maxY = nil, nil, nil, nil
     for _, boundingBox in pairs(listOfBoundingBoxs) do
         for _, point in pairs({boundingBox.left_top, boundingBox.right_bottom}) do
@@ -257,14 +265,14 @@ function Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs(listOfBoundingBoxs)
     return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
 end
 
-function Utils.ApplyOffsetToPosition(position, offset)
+Utils.ApplyOffsetToPosition = function(position, offset)
     return {
         x = position.x + (offset.x or 0),
         y = position.y + (offset.y or 0)
     }
 end
 
-function Utils.GrowBoundingBox(boundingBox, growthX, growthY)
+Utils.GrowBoundingBox = function(boundingBox, growthX, growthY)
     return {
         left_top = {
             x = boundingBox.left_top.x - growthX,
@@ -277,7 +285,7 @@ function Utils.GrowBoundingBox(boundingBox, growthX, growthY)
     }
 end
 
-function Utils.IsCollisionBoxPopulated(collisionBox)
+Utils.IsCollisionBoxPopulated = function(collisionBox)
     if collisionBox == nil then
         return false
     end
@@ -288,15 +296,15 @@ function Utils.IsCollisionBoxPopulated(collisionBox)
     end
 end
 
-function Utils.LogisticEquation(index, height, steepness)
+Utils.LogisticEquation = function(index, height, steepness)
     return height / (1 + math.exp(steepness * (index - 0)))
 end
 
-function Utils.ExponentialDecayEquation(index, multiplier, scale)
+Utils.ExponentialDecayEquation = function(index, multiplier, scale)
     return multiplier * math.exp(-index * scale)
 end
 
-function Utils.RoundNumberToDecimalPlaces(num, numDecimalPlaces)
+Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
     local result
     if numDecimalPlaces ~= nil and numDecimalPlaces > 0 then
         local mult = 10 ^ numDecimalPlaces
@@ -310,7 +318,8 @@ function Utils.RoundNumberToDecimalPlaces(num, numDecimalPlaces)
     return result
 end
 
-function Utils.LoopIntValueWithinRange(value, min, max)
+Utils.LoopIntValueWithinRange = function(value, min, max)
+    -- This steps through the ints with min and max being seperatee steps.
     if value > max then
         return min - (max - value) - 1
     elseif value < min then
@@ -320,7 +329,18 @@ function Utils.LoopIntValueWithinRange(value, min, max)
     end
 end
 
-function Utils.HandleFloatNumberAsChancedValue(value)
+Utils.BoundFloatValueWithinRange = function(value, min, max)
+    -- This treats the min and max values as equal when bounding: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
+    if value > max then
+        return min + (value - max)
+    elseif value < min then
+        return max - (value - min)
+    else
+        return value
+    end
+end
+
+Utils.HandleFloatNumberAsChancedValue = function(value)
     local intValue = math.floor(value)
     local partialValue = value - intValue
     local chancedValue = intValue
@@ -333,7 +353,7 @@ function Utils.HandleFloatNumberAsChancedValue(value)
     return chancedValue
 end
 
-function Utils.FuzzyCompareDoubles(num1, logic, num2)
+Utils.FuzzyCompareDoubles = function(num1, logic, num2)
     -- This doesn't guarentee correct on some of the edge cases, but is as close as possible assuming that 1/256 is the variance for the same number (Bilka, Dev on Discord)
     local numDif = num1 - num2
     local variance = 1 / 256
@@ -376,7 +396,7 @@ function Utils.FuzzyCompareDoubles(num1, logic, num2)
     end
 end
 
-function Utils.IsTableEmpty(table)
+Utils.IsTableEmpty = function(table)
     if table == nil or next(table) == nil then
         return true
     else
@@ -384,7 +404,7 @@ function Utils.IsTableEmpty(table)
     end
 end
 
-function Utils.GetTableNonNilLength(table)
+Utils.GetTableNonNilLength = function(table)
     local count = 0
     for _ in pairs(table) do
         count = count + 1
@@ -392,19 +412,19 @@ function Utils.GetTableNonNilLength(table)
     return count
 end
 
-function Utils.GetFirstTableKey(table)
+Utils.GetFirstTableKey = function(table)
     return next(table)
 end
 
-function Utils.GetFirstTableValue(table)
+Utils.GetFirstTableValue = function(table)
     return table[next(table)]
 end
 
-function Utils.GetFirstTableKeyValue(table)
+Utils.GetFirstTableKeyValue = function(table)
     return next(table), table[next(table)]
 end
 
-function Utils.GetMaxKey(table)
+Utils.GetMaxKey = function(table)
     local max_key = 0
     for k in pairs(table) do
         if k > max_key then
@@ -414,7 +434,7 @@ function Utils.GetMaxKey(table)
     return max_key
 end
 
-function Utils.GetTableValueByIndexCount(table, indexCount)
+Utils.GetTableValueByIndexCount = function(table, indexCount)
     local count = 0
     for _, v in pairs(table) do
         count = count + 1
@@ -424,7 +444,7 @@ function Utils.GetTableValueByIndexCount(table, indexCount)
     end
 end
 
-function Utils.CalculateBoundingBoxFromPositionAndRange(position, range)
+Utils.CalculateBoundingBoxFromPositionAndRange = function(position, range)
     return {
         left_top = {
             x = position.x - range,
@@ -437,7 +457,7 @@ function Utils.CalculateBoundingBoxFromPositionAndRange(position, range)
     }
 end
 
-function Utils.CalculateTilesUnderPositionedBoundingBox(positionedBoundingBox)
+Utils.CalculateTilesUnderPositionedBoundingBox = function(positionedBoundingBox)
     local tiles = {}
     for x = positionedBoundingBox.left_top.x, positionedBoundingBox.right_bottom.x do
         for y = positionedBoundingBox.left_top.y, positionedBoundingBox.right_bottom.y do
@@ -447,24 +467,24 @@ function Utils.CalculateTilesUnderPositionedBoundingBox(positionedBoundingBox)
     return tiles
 end
 
-function Utils.GetDistance(pos1, pos2)
-    --Don't do any valid checks as called so frequently, big UPS wastage.
+Utils.GetDistance = function(pos1, pos2)
+    -- Don't do any valid checks as called so frequently, big UPS wastage.
     local dx = pos1.x - pos2.x
     local dy = pos1.y - pos2.y
     return math.sqrt(dx * dx + dy * dy)
 end
 
-function Utils.GetDistanceSingleAxis(pos1, pos2, axis)
-    --Don't do any valid checks as called so frequently, big UPS wastage.
+Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
+    -- Don't do any valid checks as called so frequently, big UPS wastage.
     return math.abs(pos1[axis] - pos2[axis])
 end
 
-function Utils.GetOffsetForPositionFromPosition(newPosition, basePosition)
+Utils.GetOffsetForPositionFromPosition = function(newPosition, basePosition)
     -- Returns the offset for the first position in relation to the second position.
     return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
 end
 
-function Utils.IsPositionInBoundingBox(position, boundingBox, safeTiling)
+Utils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
     -- safeTiling option means that the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
     if safeTiling == nil or not safeTiling then
         if position.x >= boundingBox.left_top.x and position.x <= boundingBox.right_bottom.x and position.y >= boundingBox.left_top.y and position.y <= boundingBox.right_bottom.y then
@@ -481,7 +501,7 @@ function Utils.IsPositionInBoundingBox(position, boundingBox, safeTiling)
     end
 end
 
-function Utils.GetEntityReturnedToInventoryName(entity)
+Utils.GetEntityReturnedToInventoryName = function(entity)
     if entity.prototype.mineable_properties ~= nil and entity.prototype.mineable_properties.products ~= nil and #entity.prototype.mineable_properties.products > 0 then
         return entity.prototype.mineable_properties.products[1].name
     else
@@ -489,7 +509,7 @@ function Utils.GetEntityReturnedToInventoryName(entity)
     end
 end
 
-function Utils.TableKeyToArray(aTable)
+Utils.TableKeyToArray = function(aTable)
     local newArray = {}
     for key in pairs(aTable) do
         table.insert(newArray, key)
@@ -497,7 +517,7 @@ function Utils.TableKeyToArray(aTable)
     return newArray
 end
 
-function Utils.TableKeyToCommaString(aTable)
+Utils.TableKeyToCommaString = function(aTable)
     -- Doesn't support commas in values or nested tables. Really for logging.
     local newString = ""
     if Utils.IsTableEmpty(aTable) then
@@ -513,7 +533,7 @@ function Utils.TableKeyToCommaString(aTable)
     return newString
 end
 
-function Utils.TableValueToCommaString(aTable)
+Utils.TableValueToCommaString = function(aTable)
     -- Doesn't support commas in values or nested tables. Really for logging.
     local newString = ""
     if Utils.IsTableEmpty(aTable) then
@@ -529,13 +549,13 @@ function Utils.TableValueToCommaString(aTable)
     return newString
 end
 
-function Utils.TableContentsToJSON(targetTable, name, singleLineOutput)
+Utils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
     -- targetTable is the only mandatory parameter. name if provided will appear as a "name:JSONData" output. singleLineOutput removes all lines and spacing from the output.
     singleLineOutput = singleLineOutput or false
     local tablesLogged = {}
     return Utils._TableContentsToJSON(targetTable, name, singleLineOutput, tablesLogged)
 end
-function Utils._TableContentsToJSON(targetTable, name, singleLineOutput, tablesLogged, indent, stopTraversing)
+Utils._TableContentsToJSON = function(targetTable, name, singleLineOutput, tablesLogged, indent, stopTraversing)
     local newLineCharacter = "\r\n"
     indent = indent or 1
     local indentstring = string.rep(" ", (indent * 4))
@@ -594,7 +614,7 @@ function Utils._TableContentsToJSON(targetTable, name, singleLineOutput, tablesL
             table_contents = table_contents .. indentstring .. tostring(key) .. ":" .. tostring(value)
         end
     else
-        table_contents = indentstring .. '"empty"'
+        table_contents = indentstring .. ""
     end
     if indent == 1 then
         local resultString = ""
@@ -608,33 +628,89 @@ function Utils._TableContentsToJSON(targetTable, name, singleLineOutput, tablesL
     end
 end
 
-function Utils.FormatPositionTableToString(positionTable)
+Utils.FormatPositionTableToString = function(positionTable)
     return positionTable.x .. "," .. positionTable.y
 end
 
-function Utils.FormatSurfacePositionTableToString(surfaceId, positionTable)
+Utils.FormatSurfacePositionTableToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
 end
 
-function Utils.GetTableKeyWithValue(theTable, value)
+Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true).
+    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    local keysFound = {}
     for k, v in pairs(theTable) do
-        if v == value then
-            return k
+        if not isValueAList then
+            if v == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
+        else
+            if v == value then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
         end
     end
-    return nil
+    return keysFound
 end
 
-function Utils.GetTableKeyWithInnerKeyValue(theTable, key, value)
-    for i, innerTable in pairs(theTable) do
-        if innerTable[key] ~= nil and innerTable[key] == value then
-            return i
+Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    local keysFound = {}
+    for k, innerTable in pairs(theTable) do
+        if not isValueAList then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
+        else
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
+                if not returnMultipleResults then
+                    return k
+                end
+                table.insert(keysFound, k)
+            end
         end
     end
-    return nil
+    return keysFound
 end
 
-function Utils.TableValuesToKey(tableWithValues)
+Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
+    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
+    local valuesFound = {}
+    for _, innerTable in pairs(theTable) do
+        if not isValueAList then
+            if innerTable[innerKey] ~= nil and innerTable[innerKey] == innerValue then
+                if not returnMultipleResults then
+                    return innerTable
+                end
+                table.insert(valuesFound, innerTable)
+            end
+        else
+            for _, valueInList in pairs(innerValue) do
+                if innerTable[innerKey] ~= nil and innerTable[innerKey] == valueInList then
+                    if not returnMultipleResults then
+                        return innerTable
+                    end
+                    table.insert(valuesFound, innerTable)
+                end
+            end
+        end
+    end
+    return valuesFound
+end
+
+Utils.TableValuesToKey = function(tableWithValues)
     if tableWithValues == nil then
         return nil
     end
@@ -645,11 +721,22 @@ function Utils.TableValuesToKey(tableWithValues)
     return newTable
 end
 
-function Utils.GetRandomFloatInRange(lower, upper)
+Utils.TableInnerValueToKey = function(refTable, innerValueAttributeName)
+    if refTable == nil then
+        return nil
+    end
+    local newTable = {}
+    for _, value in pairs(refTable) do
+        newTable[value[innerValueAttributeName]] = value
+    end
+    return newTable
+end
+
+Utils.GetRandomFloatInRange = function(lower, upper)
     return lower + math.random() * (upper - lower)
 end
 
-function Utils.WasCreativeModeInstantDeconstructionUsed(event)
+Utils.WasCreativeModeInstantDeconstructionUsed = function(event)
     if event.instant_deconstruction ~= nil and event.instant_deconstruction == true then
         return true
     else
@@ -657,7 +744,7 @@ function Utils.WasCreativeModeInstantDeconstructionUsed(event)
     end
 end
 
-function Utils.NormaliseChanceList(dataSet, chancePropertyName, skipFillingEmptyChance)
+Utils.NormaliseChanceList = function(dataSet, chancePropertyName, skipFillingEmptyChance)
     -- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
     -- By default the dataSet's total chance (key with name chancePropertyName) is manipulated in to a 0-1 range. But if optional skipFillingEmptyChance is set to true then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
     local totalChance = 0
@@ -674,7 +761,7 @@ function Utils.NormaliseChanceList(dataSet, chancePropertyName, skipFillingEmpty
     return dataSet
 end
 
-function Utils.GetRandomEntryFromNormalisedDataSet(dataSet, chancePropertyName)
+Utils.GetRandomEntryFromNormalisedDataSet = function(dataSet, chancePropertyName)
     local random = math.random()
     local chanceRangeLow = 0
     local chanceRangeHigh
@@ -688,7 +775,7 @@ function Utils.GetRandomEntryFromNormalisedDataSet(dataSet, chancePropertyName)
     return nil
 end
 
-function Utils.DisableWinOnRocket()
+Utils.DisableWinOnRocket = function()
     -- OnInit
     if remote.interfaces["silo_script"] == nil then
         return
@@ -696,7 +783,7 @@ function Utils.DisableWinOnRocket()
     remote.call("silo_script", "set_no_victory", true)
 end
 
-function Utils.ClearSpawnRespawnItems()
+Utils.ClearSpawnRespawnItems = function()
     -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
@@ -705,7 +792,7 @@ function Utils.ClearSpawnRespawnItems()
     remote.call("freeplay", "set_respawn_items", {})
 end
 
-function Utils.SetStartingMapReveal(distance)
+Utils.SetStartingMapReveal = function(distance)
     -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
@@ -713,7 +800,7 @@ function Utils.SetStartingMapReveal(distance)
     remote.call("freeplay", "set_chart_distance", distance)
 end
 
-function Utils.DisableIntroMessage()
+Utils.DisableIntroMessage = function()
     -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
@@ -721,7 +808,7 @@ function Utils.DisableIntroMessage()
     remote.call("freeplay", "set_skip_intro", true)
 end
 
-function Utils.PadNumberToMinimumDigits(input, requiredLength)
+Utils.PadNumberToMinimumDigits = function(input, requiredLength)
     local shortBy = requiredLength - string.len(input)
     for i = 1, shortBy do
         input = "0" .. input
@@ -729,7 +816,7 @@ function Utils.PadNumberToMinimumDigits(input, requiredLength)
     return input
 end
 
-function Utils.DisplayNumberPretty(number)
+Utils.DisplayNumberPretty = function(number)
     if number == nil then
         return ""
     end
@@ -744,7 +831,7 @@ function Utils.DisplayNumberPretty(number)
     return formatted
 end
 
-function Utils.DisplayTimeOfTicks(inputTicks, displayLargestTimeUnit, displaySmallestTimeUnit)
+Utils.DisplayTimeOfTicks = function(inputTicks, displayLargestTimeUnit, displaySmallestTimeUnit)
     -- display time units: hour, minute, second
     if inputTicks == nil then
         return ""
@@ -808,7 +895,7 @@ function Utils.DisplayTimeOfTicks(inputTicks, displayLargestTimeUnit, displaySma
     end
 end
 
-function Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, collisionMask)
+Utils.CreatePlacementTestEntityPrototype = function(entityToClone, newEntityName, subgroup, collisionMask)
     -- Doesn't handle mipmaps at all presently. Also ignores any of the extra data in an icons table of "Types/IconData". Think this should just duplicate the target icons table entry.
     local clonedIcon = entityToClone.icon
     local clonedIconSize = entityToClone.icon_size
@@ -844,37 +931,17 @@ function Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName,
     }
 end
 
-function Utils.CreateLandPlacementTestEntityPrototype(entityToClone, newEntityName, subgroup)
+Utils.CreateLandPlacementTestEntityPrototype = function(entityToClone, newEntityName, subgroup)
     subgroup = subgroup or "other"
-    return Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"water-tile", "colliding-with-tiles-only"})
+    return Utils.CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"water-tile", "colliding-with-tiles-only"})
 end
 
-function Utils.CreateWaterPlacementTestEntityPrototype(entityToClone, newEntityName, subgroup)
+Utils.CreateWaterPlacementTestEntityPrototype = function(entityToClone, newEntityName, subgroup)
     subgroup = subgroup or "other"
-    return Utils._CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"ground-tile", "colliding-with-tiles-only"})
+    return Utils.CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"ground-tile", "colliding-with-tiles-only"})
 end
 
---[[
-    NOT NEEDED AS surface.find_non_colliding_position() STARTS IN CENTER AND WORKS OUT - MAYBE DIDN'T IN THE PAST
-    function Utils.GetValidPositionForEntityNearPosition(entityName, surface, centerPos, radius, maxAttempts, searchIncrement, allowNonTileCenter)
-    local pos
-    local attempts = 1
-    searchIncrement = searchIncrement or 1
-    allowNonTileCenter = allowNonTileCenter or false
-    while pos == nil do
-        local searchRadius = radius * attempts
-        pos = surface.find_non_colliding_position(entityName, centerPos, searchRadius, searchIncrement, not allowNonTileCenter)
-        if pos ~= nil then
-            return pos
-        end
-        attempts = attempts + 1
-        if attempts > maxAttempts then
-            return nil
-        end
-    end
-    return nil
-end]]
-function Utils.ToBoolean(text)
+Utils.ToBoolean = function(text)
     if text == nil then
         return nil
     end
@@ -890,7 +957,7 @@ function Utils.ToBoolean(text)
     return nil
 end
 
-function Utils.RandomLocationInRadius(centrePos, maxRadius, minRadius)
+Utils.RandomLocationInRadius = function(centrePos, maxRadius, minRadius)
     local angle = math.random(0, 360)
     minRadius = minRadius or 0
     local radiusMultiplier = maxRadius - minRadius
@@ -898,7 +965,7 @@ function Utils.RandomLocationInRadius(centrePos, maxRadius, minRadius)
     return Utils.GetPositionForAngledDistance(centrePos, distance, angle)
 end
 
-function Utils.GetPositionForAngledDistance(startingPos, distance, angle)
+Utils.GetPositionForAngledDistance = function(startingPos, distance, angle)
     if angle < 0 then
         angle = 360 + angle
     end
@@ -910,7 +977,7 @@ function Utils.GetPositionForAngledDistance(startingPos, distance, angle)
     return newPos
 end
 
-function Utils.FindWhereLineCrossesCircle(radius, slope, yIntercept)
+Utils.FindWhereLineCrossesCircle = function(radius, slope, yIntercept)
     local centerPos = {x = 0, y = 0}
     local A = 1 + slope * slope
     local B = -2 * centerPos.x + 2 * slope * yIntercept - 2 * centerPos.y * slope
@@ -938,7 +1005,7 @@ function Utils.FindWhereLineCrossesCircle(radius, slope, yIntercept)
     end
 end
 
-function Utils.IsPositionWithinCircled(circleCenter, radius, position)
+Utils.IsPositionWithinCircled = function(circleCenter, radius, position)
     local deltaX = math.abs(position.x - circleCenter.x)
     local deltaY = math.abs(position.y - circleCenter.y)
     if deltaX + deltaY <= radius then
@@ -1102,12 +1169,13 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     end
 end
 
-Utils.EmptyRotatedSprite = function()
+Utils.EmptyRotatedSprite = function(repeat_count)
     return {
         direction_count = 1,
         filename = "__core__/graphics/empty.png",
         width = 1,
-        height = 1
+        height = 1,
+        repeat_count = repeat_count or 1
     }
 end
 
@@ -1271,7 +1339,7 @@ Utils.DoesRecipeResultsIncludeItemName = function(recipePrototype, itemName)
         if recipeBase ~= nil then
             if recipeBase.result ~= nil and recipeBase.result == itemName then
                 return true
-            elseif recipeBase.results ~= nil and Utils.GetTableKeyWithInnerKeyValue(recipeBase.results, "name", itemName) ~= nil then
+            elseif recipeBase.results ~= nil and #Utils.GetTableKeyWithInnerKeyValue(recipeBase.results, "name", itemName) > 0 then
                 return true
             end
         end
@@ -1363,5 +1431,13 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
 end
 
 Utils.MaxTrainStopLimit = 4294967295 -- uint
+
+Utils.ReturnValidLuaObjectOrNil = function(luaObject)
+    if luaObject == nil or not luaObject.valid then
+        return nil
+    else
+        return luaObject
+    end
+end
 
 return Utils

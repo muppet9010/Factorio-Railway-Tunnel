@@ -1,3 +1,6 @@
+--[[
+    This event scheduler is used by calling the RegisterScheduler() function once in root of control.lua. You then call RegisterScheduledEventType() from the OnLoad stage for each function you want to register for future triggering. The triggering is then done by using the Once or Each Tick functions to add and remove registrations of functions and data against Factorio events. Each Tick events are optional for use when the function will be called for multiple ticks in a row with the same reference data.
+]]
 local Utils = require("utility/utils")
 local Events = require("utility/events")
 local EventScheduler = {}
@@ -10,6 +13,10 @@ MOD.scheduledEventNames =
             game.print(event.data.message)
         end
     }
+
+--------------------------------------------------------------------------------------------
+--                                    Setup Functions
+---------------------------------------------------------------------------------------------
 
 -- Called from the root of Control.lua
 EventScheduler.RegisterScheduler = function()
@@ -25,16 +32,17 @@ EventScheduler.RegisterScheduledEventType = function(eventName, eventFunction)
     MOD.scheduledEventNames[eventName] = eventFunction
 end
 
+--------------------------------------------------------------------------------------------
+--                                    Schedule Once Functions
+---------------------------------------------------------------------------------------------
+
 -- Called from OnStartup() or from some other event or trigger to schedule an event.
-EventScheduler.ScheduleEvent = function(eventTick, eventName, instanceId, eventData)
-    if eventName == nil then
-        error("EventScheduler.ScheduleEvent called with missing arguments")
+-- Doesn't have any protection or auto increments any more as wastes UPS.
+EventScheduler.ScheduleEventOnce = function(eventTick, eventName, instanceId, eventData)
+    if eventName == nil or eventTick == nil then
+        error("EventScheduler.ScheduleEventOnce called with missing arguments")
     end
-    local nowTick = game.tick
-    if eventTick == nil or eventTick <= nowTick then
-        eventTick = nowTick + 1
-    end
-    instanceId = EventScheduler._GetDefaultInstanceId(instanceId)
+    instanceId = instanceId or ""
     eventData = eventData or {}
     global.UTILITYSCHEDULEDFUNCTIONS = global.UTILITYSCHEDULEDFUNCTIONS or {}
     global.UTILITYSCHEDULEDFUNCTIONS[eventTick] = global.UTILITYSCHEDULEDFUNCTIONS[eventTick] or {}
@@ -46,11 +54,11 @@ EventScheduler.ScheduleEvent = function(eventTick, eventName, instanceId, eventD
 end
 
 -- Called whenever required.
-EventScheduler.IsEventScheduled = function(targetEventName, targetInstanceId, targetTick)
+EventScheduler.IsEventScheduledOnce = function(targetEventName, targetInstanceId, targetTick)
     if targetEventName == nil then
-        error("EventScheduler.IsEventScheduled called with missing arguments")
+        error("EventScheduler.IsEventScheduledOnce called with missing arguments")
     end
-    local result = EventScheduler._ParseScheduledEvents(targetEventName, targetInstanceId, targetTick, EventScheduler._IsEventScheduledInTickEntry)
+    local result = EventScheduler._ParseScheduledOnceEvents(targetEventName, targetInstanceId, targetTick, EventScheduler._IsEventScheduledOnceInTickEntry)
     if result ~= true then
         result = false
     end
@@ -58,32 +66,77 @@ EventScheduler.IsEventScheduled = function(targetEventName, targetInstanceId, ta
 end
 
 -- Called whenever required.
-EventScheduler.RemoveScheduledEvents = function(targetEventName, targetInstanceId, targetTick)
+EventScheduler.RemoveScheduledOnceEvents = function(targetEventName, targetInstanceId, targetTick)
     if targetEventName == nil then
-        error("EventScheduler.RemoveScheduledEvents called with missing arguments")
+        error("EventScheduler.RemoveScheduledOnceEvents called with missing arguments")
     end
-    EventScheduler._ParseScheduledEvents(targetEventName, targetInstanceId, targetTick, EventScheduler._RemoveScheduledEventsFromTickEntry)
+    EventScheduler._ParseScheduledOnceEvents(targetEventName, targetInstanceId, targetTick, EventScheduler._RemoveScheduledOnceEventsFromTickEntry)
 end
 
 -- Called whenever required.
-EventScheduler.GetScheduledEvents = function(targetEventName, targetInstanceId, targetTick)
+EventScheduler.GetScheduledOnceEvents = function(targetEventName, targetInstanceId, targetTick)
     if targetEventName == nil then
-        error("EventScheduler.GetScheduledEvents called with missing arguments")
+        error("EventScheduler.GetScheduledOnceEvents called with missing arguments")
     end
-    local _, results = EventScheduler._ParseScheduledEvents(targetEventName, targetInstanceId, targetTick, EventScheduler._GetScheduledEventsFromTickEntry)
+    local _, results = EventScheduler._ParseScheduledOnceEvents(targetEventName, targetInstanceId, targetTick, EventScheduler._GetScheduledOnceEventsFromTickEntry)
     return results
 end
 
-EventScheduler._GetDefaultInstanceId = function(instanceId)
-    return instanceId or ""
+--------------------------------------------------------------------------------------------
+--                                    Schedule For Each Tick Functions
+---------------------------------------------------------------------------------------------
+
+-- Called from OnStartup() or from some other event or trigger to schedule an event to fire every tick from now on until cancelled.
+EventScheduler.ScheduleEventEachTick = function(eventName, instanceId, eventData)
+    if eventName == nil then
+        error("EventScheduler.ScheduleEventEachTick called with missing arguments")
+    end
+    instanceId = instanceId or ""
+    eventData = eventData or {}
+    global.UTILITYSCHEDULEDFUNCTIONSPERTICK = global.UTILITYSCHEDULEDFUNCTIONSPERTICK or {}
+    global.UTILITYSCHEDULEDFUNCTIONSPERTICK[eventName] = global.UTILITYSCHEDULEDFUNCTIONSPERTICK[eventName] or {}
+    if global.UTILITYSCHEDULEDFUNCTIONSPERTICK[eventName][instanceId] ~= nil then
+        error("WARNING: Overridden schedule event per tick: '" .. eventName .. "' id: '" .. instanceId .. "'")
+    end
+    global.UTILITYSCHEDULEDFUNCTIONSPERTICK[eventName][instanceId] = eventData
 end
+
+-- Called whenever required.
+EventScheduler.IsEventScheduledEachTick = function(targetEventName, targetInstanceId)
+    if targetEventName == nil then
+        error("EventScheduler.IsEventScheduledEachTick called with missing arguments")
+    end
+    local result = EventScheduler._ParseScheduledEachTickEvents(targetEventName, targetInstanceId, EventScheduler._IsEventScheduledInEachTickList)
+    if result ~= true then
+        result = false
+    end
+    return result
+end
+
+-- Called whenever required.
+EventScheduler.RemoveScheduledEventFromEachTick = function(targetEventName, targetInstanceId)
+    if targetEventName == nil then
+        error("EventScheduler.RemoveScheduledEventsFromEachTick called with missing arguments")
+    end
+    EventScheduler._ParseScheduledEachTickEvents(targetEventName, targetInstanceId, EventScheduler._RemoveScheduledEventFromEachTickList)
+end
+
+-- Called whenever required.
+EventScheduler.GetScheduledEachTickEvent = function(targetEventName, targetInstanceId)
+    if targetEventName == nil then
+        error("EventScheduler.GetScheduledEachTickEvent called with missing arguments")
+    end
+    local _, results = EventScheduler._ParseScheduledEachTickEvents(targetEventName, targetInstanceId, EventScheduler._GetScheduledEventFromEeachTickList)
+    return results
+end
+
+--------------------------------------------------------------------------------------------
+--                                    Internal Functions
+---------------------------------------------------------------------------------------------
 
 EventScheduler._OnSchedulerCycle = function(event)
     local tick = event.tick
-    if global.UTILITYSCHEDULEDFUNCTIONS == nil then
-        return
-    end
-    if global.UTILITYSCHEDULEDFUNCTIONS[tick] ~= nil then
+    if global.UTILITYSCHEDULEDFUNCTIONS ~= nil and global.UTILITYSCHEDULEDFUNCTIONS[tick] ~= nil then
         for eventName, instances in pairs(global.UTILITYSCHEDULEDFUNCTIONS[tick]) do
             for instanceId, scheduledFunctionData in pairs(instances) do
                 local eventData = {tick = tick, name = eventName, instanceId = instanceId, data = scheduledFunctionData}
@@ -96,10 +149,26 @@ EventScheduler._OnSchedulerCycle = function(event)
         end
         global.UTILITYSCHEDULEDFUNCTIONS[tick] = nil
     end
+    if global.UTILITYSCHEDULEDFUNCTIONSPERTICK ~= nil then
+        -- Prefetch the next table entry as we will likely remove the inner instance entry and its parent eventName while in the loop. Advised solution by Factorio discord.
+        local eventName, instances = next(global.UTILITYSCHEDULEDFUNCTIONSPERTICK)
+        while eventName do
+            local nextEventName, nextInstances = next(global.UTILITYSCHEDULEDFUNCTIONSPERTICK, eventName)
+            for instanceId, scheduledFunctionData in pairs(instances) do
+                local eventData = {tick = tick, name = eventName, instanceId = instanceId, data = scheduledFunctionData}
+                if MOD.scheduledEventNames[eventName] ~= nil then
+                    MOD.scheduledEventNames[eventName](eventData)
+                else
+                    error("WARNING: schedule event called that doesn't exist: '" .. eventName .. "' id: '" .. instanceId .. "' at tick: " .. tick)
+                end
+            end
+            eventName, instances = nextEventName, nextInstances
+        end
+    end
 end
 
-EventScheduler._ParseScheduledEvents = function(targetEventName, targetInstanceId, targetTick, actionFunction)
-    targetInstanceId = EventScheduler._GetDefaultInstanceId(targetInstanceId)
+EventScheduler._ParseScheduledOnceEvents = function(targetEventName, targetInstanceId, targetTick, actionFunction)
+    targetInstanceId = targetInstanceId or ""
     local result, results = nil, {}
     if global.UTILITYSCHEDULEDFUNCTIONS ~= nil then
         if targetTick == nil then
@@ -131,13 +200,13 @@ EventScheduler._ParseScheduledEvents = function(targetEventName, targetInstanceI
     return result, results
 end
 
-EventScheduler._IsEventScheduledInTickEntry = function(events, targetEventName, targetInstanceId)
+EventScheduler._IsEventScheduledOnceInTickEntry = function(events, targetEventName, targetInstanceId)
     if events[targetEventName] ~= nil and events[targetEventName][targetInstanceId] ~= nil then
         return {result = true}
     end
 end
 
-EventScheduler._RemoveScheduledEventsFromTickEntry = function(events, targetEventName, targetInstanceId, tick)
+EventScheduler._RemoveScheduledOnceEventsFromTickEntry = function(events, targetEventName, targetInstanceId, tick)
     if events[targetEventName] ~= nil then
         events[targetEventName][targetInstanceId] = nil
         if Utils.GetTableNonNilLength(events[targetEventName]) == 0 then
@@ -149,10 +218,51 @@ EventScheduler._RemoveScheduledEventsFromTickEntry = function(events, targetEven
     end
 end
 
-EventScheduler._GetScheduledEventsFromTickEntry = function(events, targetEventName, targetInstanceId, tick)
+EventScheduler._GetScheduledOnceEventsFromTickEntry = function(events, targetEventName, targetInstanceId, tick)
     if events[targetEventName] ~= nil and events[targetEventName][targetInstanceId] ~= nil then
         local scheduledEvent = {
             tick = tick,
+            eventName = targetEventName,
+            instanceId = targetInstanceId,
+            eventData = events[targetEventName][targetInstanceId]
+        }
+        return {results = scheduledEvent}
+    end
+end
+
+EventScheduler._ParseScheduledEachTickEvents = function(targetEventName, targetInstanceId, actionFunction)
+    targetInstanceId = targetInstanceId or ""
+    local result, results = nil, {}
+    if global.UTILITYSCHEDULEDFUNCTIONSPERTICK ~= nil then
+        local outcome = actionFunction(global.UTILITYSCHEDULEDFUNCTIONSPERTICK, targetEventName, targetInstanceId)
+        if outcome ~= nil then
+            result = outcome.result
+            if outcome.results ~= nil then
+                table.insert(results, outcome.results)
+            end
+        end
+    end
+    return result, results
+end
+
+EventScheduler._IsEventScheduledInEachTickList = function(events, targetEventName, targetInstanceId)
+    if events[targetEventName] ~= nil and events[targetEventName][targetInstanceId] ~= nil then
+        return {result = true}
+    end
+end
+
+EventScheduler._RemoveScheduledEventFromEachTickList = function(events, targetEventName, targetInstanceId)
+    if events[targetEventName] ~= nil then
+        events[targetEventName][targetInstanceId] = nil
+        if Utils.GetTableNonNilLength(events[targetEventName]) == 0 then
+            events[targetEventName] = nil
+        end
+    end
+end
+
+EventScheduler._GetScheduledEventFromEeachTickList = function(events, targetEventName, targetInstanceId)
+    if events[targetEventName] ~= nil and events[targetEventName][targetInstanceId] ~= nil then
+        local scheduledEvent = {
             eventName = targetEventName,
             instanceId = targetInstanceId,
             eventData = events[targetEventName][targetInstanceId]
