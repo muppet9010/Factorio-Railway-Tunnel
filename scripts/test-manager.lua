@@ -82,13 +82,6 @@ TestManager.CreateGlobals = function()
     global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60
 end
 
-TestManager.CreateGlobals = function()
-    global.testManager = global.testManager or {}
-    global.testManager.testsRun = global.testManager.testsRun or false -- Used to flag when a save was started with tests already.
-    global.testManager.testSurface = global.testManager.testSurface or nil
-    global.testManager.playerForce = global.testManager.playerForce or nil
-end
-
 TestManager.OnLoad = function()
     if not DoTests then
         return
