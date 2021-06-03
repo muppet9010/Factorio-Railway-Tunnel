@@ -1,5 +1,6 @@
 local TrainManagerFuncs = {}
 local Utils = require("utility/utils")
+local Logging = require("utility/logging")
 -- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
 
 TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
@@ -63,6 +64,9 @@ end
 
 TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection, refCarriageGoingForwards)
     local placedCarriage = refCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
+    if placedCarriage == nil then
+        error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
+    end
     if Utils.OrientationToDirection(placedCarriage.orientation) ~= newDirection then
         local wrongFrontOfTrain, correctFrontOfTrain
         if refCarriageGoingForwards then

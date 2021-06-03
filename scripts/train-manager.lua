@@ -5,6 +5,7 @@ local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
 local TrainManagerFuncs = require("scripts/train-manager-functions") -- Stateless functions that don't directly use global objects.
 local PlayerContainers = require("scripts/player-containers") -- Uses this file directly, rather than via interface. Details in the sub files notes.
+local Logging = require("utility/logging")
 
 local EnteringTrainStates = {
     approaching = "approaching", -- Train is approaching the tunnel, but can still turn back.
@@ -770,6 +771,9 @@ TrainManager.CreateFirstCarriageForLeavingTrain = function(trainManagerEntry)
     local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(trainManagerEntry.undergroundTrain, trainManagerEntry.undergroundTrainForwards)
     local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, trainManagerEntry.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
     local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
+    if placedCarriage == nil then
+        error("failed to clone carriage:" .. "\nsurface name: " .. trainManagerEntry.aboveSurface.name .. "\nposition: " .. Logging.PositionToString(placementPosition) .. "\nsource carriage unit_number: " .. undergroundLeadCarriage.unit_number)
+    end
     placedCarriage.train.speed = undergroundLeadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
     trainManagerEntry.leavingTrainCarriagesPlaced = 1
     trainManagerEntry.leavingTrain, trainManagerEntry.leavingTrainId = placedCarriage.train, placedCarriage.train.id
@@ -804,7 +808,7 @@ TrainManager.AddCarriageToLeavingTrain = function(trainManagerEntry, nextSourceC
     local nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainManagerEntry.trainTravelOrientation, leavingTrainRearCarriage, nextSourceCarriageEntity.name)
     local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = trainManagerEntry.aboveSurface, create_build_effect_smoke = false}
     if placedCarriage == nil then
-        error("Failed placing carriage at rear of leaving train.")
+        error("failed to clone carriage:" .. "\nsurface name: " .. trainManagerEntry.aboveSurface.name .. "\nposition: " .. Logging.PositionToString(nextCarriagePosition) .. "\nsource carriage unit_number: " .. nextSourceCarriageEntity.unit_number)
     end
     trainManagerEntry.leavingTrainCarriagesPlaced = trainManagerEntry.leavingTrainCarriagesPlaced + 1
     if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
