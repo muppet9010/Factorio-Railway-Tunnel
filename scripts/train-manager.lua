@@ -247,7 +247,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
     elseif not trainManagerEntry.undergroundTrainForwards then
         undergroundTrainReverseLocoListName = "front_movers"
     else
-        error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed underground train")
+        error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed underground train\nundergroundTrain id: " .. trainManagerEntry.undergroundTrain.id)
     end
     if #trainManagerEntry.undergroundTrain.locomotives[undergroundTrainReverseLocoListName] > 0 then
         local canPathBackwards, enteringTrain = false, trainManagerEntry.enteringTrain
@@ -269,7 +269,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
                 reverseLocoListName = "front_movers"
                 enteringTrainFrontCarriage = enteringTrain.back_stock
             else
-                error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train")
+                error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train\nenteringTrain id: " .. enteringTrain.id)
             end
             if #enteringTrain.locomotives[reverseLocoListName] == 0 then
                 -- Put the loco at the front of the leaving train backwards to the trains current orientation. As we want to test reversing the trains current direction.
@@ -710,7 +710,7 @@ TrainManager.SetAbsoluteTrainSpeed = function(trainManagerEntry, trainAttributeN
         elseif trainManagerEntry[trainAttributeName .. "Forwards"] == false then
             train.speed = -1 * speed
         else
-            error("TrainManager.SetAbsoluteTrainSpeed() for '" .. trainAttributeName .. "' doesn't support train with current 0 speed and no 'Forwards' cached value.")
+            error("TrainManager.SetAbsoluteTrainSpeed() for '" .. trainAttributeName .. "' doesn't support train with current 0 speed and no 'Forwards' cached value.\n" .. trainAttributeName .. " id: " .. trainManagerEntry[trainAttributeName].id)
         end
     end
 end
@@ -790,7 +790,7 @@ TrainManager.CreateFirstCarriageForLeavingTrain = function(trainManagerEntry)
     elseif trainManagerEntry.leavingTrain.speed < 0 then
         trainManagerEntry.leavingTrainForwards = true
     else
-        error("TrainManager.CreateFirstCarriageForLeavingTrain() doesn't support 0 speed leaving train")
+        error("TrainManager.CreateFirstCarriageForLeavingTrain() doesn't support 0 speed leaving train.\nleavingTrain id: " .. trainManagerEntry.leavingTrain.id)
     end
 
     return placedCarriage, undergroundLeadCarriage
@@ -812,7 +812,7 @@ TrainManager.AddCarriageToLeavingTrain = function(trainManagerEntry, nextSourceC
     end
     trainManagerEntry.leavingTrainCarriagesPlaced = trainManagerEntry.leavingTrainCarriagesPlaced + 1
     if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
-        error("Placed carriage not part of leaving train as expected carriage count not right.")
+        error("Placed carriage not part of leaving train as expected carriage count not right.\nleavingTrain id: " .. trainManagerEntry.leavingTrain.id)
     end
     trainManagerEntry.leavingCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = nextSourceCarriageEntity
 
@@ -846,7 +846,7 @@ TrainManager.CreateTrainManagerEntryObject = function(enteringTrain, aboveEntran
     elseif trainManagerEntry.enteringTrain.speed < 0 then
         trainManagerEntry.enteringTrainForwards = false
     else
-        error("TrainManager.CreateTrainManagerEntryObject() doesn't support 0 speed")
+        error("TrainManager.CreateTrainManagerEntryObject() doesn't support 0 speed\nenteringTrain id: " .. trainManagerEntry.enteringTrain.id)
     end
     trainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(trainManagerEntry.trainTravelDirection)
     global.trainManager.enteringTrainIdToManagedTrain[enteringTrain.id] = trainManagerEntry
@@ -879,7 +879,7 @@ TrainManager.CreateUndergroundTrainObject = function(trainManagerEntry)
     elseif trainManagerEntry.undergroundTrain.speed < 0 then
         trainManagerEntry.undergroundTrainForwards = false
     else
-        error("TrainManager.CreateUndergroundTrainObject() doesn't support 0 speed enteringTrain.")
+        error("TrainManager.CreateUndergroundTrainObject() doesn't support 0 speed undergroundTrain.\nundergroundTrain id: " .. trainManagerEntry.undergroundTrain.id)
     end
     trainManagerEntry.undergroundTrain.manual_mode = false
     if trainManagerEntry.undergroundTrain.speed == 0 then
@@ -918,7 +918,7 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
     elseif (refTrain.speed < 0) then
         minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrain.carriages, 1, -1
     else
-        error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain")
+        error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain.\nrefTrain id: " .. refTrain.id)
     end
     local placedCarriage
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
@@ -934,7 +934,7 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
         elseif refCarriage.speed < 0 then
             refCarriageGoingForwards = false
         else
-            error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refCarriage")
+            error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refCarriage.\nrefCarriage unit_number: " .. refTrain.unit_number)
         end
 
         if currentSourceTrainCarriageIndex ~= minCarriageIndex then
@@ -1117,7 +1117,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
             newTrainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.leaving
         end
     else
-        error("Unexpected reversed managed train primaryTrainPartName")
+        error("Unexpected reversed old managed train primaryTrainPartName: " .. oldTrainManagerEntry.primaryTrainPartName)
     end
 
     -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage.
