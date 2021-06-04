@@ -1,8 +1,6 @@
 Bugs
 ----
-    - Add lost error protection back in to event scheduler. Support nil tick passed in and error on past tick.
     - Add reservation train to the stopping at signals post tunnel test. Competitor train should never move.
-    - Low fuel icon flickers in some tests, i.e. "path to rail" test.
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
     - Long train sticking out of both ends of a tunnel stops due to path lost. The front/back segments could both try to path/reverse. Add specific test like <>----------------<>, but believe this should just work.
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities). global.underground.undergroundTunnels isn't removed when a tunnel is removed at present.

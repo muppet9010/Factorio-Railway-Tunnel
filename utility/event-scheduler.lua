@@ -36,11 +36,19 @@ end
 --                                    Schedule Once Functions
 ---------------------------------------------------------------------------------------------
 
--- Called from OnStartup() or from some other event or trigger to schedule an event.
--- Doesn't have any protection or auto increments any more as wastes UPS.
+-- Called from OnStartup() or from some other event or trigger to schedule an event. eventTick of nil will be next tick, current or past ticks will fail. eventTick of -1 is a special input for current tick when used by events that run before the Factorio on_tick event, i.e. a custom input (key pressed for action) handler.
 EventScheduler.ScheduleEventOnce = function(eventTick, eventName, instanceId, eventData)
-    if eventName == nil or eventTick == nil then
+    if eventName == nil then
         error("EventScheduler.ScheduleEventOnce called with missing arguments")
+    end
+    local nowTick = game.tick
+    if eventTick == nil then
+        eventTick = nowTick + 1
+    elseif eventTick == -1 then
+        -- Special case for callbacks within same tick.
+        eventTick = game.tick
+    elseif eventTick <= nowTick then
+        error("EventScheduler.ScheduleEventOnce scheduled for in the past. eventName: '" .. tostring(eventName) .. "' instanceId: '" .. tostring(instanceId) .. "'")
     end
     instanceId = instanceId or ""
     eventData = eventData or {}

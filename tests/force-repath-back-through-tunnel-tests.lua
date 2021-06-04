@@ -16,6 +16,7 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 local Colors = require("utility/colors")
 
+local DoMinimalTests = true -- If TRUE only a few tests done. Intended for regular use as part of all tests.
 local ExcludeNonPositiveOutcomes = true -- If TRUE skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Skips all player riding tests as these concepts are included in some other tests.
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
@@ -828,13 +829,13 @@ Test.GenerateTestScenarios = function()
     local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest
 
     -- Player riding in carriage has extra on/off variable so handle first.
-    local limitedplayerInCarriagesTypes
+    local limitedPlayerInCarriagesTypes
     if DoPlayerInCarriageTests then
         -- Do all the player in train tests.
-        limitedplayerInCarriagesTypes = PlayerInCarriageTypes
+        limitedPlayerInCarriagesTypes = PlayerInCarriageTypes
     else
         -- Just do the no player in train test in this situation.
-        limitedplayerInCarriagesTypes = {none = "none"}
+        limitedPlayerInCarriagesTypes = {none = "none"}
     end
 
     if DoSpecificTrainTests then
@@ -861,7 +862,7 @@ Test.GenerateTestScenarios = function()
             end
         end
         if Utils.IsTableEmpty(SpecificPlayerInCarriageTypesFilter) then
-            playerInCarriagesTypesToTest = limitedplayerInCarriagesTypes
+            playerInCarriagesTypesToTest = limitedPlayerInCarriagesTypes
         else
             playerInCarriagesTypesToTest = {}
             for _, playerInCarriageType in pairs(SpecificPlayerInCarriageTypesFilter) do
@@ -894,13 +895,23 @@ Test.GenerateTestScenarios = function()
             end
         end
     else
-        -- Full testing suite.
-        trainTypesToTest = TrainTypes
-        tunnelUsageTypesToTest = TunnelUsageTypes
-        forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
-        backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
-        stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
-        playerInCarriagesTypesToTest = limitedplayerInCarriagesTypes
+        if DoMinimalTests then
+            -- Do minimal sub-set of tests.
+            trainTypesToTest = {Utils.GetTableValueWithInnerKeyValue(TrainTypes, "text", "<------>", false, false)}
+            tunnelUsageTypesToTest = TunnelUsageTypes
+            forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
+            backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
+            stationReservationCompetitorTrainExistsToTest = {StationReservationCompetitorTrainExists[false]}
+            playerInCarriagesTypesToTest = {limitedPlayerInCarriagesTypes}
+        else
+            -- Full testing suite.
+            trainTypesToTest = TrainTypes
+            tunnelUsageTypesToTest = TunnelUsageTypes
+            forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
+            backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
+            stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
+            playerInCarriagesTypesToTest = limitedPlayerInCarriagesTypes
+        end
     end
 
     -- Do each iteration of train type, tunnel usage, forward pathing and backwards pathing options. Each wagon entering/leaving the tunnel is a test.

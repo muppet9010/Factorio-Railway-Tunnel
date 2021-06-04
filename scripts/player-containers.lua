@@ -43,7 +43,7 @@ PlayerContainers.OnToggleDrivingInput = function(event)
         return
     elseif playerVehicle.name == "railway_tunnel-player_container" or playerVehicle.type == "locomotive" or playerVehicle.type == "cargo-wagon" or playerVehicle.type == "fluid-wagon" or playerVehicle.type == "artillery-wagon" then
         global.playerContainers.playerTryLeaveVehicle[player.index] = {id = player.index, oldVehicle = playerVehicle}
-        EventScheduler.ScheduleEventOnce(game.tick, "PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index)
+        EventScheduler.ScheduleEventOnce(-1, "PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index)
     end
 end
 
@@ -118,7 +118,8 @@ PlayerContainers.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, dr
         player = driver
     end
     local playerContainerEntity = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
-    playerContainerEntity.destructible = false
+    playerContainerEntity.operable = false
+    playerContainerEntity.destructible = false -- Stops the container being opened by the player when riding in it from the toolbar area of the GUI.
     playerContainerEntity.set_driver(player)
 
     -- Record state for future updating.
