@@ -95,6 +95,7 @@ end
 ---------------------------------------------------------------------------------------------
 
 -- Called from OnStartup() or from some other event or trigger to schedule an event to fire every tick from now on until cancelled.
+-- Good if you need to pass data back with each firing and the event is going to be stopped/started. If its going to run constantly then betetr to just register for the on_tick event handler via the Events utlity class.
 EventScheduler.ScheduleEventEachTick = function(eventName, instanceId, eventData)
     if eventName == nil then
         error("EventScheduler.ScheduleEventEachTick called with missing arguments")

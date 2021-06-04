@@ -17,7 +17,7 @@ local TrainManagerFuncs = require("scripts/train-manager-functions")
 local Colors = require("utility/colors")
 
 local DoMinimalTests = true -- If TRUE only a few tests done. Intended for regular use as part of all tests.
-local ExcludeNonPositiveOutcomes = true -- If TRUE skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Skips all player riding tests as these concepts are included in some other tests.
+local ExcludeNonPositiveOutcomes = false -- If TRUE skips some believed non positive outcome tests where the result is expected to be the same as others (redundant). These should be run occasioanlly, but shouldn't be needed for smaller code changes. Skips all player riding tests as these concepts are included in some other tests.
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
 local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the full test suite. used for adhock testing.
@@ -504,10 +504,10 @@ Test.Start = function(testName)
     end
 
     local reservationCompetitorTrain = stationReservationCompetitorStart.get_train_stop_trains()[1]
-    local reservationCompetitorTrainCarriage1StartingPosition = reservationCompetitorTrain.carriages[1].position
+    local reservationCompetitorTrainCarriage1StartingPosition = reservationCompetitorTrain.front_stock.position
     -- Remove the station reservation competitor train based on testScenario.
     if not testScenario.stationReservationCompetitorTrainExist then
-        reservationCompetitorTrain.carriages[1].destroy()
+        reservationCompetitorTrain.front_stock.destroy()
         reservationCompetitorTrain = nil
         reservationCompetitorTrainCarriage1StartingPosition = nil
     end
@@ -734,7 +734,7 @@ Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData
         if endStationTrain ~= nil then
             if testData.reservationCompetitorTrain ~= nil then
                 -- Extra tests if there was a competitor train.
-                if not Utils.ArePositionsTheSame(testData.reservationCompetitorTrain.carriages[1].position, testData.reservationCompetitorTrainCarriage1StartingPosition) then
+                if not Utils.ArePositionsTheSame(testData.reservationCompetitorTrain.front_stock.position, testData.reservationCompetitorTrainCarriage1StartingPosition) then
                     TestFunctions.TestFailed(testName, "reservation competitor train wasn't where it started")
                     return false
                 end
@@ -1038,6 +1038,7 @@ end
 
 Test.CalculateExpectedResults = function(testScenario)
     local afterTrackRemovedResult, afterTrackReturnedResult
+    local testScenarioCarriages = testScenario.carriages
 
     -- Handle some Before Committed states as they are special logic.
     if testScenario.tunnelUsageType.name == TunnelUsageTypes.beforeCommitted.name then
@@ -1068,10 +1069,10 @@ Test.CalculateExpectedResults = function(testScenario)
             -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.
             local enteringTrainLengthAtReverseTime
             if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageEntering.name then
-                enteringTrainLengthAtReverseTime = #testScenario.carriages - (testScenario.reverseOnCarriageNumber - 1) -- While it occurs on the carriages removal, the entering train is in the same position as before the carraige was removed. Thus -1 from the number removed.
+                enteringTrainLengthAtReverseTime = #testScenarioCarriages - (testScenario.reverseOnCarriageNumber - 1) -- While it occurs on the carriages removal, the entering train is in the same position as before the carraige was removed. Thus -1 from the number removed.
             elseif testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name then
                 -- The tunnel is 10 carriages long.
-                enteringTrainLengthAtReverseTime = (#testScenario.carriages - 10) - testScenario.reverseOnCarriageNumber
+                enteringTrainLengthAtReverseTime = (#testScenarioCarriages - 10) - testScenario.reverseOnCarriageNumber
             else
                 error("unsupported testScenario.tunnelUsageType.name: " .. testScenario.tunnelUsageType.name)
             end
@@ -1088,7 +1089,7 @@ Test.CalculateExpectedResults = function(testScenario)
             afterTrackRemovedResult = ResultStates.reachStation
         else
             -- The train can't get a path backwards.
-            if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name and testScenario.reverseOnCarriageNumber == #testScenario.carriages then
+            if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name and testScenario.reverseOnCarriageNumber == #testScenarioCarriages then
                 -- Train has fully left and with no reverse loco it just stops here.
                 afterTrackRemovedResult = ResultStates.stopPostTunnel
             elseif testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name and testScenario.reverseOnCarriageNumber >= 5 then
@@ -1141,14 +1142,14 @@ Test.CalculateExpectedResults = function(testScenario)
             if afterTrackRemovedResult == ResultStates.stopPostTunnel or afterTrackRemovedResult == ResultStates.notReachTunnel then
                 -- Train will still be where it stopped earlier.
                 if testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageEntering.name then
-                    enteringTrainLengthAtTrackAddedTime = #testScenario.carriages - (testScenario.reverseOnCarriageNumber - 1) -- While it occurs on the carriages removal, the entering train is in the same position as before the carraige was removed. Thus -1 from the number removed.
+                    enteringTrainLengthAtTrackAddedTime = #testScenarioCarriages - (testScenario.reverseOnCarriageNumber - 1) -- While it occurs on the carriages removal, the entering train is in the same position as before the carraige was removed. Thus -1 from the number removed.
                 elseif testScenario.tunnelUsageType.name == TunnelUsageTypes.carriageLeaving.name then
                     -- The tunnel is 10 carriages long.
-                    enteringTrainLengthAtTrackAddedTime = (#testScenario.carriages - 10) - testScenario.reverseOnCarriageNumber
+                    enteringTrainLengthAtTrackAddedTime = (#testScenarioCarriages - 10) - testScenario.reverseOnCarriageNumber
                 end
             elseif afterTrackRemovedResult == ResultStates.pullToFrontOfTunnel then
                 -- 4 full carriages will have left, work out unique train last carriage position from this.
-                enteringTrainLengthAtTrackAddedTime = #testScenario.carriages - (4 + 10) -- This is likely a negative number as train has pulled to front of exit portal. But a very very long train could still be beyond reverse position.
+                enteringTrainLengthAtTrackAddedTime = #testScenarioCarriages - (4 + 10) -- This is likely a negative number as train has pulled to front of exit portal. But a very very long train could still be beyond reverse position.
             else
                 error("shouldn't reach this state ever")
             end

@@ -22,7 +22,7 @@ local DoTests = true -- Enable test mode and does the enabled tests below if TRU
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking.
 
-local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
+local WaitForPlayerAtEndOfEachTest = true -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
@@ -33,7 +33,7 @@ local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test conti
 local TestsToRun = {
     demo = {enabled = false, testScript = require("tests/demo"), notInAllTests = true},
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")},
+    ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")},
     ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")},
     ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},

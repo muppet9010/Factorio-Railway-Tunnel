@@ -13,7 +13,8 @@ end
 
 TrainManagerFuncs.IsTrainHealthlyState = function(train)
     -- Uses state and not LuaTrain.has_path, as a train waiting at a station doesn't have a path, but is a healthy state.
-    if train.state == defines.train_state.no_path or train.state == defines.train_state.path_lost then
+    local trainState = train.state
+    if trainState == defines.train_state.no_path or trainState == defines.train_state.path_lost then
         return false
     else
         return true
@@ -143,10 +144,11 @@ end
 TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leavingTrainPushingLoco)
     -- Get the current rear carriage of the leaving train based on if a pushing loco was added. Handles train facing either direction (+/- speed) assuming the train is leaving the tunnel.
     local leavingTrainRearCarriage, leavingTrainRearCarriageIndex, leavingTrainRearCarriagePushingIndexMod
-    if (leavingTrain.speed > 0) then
-        leavingTrainRearCarriageIndex = #leavingTrain.carriages
+    local leavingTrainSpeed, leavingTrainCarriages = leavingTrain.speed, leavingTrain.carriages
+    if (leavingTrainSpeed > 0) then
+        leavingTrainRearCarriageIndex = #leavingTrainCarriages
         leavingTrainRearCarriagePushingIndexMod = -1
-    elseif (leavingTrain.speed < 0) then
+    elseif (leavingTrainSpeed < 0) then
         leavingTrainRearCarriageIndex = 1
         leavingTrainRearCarriagePushingIndexMod = 1
     else
@@ -155,7 +157,7 @@ TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leaving
     if leavingTrainPushingLoco ~= nil then
         leavingTrainRearCarriageIndex = leavingTrainRearCarriageIndex + leavingTrainRearCarriagePushingIndexMod
     end
-    leavingTrainRearCarriage = leavingTrain.carriages[leavingTrainRearCarriageIndex]
+    leavingTrainRearCarriage = leavingTrainCarriages[leavingTrainRearCarriageIndex]
 
     return leavingTrainRearCarriage
 end
@@ -163,16 +165,17 @@ end
 TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
     -- Get the next carriage to be placed from the underground train.
     local currentSourceTrainCarriageIndex, nextSourceTrainCarriageIndex
-    if (sourceTrain.speed > 0) then
+    local sourceTrainSpeed, sourceTrainCarriages = sourceTrain.speed, sourceTrain.carriages
+    if (sourceTrainSpeed > 0) then
         currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
         nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
-    elseif (sourceTrain.speed < 0) then
-        currentSourceTrainCarriageIndex = #sourceTrain.carriages - leavingTrainCarriagesPlaced
+    elseif (sourceTrainSpeed < 0) then
+        currentSourceTrainCarriageIndex = #sourceTrainCarriages - leavingTrainCarriagesPlaced
         nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
     else
         error("TrainManagerFuncs.GetCarriageToAddToLeavingTrain() doesn't support 0 speed sourceTrain\nsourceTrain id: " .. sourceTrain.id)
     end
-    local nextSourceCarriageEntity = sourceTrain.carriages[nextSourceTrainCarriageIndex]
+    local nextSourceCarriageEntity = sourceTrainCarriages[nextSourceTrainCarriageIndex]
     return nextSourceCarriageEntity
 end
 
@@ -357,9 +360,10 @@ end
 TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
     -- Applies the target distance to the train's leading carriage for the train direction on a straight track.
     local leadCarriage
-    if undergroundTrain.speed > 0 then
+    local undergroundTrainSpeed = undergroundTrain.speed
+    if undergroundTrainSpeed > 0 then
         leadCarriage = undergroundTrain.front_stock
-    elseif undergroundTrain.speed < 0 then
+    elseif undergroundTrainSpeed < 0 then
         leadCarriage = undergroundTrain.back_stock
     else
         error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.\nundergroundTrain id: " .. undergroundTrain.id)
@@ -390,7 +394,7 @@ TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(tr
     -- Check trains make up depending on its length.
     if #train.carriages == 1 then
         -- A single carriage train will have the same carriage referenced by front and back stock attributes. So just use its orientation to decide if its facing the expected direction.
-        if train.carriages[1].orientation == expectedOrientation then
+        if train.front_stock.orientation == expectedOrientation then
             return trainWasFacingForwards
         else
             return not trainWasFacingForwards

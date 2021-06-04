@@ -172,12 +172,13 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
 
     local wagonsToIgnore = remote.call("railway_tunnel", "get_temporary_carriage_names")
+    local currentSnapshotCarriages = currentSnapshot.carriages
 
     -- If dummy/pushing locos are allowed then check the train ends and remove them if found, so they don't trigger a fail in comparison. Don't remove any from within the train as they shouldn't be there.
     if allowPartialCurrentSnapshot then
         for _, currentCarriageCount in pairs({1, currentSnapshot.carriageCount}) do
-            if wagonsToIgnore[currentSnapshot.carriages[currentCarriageCount].name] ~= nil then
-                table.remove(currentSnapshot.carriages, currentCarriageCount)
+            if wagonsToIgnore[currentSnapshotCarriages[currentCarriageCount].name] ~= nil then
+                table.remove(currentSnapshotCarriages, currentCarriageCount)
                 currentSnapshot.carriageCount = currentSnapshot.carriageCount - 1
             end
         end
@@ -202,8 +203,8 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
         ) do
             local difference
             for carriageNumber = 1, currentSnapshot.carriageCount do
-                local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #currentSnapshot.carriages)
-                difference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshot.carriages[currentCarriageCount], reverseFacingFowards)
+                local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #currentSnapshotCarriages)
+                difference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
                 if difference then
                     break
                 end

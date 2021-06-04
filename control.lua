@@ -48,7 +48,6 @@ local function OnStartup()
     --OnSettingChanged(nil)
     Force.OnStartup()
     Underground.OnStartup()
-    TrainManager.OnStartup()
 
     TestManager.OnStartup()
 end

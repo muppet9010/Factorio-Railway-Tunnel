@@ -28,9 +28,11 @@ Underground.CreateGlobals = function()
             undergroundLeadInTiles = the tiles lead in of rail from 0
             undergroundSignals = {
                 [id] = {
-                    id = undergroundSignalEntity.unit_number,
-                    entity = undergroundSignalEntity,
-                    aboveGroundSignalPaired = portalSignal
+                    id = undergroundSignalEntity.unit_number.
+                    entity = undergroundSignalEntity.
+                    aboveGroundSignalPaired = portalSignal.
+                    signalStateCombinator = the combinator controlling if this signal is forced closed or not.
+                    signalStateCombinatorControlBehavior = cached reference to the ControlBehavior of this undergroundSignal's signalStateCombinator.
                 }
             }
             distanceBetweenPortalCenters = The distance from the underground tunnel center to the portal center.
@@ -151,6 +153,7 @@ Underground.CreateUndergroundTunnel = function(tunnel)
                 local signalStateCombinatorPosition = Utils.ApplyOffsetToPosition(undergroundSignalEntity.position, Utils.RotatePositionAround0(portal.entity.orientation, {x = 0, y = 1})) -- 1 tile towards the tunnel center from the signal.
                 undergroundSignal.signalStateCombinator = undergroundSurface.surface.create_entity {name = "constant-combinator", force = global.force.tunnelForce, position = signalStateCombinatorPosition}
                 local signalStateCombinatorControlBehavior = undergroundSignal.signalStateCombinator.get_or_create_control_behavior()
+                undergroundSignal.signalStateCombinatorControlBehavior = signalStateCombinatorControlBehavior
                 signalStateCombinatorControlBehavior.set_signal(1, {signal = {type = "virtual", name = "signal-red"}, count = 1})
                 signalStateCombinatorControlBehavior.enabled = false
 
@@ -176,7 +179,7 @@ Underground.SetUndergroundExitSignalState = function(undergroundSignal, sourceSi
     else
         closeSignalOn = true
     end
-    undergroundSignal.signalStateCombinator.get_control_behavior().enabled = closeSignalOn
+    undergroundSignal.signalStateCombinatorControlBehavior.enabled = closeSignalOn
 end
 
 Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTravelOrientation)
