@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.0.3
+Version: 0.0.4
 Date: 2021-xx-xx
   Features:
     - Initial Release.
@@ -9,6 +9,7 @@ Date: 2021-xx-xx
     - Tunnels are built straight in a horizontal and vertical orientation. Tunnels can not cross one another.
     - Tunnel underground segments can be driven and walked over, but not built on.
     - Temporary graphics and icons that work from the editor (unsorted category).
+    - Trains can reverse through tunnels if their path forwards is lost.
   Changes:
   Bugfixes:
   Info:

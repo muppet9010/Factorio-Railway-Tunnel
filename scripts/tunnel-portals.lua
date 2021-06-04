@@ -3,6 +3,7 @@ local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local TunnelCommon = require("scripts/common/tunnel-common")
 local TunnelPortals = {}
+local Colors = require("utility/colors")
 
 local SetupValues = {
     -- Tunnels distances are from the portal position (center).
@@ -23,6 +24,7 @@ TunnelPortals.CreateGlobals = function()
         [id] = {
             id = unit_number of the placed tunnel portal entity.
             entity = ref to the entity of the placed main tunnel portal entity.
+            entityDirection = the expected direction of the portal. Can't block Editor users from rotating the portal entity so need to be able to check if its changed.
             endSignals = {
                 -- Table of endSignal objects for the end signals of this portal. These are the inner locked red signals that a train paths at to enter the tunnel. Key'd as "in" and "out".
                 [direction] = {
@@ -77,6 +79,7 @@ TunnelPortals.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, "TunnelPortals.OnBuiltEntityGhost", portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, "TunnelPortals.OnBuiltEntityGhost", portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, "TunnelPortals.OnBuiltEntityGhost", portalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "TunnelPortals.OnPlayerRotatedEntity", TunnelPortals.OnPlayerRotatedEntity)
 
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelCompleted", TunnelPortals.On_TunnelCompleted)
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
@@ -108,9 +111,11 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
 
     placementEntity.destroy()
     local abovePlacedPortal = aboveSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
+    abovePlacedPortal.rotatable = false -- Only stops players from rotating the placed entity, not editor mode. We track for editor use.
     local portal = {
         id = abovePlacedPortal.unit_number,
         entity = abovePlacedPortal,
+        entityDirection = directionValue,
         portalRailEntities = {},
         entranceDistanceFromCenter = math.abs(SetupValues.entranceFromCenter),
         portalEntrancePosition = Utils.ApplyOffsetToPosition(abovePlacedPortal.position, Utils.RotatePositionAround0(abovePlacedPortal.orientation, {x = 0, y = 0 - math.abs(SetupValues.entranceFromCenter)}))
@@ -471,6 +476,16 @@ TunnelPortals.OpenEntranceSignalForTrainManagerEntry = function(portal, trainMan
         portal.entranceSignalBlockingTrainEntity.destroy()
         portal.entranceSignalBlockingTrainEntity = nil
     end
+end
+
+TunnelPortals.OnPlayerRotatedEntity = function(event)
+    -- Just check if the player (editor mode) rotated a placed portal entity.
+    if TunnelCommon.tunnelPortalPlacedEntityNames[event.entity.name] == nil then
+        return
+    end
+    -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
+    event.entity.direction = event.previous_direction
+    game.get_player(event.player_index).print("Don't try and rotate placed rail tunnel portals.", Colors.red)
 end
 
 return TunnelPortals

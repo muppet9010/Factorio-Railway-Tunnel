@@ -1,7 +1,7 @@
 local Utils = require("utility/utils")
 
 --[[
-    The entities shouldn't appear twice in any player ist. Placements shouldn't appear in decon planner lists. As the placed is always the selected entity by the player.
+    The entities shouldn't appear twice in any player list. Placements shouldn't appear in decon planner lists. As the placed is always the selected entity by the player.
 ]]
 local tunnelPortalSurfacePlacement = {
     type = "simple-entity-with-owner",
@@ -61,28 +61,6 @@ data:extend({tunnelPortalSurfacePlacement})
 local tunnelPortalSurfacePlaced = Utils.DeepCopy(tunnelPortalSurfacePlacement)
 tunnelPortalSurfacePlaced.name = "railway_tunnel-tunnel_portal_surface-placed"
 tunnelPortalSurfacePlaced.flags = {"player-creation", "not-on-map"}
-tunnelPortalSurfacePlaced.picture = {
-    north = {
-        filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-base-northsouth.png",
-        height = 1600,
-        width = 192
-    },
-    east = {
-        filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-base-eastwest.png",
-        height = 192,
-        width = 1600
-    },
-    south = {
-        filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-base-northsouth.png",
-        height = 1600,
-        width = 192
-    },
-    west = {
-        filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-base-eastwest.png",
-        height = 192,
-        width = 1600
-    }
-}
 tunnelPortalSurfacePlaced.render_layer = "ground-tile"
 tunnelPortalSurfacePlaced.selection_box = tunnelPortalSurfacePlaced.collision_box
 data:extend({tunnelPortalSurfacePlaced})
