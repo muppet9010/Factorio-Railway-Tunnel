@@ -119,6 +119,7 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
     local activeTestCheckFunc = function(event)
         local testManagerData = global.testManager.testsToRun[testName]
+        -- Each test that registered an event handler has a unique reaction (this) function that checks that test's own state data for. So an instance per test's OnLoad() which each watching for its own test beign the currently active test and ignoring it otherwise.
         if testManagerData.runLoopsCount > 0 and not testManagerData.finished then
             event.testName = testName
             testFunction(event)
