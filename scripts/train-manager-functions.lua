@@ -63,12 +63,48 @@ TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOr
     return pushingLocomotiveEntity
 end
 
-TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection, refCarriageGoingForwards)
-    local placedCarriage = refCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
+TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection, refCarriageGoingForwards, trainTravelOrientation)
+    -- Work out if we will need to flip the cloned carriage or not.
+    local newOrientation = Utils.DirectionToOrientation(newDirection)
+    local orientationDif = math.abs(refCarriage.orientation - newOrientation)
+    local haveToFlipCarriage = false
+    if orientationDif > 0.25 and orientationDif < 0.75 then
+        -- Will need to flip carriage
+        haveToFlipCarriage = true
+    elseif orientationDif == 0.25 or orientationDif == 0.75 then
+        -- May end up right way, depending on what way we want. It always ends up positive orientation in this case.
+        if refCarriage.orientation + 0.25 ~= newOrientation then
+            -- After a positive rounding the carriage isn't facing the right way.
+            haveToFlipCarriage = true
+        end
+    end
+
+    -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
+    local tempCarriage, sourceCarriage
+    if haveToFlipCarriage then
+        local safeCarriagePlacementOffset = Utils.RotatePositionAround0(trainTravelOrientation, {x = 0, y = 20}) -- Give 20 tiles gap to avoid carriages connecting. -- TODO: hardcoded
+        local tempCarriagePosition = Utils.ApplyOffsetToPosition(newPosition, safeCarriagePlacementOffset)
+        tempCarriage = refCarriage.clone {position = tempCarriagePosition, surface = targetSurface, create_build_effect_smoke = false}
+        if tempCarriage.orientation == newOrientation then
+            error("carriage flipping not needed")
+        end
+        tempCarriage.rotate()
+        sourceCarriage = tempCarriage
+    else
+        sourceCarriage = refCarriage
+    end
+
+    local placedCarriage = sourceCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
     if placedCarriage == nil then
         error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
     end
-    if Utils.OrientationToDirection(placedCarriage.orientation) ~= newDirection then
+
+    if haveToFlipCarriage then
+        tempCarriage.destroy()
+    end
+
+    -- Old code to detect and fix errors.
+    if placedCarriage.orientation ~= newOrientation then
         local wrongFrontOfTrain, correctFrontOfTrain
         if refCarriageGoingForwards then
             wrongFrontOfTrain, correctFrontOfTrain = defines.rail_direction.back, defines.rail_direction.front
@@ -78,6 +114,7 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
         placedCarriage.disconnect_rolling_stock(wrongFrontOfTrain)
         placedCarriage.rotate()
         placedCarriage.connect_rolling_stock(correctFrontOfTrain)
+        error("shouldn't ever be reached")
     end
     return placedCarriage
 end
@@ -331,6 +368,11 @@ TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(underg
             }
         }
     }
+end
+
+TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName)
+    local carriagesDistance = TrainManagerFuncs.GetCarriagePlacementDistance(lastCarriageEntityName) + TrainManagerFuncs.GetCarriagePlacementDistance(nextCarriageEntityName)
+    return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
 end
 
 TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)

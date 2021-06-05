@@ -9,7 +9,7 @@ local Force = require("scripts/force")
 local PlayerContainers = require("scripts/player-containers")
 
 local function CreateGlobals()
-    global.debugRelease = true -- If TRUE it runs key code in a try/catch. Makes code run slower technically.
+    global.debugRelease = false -- If TRUE it runs key code in a try/catch. Makes code run slower technically.
 
     Force.CreateGlobals()
     TrainManager.CreateGlobals()

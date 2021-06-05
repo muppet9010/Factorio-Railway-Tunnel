@@ -340,6 +340,17 @@ Utils.BoundFloatValueWithinRange = function(value, min, max)
     end
 end
 
+Utils.BoundFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxExclusive)
+    -- maxExclusive will give the minInclusive value. SO maxExclsuive can never be returned.
+    if value >= maxExclusive then
+        return minInclusive + (value - maxExclusive)
+    elseif value < minInclusive then
+        return maxExclusive - (value - minInclusive)
+    else
+        return value
+    end
+end
+
 Utils.HandleFloatNumberAsChancedValue = function(value)
     local intValue = math.floor(value)
     local partialValue = value - intValue
