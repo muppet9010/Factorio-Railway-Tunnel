@@ -63,17 +63,17 @@ TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOr
     return pushingLocomotiveEntity
 end
 
-TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, newOrientation)
+TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
     -- Work out if we will need to flip the cloned carriage or not.
-    local orientationDif = math.abs(refCarriage.orientation - newOrientation)
+    local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
     local haveToFlipCarriage = false
     if orientationDif > 0.25 and orientationDif < 0.75 then
-        -- Will need to flip carriage
+        -- Will need to flip the carriage.
         haveToFlipCarriage = true
     elseif orientationDif == 0.25 or orientationDif == 0.75 then
-        -- May end up right way, depending on what way we want. It always ends up positive orientation in this case.
-        if refCarriage.orientation + 0.25 ~= newOrientation then
-            -- After a positive rounding the carriage isn't facing the right way.
+        -- May end up the correct way, depending on what rotation we want. Factorio rotates positive orientation when equally close.
+        if Utils.BoundFloatValueWithinRangeMaxExclusive(refCarriage.orientation + 0.25, 0, 1) ~= requiredOrientation then
+            -- After a positive rounding the carriage isn't going to be facing the right way.
             haveToFlipCarriage = true
         end
     end
@@ -82,8 +82,8 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     local tempCarriage, sourceCarriage
     if haveToFlipCarriage then
         tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
-        if tempCarriage.orientation == newOrientation then
-            error("underground carriage flipping not needed, but predicted")
+        if tempCarriage.orientation == requiredOrientation then
+            error("underground carriage flipping not needed, but predicted. \nrequiredOrientation: " .. tostring(requiredOrientation) .. "\ntempCarriage.orientation: " .. tostring(tempCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
         end
         tempCarriage.rotate()
         sourceCarriage = tempCarriage
@@ -99,8 +99,8 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     if haveToFlipCarriage then
         tempCarriage.destroy()
     end
-    if placedCarriage.orientation ~= newOrientation then
-        error("placed underground carriage isn't correct orientation")
+    if placedCarriage.orientation ~= requiredOrientation then
+        error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
     end
 
     return placedCarriage
