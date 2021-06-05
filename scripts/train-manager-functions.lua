@@ -63,9 +63,8 @@ TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOr
     return pushingLocomotiveEntity
 end
 
-TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, newDirection, refCarriageGoingForwards, trainTravelOrientation)
+TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, newOrientation, refCarriageGoingForwards)
     -- Work out if we will need to flip the cloned carriage or not.
-    local newOrientation = Utils.DirectionToOrientation(newDirection)
     local orientationDif = math.abs(refCarriage.orientation - newOrientation)
     local haveToFlipCarriage = false
     if orientationDif > 0.25 and orientationDif < 0.75 then
@@ -82,9 +81,7 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
     local tempCarriage, sourceCarriage
     if haveToFlipCarriage then
-        local safeCarriagePlacementOffset = Utils.RotatePositionAround0(trainTravelOrientation, {x = 0, y = 20}) -- Give 20 tiles gap to avoid carriages connecting. -- TODO: hardcoded
-        local tempCarriagePosition = Utils.ApplyOffsetToPosition(newPosition, safeCarriagePlacementOffset)
-        tempCarriage = refCarriage.clone {position = tempCarriagePosition, surface = targetSurface, create_build_effect_smoke = false}
+        tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
         if tempCarriage.orientation == newOrientation then
             error("carriage flipping not needed")
         end
@@ -370,9 +367,10 @@ TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(underg
     }
 end
 
-TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName)
+TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName, extraDistance)
+    extraDistance = extraDistance or 0
     local carriagesDistance = TrainManagerFuncs.GetCarriagePlacementDistance(lastCarriageEntityName) + TrainManagerFuncs.GetCarriagePlacementDistance(nextCarriageEntityName)
-    return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
+    return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
 end
 
 TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)

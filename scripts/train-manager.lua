@@ -904,9 +904,9 @@ end
 
 TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCarriagePosition)
     local nextCarriagePosition, refTrain, targetSurface = firstCarriagePosition, trainManagerEntry.enteringTrain, trainManagerEntry.tunnel.undergroundTunnel.undergroundSurface.surface
-    local trainCarriagesForwardDirection = trainManagerEntry.trainTravelDirection
+    local trainCarriagesForwardOrientation = trainManagerEntry.trainTravelOrientation
     if not trainManagerEntry.enteringTrainForwards then
-        trainCarriagesForwardDirection = Utils.LoopDirectionValue(trainCarriagesForwardDirection + 4)
+        trainCarriagesForwardOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
     end
 
     local minCarriageIndex, maxCarriageIndex, carriageIterator
@@ -921,9 +921,9 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
     local placedCarriage
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local refCarriage = refTrainCarriages[currentSourceTrainCarriageIndex]
-        local carriageDirection, refCarriageSpeed = trainCarriagesForwardDirection, refCarriage.speed
+        local carriageOrientation, refCarriageSpeed = trainCarriagesForwardOrientation, refCarriage.speed
         if refCarriageSpeed ~= refTrainSpeed then
-            carriageDirection = Utils.LoopDirectionValue(carriageDirection + 4)
+            carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
         end
 
         local refCarriageGoingForwards
@@ -935,12 +935,16 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
             error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refCarriage.\nrefCarriage unit_number: " .. refTrain.unit_number)
         end
 
+        local safeCarriageFlipPosition
         if currentSourceTrainCarriageIndex ~= minCarriageIndex then
             -- The first carriage in the train doesn't need incrementing.
             nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainManagerEntry.trainTravelOrientation, placedCarriage, refCarriage.name)
+            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(trainManagerEntry.trainTravelOrientation, placedCarriage.name, refCarriage.name, 20))
+        else
+            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(trainManagerEntry.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
         end
 
-        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, carriageDirection, refCarriageGoingForwards, trainManagerEntry.trainTravelOrientation)
+        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation, refCarriageGoingForwards)
         trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[refCarriage.unit_number] = placedCarriage
     end
 
