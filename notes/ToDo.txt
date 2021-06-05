@@ -3,6 +3,7 @@ Bugs
     - Add reservation train to the stopping at signals post tunnel test. Competitor train should never move.
     - Long train sticking out of both ends of a tunnel stops due to path lost. The front/back segments could both try to path/reverse. Add specific test like <>----------------<>, but believe this should just work.
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
+    - When multiple trains are present and you ride in one, while in the tunnel you are positioned over the wrong one.
 
 
 Functionality not currently supported
@@ -47,7 +48,6 @@ Concepts / Ideas
 Code Improvements
 ----------------
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities). global.underground.undergroundTunnels isn't removed when a tunnel is removed at present.
-    - Look to use a global for players trying to leave the player container and then we can remove the event scheduler library use (UPS saving).
     - When creating the underground train does cloning the carriage to be its own train, checking/fixing its orientation and then cloning this temp carriage to the underground train work out cheaper than all the connect and disconnecting? We should be able to pre judge if it will end up correct as well, it must follow some logic.
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.
     - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.

@@ -7,7 +7,8 @@ local Utils = require("utility/utils")
 
 local Events = {}
 MOD = MOD or {}
-MOD.events = MOD.events or {}
+MOD.eventsById = MOD.eventsById or {} -- indexed by
+MOD.eventsByActionName = MOD.eventsByActionName or {}
 MOD.customEventNameToId = MOD.customEventNameToId or {}
 MOD.eventFilters = MOD.eventFilters or {}
 
@@ -23,8 +24,8 @@ Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, 
     if eventId == nil then
         return nil
     end
-    MOD.events[eventId] = MOD.events[eventId] or {}
-    MOD.events[eventId][handlerName] = handlerFunction
+    MOD.eventsById[eventId] = MOD.eventsById[eventId] or {}
+    table.insert(MOD.eventsById[eventId], {handlerName = handlerName, handlerFunction = handlerFunction})
     return eventId
 end
 
@@ -34,8 +35,8 @@ Events.RegisterHandlerCustomInput = function(actionName, handlerName, handlerFun
         error("Events.RegisterHandlerCustomInput called with missing arguments")
     end
     script.on_event(actionName, Events._HandleEvent)
-    MOD.events[actionName] = MOD.events[actionName] or {}
-    MOD.events[actionName][handlerName] = handlerFunction
+    MOD.eventsByActionName[actionName] = MOD.eventsByActionName[actionName] or {}
+    table.insert(MOD.eventsByActionName[actionName], {handlerName = handlerName, handlerFunction = handlerFunction})
 end
 
 --Called from OnLoad() from the script file. Registers the custom event name and returns an event ID for use by other mods in subscribing to custom events.
@@ -43,7 +44,13 @@ Events.RegisterCustomEventName = function(eventName)
     if eventName == nil then
         error("Events.RegisterCustomEventName called with missing arguments")
     end
-    local eventId = Events._RegisterEvent(eventName)
+    local eventId
+    if MOD.customEventNameToId[eventName] ~= nil then
+        eventId = MOD.customEventNameToId[eventName]
+    else
+        eventId = script.generate_event_name()
+        MOD.customEventNameToId[eventName] = eventId
+    end
     return eventId
 end
 
@@ -52,10 +59,21 @@ Events.RemoveHandler = function(eventName, handlerName)
     if eventName == nil or handlerName == nil then
         error("Events.RemoveHandler called with missing arguments")
     end
-    if MOD.events[eventName] == nil then
-        return
+    if MOD.eventsById[eventName] ~= nil then
+        for i = 1, MOD.eventsById[eventName] do
+            if MOD.eventsById[eventName].handlerName == handlerName then
+                table.remove(MOD.eventsById[eventName], i)
+                break
+            end
+        end
+    elseif MOD.eventsByActionName[eventName] ~= nil then
+        for i = 1, MOD.eventsByActionName[eventName] do
+            if MOD.eventsByActionName[eventName].handlerName == handlerName then
+                table.remove(MOD.eventsByActionName[eventName], i)
+                break
+            end
+        end
     end
-    MOD.events[eventName][handlerName] = nil
 end
 
 -- Called when needed, but not before tick 0 as they are ignored
@@ -87,16 +105,17 @@ Events.RaiseInternalEvent = function(eventData)
 end
 
 Events._HandleEvent = function(eventData)
-    -- input_name used by custom_input , with eventId used by all other events
-    local eventId, inputName = eventData.name, eventData.input_name
-    local events = MOD.events
-    if events[eventId] ~= nil then
-        for _, handlerFunction in pairs(events[eventId]) do
-            handlerFunction(eventData)
+    -- input_name only populated by custom_input, with eventId used by all other events
+    -- Numeric for loop is faster than pairs and this logic is black boxed from code developer using library.
+    if eventData.input_name ~= nil then
+        local eventsByInputName = MOD.eventsByActionName[eventData.input_name]
+        for i = 1, #eventsByInputName do
+            eventsByInputName[i].handlerFunction(eventData)
         end
-    elseif events[inputName] ~= nil then
-        for _, handlerFunction in pairs(events[inputName]) do
-            handlerFunction(eventData)
+    else
+        local eventsById = MOD.eventsById[eventData.name]
+        for i = 1, #eventsById do
+            eventsById[i].handlerFunction(eventData)
         end
     end
 end
