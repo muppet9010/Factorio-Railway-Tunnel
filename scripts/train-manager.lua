@@ -5,6 +5,7 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions") -- Stateless functions that don't directly use global objects.
 local PlayerContainers = require("scripts/player-containers") -- Uses this file directly, rather than via interface. Details in the sub files notes.
 local Logging = require("utility/logging")
+local UndergroundSetUndergroundExitSignalStateFunction  -- Cache the function reference during OnLoad. Saves using Interfaces every tick.
 
 local EnteringTrainStates = {
     approaching = "approaching", -- Train is approaching the tunnel, but can still turn back.
@@ -86,6 +87,7 @@ TrainManager.CreateGlobals = function()
 end
 
 TrainManager.OnLoad = function()
+    UndergroundSetUndergroundExitSignalStateFunction = Interfaces.GetNamedFunction("Underground.SetUndergroundExitSignalState")
     Interfaces.RegisterInterface(
         "TrainManager.RegisterTrainApproaching",
         function(...)
@@ -926,15 +928,6 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
             carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
         end
 
-        local refCarriageGoingForwards
-        if refCarriageSpeed > 0 then
-            refCarriageGoingForwards = true
-        elseif refCarriageSpeed < 0 then
-            refCarriageGoingForwards = false
-        else
-            error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refCarriage.\nrefCarriage unit_number: " .. refTrain.unit_number)
-        end
-
         local safeCarriageFlipPosition
         if currentSourceTrainCarriageIndex ~= minCarriageIndex then
             -- The first carriage in the train doesn't need incrementing.
@@ -944,7 +937,7 @@ TrainManager.CopyEnteringTrainUnderground = function(trainManagerEntry, firstCar
             safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(trainManagerEntry.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
         end
 
-        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation, refCarriageGoingForwards)
+        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation)
         trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[refCarriage.unit_number] = placedCarriage
     end
 
@@ -1172,7 +1165,8 @@ TrainManager.UpdatePortalExitSignalPerTick = function(trainManagerEntry, forceSi
     else
         desiredSignalState = exitPortalOutSignal.entity.signal_state
     end
-    Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, desiredSignalState)
+    UndergroundSetUndergroundExitSignalStateFunction(exitPortalOutSignal.undergroundSignalPaired, desiredSignalState)
+    --Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, desiredSignalState)
 end
 
 ----------------------------------------------------------------------------------------------------------

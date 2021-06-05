@@ -41,9 +41,12 @@ PlayerContainers.OnToggleDrivingInput = function(event)
     local playerVehicle = player.vehicle
     if playerVehicle == nil then
         return
-    elseif playerVehicle.name == "railway_tunnel-player_container" or playerVehicle.type == "locomotive" or playerVehicle.type == "cargo-wagon" or playerVehicle.type == "fluid-wagon" or playerVehicle.type == "artillery-wagon" then
-        global.playerContainers.playerTryLeaveVehicle[player.index] = {id = player.index, oldVehicle = playerVehicle}
-        EventScheduler.ScheduleEventOnce(-1, "PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index)
+    else
+        local playerVehicleType = playerVehicle.type
+        if playerVehicle.name == "railway_tunnel-player_container" or playerVehicleType == "locomotive" or playerVehicleType == "cargo-wagon" or playerVehicleType == "fluid-wagon" or playerVehicleType == "artillery-wagon" then
+            global.playerContainers.playerTryLeaveVehicle[player.index] = {id = player.index, oldVehicle = playerVehicle}
+            EventScheduler.ScheduleEventOnce(-1, "PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index)
+        end
     end
 end
 

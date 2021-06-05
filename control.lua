@@ -26,11 +26,12 @@ local function OnLoad()
     --Any Remote Interface registration calls can go in here or in root of control.lua
     remote.remove_interface("railway_tunnel")
 
+    Underground.PreOnLoad() -- Do things that other OnLoad()s need.
+
     TrainManager.OnLoad()
     TunnelManager.OnLoad()
     TunnelPortals.OnLoad()
     TunnelSegments.OnLoad()
-    Underground.OnLoad()
     PlayerContainers.OnLoad()
 
     TestManager.OnLoad()

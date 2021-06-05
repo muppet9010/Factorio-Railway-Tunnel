@@ -63,7 +63,7 @@ TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOr
     return pushingLocomotiveEntity
 end
 
-TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, newOrientation, refCarriageGoingForwards)
+TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, newOrientation)
     -- Work out if we will need to flip the cloned carriage or not.
     local orientationDif = math.abs(refCarriage.orientation - newOrientation)
     local haveToFlipCarriage = false
@@ -83,7 +83,7 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     if haveToFlipCarriage then
         tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
         if tempCarriage.orientation == newOrientation then
-            error("carriage flipping not needed")
+            error("underground carriage flipping not needed, but predicted")
         end
         tempCarriage.rotate()
         sourceCarriage = tempCarriage
@@ -99,20 +99,10 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     if haveToFlipCarriage then
         tempCarriage.destroy()
     end
-
-    -- Old code to detect and fix errors.
     if placedCarriage.orientation ~= newOrientation then
-        local wrongFrontOfTrain, correctFrontOfTrain
-        if refCarriageGoingForwards then
-            wrongFrontOfTrain, correctFrontOfTrain = defines.rail_direction.back, defines.rail_direction.front
-        else
-            wrongFrontOfTrain, correctFrontOfTrain = defines.rail_direction.front, defines.rail_direction.back
-        end
-        placedCarriage.disconnect_rolling_stock(wrongFrontOfTrain)
-        placedCarriage.rotate()
-        placedCarriage.connect_rolling_stock(correctFrontOfTrain)
-        error("shouldn't ever be reached")
+        error("placed underground carriage isn't correct orientation")
     end
+
     return placedCarriage
 end
 
@@ -217,14 +207,15 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     -- This measures to the nearest edge of the target's rail, so doesn't include any of the target's rail's length. The targetEntity can be a rail itself or an entity connected to a rail.
 
     local targetRails
-    if targetEntity.type == "train-stop" then
+    local targetEntityType = targetEntity.type
+    if targetEntityType == "train-stop" then
         targetRails = {targetEntity.connected_rail} -- A station as the stopping target can only be on 1 rail at a time.
-    elseif targetEntity.type == "rail-signal" or targetEntity.type == "rail-chain-signal" then
+    elseif targetEntityType == "rail-signal" or targetEntityType == "rail-chain-signal" then
         targetRails = targetEntity.get_connected_rails() -- A signal as the stopping target can be on multiple rails at once, however, only 1 will be in our path list.
-    elseif targetEntity.type == "straight-rail" or targetEntity.type == "curved-rail" then
+    elseif targetEntityType == "straight-rail" or targetEntityType == "curved-rail" then
         targetRails = {targetEntity} -- The target is a rail itself, rather than an entity attached to a rail.
     else
-        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support targetEntity type: " .. targetEntity.type)
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support targetEntity type: " .. targetEntityType)
     end
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
@@ -243,9 +234,10 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     -- Add the remaining part of the first rail being used by the lead carriage. Carriage uses the lead joint as when it is "on" a rail piece. This isn't quite perfect when carriage is on a corner, but far closer than just the whole rail. In testing up to 0.5 tiles wrong for curves, but trains drift during tunnel use from speed as well so.
     local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(train, trainGoingForwards)
     local leadCarriageForwardOrientation
-    if leadCarriage.speed > 0 then
+    local lastCarriageSpeed = leadCarriage.speed
+    if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
-    elseif leadCarriage.speed < 0 then
+    elseif lastCarriageSpeed < 0 then
         leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)

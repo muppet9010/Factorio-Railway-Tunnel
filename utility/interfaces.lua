@@ -17,4 +17,9 @@ Interfaces.Call = function(interfaceName, ...)
     end
 end
 
+-- Used to get a reference to a named interface function. Way to cache a frequently used interface (OnLoad order matters between the 2 classes).
+Interfaces.GetNamedFunction = function(interfaceName)
+    return MOD.interfaces[interfaceName]
+end
+
 return Interfaces

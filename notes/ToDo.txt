@@ -47,7 +47,6 @@ Concepts / Ideas
 
 Code Improvements
 ----------------
-    - Try making the train manager the main class that requires the others, rather than interfaceing to them on a regular basis. The other classes very rarely call in to it.
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities). global.underground.undergroundTunnels isn't removed when a tunnel is removed at present.
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.
     - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.

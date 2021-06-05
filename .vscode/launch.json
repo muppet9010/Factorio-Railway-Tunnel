@@ -16,7 +16,7 @@
             "hookData": false,
             "hookSettings": false,
             "hookLog": false,
-            "hookMode": "profile"
+            "hookMode": "debug"
         }
     ]
 }

@@ -1,7 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/common/tunnel-common")
+local TunnelCommon = require("scripts/tunnel-common")
 local TunnelSegments = {}
 
 TunnelSegments.CreateGlobals = function()

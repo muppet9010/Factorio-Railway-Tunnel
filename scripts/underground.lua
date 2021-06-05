@@ -41,7 +41,7 @@ Underground.CreateGlobals = function()
     ]]
 end
 
-Underground.OnLoad = function()
+Underground.PreOnLoad = function()
     Interfaces.RegisterInterface("Underground.CreateUndergroundTunnel", Underground.CreateUndergroundTunnel)
     Interfaces.RegisterInterface("Underground.SetUndergroundExitSignalState", Underground.SetUndergroundExitSignalState)
     Interfaces.RegisterInterface("Underground.GetForwardsEndOfRailPosition", Underground.GetForwardsEndOfRailPosition)
