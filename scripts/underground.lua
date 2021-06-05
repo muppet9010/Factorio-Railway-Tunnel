@@ -59,7 +59,10 @@ end
 Underground.CreateUndergroundSurface = function(alignment)
     local surfaceName = "railway_tunnel-undeground-" .. alignment
     if game.get_surface(surfaceName) ~= nil then
-        game.delete_surface(surfaceName) -- Mod has been removed and re-added so clean out the old tunnel surfaces.
+        -- Mod has been removed and after a clean load re-added. So clean out the old tunnel surfaces as anything on the main surfaces is gone anwyways.
+        local existingSurface = game.get_surface(surfaceName)
+        existingSurface.name = "OLD-" .. surfaceName -- Rename the surface as it takes a tick for it to be deleted.
+        game.delete_surface(existingSurface)
     end
     local surface = game.create_surface(surfaceName)
     surface.generate_with_lab_tiles = true
