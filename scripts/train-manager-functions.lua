@@ -220,8 +220,8 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
     -- Measure the distance from the train to the target entity. Ignores trains exact position and just deals with the tracks. The first rail isn't included here as we get the remaining part of the rail's distance later in function.
-    local distance = 0
-    for i, railEntity in pairs(train.path.rails) do
+    local distance, trainPathRails = 0, train.path.rails
+    for i, railEntity in pairs(trainPathRails) do
         if i > 1 then
             if targetRailUnitNumberAsKeys[railEntity.unit_number] then
                 -- One of the rails attached to the target entity has been reached in the path, so stop before we count it.
@@ -244,7 +244,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     end
     local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
     local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
-    local firstRail = train.path.rails[1]
+    local firstRail = trainPathRails[1]
     local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
     local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
     if firstRail.type == "curved-rail" then

@@ -33,6 +33,7 @@ Underground.CreateGlobals = function()
                     aboveGroundSignalPaired = portalSignal.
                     signalStateCombinator = the combinator controlling if this signal is forced closed or not.
                     signalStateCombinatorControlBehavior = cached reference to the ControlBehavior of this undergroundSignal's signalStateCombinator.
+                    currentSignalStateCombinatorEnabled = cached copy of if the combiantor was last enabled or not.
                 }
             }
             distanceBetweenPortalCenters = The distance from the underground tunnel center to the portal center.
@@ -159,6 +160,7 @@ Underground.CreateUndergroundTunnel = function(tunnel)
                 undergroundSignal.signalStateCombinatorControlBehavior = signalStateCombinatorControlBehavior
                 signalStateCombinatorControlBehavior.set_signal(1, {signal = {type = "virtual", name = "signal-red"}, count = 1})
                 signalStateCombinatorControlBehavior.enabled = false
+                undergroundSignal.currentSignalStateCombinatorEnabled = false
 
                 undergroundSignalEntity.connect_neighbour {wire = defines.wire_type.red, target_entity = undergroundSignal.signalStateCombinator}
 
@@ -182,7 +184,10 @@ Underground.SetUndergroundExitSignalState = function(undergroundSignal, sourceSi
     else
         closeSignalOn = true
     end
-    undergroundSignal.signalStateCombinatorControlBehavior.enabled = closeSignalOn
+    if undergroundSignal.currentSignalStateCombinatorEnabled ~= closeSignalOn then
+        undergroundSignal.signalStateCombinatorControlBehavior.enabled = closeSignalOn
+        undergroundSignal.currentSignalStateCombinatorEnabled = closeSignalOn
+    end
 end
 
 Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTravelOrientation)

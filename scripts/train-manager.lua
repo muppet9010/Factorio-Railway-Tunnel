@@ -439,7 +439,10 @@ end
 
 TrainManager.TrainUndergroundOngoing = function(trainManagerEntry)
     PlayerContainers.MoveATrainsPlayerContainers(trainManagerEntry)
-    TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
+    if trainManagerEntry.enteringTrainState == EnteringTrainStates.finished then
+        -- If the train is still entering then that is doing the updating. This function isn't looping once the train is leaving.
+        TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
+    end
 
     -- Check if the lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
     local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(trainManagerEntry.undergroundTrain, trainManagerEntry.undergroundTrainForwards)
@@ -1196,15 +1199,11 @@ TrainManager.UpdatePortalExitSignalPerTick = function(trainManagerEntry, forceSi
     -- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Primary speed limiter before leaving train has got to a significant size and escaped the portal signals as a very small leaving/dummy train will have low breaking distance and thus very short signal block reservation/detecting distances.
     -- Close the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
     -- forceSignalState is optional and when set will be applied rather than the aboveground exit signal state.
-    local exitPortalOutSignal = trainManagerEntry.aboveExitPortalEntrySignalOut
-    local desiredSignalState
     if forceSignalState ~= nil then
-        desiredSignalState = forceSignalState
+        UndergroundSetUndergroundExitSignalStateFunction(trainManagerEntry.aboveExitPortalEntrySignalOut.undergroundSignalPaired, forceSignalState)
     else
-        desiredSignalState = exitPortalOutSignal.entity.signal_state
+        UndergroundSetUndergroundExitSignalStateFunction(trainManagerEntry.aboveExitPortalEntrySignalOut.undergroundSignalPaired, trainManagerEntry.aboveExitPortalEntrySignalOut.entity.signal_state)
     end
-    UndergroundSetUndergroundExitSignalStateFunction(exitPortalOutSignal.undergroundSignalPaired, desiredSignalState)
-    --Interfaces.Call("Underground.SetUndergroundExitSignalState", exitPortalOutSignal.undergroundSignalPaired, desiredSignalState)
 end
 
 ----------------------------------------------------------------------------------------------------------
