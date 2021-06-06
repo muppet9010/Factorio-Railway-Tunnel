@@ -255,7 +255,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
     elseif not trainManagerEntry.undergroundTrainForwards then
         undergroundTrainReverseLocoListName = "front_movers"
     else
-        error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed underground train\nundergroundTrain id: " .. trainManagerEntry.undergroundTrain.id)
+        error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed underground train with no cached forwards state\nundergroundTrain id: " .. trainManagerEntry.undergroundTrain.id)
     end
     if #trainManagerEntry.undergroundTrain.locomotives[undergroundTrainReverseLocoListName] > 0 then
         local canPathBackwards, enteringTrain = false, trainManagerEntry.enteringTrain
