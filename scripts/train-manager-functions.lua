@@ -258,6 +258,37 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     return distanceForCarriageCenter
 end
 
+TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation = function(train, trainGoingForwards)
+    local trainPath = train.path
+    local distance = trainPath.total_distance - trainPath.travelled_distance
+
+    -- Subtract the remaining part of the first rail being used by the lead carriage as the distance travelled is opposite to path.rails. Carriage uses the lead joint as when it is "on" a rail piece. This isn't quite perfect when carriage is on a corner, but far closer than just the whole rail. In testing up to 0.5 tiles wrong for curves, but trains drift during tunnel use from speed as well so.
+    local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(train, trainGoingForwards)
+    local leadCarriageForwardOrientation
+    local lastCarriageSpeed = leadCarriage.speed
+    if lastCarriageSpeed > 0 then
+        leadCarriageForwardOrientation = leadCarriage.orientation
+    elseif lastCarriageSpeed < 0 then
+        leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+    else
+        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
+    end
+    local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
+    local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
+    local firstRail = trainPath.rails[trainPath.current]
+    local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
+    local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
+    if firstRail.type == "curved-rail" then
+        distanceRemainingOnRail = distanceRemainingOnRail * 1.0663824640154573798004974128959 -- Rough conversion for the straight line distance (7.3539105243401) to curved arc distance (7.842081225095).
+    end
+    distance = distance - distanceRemainingOnRail
+
+    -- Add the joint distance to the result to get the center position of the carriage.
+    local distanceForCarriageCenter = distance + TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)
+
+    return distanceForCarriageCenter
+end
+
 TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientation)
     local railFarEndPosition
     if railEntity.type == "straight-rail" then

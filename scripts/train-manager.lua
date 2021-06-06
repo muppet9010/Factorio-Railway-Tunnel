@@ -618,7 +618,15 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
         if trainManagerEntry[stoppingTargetEntityAttributeName] == nil then
             -- The above ground and underground trains will never be exactly relational to one another as they change speed each tick differently before they are re-aligned. So the underground train should be targetted as an offset from its current location and when the above train is very near the stopping target the above train can take over setting speed to manage the final pulling up.
             trainManagerEntry[stoppingTargetEntityAttributeName] = leavingTrain[trainStoppingEntityAttributeName]
-            local exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(leavingTrain, leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
+
+            local exactDistanceFromTrainToTarget
+            if arriveAtName == "schedule" then
+                -- For a station this is where the path goes, otherwise the train would never be stopping at it.
+                exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation(leavingTrain, trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
+            else
+                -- For a siganl we have to find the distance via the path rails.
+                exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(leavingTrain, leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
+            end
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTarget)
 
             -- Avoid looking for a rail exactly on the deviding line between 2 tracks.
