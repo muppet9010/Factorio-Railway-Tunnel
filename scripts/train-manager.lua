@@ -1053,17 +1053,17 @@ end
 
 TrainManager.TidyManagedTrainGlobals = function(trainManagerEntry)
     -- Only remove the global if it points to this trainManagerEntry. The reversal process will have overwritten this already, so much be careful.
-    if trainManagerEntry.enteringTrain and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId].trainManagerEntry.id == trainManagerEntry.id then
+    if trainManagerEntry.enteringTrain and trainManagerEntry.enteringTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId].trainManagerEntry.id == trainManagerEntry.id then
         global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId] = nil
     end
-    if trainManagerEntry.leavingTrain and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId].trainManagerEntry.id == trainManagerEntry.id then
+    if trainManagerEntry.leavingTrain and trainManagerEntry.leavingTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId].trainManagerEntry.id == trainManagerEntry.id then
         global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId] = nil
     end
-    if trainManagerEntry.leftTrain and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId].trainManagerEntry.id == trainManagerEntry.id then
+    if trainManagerEntry.leftTrain and trainManagerEntry.leftTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId].trainManagerEntry.id == trainManagerEntry.id then
         global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId] = nil
     end
 
-    if trainManagerEntry.dummyTrain then
+    if trainManagerEntry.dummyTrain and trainManagerEntry.dummyTrain.valid then
         TrainManager.DestroyDummyTrain(trainManagerEntry)
     end
 
@@ -1102,10 +1102,13 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     newTrainManagerEntry.undergroundTrainSetsSpeed = true -- Intentionally reset this value.
     newTrainManagerEntry.undergroundTrain.manual_mode = false -- Start the underground train running if it was stopped.
     newTrainManagerEntry.undergroundTrainForwards = not oldTrainManagerEntry.undergroundTrainForwards
+    newTrainManagerEntry.undergroundTrainCarriageCount = oldTrainManagerEntry.undergroundTrainCarriageCount
+    newTrainManagerEntry.undergroundTrainLeadCarriageCache = nil -- Will be populated on first use.
 
     newTrainManagerEntry.trainTravelDirection = Utils.LoopDirectionValue(oldTrainManagerEntry.trainTravelDirection + 4)
     newTrainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(newTrainManagerEntry.trainTravelDirection)
     newTrainManagerEntry.scheduleTarget = oldTrainManagerEntry.scheduleTarget
+
     newTrainManagerEntry.leavingTrainExpectedBadState = false
     newTrainManagerEntry.leavingTrainAtEndOfPortalTrack = false
 
@@ -1140,6 +1143,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
             tunnelUsagePart = "enteringTrain"
         }
         newTrainManagerEntry.enteringTrainForwards = not oldTrainManagerEntry.leavingTrainForwards
+        newTrainManagerEntry.enteringTrainLeadCarriageCache = nil -- Will be populated on first use.
 
         -- Old leaving train has an exiting pushing loco. We need to
         if oldTrainManagerEntry.leavingTrainPushingLoco ~= nil then
@@ -1164,6 +1168,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.leavingTrainId = oldTrainManagerEntry.enteringTrainId
         newTrainManagerEntry.leavingTrainForwards = not oldTrainManagerEntry.enteringTrainForwards
         newTrainManagerEntry.leavingTrainCarriagesPlaced = #newTrainManagerEntry.leavingTrain.carriages
+        newTrainManagerEntry.leavingTrainRearCarriageCache = nil -- Will be populated on first use.
         global.trainManager.trainIdToManagedTrain[newTrainManagerEntry.leavingTrainId] = {
             trainId = newTrainManagerEntry.leavingTrainId,
             trainManagerEntry = newTrainManagerEntry,
