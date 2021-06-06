@@ -438,7 +438,7 @@ TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
 end
 
 TrainManager.TrainUndergroundOngoing = function(trainManagerEntry)
-    PlayerContainers.MoveTrainsPlayerContainers(trainManagerEntry)
+    PlayerContainers.MoveATrainsPlayerContainers(trainManagerEntry)
     TrainManager.UpdatePortalExitSignalPerTick(trainManagerEntry)
 
     -- Check if the lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
@@ -514,7 +514,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
             local placedCarriage = TrainManager.AddCarriageToLeavingTrain(trainManagerEntry, nextSourceCarriageEntity, leavingTrainRearCarriage)
             TrainManagerFuncs.TrainSetSchedule(trainManagerEntry.leavingTrain, scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetStopBeforeCarriageAttachment)
 
-            -- Follow up items post leaving train carriatge addition.
+            -- Follow up items post leaving train carriage addition.
             PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nextSourceCarriageEntity, placedCarriage)
             TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.leavingCarriageAdded)
 
@@ -530,7 +530,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
         end
 
         -- Follow up items for the ontick, rather than related to a carriage being added.
-        PlayerContainers.MoveTrainsPlayerContainers(trainManagerEntry)
+        PlayerContainers.MoveATrainsPlayerContainers(trainManagerEntry)
     end
 
     -- Update which ever train isn't setting the desired speed.
@@ -1160,6 +1160,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
             newTrainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[leavingCarriageId] = undergroundCarriageEntity
         end
     end
+    PlayerContainers.On_TrainManagerReversed(oldTrainManagerEntry, newTrainManagerEntry)
 
     -- Update underground trains path and speed. Variable state done previously.
     local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", newTrainManagerEntry.tunnel.undergroundTunnel, newTrainManagerEntry.trainTravelOrientation)
