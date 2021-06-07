@@ -4,6 +4,7 @@
     Second blocking at a signal after this causing the train to again stop while in the tunnel.
     Third blocking at a signal once the train has left the tunnel, but still within the portals rail tracks.
     After the train has fully stopped at each blocking waggon the blocking wagon is removed opening the rail signal, so the train can move forwards a bit.
+    There is a second (competitor) train (single loco) that waits 1 second and then also tries to reach the North station. North station has a limit of 1 train and so this competitor train should never leave its waiting station and stay in Destination Full state.
 ]]
 local Utils = require("utility/utils")
 local TestFunctions = require("scripts/test-functions")
@@ -11,8 +12,7 @@ local Test = {}
 
 Test.RunTime = 1800
 
-local blueprintString =
-    "0eNqtWl1zo0YQ/C88I9XOAvuhH5GXPKZcLk7mZCoIVIB8cbn037NIysmJe0+0wotd+KBnb6Z7dmd2PpJvzbE69HU7JpuPpN527ZBs/vhIhnrXls30t/H9UCWbpB6rfZImbbmfnvqybn6U78/jsW2rZnX59Xzo+rFsnodj/73cVqtDE37uqwB9SpO6fan+SjZySmeBf/pEn57SJKDUY11dFnd+eH9uj/tvVR8wf345jOHb3eu4OkOkyaEbwlddO5majGdp8p5sVlJkp2kd/8HRP3EmmHY1jN0BgBQ3kDRYLC//lvwW/vOvCYDN+OUJWl5O4+Qe4RQ8jkU4hscpEI7lcWD4HI8D/expnAz6WRQPBB0tPMEz6Gm5MXxb9rtu9aPchW9/ASNrXQSWd30doK5MV5My38Jz14eX2mPTIFM86zMYVeFpn8GwCs97jePKE1/juNp/pbzVNS1+hcnX/+QcbdZTPF7qvtpe3sgRMC8FjQnDa0Hj1MprQcMoal4LAqOoNQ8Eo6h5pgt0tuaZLtjZPNMFO5tnusLO5nO8ws52ZAZTsrZOHkximqe/gqHNePorGNqMp7+Coc1o+nsY2Yxmv4eBzXI2F3o7JxVmtBY8jqDhiOfV2uWZfYx3GS0Xj9lC7wMek4XWgYNkyWkZOEiWXFiyuFn7Zk6LwkGy5LQoHIxfTu8IDlcOtAgsjp95oAB8iVs5V1BvZV9fxSHIpr1jc6h2U40522g4i9036pY2Wsww6pc2OsO9hVraqMwwKgsbDUe8+0b10kZnEKnIljY6g0hFvrTROUQqljY6h0hmYaNzeLR0QppDI7do4j3L5fNeeH8B7AkAt3oMewCIdJ7YUzBuhBl2u8d9OcPu9rj7aNjNvsAuZvf6AruYLf0K7OKbWJpu2+27sX6rohgmX8Mz83SKm1rEw/R6323/rMbV92PVTD02aJU99xocWJb0BgbWsqQ3uE3Kkt7AwFquB2jlFyG5W8hYVhoGssiy0rAwnpaVhsXxNAynrVvH6kCC0ZatCC3mECsMiznECgOXE44VBq5unDDxcMUyOcaxmwcu8RyrEFxxOlYhuLB2rEJwne+4ZonX64dbJY4VBu5wOFYYuOHiWGHgZpNXDKO9XyLDeHZ7wX08z8oCtxU9K4tIm9PnjCdFmWWSgy/o5UM+eUPjYEJZGgdH1827IpcryNc643Zf/nt3xPfl3tOLjdy/KioNiWSP56HAP3bV+M5FlKaB8MWpojWE76VEcSLSaol8FJhMLx/fsipaRBLhE60iHQmxo4EiIfYcw7X9Hwyn5xlil8r0PEPs/lxoqURu9OlphdiMAT2tEJt6oKcVYiMf9LRCdAiFZn9kLIaeTojM6Qg9nRAZHBJ6OiEyyST0dEJktEro6YTIrJfQ0wmR4TOhpxMiQ3ZCTyfI1Oh6CkeH7Wv1cmyuM4C3nWh6NjYNZXmoBMPROZz5wpb16YPLQCMY1PtyGHma7JyHETefBiPT5K3qh/OL2oWIeW0za4tg5HT6G17Km4s="
+local blueprintString = "0eNqtW9tu4zgM/Rc/J4GoiyXlI/Zhd4F9WBSBJ/G0xjh2YDvpFkX+faUk06QdKjE5fplOWvuQsc6hKJJ+z77V+3LXVc2QLd+zat02fbb89z3rq+emqOPvhrddmS2zaii32Sxrim381BVV/Vq8rYZ905T1/PxjtWu7oahX/b77XqzL+a4O/27LAH2cZVWzKf/LlnCcjQK/uUUen2ZZQKmGqjw7d/rwtmr2229lFzA/7uyHcO/zyzA/QcyyXduHu9ommorGZbj0LVvOwZhjdOQLkPwAijjNvB/aHYairiizYLM4/zH7I3z9l3D9tmj24TGcMPpVXW2r4fLFv9hTDMcV5rj+AFrvu0O5ScLIC4x2wfNN1ZXr8581AmoY3gHmXU4H0h4DsgwgiwE5BhDKGD8eyFyBPj16g8CCYOCqz7gY4YAhFY0yDuRYyrmfOALFYWhAoywDTUdSKM2AwXyF8gzyT0Ftfgl8v+Iosfi5jipfmMfihKsW1kX33M5fi+dw7T0P1UJG4LarAtYlZokYZQ/hc9uFi5p9XWO2GHJRqFyAoBd/F0kKhk8okyUwfMKRJMMnlMtSMXzCkRiqkKgqpBnJZSk/uCzdGC7LnP5tEz4ydgiJKlc6hk84kmf4hHJeCYZPOBJjH5Ao55Vk+IQjMXYCiXJeaYZPOBJjJwCUmYrB8QQSg+OAMlMxOJ5AYnAcUGZqBscTSAyOA55dMzieQGJwHFBmagbHE0gMjguUmZrB8QQSObsRamEdMBMczUhwBCoEzUhwcCTDSHAEKgTDSHASSIwER6BCMFch1O263bZDdSjvOiSwlR3KbR8v7dr1j3KYf9+XdTw8oRYZgkn4bsaVCdTNI7gtE/xZ9mV3OH36O97/T1HFCsmvdhjnZoFK3FjGd8eR6ErxqMKNJ2eT3o9JJnP6BoJ7mNP3D48qOadvHwkgRYyKXi6cVpYXFHP6ycGjUSM39O+PA9EF4VEF5/QUyuOVLbocHE42uhzcqLOVpW8jDiWfpcvBoato6ZuIQ1fR0pMph66i1Yy69uaOmVNd+FB0VZEuxVnzwGhfPsfa+Xir4Uj82Go+uVU7wqqd3OqYJ+wmt6pGWPWTW4XHVp2Y2iqMYJODya2OYJOTk1sdwSanJrc6gk1OT251DJsmj01jyJRPG4VPVLrdHR97QE4L8N6II2cFeHPJkasqeLfLk3MAvP3mySkA3g/05AwA73p6cgKAt309OdM1+HM2Iw+1Z5BcLtDkPCZ4lJOtJ6fFBl9eMv1zfHnJ9M/x5SXTP8ebTkLQzk25v7Mwj7tlgiyTHG8eCrJOcryfKchCsXiLVWgSw22+SB0/CfwGQa5QWrxnLchKsQlGkaViE0tM1opNLLEnrYxT08QeAPLegp/BgD6agJ8KAciqwc+pQB9NwE/OcDOZMCr+eLFgV22APryAVyQAyGLxiZUli8UnVtaROO7tJNEHyNsQXr0C+sgCXgYESZYKXuGEm4GFMQ80hP+JooYkSytRjwb6fEOiqg/S0JESC52PaxCAv8D8elK5dgv+avfDS4aasXSHE4RytAAVgvVvRCj6QESiSwiKrKhEDxToAxGJDi8ooqbATRKl6NMTibY5KLqi8KEAoE9PJEYeQJH3osRAByhiZzmEhd+gunJ0vxO0oosGH/0BTRcNPtgE9AmLxNgWaHLOlhh3A/qERWKYDzRdB4mhR/qERWqcVNN1kBhx1fTNIzV2S+d4YqRY0zmOF86APjyRGBQHQ+e4TgwV0zmOl8/A0DkeC2hPIa1Yv5SbfX15jeK6P8XPRt1ccH4H5P7Iwix7DT9W67bZnGyeQQPkrujK1eXNjrYL113+P1TbuBMO1fpHHxv1x6fTyyBf3p84//azb97MYu0hnnLjKSAmrmGjTft7QfqEfkmknuJzOL1vsrx592WWHcquP10oXeCCl1Z5kYPNj8f/AY7xvx4="
 
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
@@ -39,6 +39,15 @@ Test.Start = function(testName)
         end
     )
 
+    -- Get the competitor train, the single loco train.
+    local competitorTrain
+    local locoEntities = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", true, false)
+    for _, locoEntity in pairs(locoEntities) do
+        if #locoEntity.train.carriages == 1 then
+            competitorTrain = locoEntity.train
+        end
+    end
+
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
     for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
@@ -52,6 +61,8 @@ Test.Start = function(testName)
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.blockingWagons = blockingWagons
     testData.movingTrain = movingTrain
+    testData.competitorTrain = competitorTrain
+    testData.competitorTrainStartingPosition = competitorTrain.front_stock.position
     testData.blockingWagonsReached = {false, false, false}
     testData.northStationReached = false
     testData.southStationReached = false
@@ -114,6 +125,14 @@ Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     local northTrain, southTrain = testData.trainStopNorth.get_stopped_train(), testData.trainStopSouth.get_stopped_train()
     if northTrain ~= nil and not testData.northStationReached then
+        if not Utils.ArePositionsTheSame(testData.competitorTrain.front_stock.position, testData.competitorTrainStartingPosition) then
+            TestFunctions.TestFailed(testName, "competitor train not stayed in starting position")
+            return
+        end
+        if testData.competitorTrain.state ~= defines.train_state.destination_full then
+            TestFunctions.TestFailed(testName, "competitor train not in expected Desitination Full state")
+            return
+        end
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached north station, but with train differences")

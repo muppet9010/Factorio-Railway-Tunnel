@@ -1,19 +1,18 @@
 Bugs
 ----
-    - Add reservation train to the stopping at signals post tunnel test. Competitor train should never move.
-    - Long train sticking out of both ends of a tunnel stops due to path lost. The front/back segments could both try to path/reverse. Add specific test like <>----------------<>, but believe this should just work.
     - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
     - Sending a train to a temporary stop within a tunnel causes the train to path towards the task, get pushed out of the far end of the tunnel (past the temporary stop) and have the temporary stop set as its path again. Causing the train to loop around and do the tunnel again, repeating endlessly.
-    - Send a train through a tunnel, while its half way through pull up the EXIT PORTAL of tunnel, world ends. Seen in 0.0.3. Was mined by hand. Believed the "this can not be mined" text appeared and the portal was replaced. Make test for mining portal and both tunnel segment types during train usage and check train makes it out ok.
+    - Send a train through a tunnel, while its left (fully out, but still on portal) pull up the EXIT PORTAL of tunnel, game crashs. Seen in 0.0.3. Was mined by hand. The "this can not be mined" text appeared and the portal was replaced, but it then errored that/next tick. Make test for mining portal and both tunnel segment types during train usage and check train makes it out ok.
         - Error Message: failed getting 'position' attribute of nil for Utils.ApplyOffsetToPosition()
         - Calling Function: TrainManager.CreateUndergroundTrainObject()
         - Calling code line 891 (0.0.3): trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.aboveExitPortal.portalEntrancePosition, trainManagerEntry.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
         - in 0.0.4 same code is present on line 979 and so looks like the trainManagerEntry lost its cached aboveExitPortal attribute in the mining/placement. Need to check these cached portal/segment parts in trainManagerEntry and make function to re-populate them if removed.
-    - Track removed on far side of tunnel while train in tunnel. Train is 2-4-2 in a 8 segment+ tunnel. Train pulls to end of track and stops. Game crashs. The track is one way both ends of the tunnel and so the train can't path backwards, despite having reverse locos.
+    - Track removed on far side of tunnel while train in tunnel. Train is 2-8-2 in a 8 segment tunnel. Train pulls to end of track and stops with forwards and rear locos both directly out. Game crashs. The track is dual direction at the entrance portal and so the train should be able to path backwards naturally, with its entering reverse locos.
         - Error Message: 0 speed entering train when bad leaving train state reached.
         - Calling Function: TrainManager.HandleLeavingTrainBadState()
         - Calling code line 272 (0.0.3): throw intentional error: "TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train\nenteringTrain id: "
-        - in 0.0.4 intentional error still present so should be reproducable.
+        - in 0.0.4 intentional error still present so should be reproducable, but on line 280.
+        - Seen in 0.0.4 with "<>------------<>" train on: carriageEntering1, forwards none, backwards none, competitor none
 
 
 Functionality not currently supported
@@ -21,7 +20,7 @@ Functionality not currently supported
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
     - Block train wagons being placed on invisible rails and on portals entrance track. Will have to do this via events and can't make placement invalid without blocking trains from crossing. At present if done this will cause errors.
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
-    - Player changes a committed entering/leaving trains order?
+    - Player changes a committed entering/leaving trains order. May cause reversion or need to be bleed through to dummy train/leaving end. At points the entering train will have no orders and be in manual mode. Maybe give it schedule of "USING TUNNEL - CHNAGE ORDERS ON LEAVING TRAIN PART" and just keep on forcing this & manual mode on it?
     - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.
     - Handle 2 trains both entering the tunnel at once, due to manual control or free wheeling (manual mode with speed) second train.
     - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.

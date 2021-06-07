@@ -478,8 +478,8 @@ TrainManagerFuncs.RunFunctionAndCatchErrors = function(functionRef, ...)
     -- Doesn't support returning values to caller as can't do this for unknown argument count.
     -- Uses a random number in file name to try and avoid overlapping errors in real game. If save is reloaded and nothing different done by player will be the same result however.
 
-    -- If its not a debug release just run the function normally and return any results.
-    if not global.debugRelease then
+    -- If its not a debug release or the debug adapter with instrument mode (control hook) is active just end as no need to log to file anything. As the logging write out is slow in debugger. Just runs the function normally and return any results.
+    if not global.debugRelease or (__DebugAdapter ~= nil and __DebugAdapter.instrument) then
         functionRef(...)
         return
     end
