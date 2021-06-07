@@ -1,7 +1,8 @@
 local Utils = require("utility/utils")
 
 --[[
-    The entities shouldn't appear twice in any player ist. Placements shouldn't appear in decon or upgrade planner lists (primary selected entity in first column). As the placed is always the selected entity by the player.
+    The entities shouldn't appear twice in any player list. Placements shouldn't appear in decon or upgrade planner lists (primary selected entity in first column). As the placed is always the selected entity by the player.
+    The placed and placement are in different fast_replaceable_group to stop players from building the same type over itself. The base game only blocks the same entity name from being fast replaced over itself.
 ]]
 local tunnelSegmentSurfacePlacement = {
     type = "simple-entity-with-owner",

@@ -32,8 +32,10 @@ Functionality not currently supported
 Features to add
 ---------------
     - Support 2 tunnels crossing:
-        - Option A: Have a 6x6 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic. Don't think this can fast replace existing entities. This seems the more logic, but how to allow upgrading in use tunnels is the blocker.
-        - Option B: Should be just able to build tunnel segments against one another and this is a handled configuration (needs solid across tunnel (3 pieces wide/long). This isn't intuative and feedback to user of invalid configurations would be problematic.
+        - Option A: Have a 6x6 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic. This can NOT fast replace existing segments in a line as the neighbour pieces block it. This is explored in this commit.
+        - Option B: Should be just able to build tunnel segments against one another and this is a handled configuration (needs solid across tunnel (3 pieces wide/long). This isn't intuative and feedback to user of invalid configurations would be problematic. Would need to include the crossing tunnel bits in both tunnels segments once placed, to prevent the user from removing a required segment from the other direction's tunnel.
+        - Option C: Have a 2x6 tunnel crossing piece just like the above ground crossing piece. This makes it hot swapable and just work. Would mean you could build thin tunnels though.
+        - We can't have a 2x2 tunnel segment as diagonal rail over lapping the hidden signals (now not part of the segment collision box) breaks them and means adjoining above crossing tracks are now 1 rail segment.
     - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong. Useful if starting a tunnel with no track near by to identify rail grid.
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Proper Graphics:
@@ -57,6 +59,8 @@ Concepts / Ideas
 
 Code Improvements
 ----------------
+    - Would having a single entity for each thing and then just put another simple entity over the top to suppress any graphics not wanted when built achieve the desired outcome? Would mean blueprints show the placement graphics which is better than now. It would make code simplier and less fighting Factorio logic. I think the "placement" version is left over from when I was going to use pump type and custom tiles to force building on end of rail pieces.
+Was placement/placed seperate entities done all those months back just to let me have different graphics or does it offer something else as well?
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities). global.underground.undergroundTunnels isn't removed when a tunnel is removed at present.
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.
     - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.
