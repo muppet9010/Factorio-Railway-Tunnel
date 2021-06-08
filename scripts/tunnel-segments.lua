@@ -26,6 +26,7 @@ TunnelSegments.CreateGlobals = function()
             segment = ref to the segment global object
         }
     ]]
+    global.tunnelSegments.playersWithCrossingTunnelCursorStack = global.tunnelSegments.playersWithCrossingTunnelCursorStack or {}
 end
 
 TunnelSegments.OnLoad = function()
@@ -53,6 +54,9 @@ TunnelSegments.OnLoad = function()
 
     Interfaces.RegisterInterface("TunnelSegments.On_TunnelCompleted", TunnelSegments.On_TunnelCompleted)
     Interfaces.RegisterInterface("TunnelSegments.On_TunnelRemoved", TunnelSegments.On_TunnelRemoved)
+
+    Events.RegisterHandlerEvent(defines.events.on_player_cursor_stack_changed, "TunnelSegments.OnPlayerCursorStackChanged", TunnelSegments.OnPlayerCursorStackChanged)
+    Events.RegisterHandlerEvent(defines.events.on_selected_entity_changed, "TunnelSegments.OnSelectedEntityChanged", TunnelSegments.OnSelectedEntityChanged)
 end
 
 TunnelSegments.OnBuiltEntity = function(event)
@@ -349,6 +353,58 @@ TunnelSegments.OnDiedEntity = function(event)
     else
         Interfaces.Call("Tunnel.RemoveTunnel", segment.tunnel)
         TunnelSegments.EntityRemoved(segment, killerForce, killerCauseEntity)
+    end
+end
+
+TunnelSegments.OnPlayerCursorStackChanged = function(event)
+    local player = game.get_player(event.player_index)
+    local cursorStack = player.cursor_stack
+
+    if cursorStack.valid_for_read then
+        if cursorStack.name == "railway_tunnel-tunnel_segment_surface_tunnel_crossing-placement" and global.tunnelSegments.playersWithCrossingTunnelCursorStack[player.index] == nil then
+            game.print("captured hand location")
+            local inventoryHandLocation = player.hand_location
+            global.tunnelSegments.playersWithCrossingTunnelCursorStack[player.index] = {handInventory = inventoryHandLocation.inventory, handSlotIndex = inventoryHandLocation.slot}
+        end
+        return
+    end
+
+    local playerWithCrossingTunnelCursorStack = global.tunnelSegments.playersWithCrossingTunnelCursorStack[player.index]
+    if playerWithCrossingTunnelCursorStack then
+        if playerWithCrossingTunnelCursorStack.upgrade then
+            game.print("switched to NORMAL placement on loss of cursor stack")
+            local stackToChange = player.get_main_inventory().find_item_stack("railway_tunnel-tunnel_segment_surface_tunnel_crossing_upgrade-placement")
+            stackToChange.set_stack({name = "railway_tunnel-tunnel_segment_surface_tunnel_crossing-placement", count = stackToChange.count, health = stackToChange.health})
+        end
+        global.tunnelSegments.playersWithCrossingTunnelCursorStack[player.index] = nil
+    end
+end
+
+TunnelSegments.OnSelectedEntityChanged = function(event)
+    local player = game.get_player(event.player_index)
+    local selectedEntity, currentCursorStack = player.selected, player.cursor_stack
+
+    if not currentCursorStack.valid_for_read then
+        return
+    end
+    --TODO: inventory & toolbar filters not handled. Logistic requests will go weird.
+    if currentCursorStack.name == "railway_tunnel-tunnel_segment_surface_tunnel_crossing-placement" then
+        if selectedEntity ~= nil and selectedEntity.name == "railway_tunnel-tunnel_segment_surface-placed" then
+            -- TODO: check if selected tunnel segment has valid neighbours or not.
+            game.print("switched to UPGRADE placement on selected entity change")
+            currentCursorStack.set_stack({name = "railway_tunnel-tunnel_segment_surface_tunnel_crossing_upgrade-placement", count = currentCursorStack.count, health = currentCursorStack.health})
+            local playerWithCrossingTunnelCursorStack = global.tunnelSegments.playersWithCrossingTunnelCursorStack[player.index]
+            player.hand_location = {inventory = playerWithCrossingTunnelCursorStack.handInventory, slot = playerWithCrossingTunnelCursorStack.handSlotIndex}
+            playerWithCrossingTunnelCursorStack.upgrade = true
+        end
+    elseif currentCursorStack.name == "railway_tunnel-tunnel_segment_surface_tunnel_crossing_upgrade-placement" then
+        if selectedEntity == nil or not selectedEntity.name == "railway_tunnel-tunnel_segment_surface-placed" then
+            game.print("switched to NORMAL placement on selected entity change")
+            currentCursorStack.set_stack({name = "railway_tunnel-tunnel_segment_surface_tunnel_crossing-placement", count = currentCursorStack.count, health = currentCursorStack.health})
+            local playerWithCrossingTunnelCursorStack = global.tunnelSegments.playersWithCrossingTunnelCursorStack[player.index]
+            player.hand_location = {inventory = playerWithCrossingTunnelCursorStack.handInventory, slot = playerWithCrossingTunnelCursorStack.handSlotIndex}
+            playerWithCrossingTunnelCursorStack.upgrade = false
+        end
     end
 end
 
