@@ -185,7 +185,7 @@ TrainManager.ProcessManagedTrain = function(trainManagerEntry)
 
     -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
     if not skipThisTick and trainManagerEntry.dummyTrain ~= nil and not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.dummyTrain) then
-        TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.dummyTrain)
+        TrainManager.HandleLeavingTrainBadState("dummyTrain", trainManagerEntry)
         skipThisTick = true
     end
 
@@ -227,7 +227,7 @@ TrainManager.ProcessManagedTrain = function(trainManagerEntry)
                 end
             elseif not TrainManagerFuncs.IsTrainHealthlyState(trainManagerEntry.leavingTrain) then
                 -- Check if the leaving train is in a good state before we check to add any new wagons to it.
-                TrainManager.HandleLeavingTrainBadState(trainManagerEntry, trainManagerEntry.leavingTrain)
+                TrainManager.HandleLeavingTrainBadState("leavingTrain", trainManagerEntry)
                 skipThisTick = true
             else
                 -- Keep on running until the entire train has left the tunnel.
@@ -242,7 +242,29 @@ TrainManager.ProcessManagedTrain = function(trainManagerEntry)
     end
 end
 
-TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithBadState)
+TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, trainManagerEntry)
+    local trainWithBadState = trainManagerEntry[trainWithBadStateName]
+
+    -- Check if the train can just path now as trains don't try and repath every tick. So sometimes they can path forwards on their own, they just haven't realised yet.
+    if trainWithBadState.recalculate_path() then
+        if trainWithBadStateName == "dummyTrain" then
+            -- Just return as the dummy train doesn't handle reversing itself.
+            return
+        elseif trainWithBadStateName == "leavingTrain" then
+            -- Check if the train is pathing in the expected direction or has just reversed on its own.
+            if TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(trainManagerEntry, trainWithBadStateName, 1) then
+                -- Train restarted in expected direction
+                return
+            else
+                -- Train has repathed backwards
+                TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
+                return
+            end
+        else
+            error("TrainManager.HandleLeavingTrainBadState() unsupported trainWithBadStateName:" .. tostring(trainWithBadStateName))
+        end
+    end
+
     -- Check if the full train can reverse in concept.
     local undergroundTrainReverseLocoListName
     local undergroundTrainSpeed = trainManagerEntry.undergroundTrain.speed
@@ -276,8 +298,14 @@ TrainManager.HandleLeavingTrainBadState = function(trainManagerEntry, trainWithB
             elseif oldEnteringSpeed < 0 then
                 reverseLocoListName = "front_movers"
                 enteringTrainFrontCarriage = enteringTrain.back_stock
+            elseif trainManagerEntry.enteringTrainForwards then
+                reverseLocoListName = "back_movers"
+                enteringTrainFrontCarriage = enteringTrain.front_stock
+            elseif not trainManagerEntry.enteringTrainForwards then
+                reverseLocoListName = "front_movers"
+                enteringTrainFrontCarriage = enteringTrain.back_stock
             else
-                error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train\nenteringTrain id: " .. enteringTrain.id)
+                error("TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train with no cached forwards state\nenteringTrain id: " .. enteringTrain.id)
             end
             if #enteringTrain.locomotives[reverseLocoListName] == 0 then
                 -- Put the loco at the front of the leaving train backwards to the trains current orientation. As we want to test reversing the trains current direction.
@@ -514,14 +542,9 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
 
     -- Check if the leaving train has stopped, but the underground train is moving. This should only occur when the leaving train has lost its path and naturally is pathing back through the tunnel. As otherwise the state check would have caught it already this tick.
     if desiredSpeed ~= 0 and leavingTrainSpeed == 0 then
-        -- Theres nothing broken with the state, but the mod doesn't expect it so we need to identify if the train is reversing on its own accord.
-
-        -- The test will affect the trains schedule so take a backup first. We have to do this rather than a front/rear stock check as theres no train composition change to test around here. Its just waht the base game thinks the train is doing.
-        local scheduleBackup, isManualBackup, targetStop = trainManagerEntry.leavingTrain.schedule, trainManagerEntry.leavingTrain.manual_mode, trainManagerEntry.leavingTrain.path_end_stop
-        -- Carefully set the speed and schedule to see if the train is pointing in the expected direction when it wants to path or not.
-        -- The leaving train is moving opposite to the underground train (desiredSpeed). So handle the reversal and stop processing. If the speed isn't lost then this is the more normal usage case and so can just be left as is. We just double set the speed this 1 tick, no harm done.
-        local isTrainGoingExpectedDirection = TrainManager.Check0SpeedTrainWithLocoGoingExpectedDirection(trainManagerEntry, "leavingTrain", desiredSpeed, scheduleBackup, isManualBackup, targetStop)
-        if not isTrainGoingExpectedDirection then
+        -- Theres nothing broken with the state, but the mod doesn't expect it so we need to identify if the train is reversing on its own accord. We have to do this rather than a front/rear stock check as theres no train composition change to test around here. Its just what the base game thinks the train is doing.
+        if not TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(trainManagerEntry, "leavingTrain", desiredSpeed) then
+            -- The leaving train is moving opposite to the underground train (desiredSpeed). So handle the reversal and stop processing.
             TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
             return
         end
@@ -594,7 +617,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
         stoppingTargetEntityAttributeName = "leavingTrainStoppingSchedule"
         arriveAtReleventStoppingTarget = leavingTrain.state == defines.train_state.arrive_station
     else
-        error("TrainManager.HandleLeavingTrainStoppingAtSignalSchedule() unsuported arriveAtName: " .. arriveAtName)
+        error("TrainManager.HandleLeavingTrainStoppingAtSignalSchedule() unsuported arriveAtName: " .. tostring(arriveAtName))
     end
 
     -- 1: If leaving train is now arriving at a relvent stopping target (station or signal) check state in detail as we may need to update the underground train stop point.
@@ -1070,17 +1093,21 @@ TrainManager.TidyManagedTrainGlobals = function(trainManagerEntry)
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
 end
 
-TrainManager.Check0SpeedTrainWithLocoGoingExpectedDirection = function(trainManagerEntry, trainAttributeName, desiredSpeed, scheduleBackup, isManualBackup, targetStop)
+TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection = function(trainManagerEntry, trainAttributeName, desiredSpeed)
     -- This requires the train to have a locomotive so that it can be given a path.
-    -- This is the only known way to check which way a train with 0 speed and makign no carriage changes is really wanting to go. As the LuaTrain attributes only update when the train has a speed or a carriage is added/removed.
-    -- This may end up with the train having a 0 speed if its pointing the wrong way. So the calling function needs to correct the train state if FALSE is returned.
-    trainManagerEntry[trainAttributeName].manual_mode = true
+    -- This is the only known way to check which way a train with 0 speed and making no carriage changes is really wanting to go. As the LuaTrain attributes only update when the train has a speed or a carriage is added/removed.
+    local train = trainManagerEntry[trainAttributeName]
+    local scheduleBackup, isManualBackup, targetStop = train.schedule, train.manual_mode, train.path_end_stop
+
+    train.manual_mode = true
     TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, trainAttributeName, desiredSpeed)
-    TrainManagerFuncs.TrainSetSchedule(trainManagerEntry[trainAttributeName], scheduleBackup, isManualBackup, targetStop, true) -- Don't force validation.
-    if trainManagerEntry[trainAttributeName].speed == 0 then
-        return false
-    else
+    TrainManagerFuncs.TrainSetSchedule(train, scheduleBackup, isManualBackup, targetStop, true) -- Don't force validation.
+    local trainIsFacingExpectedDirection = train.speed ~= 0
+    train.speed = 0 -- Set speed back, everything else was reset by the setting train schedule.
+    if trainIsFacingExpectedDirection then
         return true
+    else
+        return false
     end
 end
 

@@ -21,12 +21,13 @@ local ExcludeDuplicateOutcomeTests = false -- If TRUE skips some believed duplic
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
 local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing. When enabled takes precedence over DoMinimalTests.
-local SpecificTrainTypesFilter = {"<>", "<-------------->"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
-local SpecificTunnelUsageTypesFilter = {} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
-local SpecificReverseOnCarriageNumberFilter = {} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
-local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificStationReservationCompetitorTrainExists = {} -- Pass in array of true/false to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
+-- "<-------------->", ">--------------<", "<>--------------", "--------------<>", "-------<>-------"
+local SpecificTrainTypesFilter = {"<>"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
+local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
+local SpecificReverseOnCarriageNumberFilter = {3} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
+local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is true.
+local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"delayed"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
+local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of true/false to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
 local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is true.
 
 local DebugOutputTestScenarioDetails = false -- If true writes out the test scenario details to a csv in script-output for inspection in Excel.
@@ -942,7 +943,8 @@ Test.GenerateTestScenarios = function()
 
                         -- Handle if SpecificReverseOnCarriageNumberFilter is set
                         local carriageNumbersToTest = {}
-                        if not DoSpecificTrainTests or Utils.IsTableEmpty(SpecificReverseOnCarriageNumberFilter) then
+                        if not DoSpecificTrainTests then
+                            -- Follow general test settings only.
                             if DoMinimalTests then
                                 -- Just do 1 carriage
                                 table.insert(carriageNumbersToTest, 3)
@@ -953,8 +955,16 @@ Test.GenerateTestScenarios = function()
                                 end
                             end
                         else
-                            for _, carriageCount in pairs(SpecificReverseOnCarriageNumberFilter) do
-                                if carriageCount <= maxCarriageCount then
+                            if not Utils.IsTableEmpty(SpecificReverseOnCarriageNumberFilter) then
+                                -- Do only specific carriage counts.
+                                for _, carriageCount in pairs(SpecificReverseOnCarriageNumberFilter) do
+                                    if carriageCount <= maxCarriageCount then
+                                        table.insert(carriageNumbersToTest, carriageCount)
+                                    end
+                                end
+                            else
+                                -- Do specific is enabled, but no specific carriage counts, so do all for this train.
+                                for carriageCount = 1, maxCarriageCount do
                                     table.insert(carriageNumbersToTest, carriageCount)
                                 end
                             end
@@ -987,8 +997,8 @@ Test.GenerateTestScenarios = function()
                                 }
                                 scenario.afterTrackRemovedResult, scenario.afterTrackReturnedResult, scenario.duplicateOutcomeTest = Test.CalculateExpectedResults(scenario, positiveTestsByTrainTextLookup)
 
-                                -- If we are excluding duplicate outcome tests don't record/count this test.
-                                if not (ExcludeDuplicateOutcomeTests and scenario.duplicateOutcomeTest) then
+                                -- Don;t record test if we are excluding duplicate outcome and this test is a duplicate outcome.
+                                if not ExcludeDuplicateOutcomeTests or (ExcludeDuplicateOutcomeTests and scenario.duplicateOutcomeTest) then
                                     Test.RunLoopsMax = Test.RunLoopsMax + 1
                                     table.insert(Test.TestScenarios, scenario)
                                 end

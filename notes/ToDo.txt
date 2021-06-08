@@ -1,22 +1,16 @@
 Bugs
 ----
-    - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
     - Sending a train to a temporary stop within a tunnel causes the train to path towards the task, get pushed out of the far end of the tunnel (past the temporary stop) and have the temporary stop set as its path again. Causing the train to loop around and do the tunnel again, repeating endlessly.
     - Send a train through a tunnel, while its left (fully out, but still on portal) pull up the EXIT PORTAL of tunnel, game crashs. Seen in 0.0.3. Was mined by hand. The "this can not be mined" text appeared and the portal was replaced, but it then errored that/next tick. Make test for mining portal and both tunnel segment types during train usage and check train makes it out ok.
         - Error Message: failed getting 'position' attribute of nil for Utils.ApplyOffsetToPosition()
         - Calling Function: TrainManager.CreateUndergroundTrainObject()
         - Calling code line 891 (0.0.3): trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.aboveExitPortal.portalEntrancePosition, trainManagerEntry.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
         - in 0.0.4 same code is present on line 979 and so looks like the trainManagerEntry lost its cached aboveExitPortal attribute in the mining/placement. Need to check these cached portal/segment parts in trainManagerEntry and make function to re-populate them if removed.
-    - Track removed on far side of tunnel while train in tunnel. Train is 2-8-2 in a 8 segment tunnel. Train pulls to end of track and stops with forwards and rear locos both directly out. Game crashs. The track is dual direction at the entrance portal and so the train should be able to path backwards naturally, with its entering reverse locos.
-        - Error Message: 0 speed entering train when bad leaving train state reached.
-        - Calling Function: TrainManager.HandleLeavingTrainBadState()
-        - Calling code line 272 (0.0.3): throw intentional error: "TrainManager.HandleLeavingTrainBadState() doesn't support 0 speed entering train\nenteringTrain id: "
-        - in 0.0.4 intentional error still present so should be reproducable, but on line 280.
-        - Seen in 0.0.4 with "<>------------<>" train on: carriageEntering1, forwards none, backwards none, competitor none
 
 
 Functionality not currently supported
 -------------------------------------
+    - Handle the target station or target track being removed while the train is in the tunnel. Currently Quality control state checks flag this as an error. Train should go on to the next order stop or if there is none just pull to the end of the portals entrance signals so its obvious thats its stopped.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
     - Block train wagons being placed on invisible rails and on portals entrance track. Will have to do this via events and can't make placement invalid without blocking trains from crossing. At present if done this will cause errors.
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
@@ -32,9 +26,8 @@ Functionality not currently supported
 Features to add
 ---------------
     - Support 2 tunnels crossing:
-        - Option A: Have a 6x6 tunnel segment that is for 2 tunnels crossing each other. Will need changes to tunnel complete checking logic. Don't think this can fast replace existing entities. This seems the more logic, but how to allow upgrading in use tunnels is the blocker.
-        - Option B: Should be just able to build tunnel segments against one another and this is a handled configuration (needs solid across tunnel (3 pieces wide/long). This isn't intuative and feedback to user of invalid configurations would be problematic.
-    - When you misplace a tunnel part use a render to show the valid spots to the player. As can be annoying to work out which axis is wrong. Useful if starting a tunnel with no track near by to identify rail grid.
+        UPDATED NOTES IN DEDICATED BRANCH FOR THIS
+    - When you misplace a tunnel part use a render to show the valid spots to the player. Green squares on the 4 nearby center positions like with offshore water pumps.
     - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Proper Graphics:
         - Icons
@@ -46,17 +39,21 @@ Features to add
 
 Concepts / Ideas
 ----------------
-    - Review what to allow to be built on top of the tunnel segments, either just belts or anything non trains. At present is nothing, but can be driven over.
-    - When a tunnel is destroyed (by force) there will be a mod setting to drop the train and its contents on the ground at the portal ends. Carriages, fuel, cargo items, equipment grids.
-    - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels going under them.
+    - Review what to allow to be built on top of the tunnel segments, either just belts & power poles or anything non trains. At present is nothing, but can be driven over.
+    - When a tunnel is destroyed (by force):
+        - Any riding players should have their bodies dumped at the tunnel entrance, as in vanilla Factorio you can't loose a body.
+        - Detect any destroyed chest's spill on ground type mods and honour their settings for dropping train contents on ground at tunnel portals.
+    - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels going under them or cause the cliffs to vanish as they can't reshape.
     - Look at if tunnel segments (not rail crossing ones) can be built under water. Should be same placement entity, just a differnet graphics entity on top to show the tunnel on the lake bed. If possible have to work out transition point.
-    - Look at if tiles (concrete) can be placed over tunnel segments or something done to allow them to be paved over (even if just a visual).
-    - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach/usage. The mod can only handle speeds up to 7 tiles per tick as only 1 carriage can be added/removed per tick.
+    - Look at if tiles (concrete) can be placed over tunnel segments or something done to allow them to be paved over (even if just a visual). Maybe have tunnel segments have below tile graphics and I place tunnel tiles down, keeping a record of the old tile. This lets people concrete over and remove concrete. If the tunnel segment is removed I return the stored origional tile name back.
+    - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach/usage. The mod can only handle speeds up to 7 tiles per tick as only 1 carriage can be added/removed per tick. Maybe detect the speed on the approaching train and have a variable vanishing point based on this.
     - Request for big power poles to be able to be placed on tunnel entrances to keep tunnels like rail block blurprints (MOJO style). Maybe including big power poles at both ends of the tunnel portal and in the middle with red & green wires between them? Would need to expose wire connection points though. Or have power and red/green wires transmitted through tunnels with just a connection on the entrance of each portal?
+    - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
 
 
 Code Improvements
 ----------------
+    - Would having a single entity for each portal/segment and then just put another simple entity over the top to suppress any graphics not wanted when built achieve the desired outcome? Would mean blueprints show the placement graphics which is better than now. It would make code simplier and less fighting Factorio logic. I think the "placement" version is left over from when I was going to use pump type and custom tiles to force building on end of rail pieces. This may allow building a tunnel segment over another tunnel segment in a different orientation, need to recheck these type of scenarios. Was placement/placed seperate entities done all those months back just to let me have different graphics or does it offer something else as well? This may have impact on underwater segments (?) and if I ever want to make tunnels not be 1 solid hitbox so players can walk in to them I need the seperate placement/placed.
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities). global.underground.undergroundTunnels isn't removed when a tunnel is removed at present.
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.
     - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.
