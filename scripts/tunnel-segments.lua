@@ -70,7 +70,7 @@ end
 TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
 
-    if not TunnelSegments.TunnelSegmentPlacementValid(placementEntity) then
+    if not TunnelCommon.IsPlacementValid(placementEntity) then
         TunnelCommon.UndoInvalidPlacement(placementEntity, placer, true)
         return
     end
@@ -163,14 +163,6 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
     end
 end
 
-TunnelSegments.TunnelSegmentPlacementValid = function(placementEntity)
-    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
-        return false
-    else
-        return true
-    end
-end
-
 TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, placer)
     local directionComplete
     local tunnelPortals, tunnelSegments, directionValue = {}, {startingTunnelSegment}, startingTunnelSegment.direction
@@ -224,7 +216,7 @@ TunnelSegments.OnBuiltEntityGhost = function(event)
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelSegments.TunnelSegmentPlacementValid(createdEntity) then
+    if not TunnelCommon.IsPlacementValid(createdEntity) then
         TunnelCommon.UndoInvalidPlacement(createdEntity, placer, false)
         return
     end

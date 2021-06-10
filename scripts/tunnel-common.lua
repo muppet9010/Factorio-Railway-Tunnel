@@ -55,9 +55,21 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
     return false
 end
 
+TunnelCommon.IsPlacementValid = function(placementEntity)
+    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
+        return false
+    else
+        return true
+    end
+end
+
 TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
     if placer ~= nil then
-        TunnelCommon.EntityErrorMessage(placer, "Tunnel must be placed on the rail grid", placementEntity.surface, placementEntity.position)
+        local position, surface, entityName, ghostName, direction = placementEntity.position, placementEntity.surface, placementEntity.name, nil, placementEntity.direction
+        if entityName == "entity-ghost" then
+            ghostName = placementEntity.ghost_name
+        end
+        TunnelCommon.EntityErrorMessage(placer, "Tunnel must be placed on the rail grid", surface, position)
         if mine then
             local result
             if placer.is_player() then
@@ -71,6 +83,44 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
             end
         else
             placementEntity.destroy()
+        end
+        TunnelCommon.HighlightValidPlacementPositions(placer, position, surface, entityName, ghostName, direction)
+    end
+end
+
+TunnelCommon.HighlightValidPlacementPositions = function(placer, position, surface, entityName, ghostName, direction)
+    local highlightAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
+    -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
+    local minX, maxX, minY, maxY
+    if position.x % 2 == 1 then
+        --Correct X position.
+        minX = position.x
+        maxX = position.x
+    else
+        -- Wrong X position.
+        minX = position.x - 1
+        maxX = position.x + 1
+    end
+    if position.y % 2 == 1 then
+        --Correct Y position.
+        minY = position.y
+        maxY = position.y
+    else
+        -- Wrong Y position.
+        minY = position.y - 1
+        maxY = position.y + 1
+    end
+    local validHighlightSprite, invalidHighlightSprite = "railway_tunnel-valid_placement_highlight", "railway_tunnel-invalid_placement_highlight"
+    for x = minX, maxX, 2 do
+        for y = minY, maxY, 2 do
+            local thisPlacementPosition = {x = x, y = y}
+            local thisHighlightSprite
+            if surface.can_place_entity {name = entityName, inner_name = ghostName, position = thisPlacementPosition, direction = direction, force = placer.force, build_check_type = defines.build_check_type.manual_ghost, forced = true} then
+                thisHighlightSprite = validHighlightSprite
+            else
+                thisHighlightSprite = invalidHighlightSprite
+            end
+            rendering.draw_sprite {sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = highlightAudience.players, forces = highlightAudience.forces}
         end
     end
 end

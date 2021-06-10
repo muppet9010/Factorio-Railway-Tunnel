@@ -1176,7 +1176,7 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
         return {players = {actioner}, forces = nil}
     else
         -- Is construction bot
-        return {players = nil, forces = actioner.force}
+        return {players = nil, forces = {actioner.force}}
     end
 end
 

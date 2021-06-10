@@ -104,7 +104,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local orientation = Utils.DirectionToOrientation(directionValue)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceFromCenter}))
 
-    if not TunnelPortals.TunnelPortalPlacementValid(placementEntity) then
+    if not TunnelCommon.IsPlacementValid(placementEntity) then
         TunnelCommon.UndoInvalidPlacement(placementEntity, placer, true)
         return
     end
@@ -136,14 +136,6 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
         return false
     end
     Interfaces.Call("Tunnel.CompleteTunnel", tunnelPortals, tunnelSegments)
-end
-
-TunnelPortals.TunnelPortalPlacementValid = function(placementEntity)
-    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
-        return false
-    else
-        return true
-    end
 end
 
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortal, placer, portal)
@@ -302,7 +294,7 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelPortals.TunnelPortalPlacementValid(createdEntity) then
+    if not TunnelCommon.IsPlacementValid(createdEntity) then
         TunnelCommon.UndoInvalidPlacement(createdEntity, placer, false)
         return
     end

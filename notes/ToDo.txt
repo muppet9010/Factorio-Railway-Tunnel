@@ -22,8 +22,6 @@ Features to add
 ---------------
     - Support 2 tunnels crossing:
         UPDATED NOTES IN DEDICATED BRANCH FOR THIS
-    - When you misplace a tunnel part use a render to show the valid spots to the player. Green squares on the 4 nearby center positions like with offshore water pumps.
-    - When a tunnel part is placed invalidly and it is mined by the player/robot it shows the item being picked up. Need to return the item and remove the entity in a silent way. We show red warning text to the player already.
     - Proper Graphics:
         - Icons
         - Ingame entities as layered graphics for underneath and on top of trains.
