@@ -1,11 +1,6 @@
 Bugs
 ----
     - Sending a train to a temporary stop within a tunnel causes the train to path towards the task, get pushed out of the far end of the tunnel (past the temporary stop) and have the temporary stop set as its path again. Causing the train to loop around and do the tunnel again, repeating endlessly.
-    - Send a train through a tunnel, while its left (fully out, but still on portal) pull up the EXIT PORTAL of tunnel, game crashs. Seen in 0.0.3. Was mined by hand. The "this can not be mined" text appeared and the portal was replaced, but it then errored that/next tick. Make test for mining portal and both tunnel segment types during train usage and check train makes it out ok.
-        - Error Message: failed getting 'position' attribute of nil for Utils.ApplyOffsetToPosition()
-        - Calling Function: TrainManager.CreateUndergroundTrainObject()
-        - Calling code line 891 (0.0.3): trainManagerEntry.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(trainManagerEntry.aboveExitPortal.portalEntrancePosition, trainManagerEntry.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
-        - in 0.0.4 same code is present on line 979 and so looks like the trainManagerEntry lost its cached aboveExitPortal attribute in the mining/placement. Need to check these cached portal/segment parts in trainManagerEntry and make function to re-populate them if removed.
 
 
 Functionality not currently supported
@@ -20,7 +15,7 @@ Functionality not currently supported
     - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
     - Handle a player adding/removing a carriage from a train using a tunnel.
     - Check entering artillery trains stopped going in to the tunnel when the head has stopped coming out (signal). In vanialla an artillery train not stopped at station or in manual won't fire.
-    - Handle all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains and when the carriages, portals and tunnels are destroyed (player with body, not editor mode) - PlayerContainers.On_TunnelRemoved(). Currently a destroyed tunnel piece rebuilt (ghost placed) by a robot caused the game to crash (creative mod), so something isn't quite right in the old tunnel segment/portal destroyed code.
+    - Handle all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains for player with body and when in editor mode - PlayerContainers.On_TunnelRemoved(). Currently a destroyed tunnel piece rebuilt (ghost placed) by a robot caused the game to crash (creative mod), so something isn't quite right in the old tunnel segment/portal destroyed code.
 
 
 Features to add
@@ -35,6 +30,7 @@ Features to add
         - In/Out signals on the entrance end of the portal should fit in to the graphics.
         - Cursor and Blueprint entity graphics for both placed and placement as both can be seen.
     - Look at TSM and LTN compatibility requirement or block them.
+    - Need to add placeholder remenants for the tunnel portal and segments. Also check that they have ghosts correctly.
 
 
 Concepts / Ideas
@@ -53,6 +49,7 @@ Concepts / Ideas
 
 Code Improvements
 ----------------
+    - Tunnel usage events being raised uses some UPS per tunnel carriage activity (N)? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway.
     - Would having a single entity for each portal/segment and then just put another simple entity over the top to suppress any graphics not wanted when built achieve the desired outcome? Would mean blueprints show the placement graphics which is better than now. It would make code simplier and less fighting Factorio logic. I think the "placement" version is left over from when I was going to use pump type and custom tiles to force building on end of rail pieces. This may allow building a tunnel segment over another tunnel segment in a different orientation, need to recheck these type of scenarios. Was placement/placed seperate entities done all those months back just to let me have different graphics or does it offer something else as well? This may have impact on underwater segments (?) and if I ever want to make tunnels not be 1 solid hitbox so players can walk in to them I need the seperate placement/placed.
     - When tunnels are removed have their underground rails kept, track the removed spacings (id currently) for later reuse. Then allows them to be re-used by a future tunnel to save the entity creation and surface size creep. Need to move to tracking placed tunnels on horizontal/vertical and not just using their shared ID as offset to facilitate this. At present the underground tracks aren't trackable and so the removal code is commented out (tunnel.undergroundTunnel.railEntities). global.underground.undergroundTunnels isn't removed when a tunnel is removed at present.
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.

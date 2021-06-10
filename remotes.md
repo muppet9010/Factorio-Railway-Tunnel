@@ -8,13 +8,13 @@ All remote interfaces are under the interface name "railway_tunnel".
 Tunnel Usage Entry Object Attributes
 ----------------
 
-The common attributes that are returned giving details about a tunnel usage entry by many of the mods events and remote interfaces.
+The common attributes that are returned giving details about a tunnel usage entry by many of the mods events and remote interfaces. If the tunnel usage has completed then these values will all be nil.
 - tunnelUsageId = id of the tunnel usage details (INT). Always present.
-- valid = if the tunnel usage entry is still using the tunnel (BOOLEAN). If its false then all other return attributes will be nil.
 - primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
 - enteringTrain = LuaTrain of the train still entering the tunnel if it exists, otherwise nil. Exists from "startApproaching" to the final "enteringCarriageRemoved" and "fullyEntered" action events.
 - undergroundTrain = LuaTrain of the complete train underground if it exists, otherwise nil. Exists from "startApproaching" to the final "leavingCarriageAdded" and "fullyLeft" action events.
-- leavingTrain = LuaTrain of the train while partially leaving the tunnel if it exists, otherwise nil. Exists from the " startedLeaving" and first "leavingCarriageAdded" action events until the tunnel usage is "terminated".
+- leavingTrain = LuaTrain of the train leaving the tunnel if it exists, otherwise nil. Exists from the " startedLeaving" and first "leavingCarriageAdded" action events until the tunnel usage is "terminated". So may be a partally leaving train up to the full train until "fullyLeft".
+- tunnelId = id of the tunnel the train is using. Can use this to get tunnel details via remote interface: get_tunnel_details_for_id
 
 
 
@@ -53,10 +53,10 @@ Get a custom event id via a remote interface call that can be registered to be n
 
 
 
-Get Tunnel Usage Entry
+Get Tunnel Usage Entry For Id
 ----------------
 
-- Interface Name: get_tunnel_usage_entry
+- Interface Name: get_tunnel_usage_entry_for_id
 - Description: Remote interface to get details on specific tunnel usage entry. Can be called at any time.
 - Arguments:
     - Tunnel Usage Id (INT). This is the "tunnelUsageId" attribute from the Tunnel Usage Entry Object Attributes that is returned by some other events and remote interfaces.
@@ -65,11 +65,10 @@ Get Tunnel Usage Entry
 
 
 
-
-Get A Train's Tunnel Usage Entry
+Get Tunnel Usage Entry For Train
 ----------------
 
-- Interface Name: get_a_trains_tunnel_usage_entry
+- Interface Name: get_tunnel_usage_entry_for_train
 - Description: Remote interface to get details on if a specific train has a tunnel usage entry related to it. Can be called at any time on any train.
 - Arguments:
     - Train's Id (INT) - LuaTrain.id of a train.
@@ -87,3 +86,38 @@ Get Temporary Carriage Names
     - none
 - Returns:
     - Table of the temporary carriage names with key and value being the name. i.e: {["name1"]="name1"}.
+
+
+
+Tunnel Object Attributes
+----------------
+
+The common attributes that are returned giving details about a tunnel by many of the mods events and remote interfaces. If the tunnel is not complete these values will all be nil.
+- tunnelId = Id of the tunnel (INT).
+- portals = Array of the 2 portal entities in this tunnel.
+- segments = Array of the tunnel segment entities in this tunnel.
+- tunnelUsageId = Id (INT) of the tunnel usage entry using this tunnel if one is currently active. Can use the get_tunnel_usage_entry_for_id remote interface to get details of the tunnel usage entry.
+
+
+
+Get Tunnel Details For Id
+-----------------
+
+- Interface Name: get_tunnel_details_for_id
+- Description: Remote interface to get details on a specific tunnel by its id.
+- Arguments:
+    - Tunnel Id (INT) - The id of a tunnel. Is provided by tunnel usage based remote interface results.
+- Returns:
+    - Tunnel Object Attributes for this tunnel id or nil if no complete tunnel.
+
+
+
+Get Tunnel Details For Entity
+-----------------
+
+- Interface Name: get_tunnel_details_for_entity
+- Description: Remote interface to get details on a specific tunnel that a tunnel part (portal or segment) entity is part of, by the entities unit_number.
+- Arguments:
+    - Tunnel Part Unit Number (INT) - The unit number of an entity that is part of the tunne.
+- Returns:
+    - Tunnel Object Attributes for this entities tunnel or nil if no complete tunnel.

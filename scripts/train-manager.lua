@@ -104,27 +104,8 @@ TrainManager.OnLoad = function()
     )
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManager.TrainTracking_OnTrainCreated)
-    Interfaces.RegisterInterface("TrainManager.IsTunnelInUse", TrainManager.IsTunnelInUse)
     Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManager.On_TunnelRemoved)
-
-    local tunnelUsageChangedEventId = Events.RegisterCustomEventName("RailwayTunnel.TunnelUsageChanged")
-    remote.add_interface(
-        "railway_tunnel",
-        {
-            get_tunnel_usage_changed_event_id = function()
-                return tunnelUsageChangedEventId
-            end,
-            get_tunnel_usage_entry = function(trainManagerEntryId)
-                return TrainManager.Remote_GetTunnelUsageEntry(trainManagerEntryId)
-            end,
-            get_a_trains_tunnel_usage_entry = function(trainId)
-                return TrainManager.Remote_GetATrainsTunnelUsageEntry(trainId)
-            end,
-            get_temporary_carriage_names = function()
-                return TrainManager.Remote_GetTemporaryCarriageNames()
-            end
-        }
-    )
+    Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManager.On_PortalReplaced)
 end
 
 ----------------------------------------------------------------------------------------------------------
@@ -168,16 +149,18 @@ TrainManager.ProcessManagedTrains = function()
     end
 
     -- Raise any events from this tick for external listener mods to react to.
-    for _, eventData in pairs(global.trainManager.eventsToRaise) do
-        TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(eventData, eventData.tunnelUsageId)
-        -- Populate the leavingTrain attribute with the leftTrain value when the leavingTrain value isn't valid. Makes handling the events nicer by hiding this internal code oddity.
-        if (eventData.leavingTrain == nil or not eventData.leavingTrain.valid) and (eventData.leftTrain ~= nil and eventData.leftTrain.valid) then
-            eventData.leavingTrain = eventData.leftTrain
-            eventData.leftTrain = nil
+    if #global.trainManager.eventsToRaise ~= 0 then
+        for _, eventData in pairs(global.trainManager.eventsToRaise) do
+            TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(eventData, eventData.tunnelUsageId)
+            -- Populate the leavingTrain attribute with the leftTrain value when the leavingTrain value isn't valid. Makes handling the events nicer by hiding this internal code oddity.
+            if (eventData.leavingTrain == nil or not eventData.leavingTrain.valid) and (eventData.leftTrain ~= nil and eventData.leftTrain.valid) then
+                eventData.leavingTrain = eventData.leftTrain
+                eventData.leftTrain = nil
+            end
+            Events.RaiseEvent(eventData)
         end
-        Events.RaiseEvent(eventData)
+        global.trainManager.eventsToRaise = {}
     end
-    global.trainManager.eventsToRaise = {}
 end
 
 TrainManager.ProcessManagedTrain = function(trainManagerEntry)
@@ -812,25 +795,6 @@ TrainManager.SetAbsoluteTrainSpeed = function(trainManagerEntry, trainAttributeN
     end
 end
 
-TrainManager.IsTunnelInUse = function(tunnelToCheck)
-    for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if managedTrain.tunnel.id == tunnelToCheck.id then
-            return true
-        end
-    end
-
-    for _, portal in pairs(tunnelToCheck.portals) do
-        for _, railEntity in pairs(portal.portalRailEntities) do
-            if not railEntity.can_be_destroyed() then
-                -- If the rail can't be destroyed then theres a train carriage on it.
-                return true
-            end
-        end
-    end
-
-    return false
-end
-
 TrainManager.On_TunnelRemoved = function(tunnelRemoved)
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
@@ -969,6 +933,27 @@ TrainManager.CreateTrainManagerEntryObject = function(enteringTrain, aboveEntran
     end
 
     return trainManagerEntry
+end
+
+TrainManager.On_PortalReplaced = function(tunnel, newPortal)
+    if tunnel == nil then
+        return
+    end
+    -- Updated the cached portal object reference as they have bene recreated.
+    for _, trainManagerEntry in pairs(global.trainManager.managedTrains) do
+        if trainManagerEntry.tunnel.id == tunnel.id then
+            -- Only entity invalid is the portal entity reference itself. None of the portal's signal entities or objects are affected. So can use the signal entities to identify which local reference Entrance/Exit this changed portal was before.
+            if newPortal.endSignals[trainManagerEntry.aboveEntrancePortalEndSignal.direction].id == trainManagerEntry.aboveEntrancePortalEndSignal.id then
+                -- Is entrance portal of this tunnel usage.
+                trainManagerEntry.aboveEntrancePortal = newPortal
+            elseif newPortal.endSignals[trainManagerEntry.aboveExitPortalEndSignal.direction].id == trainManagerEntry.aboveExitPortalEndSignal.id then
+                -- Is exit portal of this tunnel usage.
+                trainManagerEntry.aboveExitPortal = newPortal
+            else
+                error("Portal replaced for tunnel and used by trainManagerEntry, but endSignal not matched\n tunnel id: " .. tunnel.id .. "\ntrainManagerEntry id: " .. trainManagerEntry.id .. "\nnewPortal id: " .. newPortal.id)
+            end
+        end
+    end
 end
 
 TrainManager.CreateUndergroundTrainObject = function(trainManagerEntry)
@@ -1333,18 +1318,18 @@ TrainManager.TunnelUsageChangeReason = {
 
 TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes = function(tableToPopulate, trainManagerEntryId)
     local trainManagerEntry = global.trainManager.managedTrains[trainManagerEntryId]
-    tableToPopulate.tunnelUsageId = trainManagerEntryId
     if trainManagerEntry == nil then
-        tableToPopulate.valid = false
-    else
-        -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
-        tableToPopulate.valid = true
-        tableToPopulate.primaryState = trainManagerEntry.primaryTrainPartName
-        tableToPopulate.enteringTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.enteringTrain)
-        tableToPopulate.undergroundTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.undergroundTrain)
-        tableToPopulate.leavingTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.leavingTrain)
-        tableToPopulate.leftTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.leftTrain)
+        return
     end
+
+    -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
+    tableToPopulate.tunnelUsageId = trainManagerEntryId
+    tableToPopulate.primaryState = trainManagerEntry.primaryTrainPartName
+    tableToPopulate.enteringTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.enteringTrain)
+    tableToPopulate.undergroundTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.undergroundTrain)
+    tableToPopulate.leavingTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.leavingTrain)
+    tableToPopulate.leftTrain = Utils.ReturnValidLuaObjectOrNil(trainManagerEntry.leftTrain)
+    tableToPopulate.tunnelId = trainManagerEntry.tunnel.id
 end
 
 TrainManager.Remote_TunnelUsageChanged = function(trainManagerEntryId, action, changeReason, replacedtunnelUsageId)
@@ -1362,7 +1347,8 @@ end
 
 TrainManager.Remote_GetTunnelUsageEntry = function(trainManagerEntryId)
     local tunnelUsageEntry = {}
-    return TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, trainManagerEntryId)
+    TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, trainManagerEntryId)
+    return tunnelUsageEntry
 end
 
 TrainManager.Remote_GetATrainsTunnelUsageEntry = function(trainId)
@@ -1373,7 +1359,8 @@ TrainManager.Remote_GetATrainsTunnelUsageEntry = function(trainId)
     local trainManagerEntry = trackedTrainIdObject.trainManagerEntry
     if trainManagerEntry ~= nil then
         local tunnelUsageEntry = {}
-        return TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, trainManagerEntry.id)
+        TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, trainManagerEntry.id)
+        return tunnelUsageEntry
     else
         return nil
     end

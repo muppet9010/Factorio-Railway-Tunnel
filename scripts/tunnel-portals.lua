@@ -323,17 +323,10 @@ TunnelPortals.OnPreMinedEntity = function(event)
         miner = game.get_player(event.player_index)
     end
 
-    for _, railEntity in pairs(portal.portalRailEntities) do
-        if not railEntity.can_be_destroyed() then
-            TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel portal while train is on tunnel track", minedEntity.surface, minedEntity.position)
-            TunnelPortals.ReplacePortalEntity(portal)
-            return
-        end
-    end
     if portal.tunnel == nil then
         TunnelPortals.EntityRemoved(portal)
     else
-        if Interfaces.Call("TrainManager.IsTunnelInUse", portal.tunnel) then
+        if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", portal.tunnel) then
             TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity.surface, minedEntity.position)
             TunnelPortals.ReplacePortalEntity(portal)
         else
@@ -350,24 +343,30 @@ TunnelPortals.ReplacePortalEntity = function(oldPortal)
     local newPortalEntity = aboveSurface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
     local newPortal = {
         id = newPortalEntity.unit_number,
+        entityDirection = oldPortal.entityDirection,
         entity = newPortalEntity,
         endSignals = oldPortal.endSignals,
         entrySignals = oldPortal.entrySignals,
         tunnel = oldPortal.tunnel,
         portalRailEntities = oldPortal.portalRailEntities,
         tunnelRailEntities = oldPortal.tunnelRailEntities,
-        tunnelOtherEntities = oldPortal.tunnelOtherEntities
+        tunnelOtherEntities = oldPortal.tunnelOtherEntities,
+        trainManagersClosingEntranceSignal = oldPortal.trainManagersClosingEntranceSignal,
+        entranceSignalBlockingTrainEntity = oldPortal.entranceSignalBlockingTrainEntity,
+        entranceDistanceFromCenter = oldPortal.entranceDistanceFromCenter,
+        portalEntrancePosition = oldPortal.portalEntrancePosition
     }
-    global.tunnelPortals.portals[newPortal.id] = newPortal
-    if newPortal.tunnel ~= nil then
-        for i, portal in pairs(newPortal.tunnel.portals) do
-            if portal.id == oldPortal.id then
-                portal.tunnel.portals[i] = newPortal
-                break
-            end
-        end
+
+    -- Update the signals ref back to portal if the signals exist.
+    if newPortal.endSignals ~= nil then
+        newPortal.endSignals["in"].portal = newPortal
+        newPortal.endSignals["out"].portal = newPortal
+        newPortal.entrySignals["in"].portal = newPortal
+        newPortal.entrySignals["out"].portal = newPortal
     end
+    global.tunnelPortals.portals[newPortal.id] = newPortal
     global.tunnelPortals.portals[oldPortal.id] = nil
+    Interfaces.Call("Tunnel.On_PortalReplaced", newPortal.tunnel, oldPortal, newPortal)
 end
 
 TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
@@ -381,9 +380,14 @@ end
 TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
     TunnelCommon.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
+    if portal.entranceSignalBlockingTrainEntity ~= nil then
+        portal.entranceSignalBlockingTrainEntity.destroy()
+        portal.entranceSignalBlockingTrainEntity = nil
+    end
     for _, otherEntity in pairs(portal.tunnelOtherEntities) do
         otherEntity.destroy()
     end
+    portal.tunnelOtherEntities = nil
     for _, railEntity in pairs(portal.tunnelRailEntities) do
         railEntity.destroy()
     end
@@ -397,10 +401,6 @@ TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
         endSignal.entity.destroy()
     end
     portal.endSignals = nil
-    if portal.entrySignalBlockingLocomotiveEntity ~= nil then
-        portal.entrySignalBlockingLocomotiveEntity.destroy()
-        portal.entrySignalBlockingLocomotiveEntity = nil
-    end
     portal.trainManagersClosingEntranceSignal = nil
 end
 
@@ -425,7 +425,7 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
     local portalEntity = portal.entity
     local aboveSurface, directionValue = portal.tunnel.aboveSurface, portalEntity.direction
     local orientation = Utils.DirectionToOrientation(directionValue)
-    local entrySignalBlockingLocomotiveEntity =
+    local entranceSignalBlockingTrainEntity =
         aboveSurface.create_entity {
         name = "railway_tunnel-tunnel_portal_blocking_locomotive",
         position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entrySignalBlockingLocomotiveDistance})),
@@ -433,7 +433,7 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
         direction = Utils.LoopDirectionValue(directionValue + 4)
     }
     local pos = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entrySignalBlockingLocomotiveDistance + 1.5}))
-    entrySignalBlockingLocomotiveEntity.train.schedule = {
+    entranceSignalBlockingTrainEntity.train.schedule = {
         current = 1,
         records = {
             {
@@ -441,9 +441,9 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
             }
         }
     }
-    entrySignalBlockingLocomotiveEntity.train.manual_mode = false
-    entrySignalBlockingLocomotiveEntity.destructible = false -- This will stop unexpected trains entering the tunnel. Suitable in the short term.
-    return entrySignalBlockingLocomotiveEntity
+    entranceSignalBlockingTrainEntity.train.manual_mode = false
+    entranceSignalBlockingTrainEntity.destructible = false -- This will stop unexpected trains entering the tunnel. Suitable in the short term.
+    return entranceSignalBlockingTrainEntity
 end
 
 TunnelPortals.CloseEntranceSignalForTrainManagerEntry = function(portal, trainManagerEntry)
@@ -462,8 +462,8 @@ TunnelPortals.CloseEntranceSignalForTrainManagerEntry = function(portal, trainMa
         return
     end
 
-    local entrySignalBlockingLocomotiveEntity = TunnelPortals.AddEntranceSignalBlockingLocomotive(portal)
-    portal.entranceSignalBlockingTrainEntity = entrySignalBlockingLocomotiveEntity
+    local entranceSignalBlockingTrainEntity = TunnelPortals.AddEntranceSignalBlockingLocomotive(portal)
+    portal.entranceSignalBlockingTrainEntity = entranceSignalBlockingTrainEntity
 end
 
 TunnelPortals.OpenEntranceSignalForTrainManagerEntry = function(portal, trainManagerEntry)

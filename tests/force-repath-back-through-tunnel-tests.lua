@@ -21,16 +21,15 @@ local ExcludeDuplicateOutcomeTests = false -- If TRUE skips some believed duplic
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
 local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing. When enabled takes precedence over DoMinimalTests.
--- "<-------------->", ">--------------<", "<>--------------", "--------------<>", "-------<>-------"
-local SpecificTrainTypesFilter = {"<>"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is true.
-local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is true.
-local SpecificReverseOnCarriageNumberFilter = {3} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is true.
-local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"delayed"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is true.
-local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of true/false to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is true.
-local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is true.
+local SpecificTrainTypesFilter = {"<>"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificReverseOnCarriageNumberFilter = {3} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
+local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"delayed"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of TRUE/FALSE to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is TRUE.
 
-local DebugOutputTestScenarioDetails = false -- If true writes out the test scenario details to a csv in script-output for inspection in Excel.
+local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -53,7 +52,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
 ]]
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
-    Test.GenerateTestScenarios() -- Call here so its always populated.
+    Test.GenerateTestScenarios(testName) -- Call here so its always populated.
     TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
 end
 
@@ -585,7 +584,7 @@ Test.TunnelUsageChanged = function(event)
 end
 
 Test.ResetTunnelUsageDetails = function(testData)
-    -- Called once a tunnel usage is confirmed ended (Terminated) ad the state check has completed its use of the data.
+    -- Called once a tunnel usage is confirmed ended (Terminated) and the state check has completed its use of the data.
     testData.managedTrainId = 0
     testData.oldManagedTrainId = nil
     testData.tunnelUsageEntry = nil
@@ -826,7 +825,7 @@ Test.CheckTrackAddedState = function(endStationTrain, expectedResult, testData, 
     end
 end
 
-Test.GenerateTestScenarios = function()
+Test.GenerateTestScenarios = function(testName)
     local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest
 
     -- Player riding in carriage has extra on/off variable so handle first.
@@ -1011,7 +1010,7 @@ Test.GenerateTestScenarios = function()
     end
 
     -- Write out all tests to csv as debug.
-    Test.WriteTestScenariosToFile()
+    Test.WriteTestScenariosToFile(testName)
 end
 
 Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, playerInCarriageNumber, startingSpeed)
@@ -1328,7 +1327,7 @@ Test.HandleBeforeCommittedUnknownOutcome = function(tunnelUsageEntry, testData)
     game.print("newly calculated expected results: " .. testScenario.afterTrackRemovedResult .. " - " .. testScenario.afterTrackReturnedResult, Colors.cyan)
 end
 
-Test.WriteTestScenariosToFile = function()
+Test.WriteTestScenariosToFile = function(testName)
     -- A debug function to write out the tests list to a csv for checking in excel.
     if not DebugOutputTestScenarioDetails or game == nil then
         -- game will be nil on loading a save.
@@ -1336,7 +1335,7 @@ Test.WriteTestScenariosToFile = function()
     end
 
     -- Ignores playerInCarriageNumber
-    local fileName = "TestScenarios.csv"
+    local fileName = testName .. "-TestScenarios.csv"
     game.write_file(fileName, "#,train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,duplicateOutcomeTest,afterTrackRemovedResult,afterTrackReturnedResult" .. "\r\n", false)
 
     for testIndex, test in pairs(Test.TestScenarios) do

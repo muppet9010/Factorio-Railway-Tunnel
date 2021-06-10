@@ -84,9 +84,10 @@ TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killFor
     if Utils.IsTableEmpty(railEntityList) then
         return
     end
-    local refEntity, railEntityCollisionBoxList = Utils.GetFirstTableValue(railEntityList), {}
+    local refEntity, railEntityCollisionBoxList = nil, {}
     for _, railEntity in pairs(railEntityList) do
         if railEntity.valid then
+            refEntity = railEntity
             table.insert(railEntityCollisionBoxList, railEntity.bounding_box) -- Only supports straight track by design.
         end
     end

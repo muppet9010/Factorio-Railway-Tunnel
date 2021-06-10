@@ -272,7 +272,7 @@ TunnelSegments.OnPreMinedEntity = function(event)
     if segment.tunnel == nil then
         TunnelSegments.EntityRemoved(segment)
     else
-        if Interfaces.Call("TrainManager.IsTunnelInUse", segment.tunnel) then
+        if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", segment.tunnel) then
             TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is using tunnel", minedEntity.surface, minedEntity.position)
             TunnelSegments.ReplaceSegmentEntity(segment)
         else
@@ -298,15 +298,8 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
     }
     global.tunnelSegments.segments[newSegment.id] = newSegment
     global.tunnelSegments.segmentPositions[newSegment.positionString].segment = newSegment
-    if newSegment.tunnel ~= nil then
-        for i, segment in pairs(newSegment.tunnel.segments) do
-            if segment.id == oldSegment.id then
-                segment.tunnel.segments[i] = newSegment
-                break
-            end
-        end
-    end
     global.tunnelSegments.segments[oldSegment.id] = nil
+    Interfaces.Call("Tunnel.On_SegmentReplaced", newSegment.tunnel, oldSegment, newSegment)
 end
 
 TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
@@ -325,11 +318,15 @@ end
 TunnelSegments.On_TunnelRemoved = function(segment)
     segment.tunnel = nil
     for _, railEntity in pairs(segment.railEntities) do
-        railEntity.destroy()
+        if railEntity.valid then
+            railEntity.destroy()
+        end
     end
     segment.railEntities = nil
     for _, signalEntity in pairs(segment.signalEntities) do
-        signalEntity.destroy()
+        if signalEntity.valid then
+            signalEntity.destroy()
+        end
     end
     segment.signalEntities = nil
 end
