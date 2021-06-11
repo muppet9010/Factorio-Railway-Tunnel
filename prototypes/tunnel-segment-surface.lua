@@ -47,7 +47,7 @@ local tunnelSegmentSurfacePlacement = {
         }
     },
     minable = {
-        mining_time = 5,
+        mining_time = 1,
         result = "railway_tunnel-tunnel_segment_surface-placement",
         count = 1
     },
@@ -56,7 +56,6 @@ local tunnelSegmentSurfacePlacement = {
         count = 1
     }
 }
-data:extend({tunnelSegmentSurfacePlacement})
 
 local tunnelSegmentSurfacePlaced = Utils.DeepCopy(tunnelSegmentSurfacePlacement)
 tunnelSegmentSurfacePlaced.name = "railway_tunnel-tunnel_segment_surface-placed"
@@ -86,19 +85,48 @@ tunnelSegmentSurfacePlaced.picture = {
 }
 tunnelSegmentSurfacePlaced.render_layer = "ground-tile"
 tunnelSegmentSurfacePlaced.selection_box = tunnelSegmentSurfacePlaced.collision_box
-data:extend({tunnelSegmentSurfacePlaced})
+tunnelSegmentSurfacePlaced.corpse = "railway_tunnel-tunnel_segment_surface-remnant"
+
+local tunnelSegmentSurfacePlacementRemnant = {
+    type = "corpse",
+    name = "railway_tunnel-tunnel_segment_surface-remnant",
+    icon = tunnelSegmentSurfacePlacement.icon,
+    icon_size = tunnelSegmentSurfacePlacement.icon_size,
+    icon_mipmaps = tunnelSegmentSurfacePlacement.icon_mipmaps,
+    flags = {"placeable-neutral", "not-on-map"},
+    subgroup = "remnants",
+    order = "d[remnants]-b[rail]-z[portal]",
+    selection_box = tunnelSegmentSurfacePlacement.selection_box,
+    selectable_in_game = false,
+    time_before_removed = 60 * 60 * 15, -- 15 minutes
+    final_render_layer = "remnants",
+    remove_on_tile_placement = false,
+    animation = {
+        filename = "__railway_tunnel__/graphics/entity/tunnel_segment_surface/tunnel_segment_surface-remnant.png",
+        line_length = 1,
+        width = 192,
+        height = 192,
+        frame_count = 1,
+        direction_count = 2
+    }
+}
+
+local tunnelSegmentSurfacePlacementItem = {
+    type = "item",
+    name = "railway_tunnel-tunnel_segment_surface-placement",
+    icon = "__railway_tunnel__/graphics/icon/tunnel_segment_surface/railway_tunnel-tunnel_segment_surface-placement.png",
+    icon_size = 32,
+    subgroup = "train-transport",
+    order = "a[train-system]-a[rail]b",
+    stack_size = 50,
+    place_result = "railway_tunnel-tunnel_segment_surface-placement"
+}
 
 data:extend(
     {
-        {
-            type = "item",
-            name = "railway_tunnel-tunnel_segment_surface-placement",
-            icon = "__railway_tunnel__/graphics/icon/tunnel_segment_surface/railway_tunnel-tunnel_segment_surface-placement.png",
-            icon_size = 32,
-            subgroup = "train-transport",
-            order = "a[train-system]-a[rail]b",
-            stack_size = 50,
-            place_result = "railway_tunnel-tunnel_segment_surface-placement"
-        }
+        tunnelSegmentSurfacePlacement,
+        tunnelSegmentSurfacePlaced,
+        tunnelSegmentSurfacePlacementRemnant,
+        tunnelSegmentSurfacePlacementItem
     }
 )
