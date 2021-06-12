@@ -382,7 +382,8 @@ TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
     TrainManager.SetAbsoluteTrainSpeed(trainManagerEntry, "enteringTrain", math.abs(trainManagerEntry.undergroundTrain.speed))
     local nextCarriage = TrainManager.GetEnteringTrainLeadCarriageCache(trainManagerEntry, enteringTrain, trainManagerEntry.enteringTrainForwards)
 
-    if Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
+    -- Check the train is on the same axis as the tunnel and then measure its distance along the rail alignment axis.
+    if nextCarriage.position[trainManagerEntry.tunnel.tunnelAlignmentAxis] == trainManagerEntry.aboveEntrancePortal.entity.position[trainManagerEntry.tunnel.tunnelAlignmentAxis] and Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
         -- Train is now committed to use the tunnel so prepare for the entering loop.
         trainManagerEntry.enteringTrainState = EnteringTrainStates.entering
         trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.underground
@@ -417,7 +418,8 @@ TrainManager.TrainEnteringOngoing = function(trainManagerEntry)
     local nextCarriage = TrainManager.GetEnteringTrainLeadCarriageCache(trainManagerEntry, enteringTrain, trainManagerEntry.enteringTrainForwards)
 
     -- Only try to remove a carriage if there is a speed. A 0 speed entering train can occur when a leaving train reverses.
-    if enteringTrain.speed ~= 0 and Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
+    -- Check the train is on the same axis as the portal and then measure its distance along the rail alignment axis.
+    if enteringTrain.speed ~= 0 and nextCarriage.position[trainManagerEntry.tunnel.tunnelAlignmentAxis] == trainManagerEntry.aboveEntrancePortal.entity.position[trainManagerEntry.tunnel.tunnelAlignmentAxis] and Utils.GetDistanceSingleAxis(nextCarriage.position, trainManagerEntry.aboveEntrancePortalEndSignal.entity.position, trainManagerEntry.tunnel.railAlignmentAxis) < 14 then
         -- Handle any player in the train carriage.
         local driver = nextCarriage.get_driver()
         if driver ~= nil then

@@ -15,6 +15,7 @@ Tunnel.CreateGlobals = function()
             alignment = either "horizontal" or "vertical".
             alignmentOrientation = the orientation value of either 0.25 (horizontal) or 0 (vertical), no concept of direction though.
             railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel. Ref to the undergroundSurface global objects attribute.
+            tunnelAlignmentAxis = the other axis from railAlignmentAxis.
             aboveSurface = LuaSurface of the main world surface.
             undergroundTunnel = reference to the underground tunnel global object.
             portals = table of the 2 portal global objects that make up this tunnel.
@@ -83,6 +84,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
 
     tunnel.undergroundTunnel = Interfaces.Call("Underground.AssignUndergroundTunnel", tunnel)
     tunnel.railAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.railAlignmentAxis
+    tunnel.tunnelAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.tunnelInstanceAxis
 end
 
 Tunnel.RemoveTunnel = function(tunnel)
