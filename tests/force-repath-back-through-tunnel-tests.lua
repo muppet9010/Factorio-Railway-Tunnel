@@ -4,11 +4,13 @@
         - Leaving track removed: before committed, once committed (full train still), as each carriage enters the tunnel, when train fully in tunnel, after each carriage leaves the tunnel, when the full trian has left the tunel.
         - Reverse track path being present at start, added after a delay or never.
         - Forwards track being returned after a delay or never.
+        - Schedule target: station, rail. The rail target tests will be skipped when there is a competitor train as the outcome will be invalid. As the main train won't reserve the station, the other train will set off and block it reaching its rail target.
         - Player riding in no carriage, first carriage or last carriage.
     After the correct reaction state for the fowards track removal occurs, a piece of track (either forwards or behind) is added and this resulting state checked. This way we know the train recovers from the loss of initial path correctly as well.
     Theres a second train trying to path to the same station with a train limit of 1. This second train should never move if the reservation isn't lost. Some tests it is expected to move.
 
-    Note: don't run the whole tets suite or large numbers of tests with debuigger attached as it will take a while to start.
+    Note: don't run the whole test suite or large numbers of tests with debugger attached as it will take a while to start.
+    Full test suite is thousands of tests. Run outside of debugger at game speed 100+.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -16,17 +18,18 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 local Colors = require("utility/colors")
 
-local DoMinimalTests = true -- If TRUE only a single reverse concept test is done. Intended for regular use as part of all tests.
+local DoMinimalTests = false -- If TRUE only a few reverse concept tests are done. Intended for regular use as part of all tests.
 local ExcludeDuplicateOutcomeTests = false -- If TRUE skips some believed duplicate outcome tests where the result is "expected" to be the same as others (redundant). Full test suite should be run occasioanlly, but shouldn't be needed for smaller code changes. When TRUE Skips all player riding tests as these concepts are included in some other tests.
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
-local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing. When enabled takes precedence over DoMinimalTests.
-local SpecificTrainTypesFilter = {"<>"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
-local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
-local SpecificReverseOnCarriageNumberFilter = {3} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
-local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
-local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"delayed"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
-local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of TRUE/FALSE to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
+local SpecificTrainTypesFilter = {"<>", "------><", ">--------------<", "<-------------->"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+--local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
+--local SpecificReverseOnCarriageNumberFilter = {1} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
+--local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+--local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+--local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of TRUE/FALSE (boolean) to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+--local SpecificScheduleTargetTypesFilter = {"rail"} -- Pass in array of ScheduleTargetTypes to do just those specific schedule target type tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
 local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
@@ -45,6 +48,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
         forwardsPathingOptionAfterTunnelType = the forwards pathing option after track removal option of this test.
         backwardsPathingOptionAfterTunnelType = the backwards pathing option after track removal option of this test.
         stationReservationCompetitorTrainExist = if theres a competitor train for the single train stop reservation slot (TRUE/FALSE).
+        scheduleTargetType = the ScheduleTargetTypes for this test.
         afterTrackRemovedResult = the expected result of this test (ResultStates) after the track is removed.
         afterTrackReturnedResult = the expected result of this test (ResultStates) after the track is returned (if it is).
         startingSpeed = the starting speed of the train in the test. Some trains need to start moving to reach the tunnel in the desired state.
@@ -429,6 +433,10 @@ local StationReservationCompetitorTrainExists = {
     [true] = true,
     [false] = false
 }
+local ScheduleTargetTypes = {
+    station = "station",
+    rail = "rail"
+}
 local ResultStates = {
     notReachTunnel = "notReachTunnel",
     pullToFrontOfTunnel = "pullToFrontOfTunnel",
@@ -456,7 +464,7 @@ Test.GetTestDisplayName = function(testName)
         reservationCompetitorText = "    only train"
     end
 
-    local displayName = testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainText .. "     " .. testScenario.tunnelUsageType.name .. carriageText .. "    forwards path " .. testScenario.forwardsPathingOptionAfterTunnelType .. "    backwards path " .. testScenario.backwardsPathingOptionAfterTunnelType .. reservationCompetitorText .. playerInCarriageText .. "    Expected results: " .. testScenario.afterTrackRemovedResult .. " - " .. testScenario.afterTrackReturnedResult
+    local displayName = testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainText .. "     " .. testScenario.tunnelUsageType.name .. carriageText .. "    forwards path " .. testScenario.forwardsPathingOptionAfterTunnelType .. "    backwards path " .. testScenario.backwardsPathingOptionAfterTunnelType .. reservationCompetitorText .. playerInCarriageText .. "    path to " .. testScenario.scheduleTargetType .. "    Expected results: " .. testScenario.afterTrackRemovedResult .. " - " .. testScenario.afterTrackReturnedResult
 
     return displayName
 end
@@ -497,7 +505,7 @@ Test.Start = function(testName)
     local backwardsTrackToRemove = stationEnd.surface.find_entity("straight-rail", {x = enteringPortal.position.x + 38, y = enteringPortal.position.y - 12})
     local backwardsTrackToAddPosition = backwardsTrackToRemove.position
 
-    local train = Test.BuildTrain(stationStart, testScenario.carriages, stationEnd, testScenario.playerInCarriageNumber, testScenario.startingSpeed)
+    local train = Test.BuildTrain(stationStart, testScenario.carriages, stationEnd, testScenario.playerInCarriageNumber, testScenario.startingSpeed, testScenario.scheduleTargetType)
 
     -- Remove the backwards track for non immediate BackwardsPathingOptionAfterTunnelTypes tests. As we want the other tests to have the option to use it (expected or not).
     if testScenario.backwardsPathingOptionAfterTunnelType ~= BackwardsPathingOptionAfterTunnelTypes.immediate then
@@ -612,6 +620,13 @@ Test.EveryTick = function(event)
     end
 
     local endStationTrain = testData.stationEnd.get_stopped_train()
+    if endStationTrain == nil and testScenario.scheduleTargetType == ScheduleTargetTypes.rail then
+        -- Check for a train that has just stopped at this position (rail scheduleTargetType).
+        local trainAtStationArea = TestFunctions.GetTrainInArea({left_top = testData.stationEnd.position, right_bottom = Utils.ApplyOffsetToPosition(testData.stationEnd.position, {x = 3, y = 3})})
+        if trainAtStationArea ~= nil and trainAtStationArea.state == defines.train_state.wait_station then
+            endStationTrain = trainAtStationArea
+        end
+    end
 
     if not testData.trackAdded then
         -- Check state for when track should be added every tick. Intentionally wait a tick after adding before the next check.
@@ -826,7 +841,7 @@ Test.CheckTrackAddedState = function(endStationTrain, expectedResult, testData, 
 end
 
 Test.GenerateTestScenarios = function(testName)
-    local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest
+    local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest, scheduleTargetTypesToTest
 
     -- Player riding in carriage has extra on/off variable so handle first.
     local limitedPlayerInCarriagesTypes
@@ -838,7 +853,16 @@ Test.GenerateTestScenarios = function(testName)
         limitedPlayerInCarriagesTypes = {none = "none"}
     end
 
-    if DoSpecificTrainTests then
+    if DoMinimalTests then
+        -- Do minimal sub-set of tests.
+        trainTypesToTest = {Utils.GetTableValueWithInnerKeyValue(TrainTypes, "text", "<------>", false, false)}
+        tunnelUsageTypesToTest = TunnelUsageTypes
+        forwardsPathingOptionAfterTunnelTypesToTest = {ForwardsPathingOptionAfterTunnelTypes.none}
+        backwardsPathingOptionAfterTunnelTypesToTest = {BackwardsPathingOptionAfterTunnelTypes.delayed}
+        stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
+        playerInCarriagesTypesToTest = {limitedPlayerInCarriagesTypes}
+        scheduleTargetTypesToTest = ScheduleTargetTypes
+    elseif DoSpecificTrainTests then
         -- Adhock testing option.
         if Utils.IsTableEmpty(SpecificTrainTypesFilter) then
             trainTypesToTest = TrainTypes
@@ -885,7 +909,6 @@ Test.GenerateTestScenarios = function(testName)
                 backwardsPathingOptionAfterTunnelTypesToTest[backwardsPathingOptionAfterTunnelType] = BackwardsPathingOptionAfterTunnelTypes[backwardsPathingOptionAfterTunnelType]
             end
         end
-
         if Utils.IsTableEmpty(SpecificStationReservationCompetitorTrainExists) then
             stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
         else
@@ -894,24 +917,23 @@ Test.GenerateTestScenarios = function(testName)
                 stationReservationCompetitorTrainExistsToTest[stationReservationCompetitorTrainExist] = StationReservationCompetitorTrainExists[stationReservationCompetitorTrainExist]
             end
         end
-    else
-        if DoMinimalTests then
-            -- Do minimal sub-set of tests.
-            trainTypesToTest = {Utils.GetTableValueWithInnerKeyValue(TrainTypes, "text", "<------>", false, false)}
-            tunnelUsageTypesToTest = TunnelUsageTypes
-            forwardsPathingOptionAfterTunnelTypesToTest = {ForwardsPathingOptionAfterTunnelTypes.none}
-            backwardsPathingOptionAfterTunnelTypesToTest = {BackwardsPathingOptionAfterTunnelTypes.delayed}
-            stationReservationCompetitorTrainExistsToTest = {StationReservationCompetitorTrainExists[false]}
-            playerInCarriagesTypesToTest = {limitedPlayerInCarriagesTypes}
+        if Utils.IsTableEmpty(SpecificScheduleTargetTypesFilter) then
+            scheduleTargetTypesToTest = ScheduleTargetTypes
         else
-            -- Full testing suite.
-            trainTypesToTest = TrainTypes
-            tunnelUsageTypesToTest = TunnelUsageTypes
-            forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
-            backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
-            stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
-            playerInCarriagesTypesToTest = limitedPlayerInCarriagesTypes
+            scheduleTargetTypesToTest = {}
+            for _, scheduleTargetType in pairs(SpecificScheduleTargetTypesFilter) do
+                scheduleTargetTypesToTest[scheduleTargetType] = ScheduleTargetTypes[scheduleTargetType]
+            end
         end
+    else
+        -- Full testing suite.
+        trainTypesToTest = TrainTypes
+        tunnelUsageTypesToTest = TunnelUsageTypes
+        forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
+        backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
+        stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
+        playerInCarriagesTypesToTest = limitedPlayerInCarriagesTypes
+        scheduleTargetTypesToTest = ScheduleTargetTypes
     end
 
     -- Do each iteration of train type, tunnel usage, forward pathing and backwards pathing options. Each wagon entering/leaving the tunnel is a test.
@@ -932,74 +954,82 @@ Test.GenerateTestScenarios = function(testName)
             for _, forwardsPathingOptionAfterTunnelType in pairs(forwardsPathingOptionAfterTunnelTypesToTest) do
                 for _, backwardsPathingOptionAfterTunnelType in pairs(backwardsPathingOptionAfterTunnelTypesToTest) do
                     for _, stationReservationCompetitorTrainExist in pairs(stationReservationCompetitorTrainExistsToTest) do
-                        local maxCarriageCount
-                        if not tunnelUsageType.perCarriage then
-                            -- Simple 1 test for whole train.
-                            maxCarriageCount = 1
-                        else
-                            maxCarriageCount = #fullCarriageArray
-                        end
-
-                        -- Handle if SpecificReverseOnCarriageNumberFilter is set
-                        local carriageNumbersToTest = {}
-                        if not DoSpecificTrainTests then
-                            -- Follow general test settings only.
-                            if DoMinimalTests then
-                                -- Just do 1 carriage
-                                table.insert(carriageNumbersToTest, 3)
-                            else
-                                -- Do all carriage numbers in this train.
-                                for carriageCount = 1, maxCarriageCount do
-                                    table.insert(carriageNumbersToTest, carriageCount)
-                                end
+                        for _, scheduleTargetType in pairs(scheduleTargetTypesToTest) do
+                            if stationReservationCompetitorTrainExist == StationReservationCompetitorTrainExists[true] and scheduleTargetType == ScheduleTargetTypes.rail then
+                                -- Skip the tests with Rail schedule target type when the station reservation competitor train exists as the outcome will be invalid. As the main train won't reserve the station, the other train will set off and block it reaching its rail target.
+                                break
                             end
-                        else
-                            if not Utils.IsTableEmpty(SpecificReverseOnCarriageNumberFilter) then
-                                -- Do only specific carriage counts.
-                                for _, carriageCount in pairs(SpecificReverseOnCarriageNumberFilter) do
-                                    if carriageCount <= maxCarriageCount then
+
+                            local maxCarriageCount
+                            if not tunnelUsageType.perCarriage then
+                                -- Simple 1 test for whole train.
+                                maxCarriageCount = 1
+                            else
+                                maxCarriageCount = #fullCarriageArray
+                            end
+
+                            -- Handle if SpecificReverseOnCarriageNumberFilter is set
+                            local carriageNumbersToTest = {}
+                            if not DoSpecificTrainTests then
+                                -- Follow general test settings only.
+                                if DoMinimalTests then
+                                    -- Just do 1 carriage
+                                    table.insert(carriageNumbersToTest, 3)
+                                else
+                                    -- Do all carriage numbers in this train.
+                                    for carriageCount = 1, maxCarriageCount do
                                         table.insert(carriageNumbersToTest, carriageCount)
                                     end
                                 end
                             else
-                                -- Do specific is enabled, but no specific carriage counts, so do all for this train.
-                                for carriageCount = 1, maxCarriageCount do
-                                    table.insert(carriageNumbersToTest, carriageCount)
+                                if not Utils.IsTableEmpty(SpecificReverseOnCarriageNumberFilter) then
+                                    -- Do only specific carriage counts.
+                                    for _, carriageCount in pairs(SpecificReverseOnCarriageNumberFilter) do
+                                        if carriageCount <= maxCarriageCount then
+                                            table.insert(carriageNumbersToTest, carriageCount)
+                                        end
+                                    end
+                                else
+                                    -- Do specific is enabled, but no specific carriage counts, so do all for this train.
+                                    for carriageCount = 1, maxCarriageCount do
+                                        table.insert(carriageNumbersToTest, carriageCount)
+                                    end
                                 end
                             end
-                        end
 
-                        -- 1 test per carriage in train.
-                        for _, carriageCount in pairs(carriageNumbersToTest) do
-                            -- 1 test per playerInCarriage state for each carriage.
-                            for _, playerInCarriage in pairs(playerInCarriagesTypesToTest) do
-                                local playerCarriageNumber
-                                if playerInCarriage == PlayerInCarriageTypes.none then
-                                    playerCarriageNumber = nil
-                                elseif playerInCarriage == PlayerInCarriageTypes.first then
-                                    playerCarriageNumber = 1
-                                elseif playerInCarriage == PlayerInCarriageTypes.last then
-                                    playerCarriageNumber = #fullCarriageArray
-                                end
+                            -- 1 test per carriage in train.
+                            for _, carriageCount in pairs(carriageNumbersToTest) do
+                                -- 1 test per playerInCarriage state for each carriage.
+                                for _, playerInCarriage in pairs(playerInCarriagesTypesToTest) do
+                                    local playerCarriageNumber
+                                    if playerInCarriage == PlayerInCarriageTypes.none then
+                                        playerCarriageNumber = nil
+                                    elseif playerInCarriage == PlayerInCarriageTypes.first then
+                                        playerCarriageNumber = 1
+                                    elseif playerInCarriage == PlayerInCarriageTypes.last then
+                                        playerCarriageNumber = #fullCarriageArray
+                                    end
 
-                                local scenario = {
-                                    trainText = trainType.text,
-                                    carriages = fullCarriageArray,
-                                    tunnelUsageType = tunnelUsageType,
-                                    reverseOnCarriageNumber = carriageCount, -- On non perCarriage tests this value will be ignored.
-                                    backwardsLocoCarriageNumber = backwardsLocoCarriageNumber,
-                                    playerInCarriageNumber = playerCarriageNumber,
-                                    forwardsPathingOptionAfterTunnelType = forwardsPathingOptionAfterTunnelType,
-                                    backwardsPathingOptionAfterTunnelType = backwardsPathingOptionAfterTunnelType,
-                                    stationReservationCompetitorTrainExist = stationReservationCompetitorTrainExist,
-                                    startingSpeed = trainType.startingSpeed or 0
-                                }
-                                scenario.afterTrackRemovedResult, scenario.afterTrackReturnedResult, scenario.duplicateOutcomeTest = Test.CalculateExpectedResults(scenario, positiveTestsByTrainTextLookup)
+                                    local scenario = {
+                                        trainText = trainType.text,
+                                        carriages = fullCarriageArray,
+                                        tunnelUsageType = tunnelUsageType,
+                                        reverseOnCarriageNumber = carriageCount, -- On non perCarriage tests this value will be ignored.
+                                        backwardsLocoCarriageNumber = backwardsLocoCarriageNumber,
+                                        playerInCarriageNumber = playerCarriageNumber,
+                                        forwardsPathingOptionAfterTunnelType = forwardsPathingOptionAfterTunnelType,
+                                        backwardsPathingOptionAfterTunnelType = backwardsPathingOptionAfterTunnelType,
+                                        stationReservationCompetitorTrainExist = stationReservationCompetitorTrainExist,
+                                        scheduleTargetType = scheduleTargetType,
+                                        startingSpeed = trainType.startingSpeed or 0
+                                    }
+                                    scenario.afterTrackRemovedResult, scenario.afterTrackReturnedResult, scenario.duplicateOutcomeTest = Test.CalculateExpectedResults(scenario, positiveTestsByTrainTextLookup)
 
-                                -- Don;t record test if we are excluding duplicate outcome and this test is a duplicate outcome.
-                                if not ExcludeDuplicateOutcomeTests or (ExcludeDuplicateOutcomeTests and scenario.duplicateOutcomeTest) then
-                                    Test.RunLoopsMax = Test.RunLoopsMax + 1
-                                    table.insert(Test.TestScenarios, scenario)
+                                    -- Don;t record test if we are excluding duplicate outcome and this test is a duplicate outcome.
+                                    if not ExcludeDuplicateOutcomeTests or (ExcludeDuplicateOutcomeTests and scenario.duplicateOutcomeTest) then
+                                        Test.RunLoopsMax = Test.RunLoopsMax + 1
+                                        table.insert(Test.TestScenarios, scenario)
+                                    end
                                 end
                             end
                         end
@@ -1013,7 +1043,7 @@ Test.GenerateTestScenarios = function(testName)
     Test.WriteTestScenariosToFile(testName)
 end
 
-Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, playerInCarriageNumber, startingSpeed)
+Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, playerInCarriageNumber, startingSpeed, scheduleTargetType)
     -- Build the train from the station heading west. Give each loco fuel, set target schedule and to automatic.
     local placedCarriage
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
@@ -1038,12 +1068,31 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, play
     end
 
     local train = placedCarriage.train
-    train.schedule = {
-        current = 1,
-        records = {
-            {station = scheduleStation.backer_name}
+    if scheduleTargetType == ScheduleTargetTypes.station then
+        train.schedule = {
+            current = 1,
+            records = {
+                {station = scheduleStation.backer_name}
+            }
         }
-    }
+    else
+        train.schedule = {
+            current = 1,
+            records = {
+                {
+                    rail = scheduleStation.connected_rail,
+                    wait_conditions = {
+                        {
+                            type = "time",
+                            ticks = 60,
+                            compare_type = "or"
+                        }
+                    },
+                    temporary = true
+                }
+            }
+        }
+    end
     train.manual_mode = false
     TestFunctions.MakeCarriagesUnique(train.carriages)
     train.speed = startingSpeed
@@ -1336,10 +1385,10 @@ Test.WriteTestScenariosToFile = function(testName)
 
     -- Ignores playerInCarriageNumber
     local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#,train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,duplicateOutcomeTest,afterTrackRemovedResult,afterTrackReturnedResult" .. "\r\n", false)
+    game.write_file(fileName, "#,train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,scheduleTargetType,duplicateOutcomeTest,afterTrackRemovedResult,afterTrackReturnedResult" .. "\r\n", false)
 
     for testIndex, test in pairs(Test.TestScenarios) do
-        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.trainText) .. "," .. tostring(test.tunnelUsageType.name) .. "," .. tostring(test.reverseOnCarriageNumber) .. "," .. tostring(test.backwardsLocoCarriageNumber) .. "," .. tostring(test.forwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.backwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.stationReservationCompetitorTrainExist) .. "," .. tostring(test.duplicateOutcomeTest) .. "," .. tostring(test.afterTrackRemovedResult) .. "," .. tostring(test.afterTrackReturnedResult) .. "\r\n", true)
+        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.trainText) .. "," .. tostring(test.tunnelUsageType.name) .. "," .. tostring(test.reverseOnCarriageNumber) .. "," .. tostring(test.backwardsLocoCarriageNumber) .. "," .. tostring(test.forwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.backwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.stationReservationCompetitorTrainExist) .. "," .. tostring(test.scheduleTargetType) .. "," .. tostring(test.duplicateOutcomeTest) .. "," .. tostring(test.afterTrackRemovedResult) .. "," .. tostring(test.afterTrackReturnedResult) .. "\r\n", true)
     end
 end
 

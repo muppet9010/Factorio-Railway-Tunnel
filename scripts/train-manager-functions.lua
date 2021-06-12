@@ -106,20 +106,20 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     return placedCarriage
 end
 
-TrainManagerFuncs.SetTrainToAuto = function(train, targetStop)
-    if targetStop ~= nil and targetStop.valid then
+TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
+    if targetTrainStop ~= nil and targetTrainStop.valid then
         -- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto.
-        local oldLimit = targetStop.trains_limit
-        targetStop.trains_limit = targetStop.trains_count + 1
+        local oldLimit = targetTrainStop.trains_limit
+        targetTrainStop.trains_limit = targetTrainStop.trains_count + 1
         train.manual_mode = false
-        targetStop.trains_limit = oldLimit
+        targetTrainStop.trains_limit = oldLimit
     else
-        -- There was no target stop, so no special handling needed.
+        -- There was no target train stop, so no special handling needed.
         train.manual_mode = false
     end
 end
 
-TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, scheduleTarget, skipScheduling)
+TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
     local locomotive =
         exitPortalEntity.surface.create_entity {
@@ -135,7 +135,7 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, s
     locomotive.burner.remaining_burning_fuel = 4000000
     local dummyTrain = locomotive.train
     if not skipScheduling then
-        TrainManagerFuncs.TrainSetSchedule(dummyTrain, trainSchedule, false, scheduleTarget)
+        TrainManagerFuncs.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop)
         if dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
             error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortalEntity position: " .. Logging.PositionToString(exitPortalEntity.position))
@@ -152,10 +152,10 @@ TrainManagerFuncs.DestroyTrainsCarriages = function(train)
     end
 end
 
-TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetStop, skipStateCheck)
+TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetTrainStop, skipStateCheck)
     train.schedule, skipStateCheck = schedule, skipStateCheck or false
     if not isManual then
-        TrainManagerFuncs.SetTrainToAuto(train, targetStop)
+        TrainManagerFuncs.SetTrainToAuto(train, targetTrainStop)
         if not skipStateCheck and not TrainManagerFuncs.IsTrainHealthlyState(train) then
             -- Any issue on the train from the previous tick should be detected by the state check. So this should only trigger after misplaced wagons.
             error("train doesn't have positive state after setting schedule.\ntrain id: " .. train.id .. "\nstate: " .. train.state)
