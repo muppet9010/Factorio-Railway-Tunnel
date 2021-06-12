@@ -1,6 +1,8 @@
 Bugs
 ----
     - Sending a train to a temporary stop within a tunnel causes the train to path towards the task, get pushed out of the far end of the tunnel (past the temporary stop) and have the temporary stop set as its path again. Causing the train to loop around and do the tunnel again, repeating endlessly.
+    - Add player riding in train with body and editor mode to the tunnel being destroyed test.
+    - Add path to rail to reversal test. At present code will error as train manager expects schedule target to be a station.
 
 
 Functionality not currently supported
