@@ -18,18 +18,18 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions")
 local Colors = require("utility/colors")
 
-local DoMinimalTests = false -- If TRUE only a few reverse concept tests are done. Intended for regular use as part of all tests.
+local DoMinimalTests = true -- If TRUE only a few reverse concept tests are done. Intended for regular use as part of all tests.
 local ExcludeDuplicateOutcomeTests = false -- If TRUE skips some believed duplicate outcome tests where the result is "expected" to be the same as others (redundant). Full test suite should be run occasioanlly, but shouldn't be needed for smaller code changes. When TRUE Skips all player riding tests as these concepts are included in some other tests.
 local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
 
-local DoSpecificTrainTests = true -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
-local SpecificTrainTypesFilter = {"<>", "------><", ">--------------<", "<-------------->"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
---local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
---local SpecificReverseOnCarriageNumberFilter = {1} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
---local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
---local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
---local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of TRUE/FALSE (boolean) to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
---local SpecificScheduleTargetTypesFilter = {"rail"} -- Pass in array of ScheduleTargetTypes to do just those specific schedule target type tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
+local SpecificTrainTypesFilter = {"<>"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificTunnelUsageTypesFilter = {"carriageEntering"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificReverseOnCarriageNumberFilter = {1} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
+local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificStationReservationCompetitorTrainExists = {false} -- Pass in array of TRUE/FALSE (boolean) to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificScheduleTargetTypesFilter = {"rail"} -- Pass in array of ScheduleTargetTypes to do just those specific schedule target type tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
 local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.

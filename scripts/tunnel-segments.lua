@@ -11,7 +11,7 @@ TunnelSegments.CreateGlobals = function()
         [id] = {
             id = unit_number of the placed segment entity.
             entity = ref to the placed entity
-            railEntities = table of the rail entities within the tunnel segment. Key'd by the rail unit_number.
+            tunnelRailEntities = table of the rail entities within the tunnel segment. Key'd by the rail unit_number.
             signalEntities = table of the hidden signal entities within the tunnel segment. Key'd by the signal unit_number.
             tunnel = the tunnel this portal is part of.
             crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
@@ -142,7 +142,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         segment = segment
     }
     if fastReplacedSegment ~= nil then
-        segment.railEntities = fastReplacedSegment.railEntities
+        segment.tunnelRailEntities = fastReplacedSegment.tunnelRailEntities
         segment.signalEntities = fastReplacedSegment.signalEntities
         segment.tunnel = fastReplacedSegment.tunnel
         if segment.tunnel ~= nil then
@@ -188,10 +188,10 @@ TunnelSegments.On_TunnelCompleted = function(segmentEntities, force, aboveSurfac
         table.insert(segments, segment)
         local centerPos, directionValue = segmentEntity.position, segmentEntity.direction
 
-        segment.railEntities = {}
+        segment.tunnelRailEntities = {}
         local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = centerPos, force = force, direction = directionValue}
         placedRail.destructible = false
-        segment.railEntities[placedRail.unit_number] = placedRail
+        segment.tunnelRailEntities[placedRail.unit_number] = placedRail
 
         segment.signalEntities = {}
         for _, orientationModifier in pairs({0, 4}) do
@@ -282,7 +282,7 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
     local newSegment = {
         id = newSegmentEntity.unit_number,
         entity = newSegmentEntity,
-        railEntities = oldSegment.railEntities,
+        tunnelRailEntities = oldSegment.tunnelRailEntities,
         signalEntities = oldSegment.signalEntities,
         tunnel = oldSegment.tunnel,
         crossingRailEntities = oldSegment.crossingRailEntities,
@@ -309,12 +309,12 @@ end
 
 TunnelSegments.On_TunnelRemoved = function(segment)
     segment.tunnel = nil
-    for _, railEntity in pairs(segment.railEntities) do
+    for _, railEntity in pairs(segment.tunnelRailEntities) do
         if railEntity.valid then
             railEntity.destroy()
         end
     end
-    segment.railEntities = nil
+    segment.tunnelRailEntities = nil
     for _, signalEntity in pairs(segment.signalEntities) do
         if signalEntity.valid then
             signalEntity.destroy()

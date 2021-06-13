@@ -21,6 +21,7 @@ Tunnel.CreateGlobals = function()
             portals = table of the 2 portal global objects that make up this tunnel.
             segments = table of the segment global objects on the surface.
             trainManagerEntry = a reference to the global.trainManager.managedTrains object that is currently using this tunnel.
+            tunnelRailEntities = table of all the rail entities of the tunnel (invisible rail) on the surface. Key'd by unit_number.
         }
     ]]
     global.tunnel.endSignals = global.tunnel.endSignals or {} --  Reference to the "in" endSignal object in global.tunnelPortals.portals[id].endSignals. Is used as a way to check for trains stopping at this signal.
@@ -71,15 +72,22 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         alignmentOrientation = alignmentOrientation,
         aboveSurface = refTunnelPortalEntity.surface,
         portals = tunnelPortals,
-        segments = tunnelSegments
+        segments = tunnelSegments,
+        tunnelRailEntities = {}
     }
     global.tunnel.tunnels[tunnel.id] = tunnel
     global.tunnel.nextTunnelId = global.tunnel.nextTunnelId + 1
     for _, portal in pairs(tunnelPortals) do
         portal.tunnel = tunnel
+        for tunnelRailEntityUnitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
+            tunnel.tunnelRailEntities[tunnelRailEntityUnitNumber] = tunnelRailEntity
+        end
     end
     for _, segment in pairs(tunnelSegments) do
         segment.tunnel = tunnel
+        for tunnelRailEntityUnitNumber, tunnelRailEntity in pairs(segment.tunnelRailEntities) do
+            tunnel.tunnelRailEntities[tunnelRailEntityUnitNumber] = tunnelRailEntity
+        end
     end
 
     tunnel.undergroundTunnel = Interfaces.Call("Underground.AssignUndergroundTunnel", tunnel)

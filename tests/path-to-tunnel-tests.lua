@@ -1,17 +1,18 @@
 --[[
-    A series of tests that schedules a train to a temporary stop thats part to the tunnel and then possibly on to another stop. Check that the train behaves as desired. Does combinations for:
-        targetTunnelRail: tunnelEntrance, tunnelMiddle, tunnelExit
+    A series of tests that schedules a train to a temporary stop thats part to the tunnel and then possibly on to another stop. Check that the train behaves as desired for both pulling to end of tunnel (or not) and not looping through the tunnel infinitely. Does combinations for:
+        targetTunnelRail: tunnelEntranceAboveGround, tunnelEntranceUnderground, tunnelSegment, tunnelExitUnderground, tunnelExitAboveGround
         nextStop: none, station, rail
 ]]
+--TODO: at present tunnelEntranceUnderground and tunnelExitUnderground give unexpected results as they aren't officially entering the tunnel as they haven't pathed to the END signal. Will be handled by future coasting/manaul driven train logic and then the tests can be checked here. Not included in minimal tests or full testing done presently via DoSpecificTests.
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
-local DoMinimalTests = false -- The minimal test to prove the concept. Just goes to a tunnel segment, then to end station, as this triggered the origional issue.
+local DoMinimalTests = true -- The minimal test to prove the concept. Just goes to a tunnel segment, then to end station, as this triggered the origional issue.
 
 local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTargetTunnelRailFilter = {"tunnelMiddle"} -- Pass in array of TargetTunnelRail keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
-local SpecificNextStopFilter = {"station"} -- Pass in array of NextStopTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
+local SpecificTargetTunnelRailFilter = {"tunnelEntranceAboveGround", "tunnelSegment", "tunnelExitAboveGround"} -- Pass in array of TargetTunnelRail keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
+--local SpecificNextStopFilter = {"station"} -- Pass in array of NextStopTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -22,7 +23,8 @@ Test.TestScenarios = {} -- Populated when script loaded.
     {
         targetTunnelRail = the TargetTunnelRail of this test.
         nextStop = the NextStopTypes of this test.
-        expectedTrainState = the FinalTrainStates of this test. Either nextStopReached or targetRailReached based on if there is a nextStop set for this test.
+        expectedTunnelStopHandling = the ExpectedTunnelStopHandling calculated for this test.
+        expectedFinalTrainState = the FinalTrainStates calculated for this test. Either nextStopReached or targetRailReached based on if there is a nextStop set for this test.
     }
 ]]
 Test.OnLoad = function(testName)
@@ -33,14 +35,20 @@ end
 local blueprintString = "0eNqtmt9O20gcRt/F10nl+W9zv0+xqpCbuNRqYke2wy5Cefe1SRYKNeV8ETeEQPzNyGdOZubnecy+7Y71oW/aMbt5zJpN1w7Zzd+P2dDctdVu/tv4cKizm6wZ6322ytpqP7/rq2b3T/VwOx7btt6tzy+3h64fq93tcOy/V5t6fdhNP/f1FH1aZU27rf/NbsxphcJ/ucSevq6yKaUZm/rcuac3D7ftcf+t7qfM5ys3x/6+3q6fAlbZoRuma7p2bmjKWYdilT1MrzafwrdNX2/O/41zn95k2ufMYZzi7n6M76a6S6p5nWoXUh1PNTzV41Rf8tTAUxNPjTw18NTEUwVaBU8VaJU41Qm0TM5jBVzG8FiBl+F6OQGY4X45gZjhglkFGTfMKsi4YlZBxh2zCjIumVWQccuMgMxyy4yAzHLLjIDMcsuMgMxyy4yAzHLLFGJcMgUYd0zhxRVTcHHDFFpYMCHUYb2UNReWS0DlsFrCqHJYLEEAh7VSZHVYK+WbxWGtlK9Bh7VSvrMd1kqZYBzWSpkNPfZKmbo9FktZZ3hslrIo8lgtZQXnsVvKctNjt5S1scduKQt5j91Sdh0eu6VskTx2S9nOBeyWsvUM2C1lmxywW8qWPmC3pPIDdksplQTsllLWCditoNDCbgWFFnYrKLRKVoOLfrkE55ZKRXyzFS9DwKTXsWkpFqsV03KqWUq1sAj5/x0wHoQ6Fpry58ylFC92Lb7umV/KDFrP3kSGpcgo43YgNWnF4RwMoEIa6zkoipbqkHQf65Ne9Jkz2/UwdoelzfRF8zeWTzSGsTr/nv3VbrOlJswVDwS279e3fu/CfdU31fuCJPtBB4b6bn4A8XEPzJUdcJ/UgWvb95/Uvruy/fBJ7Ycr24+fMwLd4v23H7fPSzYXz8jTDF6xKRMO5RXRMtDQgk/RpcOhvBpaGhzKa6EFBlXwSmiBQRW8DlpwULwMWnBQfMYuOChuVOKguFGJg+JGJQyq5EYlDKrkRiUMquRGRQyq5EZFDKrkRkUOihsVOSh5DUxCuVGBg+JGBQ6KGxUwKJPn6lkOlGrE3TkKteLmHIVip/iYMjl2Kgr3FDsVBfxR3FyhUOxUFEBhp5IACjvF5xPDT5vwmc/wsyZ8jjb8pAlfTRh+zoSveww/ZVIIoLBRhQAKG1UIoLBRhQAKG1UKoLBRfM9j+MkSvjszv5wr2XWbbt+NzX29UHvI8y8h2pfcrm+mqMu2N/8yOzyf0Bzmz/fd5mc9rr8f69185WmxXSwd378afuyE77QNP3TyNOHTVP50PBeGSIQ00x9pWpkmf36eC2OTPz/PhUHCj6XkfJTwcynGvDNKvp5v+pTwcuB6ld3X/XD+QGF8Km1yZR5NiqfTfx1cAJI="
 
 local TargetTunnelRail = {
-    tunnelEntrance = "tunnelEntrance",
-    tunnelMiddle = "tunnelMiddle",
-    tunnelExit = "tunnelExit"
+    tunnelEntranceAboveGround = "tunnelEntranceAboveGround",
+    tunnelEntranceUnderground = "tunnelEntranceUnderground",
+    tunnelSegment = "tunnelSegment",
+    tunnelExitUnderground = "tunnelExitUnderground",
+    tunnelExitAboveGround = "tunnelExitAboveGround"
 }
 local NextStopTypes = {
     none = "none",
     station = "station",
     rail = "rail"
+}
+local ExpectedTunnelStopHandling = {
+    targetTunnelRail = "targetTunnelRail",
+    endOfTunnel = "endOfTunnel"
 }
 local FinalTrainStates = {
     nextStopReached = "nextStopReached",
@@ -50,7 +58,7 @@ local FinalTrainStates = {
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
-    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.targetTunnelRail .. "     Next stop: " .. testScenario.nextStop .. "     Expected result: " .. testScenario.expectedTrainState
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.targetTunnelRail .. "     Next stop: " .. testScenario.nextStop .. "     Expected result: " .. testScenario.expectedTunnelStopHandling .. " - " .. testScenario.expectedFinalTrainState
 end
 
 Test.Start = function(testName)
@@ -92,12 +100,36 @@ Test.Start = function(testName)
         records = {}
     }
     local targetTunnelRailEntities, targetTunnelRailEntity
-    if testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntrance then
-        targetTunnelRailEntities = entrancePortal.surface.find_entities_filtered {name = "railway_tunnel-internal_rail-on_map", position = entrancePortal.position}
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelMiddle then
-        targetTunnelRailEntities = tunnelSegment.surface.find_entities_filtered {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = tunnelSegment.position}
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelExit then
-        targetTunnelRailEntities = exitPortal.surface.find_entities_filtered {name = "railway_tunnel-internal_rail-on_map", position = exitPortal.position}
+    if testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceAboveGround then
+        targetTunnelRailEntities =
+            entrancePortal.surface.find_entities_filtered {
+            name = "railway_tunnel-internal_rail-on_map",
+            position = Utils.ApplyOffsetToPosition(entrancePortal.position, {x = 8, y = 0})
+        }
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceUnderground then
+        targetTunnelRailEntities =
+            entrancePortal.surface.find_entities_filtered {
+            name = "railway_tunnel-invisible_rail-on_map_tunnel",
+            position = Utils.ApplyOffsetToPosition(entrancePortal.position, {x = -16, y = 0})
+        }
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelSegment then
+        targetTunnelRailEntities =
+            tunnelSegment.surface.find_entities_filtered {
+            name = "railway_tunnel-invisible_rail-on_map_tunnel",
+            position = tunnelSegment.position
+        }
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitUnderground then
+        targetTunnelRailEntities =
+            entrancePortal.surface.find_entities_filtered {
+            name = "railway_tunnel-invisible_rail-on_map_tunnel",
+            position = Utils.ApplyOffsetToPosition(exitPortal.position, {x = 16, y = 0})
+        }
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitAboveGround then
+        targetTunnelRailEntities =
+            exitPortal.surface.find_entities_filtered {
+            name = "railway_tunnel-internal_rail-on_map",
+            position = Utils.ApplyOffsetToPosition(exitPortal.position, {x = -8, y = 0})
+        }
     else
         error("Unsupported testScenario.targetTunnelRail: " .. testScenario.targetTunnelRail)
     end
@@ -176,36 +208,33 @@ Test.EveryTick = function(event)
         -- Train hasn't reached the tunnelRail yet so keep on checking.
         if train.state == defines.train_state.wait_station then
             -- Train has stopped at a schedule record.
-            local atrainAtTunnelRail =
-                TestFunctions.GetTrainInArea(
-                {
-                    left_top = testData.targetTunnelRailEntity.position,
-                    right_bottom = Utils.ApplyOffsetToPosition(testData.targetTunnelRailEntity.position, {x = 5, y = 0})
-                }
-            )
-            if atrainAtTunnelRail ~= nil then
-                -- Train has stopped just before the target tunnel rail, rather than some random place.
-                game.print("train stopped at tunnel rail")
-                testData.tunnelRailReached = true
+            if testScenario.expectedTunnelStopHandling == ExpectedTunnelStopHandling.endOfTunnel then
+                -- Check its at the end of the exit portal. The train is re-scheduled to this from its random unreachable rail.
+                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.exitPortal.position, {x = -22, y = 0}))
+                if atrainAtExitTunnelEntryRail ~= nil then
+                    game.print("train pulled to front of tunnel as expected for undergroud rail")
+                    testData.tunnelRailReached = true
+                end
+            elseif testScenario.expectedTunnelStopHandling == ExpectedTunnelStopHandling.targetTunnelRail then
+                -- Check its at the expected rail.
+                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.targetTunnelRailEntity.position, {x = 2, y = 0}))
+                if atrainAtExitTunnelEntryRail ~= nil then
+                    game.print("train reached expected above ground tunnel rail")
+                    testData.tunnelRailReached = true
+                end
             end
         end
         return -- End the checking this tick regardless of the result.
     end
 
-    if testScenario.expectedTrainState == FinalTrainStates.targetRailReached then
+    if testScenario.expectedFinalTrainState == FinalTrainStates.targetRailReached then
         TestFunctions.TestCompleted(testName)
         return
-    elseif testScenario.expectedTrainState == FinalTrainStates.nextStopReached then
+    elseif testScenario.expectedFinalTrainState == FinalTrainStates.nextStopReached then
         -- Need to check for when the train reaches the next stop.
         if train.state == defines.train_state.wait_station then
             -- Train has stopped at a schedule record.
-            local atrainAtNextStop =
-                TestFunctions.GetTrainInArea(
-                {
-                    left_top = testData.stationEnd.position,
-                    right_bottom = Utils.ApplyOffsetToPosition(testData.stationEnd.position, {x = 5, y = 3})
-                }
-            )
+            local atrainAtNextStop = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.stationEnd.position, {x = 2, y = 2}))
             if atrainAtNextStop ~= nil then
                 -- Train has stopped just before the target station/rail, rather than some random place.
                 TestFunctions.TestCompleted(testName)
@@ -213,14 +242,14 @@ Test.EveryTick = function(event)
             end
         end
     else
-        error("Unsupported testScenario.expectedTrainState: " .. testScenario.expectedTrainState)
+        error("Unsupported testScenario.expectedFinalTrainState: " .. testScenario.expectedFinalTrainState)
     end
 end
 
 Test.GenerateTestScenarios = function(testName)
     local targetTunnelRailsToTest, nextStopsToTest
     if DoMinimalTests then
-        targetTunnelRailsToTest = {TargetTunnelRail.tunnelMiddle}
+        targetTunnelRailsToTest = {TargetTunnelRail.tunnelSegment}
         nextStopsToTest = {NextStopTypes.station}
     elseif DoSpecificTests then
         -- Adhock testing option.
@@ -252,7 +281,7 @@ Test.GenerateTestScenarios = function(testName)
                 targetTunnelRail = targetTunnelRail,
                 nextStop = nextStop
             }
-            scenario.expectedTrainState = Test.CalculateExpectedResults(scenario)
+            scenario.expectedTunnelStopHandling, scenario.expectedFinalTrainState = Test.CalculateExpectedResults(scenario)
             Test.RunLoopsMax = Test.RunLoopsMax + 1
             table.insert(Test.TestScenarios, scenario)
         end
@@ -263,19 +292,27 @@ Test.GenerateTestScenarios = function(testName)
 end
 
 Test.CalculateExpectedResults = function(testScenario)
-    local expectedTrainState
+    local expectedTunnelStopHandling, expectedFinalTrainState
+
+    if testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceAboveGround or testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitAboveGround then
+        expectedTunnelStopHandling = ExpectedTunnelStopHandling.targetTunnelRail
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceUnderground or testScenario.targetTunnelRail == TargetTunnelRail.tunnelSegment or testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitUnderground then
+        expectedTunnelStopHandling = ExpectedTunnelStopHandling.endOfTunnel
+    else
+        error("unsupported testScenario.targetTunnelRail: " .. testScenario.targetTunnelRail)
+    end
 
     if testScenario.nextStop == NextStopTypes.none then
-        expectedTrainState = FinalTrainStates.targetRailReached
+        expectedFinalTrainState = FinalTrainStates.targetRailReached
     elseif testScenario.nextStop == NextStopTypes.station then
-        expectedTrainState = FinalTrainStates.nextStopReached
+        expectedFinalTrainState = FinalTrainStates.nextStopReached
     elseif testScenario.nextStop == NextStopTypes.rail then
-        expectedTrainState = FinalTrainStates.nextStopReached
+        expectedFinalTrainState = FinalTrainStates.nextStopReached
     else
         error("Unsupported testScenario.nextStop: " .. testScenario.nextStop)
     end
 
-    return expectedTrainState
+    return expectedTunnelStopHandling, expectedFinalTrainState
 end
 
 Test.WriteTestScenariosToFile = function(testName)
@@ -286,10 +323,10 @@ Test.WriteTestScenariosToFile = function(testName)
     end
 
     local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#,targetTunnelRail,nextStop,expectedTrainState" .. "\r\n", false)
+    game.write_file(fileName, "#,targetTunnelRail,nextStop,expectedTunnelStopHandling,expectedFinalTrainState" .. "\r\n", false)
 
     for testIndex, test in pairs(Test.TestScenarios) do
-        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.targetTunnelRail) .. "," .. tostring(test.nextStop) .. "," .. tostring(test.expectedTrainState) .. "\r\n", true)
+        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.targetTunnelRail) .. "," .. tostring(test.nextStop) .. "," .. tostring(test.expectedTunnelStopHandling) .. "," .. tostring(test.expectedFinalTrainState) .. "\r\n", true)
     end
 end
 

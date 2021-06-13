@@ -67,7 +67,7 @@ TrainManager.CreateGlobals = function()
             trainTravelDirection = defines.direction the train is heading in.
             trainTravelOrientation = the orientation of the trainTravelDirection.
             targetTrainStop = the target train stop entity of this train, needed in case the path gets lost as we only have the station name then.
-            targetRailStop = the target rail entity of this train. Tracked to avoid lookups.
+            targetRail = the target rail entity of this train. Tracked to avoid lookups.
 
             aboveSurface = LuaSurface of the main world surface.
             aboveEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
@@ -337,8 +337,8 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, trainM
 
     -- Handle train that can't go backwards, so just pull the train forwards to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train. The train has already lost any station reservation it had.
     local newSchedule = trainWithBadState.schedule
-    local fallbackTargetRail = trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
-    local endOfTunnelScheduleRecord = {rail = fallbackTargetRail, temporary = true}
+    local exitPortalEntryRail = trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
+    local endOfTunnelScheduleRecord = {rail = exitPortalEntryRail, temporary = true}
     table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
     trainWithBadState.schedule = newSchedule
 
@@ -389,7 +389,7 @@ TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
         trainManagerEntry.enteringTrainState = EnteringTrainStates.entering
         trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.underground
         trainManagerEntry.targetTrainStop = enteringTrain.path_end_stop
-        trainManagerEntry.targetRailStop = enteringTrain.path_end_rail
+        trainManagerEntry.targetRail = enteringTrain.path_end_rail
         trainManagerEntry.dummyTrain = TrainManagerFuncs.CreateDummyTrain(trainManagerEntry.aboveExitPortal.entity, enteringTrain.schedule, trainManagerEntry.targetTrainStop, false)
         local dummyTrainId = trainManagerEntry.dummyTrain.id
         trainManagerEntry.dummyTrainId = dummyTrainId
@@ -490,8 +490,23 @@ end
 
 TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
     -- Cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
-    local schedule, isManual, targetTrainStop = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.dummyTrain.path_end_stop
+    local schedule, isManual, targetTrainStop = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.targetTrainStop
     TrainManager.DestroyDummyTrain(trainManagerEntry)
+
+    -- Check if the train is heading for a rail and not a station. If so will need to check and handle should the current target rail be part of this underground tunnel. As if it is the train can infinite loop path through the tunnel tryign to reach a tunnel rail it never can.
+    if trainManagerEntry.targetTrainStop == nil and trainManagerEntry.targetRail ~= nil then
+        if trainManagerEntry.targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" or trainManagerEntry.targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" then
+            -- The target rail is the type used by a portal/segment for underground rail, so check if it belongs to the just used tunnel.
+            if trainManagerEntry.tunnel.tunnelRailEntities[trainManagerEntry.targetRail.unit_number] ~= nil then
+                -- The taret rail is part of the tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.
+                local currentScheduleRecord = schedule.records[schedule.current]
+                local exitPortalEntryRail = trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
+                currentScheduleRecord.rail = exitPortalEntryRail
+                schedule.records[schedule.current] = currentScheduleRecord
+                trainManagerEntry.targetRail = exitPortalEntryRail
+            end
+        end
+    end
 
     -- Place initial leaving train carriage and set schedule and speed back.
     local placedCarriage, undergroundLeadCarriage = TrainManager.CreateFirstCarriageForLeavingTrain(trainManagerEntry)
@@ -634,7 +649,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
                 -- For a station this is where the path goes, otherwise the train would never be stopping at it.
                 exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation(leavingTrain, trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             else
-                -- For a siganl we have to find the distance via the path rails.
+                -- For a signal we have to find the distance via the path rails.
                 exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(leavingTrain, leavingTrain[trainStoppingEntityAttributeName], trainManagerEntry.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             end
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(trainManagerEntry.undergroundTrain, exactDistanceFromTrainToTarget)
@@ -1124,7 +1139,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     newTrainManagerEntry.trainTravelDirection = Utils.LoopDirectionValue(oldTrainManagerEntry.trainTravelDirection + 4)
     newTrainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(newTrainManagerEntry.trainTravelDirection)
     newTrainManagerEntry.targetTrainStop = oldTrainManagerEntry.targetTrainStop
-    newTrainManagerEntry.targetRailStop = oldTrainManagerEntry.targetRailStop
+    newTrainManagerEntry.targetRail = oldTrainManagerEntry.targetRail
 
     newTrainManagerEntry.leavingTrainExpectedBadState = false
     newTrainManagerEntry.leavingTrainAtEndOfPortalTrack = false

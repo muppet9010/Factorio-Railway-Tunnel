@@ -1,6 +1,5 @@
 Bugs
 ----
-    - Sending a train to a temporary stop within a tunnel causes the train to path towards the task, get pushed out of the far end of the tunnel (past the temporary stop) and have the temporary stop set as its path again. Causing the train to loop around and do the tunnel again, repeating endlessly.
     - Add player riding in train with body and editor mode to the tunnel being destroyed test..
 
 
@@ -13,7 +12,7 @@ Functionality not currently supported
     - Player changes a committed entering/leaving trains order. May cause reversion or need to be bleed through to dummy train/leaving end. At points the entering train will have no orders and be in manual mode. Maybe give it schedule of "USING TUNNEL - CHNAGE ORDERS ON LEAVING TRAIN PART" and just keep on forcing this & manual mode on it?
     - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.
     - Handle 2 trains both entering the tunnel at once, due to manual control or free wheeling (manual mode with speed) second train.
-    - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train.
+    - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train. TODO in "tests/path-to-tunnel-tests.lua" related to when this functionality is supported.
     - Handle a player adding/removing a carriage from a train using a tunnel.
     - Check entering artillery trains stopped going in to the tunnel when the head has stopped coming out (signal). In vanialla an artillery train not stopped at station or in manual won't fire.
     - Handle all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains for player with body and when in editor mode - PlayerContainers.On_TunnelRemoved(). Currently a destroyed tunnel piece rebuilt (ghost placed) by a robot caused the game to crash (creative mod), so something isn't quite right in the old tunnel segment/portal destroyed code.
