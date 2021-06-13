@@ -841,6 +841,9 @@ Test.CheckTrackAddedState = function(endStationTrain, expectedResult, testData, 
 end
 
 Test.GenerateTestScenarios = function(testName)
+    if global.testManager.forceTestsFullSuite then
+        DoMinimalTests = false
+    end
     local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest, scheduleTargetTypesToTest
 
     -- Player riding in carriage has extra on/off variable so handle first.

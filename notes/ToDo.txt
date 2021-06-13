@@ -1,6 +1,5 @@
 Bugs
 ----
-    - Add player riding in train with body and editor mode to the tunnel being destroyed test..
 
 
 Functionality not currently supported
@@ -42,6 +41,8 @@ Concepts / Ideas
     - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach/usage. The mod can only handle speeds up to 7 tiles per tick as only 1 carriage can be added/removed per tick. Maybe detect the speed on the approaching train and have a variable vanishing point based on this.
     - Request for big power poles to be able to be placed on tunnel entrances to keep tunnels like rail block blurprints (MOJO style). Maybe including big power poles at both ends of the tunnel portal and in the middle with red & green wires between them? Would need to expose wire connection points though. Or have power and red/green wires transmitted through tunnels with just a connection on the entrance of each portal?
     - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
+    - Look at making the entering train have a schedule of "Entering Tunnel" rather than none at present. Make it not allow player manipulation, as there's nothing to manipulate. The leaving train should be changeable once it's started leaving already.
+Maybe have something when the entering train is opened saying to manage the train by the leaving part of the train. As a long train stopped both sides of a tunnel may be odd user experience if just locked.
 
 
 Code Improvements
@@ -51,3 +52,9 @@ Code Improvements
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.
     - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.
     - For very long trains or tunnels the rails in the underground might not be long enough. Place additional rails at the require distance from the tunnel ends. Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag)?
+    - Move the player riding tests to their own test(s) and remove them from other tests. Cover:
+        - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
+        - Have the train reverse mid tunnel use and at end of tunnel use (plyer returns to carriage and then back underground second time).
+        - Tunnel destroyed while player underground.
+        - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
+        - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.

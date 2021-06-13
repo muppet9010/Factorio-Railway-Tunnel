@@ -247,6 +247,9 @@ Test.EveryTick = function(event)
 end
 
 Test.GenerateTestScenarios = function(testName)
+    if global.testManager.forceTestsFullSuite then
+        DoMinimalTests = false
+    end
     local targetTunnelRailsToTest, nextStopsToTest
     if DoMinimalTests then
         targetTunnelRailsToTest = {TargetTunnelRail.tunnelSegment}

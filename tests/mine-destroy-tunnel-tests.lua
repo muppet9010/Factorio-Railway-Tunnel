@@ -346,6 +346,9 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
 end
 
 Test.GenerateTestScenarios = function(testName)
+    if global.testManager.forceTestsFullSuite then
+        DoMinimalTests = false
+    end
     local trainStatesToTest, tunnelPartsToTest, removalActionsToTest
     if DoMinimalTests then
         -- Minimal tests.
