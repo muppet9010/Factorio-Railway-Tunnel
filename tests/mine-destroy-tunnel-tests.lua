@@ -19,7 +19,7 @@ local SpecificTrainStateFilter = {"startApproaching"} -- Pass in array of TrainS
 local SpecificTunnelPartFilter = {"entrancePortal"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
 local SpecificRemovalActionFilter = {"mine"} -- Pass in array of RemovalActions keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
 
-local DebugOutputTestScenarioDetails = true -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
+local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -349,6 +349,7 @@ Test.GenerateTestScenarios = function(testName)
     if global.testManager.forceTestsFullSuite then
         DoMinimalTests = false
     end
+
     local trainStatesToTest, tunnelPartsToTest, removalActionsToTest
     if DoMinimalTests then
         -- Minimal tests.
@@ -357,30 +358,9 @@ Test.GenerateTestScenarios = function(testName)
         removalActionsToTest = RemovalActions
     elseif DoSpecificTests then
         -- Adhock testing option.
-        if Utils.IsTableEmpty(SpecificTrainStateFilter) then
-            trainStatesToTest = TrainStates
-        else
-            trainStatesToTest = {}
-            for _, trainState in pairs(SpecificTrainStateFilter) do
-                trainStatesToTest[trainState] = TrainStates[trainState]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificTunnelPartFilter) then
-            tunnelPartsToTest = TunnelParts
-        else
-            tunnelPartsToTest = {}
-            for _, tunnelPart in pairs(SpecificTunnelPartFilter) do
-                tunnelPartsToTest[tunnelPart] = TunnelParts[tunnelPart]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificRemovalActionFilter) then
-            removalActionsToTest = RemovalActions
-        else
-            removalActionsToTest = {}
-            for _, removalAction in pairs(SpecificRemovalActionFilter) do
-                removalActionsToTest[removalAction] = RemovalActions[removalAction]
-            end
-        end
+        trainStatesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStates, SpecificTrainStateFilter)
+        tunnelPartsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelParts, SpecificTunnelPartFilter)
+        removalActionsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(RemovalActions, SpecificRemovalActionFilter)
     else
         -- Do whole test suite.
         trainStatesToTest = TrainStates

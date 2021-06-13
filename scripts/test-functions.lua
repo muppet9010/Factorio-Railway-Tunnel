@@ -128,6 +128,23 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterName, filterData)
 end
 
+-- Used to apply an optional filter list of keys against a full list. Includes error catching for passing in bad (empty) filter list.
+TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
+    local listToTest
+    if Utils.IsTableEmpty(filterList) then
+        listToTest = fullList
+    else
+        listToTest = {}
+        for _, entry in pairs(filterList) do
+            listToTest[entry] = fullList[entry]
+        end
+    end
+    if Utils.IsTableEmpty(listToTest) then
+        error("blank list output from TestFunctions.ApplySpecificFilterToListByKeyName()")
+    end
+    return listToTest
+end
+
 -- Returns an abstract meta data of a train to be compared later.
 TestFunctions.GetSnapshotOfTrain = function(train)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.

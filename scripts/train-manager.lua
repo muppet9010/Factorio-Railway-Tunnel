@@ -66,8 +66,7 @@ TrainManager.CreateGlobals = function()
             dummyTrainId = the LuaTrain ID of the dummy train.
             trainTravelDirection = defines.direction the train is heading in.
             trainTravelOrientation = the orientation of the trainTravelDirection.
-            targetTrainStop = the target train stop entity of this train, needed in case the path gets lost as we only have the station name then.
-            targetRail = the target rail entity of this train. Tracked to avoid lookups.
+            targetTrainStop = the target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 
             aboveSurface = LuaSurface of the main world surface.
             aboveEntrancePortal = the portal global object of the entrance portal for this tunnel usage instance.
@@ -241,6 +240,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, trainM
                 return
             else
                 -- Train has repathed backwards
+                trainManagerEntry.targetTrainStop = trainWithBadState.path_end_stop -- Update this cached value as we know its been updated and the old is invalid.
                 TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
                 return
             end
@@ -265,7 +265,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, trainM
     end
     if #trainManagerEntry.undergroundTrain.locomotives[undergroundTrainReverseLocoListName] > 0 then
         local canPathBackwards, enteringTrain = false, trainManagerEntry.enteringTrain
-        local schedule, isManual, targetTrainStop = trainWithBadState.schedule, trainWithBadState.manual_mode, trainManagerEntry.targetTrainStop
+        local schedule, isManual, targetTrainStop = trainWithBadState.schedule, trainWithBadState.manual_mode, trainManagerEntry.targetTrainStop -- Use cached targetTrainStop as the main train has likely lost its value in this state.
         local oldEnteringSchedule, oldEnteringIsManual, oldEnteringSpeed
         if trainManagerEntry.enteringTrainState == EnteringTrainStates.entering then
             -- See if the entering train can path to where it wants to go. Has to be the remaining train and not a dummy train at the entrance portal as the entering train may be long and over running the track splitit needs for its backwards path.
@@ -301,6 +301,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, trainM
             TrainManagerFuncs.TrainSetSchedule(enteringTrain, schedule, isManual, targetTrainStop, true)
             if enteringTrain.has_path then
                 canPathBackwards = true
+                trainManagerEntry.targetTrainStop = enteringTrain.path_end_stop -- Update this cached value as we know its been updated and te old is invalid.
             end
 
             -- Remove temp reversing loco if added.
@@ -314,6 +315,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, trainM
             TrainManagerFuncs.TrainSetSchedule(pathTestTrain, schedule, isManual, targetTrainStop, true)
             if pathTestTrain.has_path then
                 canPathBackwards = true
+                trainManagerEntry.targetTrainStop = pathTestTrain.path_end_stop -- Update this cached value as we know its been updated and te old is invalid.
             end
             TrainManagerFuncs.DestroyTrainsCarriages(pathTestTrain)
         end
@@ -389,7 +391,6 @@ TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
         trainManagerEntry.enteringTrainState = EnteringTrainStates.entering
         trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.underground
         trainManagerEntry.targetTrainStop = enteringTrain.path_end_stop
-        trainManagerEntry.targetRail = enteringTrain.path_end_rail
         trainManagerEntry.dummyTrain = TrainManagerFuncs.CreateDummyTrain(trainManagerEntry.aboveExitPortal.entity, enteringTrain.schedule, trainManagerEntry.targetTrainStop, false)
         local dummyTrainId = trainManagerEntry.dummyTrain.id
         trainManagerEntry.dummyTrainId = dummyTrainId
@@ -400,7 +401,8 @@ TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
         }
         -- Schedule has been transferred to dummy train.
         enteringTrain.schedule = nil
-    -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
+        -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
+        TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.startedEntering)
     end
 end
 
@@ -490,20 +492,19 @@ end
 
 TrainManager.TrainLeavingFirstCarriage = function(trainManagerEntry)
     -- Cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
-    local schedule, isManual, targetTrainStop = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.targetTrainStop
+    local schedule, isManual, targetTrainStop, targetRail = trainManagerEntry.dummyTrain.schedule, trainManagerEntry.dummyTrain.manual_mode, trainManagerEntry.dummyTrain.path_end_stop, trainManagerEntry.dummyTrain.path_end_rail
     TrainManager.DestroyDummyTrain(trainManagerEntry)
 
     -- Check if the train is heading for a rail and not a station. If so will need to check and handle should the current target rail be part of this underground tunnel. As if it is the train can infinite loop path through the tunnel tryign to reach a tunnel rail it never can.
-    if trainManagerEntry.targetTrainStop == nil and trainManagerEntry.targetRail ~= nil then
-        if trainManagerEntry.targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" or trainManagerEntry.targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" then
+    if targetTrainStop == nil and targetRail ~= nil then
+        if targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" or targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" then
             -- The target rail is the type used by a portal/segment for underground rail, so check if it belongs to the just used tunnel.
-            if trainManagerEntry.tunnel.tunnelRailEntities[trainManagerEntry.targetRail.unit_number] ~= nil then
+            if trainManagerEntry.tunnel.tunnelRailEntities[targetRail.unit_number] ~= nil then
                 -- The taret rail is part of the tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.
                 local currentScheduleRecord = schedule.records[schedule.current]
                 local exitPortalEntryRail = trainManagerEntry.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
                 currentScheduleRecord.rail = exitPortalEntryRail
                 schedule.records[schedule.current] = currentScheduleRecord
-                trainManagerEntry.targetRail = exitPortalEntryRail
             end
         end
     end
@@ -547,6 +548,7 @@ TrainManager.TrainLeavingOngoing = function(trainManagerEntry)
         -- Theres nothing broken with the state, but the mod doesn't expect it so we need to identify if the train is reversing on its own accord. We have to do this rather than a front/rear stock check as theres no train composition change to test around here. Its just what the base game thinks the train is doing.
         if not TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(trainManagerEntry, "leavingTrain", desiredSpeed) then
             -- The leaving train is moving opposite to the underground train (desiredSpeed). So handle the reversal and stop processing.
+            trainManagerEntry.targetTrainStop = trainManagerEntry.leavingTrain.path_end_stop -- Update this cached value as we know its been updated and te old is invalid.
             TrainManager.ReverseManagedTrainTunnelTrip(trainManagerEntry)
             return
         end
@@ -1119,6 +1121,10 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     -- The managed train is going to reverse and go out of the tunnel the way it came in. Will be lodged as a new managed train so that old managed trains logic can be closed off.
     -- This function can't be reached if the train isn't committed, so no need to handle EnteringTrainStates.approaching.
 
+    if oldTrainManagerEntry.targetTrainStop ~= nil and not oldTrainManagerEntry.targetTrainStop.valid then
+        error("Should be either valid or nil. Meant to be updated when the reversal function is called.")
+    end
+
     -- Release the tunnel from the old train manager. Later in this function it will be reclaimed accordingly.
     Interfaces.Call("Tunnel.TrainReleasedTunnel", oldTrainManagerEntry)
 
@@ -1139,7 +1145,6 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     newTrainManagerEntry.trainTravelDirection = Utils.LoopDirectionValue(oldTrainManagerEntry.trainTravelDirection + 4)
     newTrainManagerEntry.trainTravelOrientation = Utils.DirectionToOrientation(newTrainManagerEntry.trainTravelDirection)
     newTrainManagerEntry.targetTrainStop = oldTrainManagerEntry.targetTrainStop
-    newTrainManagerEntry.targetRail = oldTrainManagerEntry.targetRail
 
     newTrainManagerEntry.leavingTrainExpectedBadState = false
     newTrainManagerEntry.leavingTrainAtEndOfPortalTrack = false
@@ -1322,6 +1327,7 @@ TrainManager.TunnelUsageAction = {
     startApproaching = "startApproaching",
     terminated = "terminated",
     reversedDuringUse = "reversedDuringUse",
+    startedEntering = "startedEntering",
     enteringCarriageRemoved = "enteringCarriageRemoved",
     fullyEntered = "fullyEntered",
     startedLeaving = "startedLeaving",

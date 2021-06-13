@@ -1,3 +1,8 @@
+--[[
+    Notes
+    -------------
+        - Tests don't load if a dedicated server makes the game and saves the map, then loads the save to run the game. It must be created by the player, saved and then uploaded to the server for running tests in MP.
+--]]
 local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
@@ -52,15 +57,10 @@ local TestsToRun = {
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")},
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
-    PathToTunnelTests = {enabled = false, testScript = require("tests/path-to-tunnel-tests")}
+    PathToTunnelTests = {enabled = false, testScript = require("tests/path-to-tunnel-tests")},
+    RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")}
 }
 
---[[
-    Notes
-    -------------
-    Tests don't load if a dedicated server makes the game and saves the map, then loads the save to run the game. It must be created by the player, saved and then uploaded to the server for running tests in MP.
-
---]]
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------

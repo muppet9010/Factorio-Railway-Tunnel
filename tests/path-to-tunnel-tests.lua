@@ -3,16 +3,16 @@
         targetTunnelRail: tunnelEntranceAboveGround, tunnelEntranceUnderground, tunnelSegment, tunnelExitUnderground, tunnelExitAboveGround
         nextStop: none, station, rail
 ]]
---TODO: at present tunnelEntranceUnderground and tunnelExitUnderground give unexpected results as they aren't officially entering the tunnel as they haven't pathed to the END signal. Will be handled by future coasting/manaul driven train logic and then the tests can be checked here. Not included in minimal tests or full testing done presently via DoSpecificTests.
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
 local DoMinimalTests = true -- The minimal test to prove the concept. Just goes to a tunnel segment, then to end station, as this triggered the origional issue.
 
+--TODO: at present tunnelEntranceUnderground and tunnelExitUnderground give unexpected results as they aren't officially entering the tunnel as they haven't pathed to the END signal. Will be handled by future coasting/manaul driven train logic and then the tests can be checked here. Not included in minimal tests or full testing done presently via DoSpecificTests.
 local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificTargetTunnelRailFilter = {"tunnelEntranceAboveGround", "tunnelSegment", "tunnelExitAboveGround"} -- Pass in array of TargetTunnelRail keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
---local SpecificNextStopFilter = {"station"} -- Pass in array of NextStopTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
+local SpecificNextStopFilter = {} -- Pass in array of NextStopTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -250,28 +250,15 @@ Test.GenerateTestScenarios = function(testName)
     if global.testManager.forceTestsFullSuite then
         DoMinimalTests = false
     end
+
     local targetTunnelRailsToTest, nextStopsToTest
     if DoMinimalTests then
         targetTunnelRailsToTest = {TargetTunnelRail.tunnelSegment}
         nextStopsToTest = {NextStopTypes.station}
     elseif DoSpecificTests then
         -- Adhock testing option.
-        if Utils.IsTableEmpty(SpecificTargetTunnelRailFilter) then
-            targetTunnelRailsToTest = TargetTunnelRail
-        else
-            targetTunnelRailsToTest = {}
-            for _, targetTunnelRail in pairs(SpecificTargetTunnelRailFilter) do
-                targetTunnelRailsToTest[targetTunnelRail] = TargetTunnelRail[targetTunnelRail]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificNextStopFilter) then
-            nextStopsToTest = NextStopTypes
-        else
-            nextStopsToTest = {}
-            for _, nextStop in pairs(SpecificNextStopFilter) do
-                nextStopsToTest[nextStop] = NextStopTypes[nextStop]
-            end
-        end
+        targetTunnelRailsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TargetTunnelRail, SpecificTargetTunnelRailFilter)
+        nextStopsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(NextStopTypes, SpecificNextStopFilter)
     else
         -- Do whole test suite.
         targetTunnelRailsToTest = TargetTunnelRail

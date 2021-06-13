@@ -78,7 +78,7 @@ local TrainTypes = {
         }
     },
     {
-        text = "<------",
+        text = "<-",
         carriages = {
             {
                 name = "locomotive",
@@ -87,17 +87,17 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 6
+                count = 1
             }
         }
     },
     {
-        text = "------<",
+        text = "-<",
         carriages = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 6
+                count = 1
             },
             {
                 name = "locomotive",
@@ -106,12 +106,12 @@ local TrainTypes = {
         }
     },
     {
-        text = "---<---",
+        text = "-<-",
         carriages = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 3
+                count = 1
             },
             {
                 name = "locomotive",
@@ -120,7 +120,7 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 3
+                count = 1
             }
         }
     },
@@ -138,7 +138,7 @@ local TrainTypes = {
         }
     },
     {
-        text = "<------>",
+        text = "<->",
         carriages = {
             {
                 name = "locomotive",
@@ -147,7 +147,7 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 6
+                count = 1
             },
             {
                 name = "locomotive",
@@ -156,7 +156,7 @@ local TrainTypes = {
         }
     },
     {
-        text = "<>------",
+        text = "<>-",
         carriages = {
             {
                 name = "locomotive",
@@ -169,17 +169,17 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 6
+                count = 1
             }
         }
     },
     {
-        text = "------<>",
+        text = "-<>",
         carriages = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 6
+                count = 1
             },
             {
                 name = "locomotive",
@@ -192,12 +192,12 @@ local TrainTypes = {
         }
     },
     {
-        text = "---<>---",
+        text = "-<>-",
         carriages = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 3
+                count = 1
             },
             {
                 name = "locomotive",
@@ -210,7 +210,7 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 3
+                count = 1
             }
         }
     },
@@ -228,7 +228,7 @@ local TrainTypes = {
         }
     },
     {
-        text = ">------<",
+        text = ">-<",
         carriages = {
             {
                 name = "locomotive",
@@ -237,7 +237,7 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.25,
-                count = 6
+                count = 1
             },
             {
                 name = "locomotive",
@@ -246,7 +246,7 @@ local TrainTypes = {
         }
     },
     {
-        text = "><------",
+        text = "><-",
         carriages = {
             {
                 name = "locomotive",
@@ -259,17 +259,17 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.25,
-                count = 6
+                count = 1
             }
         }
     },
     {
-        text = "------><",
+        text = "-><",
         carriages = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 6
+                count = 1
             },
             {
                 name = "locomotive",
@@ -282,12 +282,12 @@ local TrainTypes = {
         }
     },
     {
-        text = "---><---",
+        text = "-><-",
         carriages = {
             {
                 name = "cargo-wagon",
                 orientation = 0.75,
-                count = 3
+                count = 1
             },
             {
                 name = "locomotive",
@@ -300,7 +300,7 @@ local TrainTypes = {
             {
                 name = "cargo-wagon",
                 orientation = 0.25,
-                count = 3
+                count = 1
             }
         }
     },
@@ -844,6 +844,7 @@ Test.GenerateTestScenarios = function(testName)
     if global.testManager.forceTestsFullSuite then
         DoMinimalTests = false
     end
+
     local trainTypesToTest, tunnelUsageTypesToTest, playerInCarriagesTypesToTest, forwardsPathingOptionAfterTunnelTypesToTest, backwardsPathingOptionAfterTunnelTypesToTest, stationReservationCompetitorTrainExistsToTest, scheduleTargetTypesToTest
 
     -- Player riding in carriage has extra on/off variable so handle first.
@@ -880,54 +881,12 @@ Test.GenerateTestScenarios = function(testName)
                 end
             end
         end
-        if Utils.IsTableEmpty(SpecificTunnelUsageTypesFilter) then
-            tunnelUsageTypesToTest = TunnelUsageTypes
-        else
-            tunnelUsageTypesToTest = {}
-            for _, usageTypeName in pairs(SpecificTunnelUsageTypesFilter) do
-                tunnelUsageTypesToTest[usageTypeName] = TunnelUsageTypes[usageTypeName]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificPlayerInCarriageTypesFilter) then
-            playerInCarriagesTypesToTest = limitedPlayerInCarriagesTypes
-        else
-            playerInCarriagesTypesToTest = {}
-            for _, playerInCarriageType in pairs(SpecificPlayerInCarriageTypesFilter) do
-                playerInCarriagesTypesToTest[playerInCarriageType] = PlayerInCarriageTypes[playerInCarriageType]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificForwardsPathingOptionAfterTunnelTypesFilter) then
-            forwardsPathingOptionAfterTunnelTypesToTest = ForwardsPathingOptionAfterTunnelTypes
-        else
-            forwardsPathingOptionAfterTunnelTypesToTest = {}
-            for _, forwardsPathingOptionAfterTunnelType in pairs(SpecificForwardsPathingOptionAfterTunnelTypesFilter) do
-                forwardsPathingOptionAfterTunnelTypesToTest[forwardsPathingOptionAfterTunnelType] = ForwardsPathingOptionAfterTunnelTypes[forwardsPathingOptionAfterTunnelType]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificBackwardsPathingOptionAfterTunnelTypesFilter) then
-            backwardsPathingOptionAfterTunnelTypesToTest = BackwardsPathingOptionAfterTunnelTypes
-        else
-            backwardsPathingOptionAfterTunnelTypesToTest = {}
-            for _, backwardsPathingOptionAfterTunnelType in pairs(SpecificBackwardsPathingOptionAfterTunnelTypesFilter) do
-                backwardsPathingOptionAfterTunnelTypesToTest[backwardsPathingOptionAfterTunnelType] = BackwardsPathingOptionAfterTunnelTypes[backwardsPathingOptionAfterTunnelType]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificStationReservationCompetitorTrainExists) then
-            stationReservationCompetitorTrainExistsToTest = StationReservationCompetitorTrainExists
-        else
-            stationReservationCompetitorTrainExistsToTest = {}
-            for _, stationReservationCompetitorTrainExist in pairs(SpecificStationReservationCompetitorTrainExists) do
-                stationReservationCompetitorTrainExistsToTest[stationReservationCompetitorTrainExist] = StationReservationCompetitorTrainExists[stationReservationCompetitorTrainExist]
-            end
-        end
-        if Utils.IsTableEmpty(SpecificScheduleTargetTypesFilter) then
-            scheduleTargetTypesToTest = ScheduleTargetTypes
-        else
-            scheduleTargetTypesToTest = {}
-            for _, scheduleTargetType in pairs(SpecificScheduleTargetTypesFilter) do
-                scheduleTargetTypesToTest[scheduleTargetType] = ScheduleTargetTypes[scheduleTargetType]
-            end
-        end
+        tunnelUsageTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelUsageTypes, SpecificTunnelUsageTypesFilter)
+        playerInCarriagesTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(limitedPlayerInCarriagesTypes, SpecificForwardsPathingOptionAfterTunnelTypesFilter)
+        forwardsPathingOptionAfterTunnelTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ForwardsPathingOptionAfterTunnelTypes, SpecificForwardsPathingOptionAfterTunnelTypesFilter)
+        backwardsPathingOptionAfterTunnelTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(BackwardsPathingOptionAfterTunnelTypes, SpecificBackwardsPathingOptionAfterTunnelTypesFilter)
+        stationReservationCompetitorTrainExistsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StationReservationCompetitorTrainExists, SpecificStationReservationCompetitorTrainExists)
+        scheduleTargetTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ScheduleTargetTypes, SpecificScheduleTargetTypesFilter)
     else
         -- Full testing suite.
         trainTypesToTest = TrainTypes
