@@ -10,6 +10,7 @@ Mod Features
 - The tunnel is a single block of rail and so only 1 train can use a tunnel at a time. Trains do prefer empty normal tracks over tunnels, but will use a tunnel over congested track (few trains or medium distance).
 - Tunnels are built by placing the entrance and exit pieces (rails outwards) and then building underground tunnel between them. When a tunnel is complete rail signals will appear on both ends of the tunnel. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel.
 - Tunnels can not be entered by players, they are purely for trains to go under one another. Players riding in trains through tunnels stay on the surface to enjoy the view.
+- Destroyed tunnels will lose the train and players within.
 
 
 Usage Notes
@@ -18,6 +19,8 @@ Usage Notes
 - The train signal reservation for leaving a tunnel may be sub optimal and so it's advised to have some track and a signal block for the train to emerge in to. The train may also pull up to a blocking signal slowly when leaving a tunnel.
 - Trains using a tunnel will never be exactly aligned for the entering and leaving parts, but will be very close. This is a technical limitation of how the mod syncs train speeds each tick and isn't a bug.
 - If a train is using a tunnel and some track in its path is removed, it will try and repath like normal Factorio (forwards/backwards) from the tunnel. If it can't path it will pull to the front of the tunnel so it can be accessed by the player easier.
+- The tunnel parts can only be validly placed on the rail grid, however it isn't possible to snap these like regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted; A green square for buildable locations and a red square for blocked locations, based on ghost type placement.
+- Manually driven trains that enter a tunnel will go through on automatic for the tunnel journey, with control returned to the player when they emerge from the tunnel.
 
 
 Debug Release
@@ -30,3 +33,11 @@ Contributors
 ===============
 
 - blahfasel2000 - code contributions.
+
+
+Rejected Ideas
+===============
+
+Let players control manual trains speed through the tunnel
+---------------
+While this is likely possible, its a lot of mod development work for very little reward. The current automatic tunnel journey enables support of manual trains without delaying wider mod development significantly for them.
