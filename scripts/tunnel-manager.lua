@@ -235,15 +235,41 @@ Tunnel.OnBuiltEntity = function(event)
 
     if createdEntity.type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
-
-        -- If its part of a multi carriage train then ignore it in this function. As other logic for handling manipulation of trains using tunnels will catch it. This is intended to purely catch single carriages being built on tunnels.
         local train = createdEntity.train
-        if #createdEntity.train.carriages ~= 1 then
+
+        if Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) then
+            -- Carriage was built on a managed train, so this will be handled by seperate train manipulation tracking logic.
             return
         end
 
-        -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
-        if TunnelCommon.tunnelSurfaceRailEntityNames[train.front_rail.name] == nil and TunnelCommon.tunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+        -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
+        local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
+        if train.front_stock.unit_number == createdEntity.unit_number then
+            trainFrontStockIsPlacedEntity = true
+        end
+        if train.back_stock.unit_number == createdEntity.unit_number then
+            trainBackStockIsPlacedEntity = true
+        end
+        if trainFrontStockIsPlacedEntity and trainBackStockIsPlacedEntity then
+            -- Both ends of the train is this carriage so its a train of 1.
+            if TunnelCommon.tunnelSurfaceRailEntityNames[train.front_rail.name] == nil and TunnelCommon.tunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+                -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
+                return
+            end
+        elseif trainFrontStockIsPlacedEntity then
+            -- Placed carriage is front of train
+            if TunnelCommon.tunnelSurfaceRailEntityNames[train.front_rail.name] == nil then
+                -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
+                return
+            end
+        elseif trainBackStockIsPlacedEntity then
+            -- Placed carriage is rear of train
+            if TunnelCommon.tunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+                -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
+                return
+            end
+        else
+            -- Placed carriage is part of an existing train that isn't managed for tunnel usage. The placed carriage isn't on either end of the train so no need to check it.
             return
         end
     else
@@ -252,10 +278,26 @@ Tunnel.OnBuiltEntity = function(event)
         -- Have to check what rails are at the approximate ends of the ghost carriage.
         local carriageLengthFromCenter, surface, tunnelRailFound = TunnelCommon.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
         local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation), Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation - 0.5)
-        if #surface.find_entities_filtered {name = TunnelCommon.tunnelSurfaceRailEntityNames, position = frontRailPosition} ~= 0 then
-            tunnelRailFound = true
-        elseif #surface.find_entities_filtered {name = TunnelCommon.tunnelSurfaceRailEntityNames, position = backRailPosition} ~= 0 then
-            tunnelRailFound = true
+        local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
+        -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
+        for _, railEntity in pairs(frontRailsFound) do
+            if TunnelCommon.tunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
+                tunnelRailFound = true
+            else
+                tunnelRailFound = false
+                break
+            end
+        end
+        if not tunnelRailFound then
+            local backRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = backRailPosition}
+            for _, railEntity in pairs(backRailsFound) do
+                if TunnelCommon.tunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
+                    tunnelRailFound = true
+                else
+                    tunnelRailFound = false
+                    break
+                end
+            end
         end
         if not tunnelRailFound then
             return

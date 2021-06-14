@@ -17,7 +17,8 @@ TunnelCommon.tunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCo
 TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames})
 TunnelCommon.tunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
 TunnelCommon.tunnelSurfaceRailEntityNames = {
-    ["railway_tunnel-internal_rail-on_map"] = "railway_tunnel-internal_rail-on_map",
+    -- Doesn't include the tunnel crossing rail as this isn't deemed part of the tunnel's rails.
+    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map",
     ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map",
     ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel",
     ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map",

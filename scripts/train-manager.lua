@@ -107,6 +107,7 @@ TrainManager.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManager.TrainTracking_OnTrainCreated)
     Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManager.On_TunnelRemoved)
     Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManager.On_PortalReplaced)
+    Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManager.GetTrainIdsManagedTrainDetails)
 end
 
 ----------------------------------------------------------------------------------------------------------
@@ -1310,6 +1311,10 @@ TrainManager.UpdatePortalExitSignalPerTick = function(trainManagerEntry, forceSi
     else
         UndergroundSetUndergroundExitSignalStateFunction(trainManagerEntry.aboveExitPortalEntrySignalOut.undergroundSignalPaired, trainManagerEntry.aboveExitPortalEntrySignalOut.entity.signal_state)
     end
+end
+
+TrainManager.GetTrainIdsManagedTrainDetails = function(trainId)
+    return global.trainManager.trainIdToManagedTrain[trainId]
 end
 
 ----------------------------------------------------------------------------------------------------------

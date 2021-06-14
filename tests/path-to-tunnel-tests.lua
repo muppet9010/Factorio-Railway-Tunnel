@@ -103,7 +103,7 @@ Test.Start = function(testName)
     if testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceAboveGround then
         targetTunnelRailEntities =
             entrancePortal.surface.find_entities_filtered {
-            name = "railway_tunnel-internal_rail-on_map",
+            name = "railway_tunnel-portal_rail-on_map",
             position = Utils.ApplyOffsetToPosition(entrancePortal.position, {x = 8, y = 0})
         }
     elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceUnderground then
@@ -127,7 +127,7 @@ Test.Start = function(testName)
     elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitAboveGround then
         targetTunnelRailEntities =
             exitPortal.surface.find_entities_filtered {
-            name = "railway_tunnel-internal_rail-on_map",
+            name = "railway_tunnel-portal_rail-on_map",
             position = Utils.ApplyOffsetToPosition(exitPortal.position, {x = -8, y = 0})
         }
     else

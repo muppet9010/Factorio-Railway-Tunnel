@@ -125,7 +125,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local nextRailPos = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1}))
     local railOffsetFromEntrancePos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entrance position by rail placement
     for _ = 1, SetupValues.straightRailCountFromEntrance do
-        local placedRail = aboveSurface.create_entity {name = "railway_tunnel-internal_rail-on_map", position = nextRailPos, force = force, direction = directionValue}
+        local placedRail = aboveSurface.create_entity {name = "railway_tunnel-portal_rail-on_map", position = nextRailPos, force = force, direction = directionValue}
         placedRail.destructible = false
         portal.portalRailEntities[placedRail.unit_number] = placedRail
         nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntrancePos)
@@ -429,7 +429,7 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
         current = 1,
         records = {
             {
-                rail = aboveSurface.find_entity("railway_tunnel-internal_rail-on_map", pos)
+                rail = aboveSurface.find_entity("railway_tunnel-portal_rail-on_map", pos)
             }
         }
     }

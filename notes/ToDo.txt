@@ -4,7 +4,7 @@ Bugs
 
 Functionality not currently supported
 -------------------------------------
-    - Handle a player adding/removing a carriage from a train using a tunnel.
+    - Handle a player adding/removing a carriage from a train while its using a tunnel.
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
     - Player changes a committed entering/leaving trains order. May cause reversion or need to be bleed through to dummy train/leaving end. At points the entering train will have no orders and be in manual mode.
         - Maybe give entering train part a schedule order of "USING TUNNEL - CHNAGE ORDERS ON LEAVING TRAIN PART" and just keep on forcing this & manual mode on it.
