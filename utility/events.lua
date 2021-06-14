@@ -7,8 +7,10 @@ local Utils = require("utility/utils")
 
 local Events = {}
 MOD = MOD or {}
-MOD.eventsById = MOD.eventsById or {} -- indexed by
-MOD.eventsByActionName = MOD.eventsByActionName or {}
+MOD.eventsById = MOD.eventsById or {} -- indexed sequentially as list.
+MOD.eventIdHandlerNameToEventIdsListIndex = MOD.eventIdHandlerNameToEventIdsListIndex or {} -- A way to get the id key from MOD.eventsById for a specific event id and handler name.
+MOD.eventsByActionName = MOD.eventsByActionName or {} -- indexed sequentially as list.
+MOD.eventActionNameHandlerNameToEventActionNamesListIndex = MOD.eventActionNameHandlerNameToEventActionNamesListIndex or {} -- A way to get the id key from MOD.eventsByActionName for a specific action name and handler name.
 MOD.customEventNameToId = MOD.customEventNameToId or {}
 MOD.eventFilters = MOD.eventFilters or {}
 
@@ -24,8 +26,16 @@ Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, 
     if eventId == nil then
         return nil
     end
-    MOD.eventsById[eventId] = MOD.eventsById[eventId] or {}
-    table.insert(MOD.eventsById[eventId], {handlerName = handlerName, handlerFunction = handlerFunction})
+    if MOD.eventIdHandlerNameToEventIdsListIndex[eventId] == nil or MOD.eventIdHandlerNameToEventIdsListIndex[eventId][handlerName] == nil then
+        -- Is the first registering of this unique handler name for this event id.
+        MOD.eventsById[eventId] = MOD.eventsById[eventId] or {}
+        table.insert(MOD.eventsById[eventId], {handlerName = handlerName, handlerFunction = handlerFunction})
+        MOD.eventIdHandlerNameToEventIdsListIndex[eventId] = MOD.eventIdHandlerNameToEventIdsListIndex[eventId] or {}
+        MOD.eventIdHandlerNameToEventIdsListIndex[eventId][handlerName] = #MOD.eventsById[eventId]
+    else
+        -- Is a re-registering of a unique handler name for this event id, so just update everything.
+        MOD.eventsById[eventId][MOD.eventIdHandlerNameToEventIdsListIndex[eventId][handlerName]] = {handlerName = handlerName, handlerFunction = handlerFunction}
+    end
     return eventId
 end
 
@@ -35,8 +45,16 @@ Events.RegisterHandlerCustomInput = function(actionName, handlerName, handlerFun
         error("Events.RegisterHandlerCustomInput called with missing arguments")
     end
     script.on_event(actionName, Events._HandleEvent)
-    MOD.eventsByActionName[actionName] = MOD.eventsByActionName[actionName] or {}
-    table.insert(MOD.eventsByActionName[actionName], {handlerName = handlerName, handlerFunction = handlerFunction})
+    if MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName] == nil or MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName][handlerName] == nil then
+        -- Is the first registering of this unique handler name for this action name.
+        MOD.eventsByActionName[actionName] = MOD.eventsByActionName[actionName] or {}
+        table.insert(MOD.eventsByActionName[actionName], {handlerName = handlerName, handlerFunction = handlerFunction})
+        MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName] = MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName] or {}
+        MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName][handlerName] = #MOD.eventsByActionName[actionName]
+    else
+        -- Is a re-registering of a unique handler name for this action name, so just update everything.
+        MOD.eventsByActionName[actionName][MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName][handlerName]] = {handlerName = handlerName, handlerFunction = handlerFunction}
+    end
 end
 
 --Called from OnLoad() from the script file. Registers the custom event name and returns an event ID for use by other mods in subscribing to custom events.
