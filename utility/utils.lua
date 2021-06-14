@@ -927,7 +927,7 @@ Utils.CreatePlacementTestEntityPrototype = function(entityToClone, newEntityName
             {
                 icon = "__core__/graphics/cancel.png",
                 icon_size = 64,
-                scale = (clonedIconSize / 64) * 0.75
+                scale = (clonedIconSize / 64) * 0.5
             }
         },
         flags = entityToClone.flags,
@@ -986,6 +986,10 @@ Utils.GetPositionForAngledDistance = function(startingPos, distance, angle)
         y = (distance * -math.cos(angleRad)) + startingPos.y
     }
     return newPos
+end
+
+Utils.GetPositionForOrientationDistance = function(startingPos, distance, orientation)
+    return Utils.GetPositionForAngledDistance(startingPos, distance, orientation * 360)
 end
 
 Utils.FindWhereLineCrossesCircle = function(radius, slope, yIntercept)

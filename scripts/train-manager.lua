@@ -5,6 +5,7 @@ local Utils = require("utility/utils")
 local TrainManagerFuncs = require("scripts/train-manager-functions") -- Stateless functions that don't directly use global objects.
 local PlayerContainers = require("scripts/player-containers") -- Uses this file directly, rather than via interface. Details in the sub files notes.
 local Logging = require("utility/logging")
+local TunnelCommon = require("scripts/tunnel-common")
 local UndergroundSetUndergroundExitSignalStateFunction  -- Cache the function reference during OnLoad. Saves using Interfaces every tick.
 
 local EnteringTrainStates = {
@@ -669,7 +670,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(trainManagerE
             -- Is the same stopping target as last tick, so check if the leaving train is close to the stopping target and give it speed control if so.
             local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(leavingTrain, trainManagerEntry.leavingTrainForwards)
             local leadCarriageDistanceFromStoppingEntity = Utils.GetDistance(leadCarriage.position, trainManagerEntry[stoppingTargetEntityAttributeName].position)
-            local leavingTrainCloseToStoppingEntityDistance = TrainManagerFuncs.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
+            local leavingTrainCloseToStoppingEntityDistance = TunnelCommon.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
             if leadCarriageDistanceFromStoppingEntity < leavingTrainCloseToStoppingEntityDistance then
                 trainManagerEntry.undergroundTrainSetsSpeed = false
             end

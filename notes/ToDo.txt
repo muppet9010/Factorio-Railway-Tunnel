@@ -1,11 +1,12 @@
 Bugs
 ----
+    - Update licence to not allow modifying, republishing, etc.
 
 
 Functionality not currently supported
 -------------------------------------
     - Handle trains running out of fuel. Give them enough to get out of the tunnel entirely so the player can deal with.
-    - Block train wagons being placed on invisible rails and on portals entrance track. Will have to do this via events and can't make placement invalid without blocking trains from crossing. At present if done this will cause errors.
+.
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
     - Player changes a committed entering/leaving trains order. May cause reversion or need to be bleed through to dummy train/leaving end. At points the entering train will have no orders and be in manual mode. Maybe give it schedule of "USING TUNNEL - CHNAGE ORDERS ON LEAVING TRAIN PART" and just keep on forcing this & manual mode on it?
     - Handle player driven trains approaching the tunnel (will go on auto through the tunnel). Put the player in a pushing train if needed when the train reaches other side.
@@ -41,7 +42,7 @@ Concepts / Ideas
     - Request for big power poles to be able to be placed on tunnel entrances to keep tunnels like rail block blurprints (MOJO style). Maybe including big power poles at both ends of the tunnel portal and in the middle with red & green wires between them? Would need to expose wire connection points though. Or have power and red/green wires transmitted through tunnels with just a connection on the entrance of each portal?
     - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
     - Look at making the entering train have a schedule of "Entering Tunnel" rather than none at present. Make it not allow player manipulation, as there's nothing to manipulate. The leaving train should be changeable once it's started leaving already.
-Maybe have something when the entering train is opened saying to manage the train by the leaving part of the train. As a long train stopped both sides of a tunnel may be odd user experience if just locked.
+    - Maybe have something when the entering train is opened saying to manage the train by the leaving part of the train. As a long train stopped both sides of a tunnel may be odd user experience if just locked.
 
 
 Code Improvements
@@ -55,5 +56,5 @@ Code Improvements
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
         - Have the train reverse mid tunnel use and at end of tunnel use (plyer returns to carriage and then back underground second time).
         - Tunnel destroyed while player underground.
-        - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
+        - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey. This will indirectly confirm above and underground trains are in sync also.
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.

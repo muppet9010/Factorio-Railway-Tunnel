@@ -104,8 +104,8 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local orientation = Utils.DirectionToOrientation(directionValue)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceFromCenter}))
 
-    if not TunnelCommon.IsPlacementValid(placementEntity) then
-        TunnelCommon.UndoInvalidPlacement(placementEntity, placer, true)
+    if not TunnelCommon.IsPlacementOnRailGrid(placementEntity) then
+        TunnelCommon.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
         return
     end
 
@@ -294,8 +294,8 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelCommon.IsPlacementValid(createdEntity) then
-        TunnelCommon.UndoInvalidPlacement(createdEntity, placer, false)
+    if not TunnelCommon.IsPlacementOnRailGrid(createdEntity) then
+        TunnelCommon.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
         return
     end
 end

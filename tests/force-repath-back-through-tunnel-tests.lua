@@ -15,7 +15,7 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
-local TrainManagerFuncs = require("scripts/train-manager-functions")
+local TunnelCommon = require("scripts/tunnel-common")
 local Colors = require("utility/colors")
 
 local DoMinimalTests = true -- If TRUE only a few reverse concept tests are done. Intended for regular use as part of all tests.
@@ -859,7 +859,7 @@ Test.GenerateTestScenarios = function(testName)
 
     if DoMinimalTests then
         -- Do minimal sub-set of tests.
-        trainTypesToTest = {Utils.GetTableValueWithInnerKeyValue(TrainTypes, "text", "<------>", false, false)}
+        trainTypesToTest = {Utils.GetTableValueWithInnerKeyValue(TrainTypes, "text", "<->", false, false)}
         tunnelUsageTypesToTest = TunnelUsageTypes
         forwardsPathingOptionAfterTunnelTypesToTest = {ForwardsPathingOptionAfterTunnelTypes.none}
         backwardsPathingOptionAfterTunnelTypesToTest = {BackwardsPathingOptionAfterTunnelTypes.delayed}
@@ -1011,12 +1011,12 @@ Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, play
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = -0.5, y = 2}) -- offset to position first carriage correctly.
     for carriageNumber, carriageDetails in pairs(carriagesDetails) do
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TunnelCommon.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
         if carriageDetails.name == "locomotive" then
             placedCarriage.insert({name = "rocket-fuel", count = 10})
         end
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TrainManagerFuncs.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = TunnelCommon.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
 
         -- Place the player in this carriage if set.
         if playerInCarriageNumber ~= nil and playerInCarriageNumber == carriageNumber then

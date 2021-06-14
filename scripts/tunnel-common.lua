@@ -1,6 +1,5 @@
---local Events = require("utility/events")
---local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
+local Colors = require("utility/colors")
 local TunnelCommon = {}
 
 -- Make the entity lists.
@@ -17,6 +16,19 @@ end
 TunnelCommon.tunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
 TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames})
 TunnelCommon.tunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
+TunnelCommon.tunnelSurfaceRailEntityNames = {
+    ["railway_tunnel-internal_rail-on_map"] = "railway_tunnel-internal_rail-on_map",
+    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map",
+    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel",
+    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map",
+    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel"
+}
+TunnelCommon.RollingStockTypes = {
+    ["locomotive"] = "locomotive",
+    ["cargo-wagon"] = "cargo-wagon",
+    ["fluid-wagon"] = "fluid-wagon",
+    ["artillery-wagon"] = "artillery-wagon"
+}
 
 TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnelPartPoint, tunnelPortals, tunnelSegments, checkingDirection, placer)
     local orientation = Utils.DirectionToOrientation(checkingDirection)
@@ -55,7 +67,7 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
     return false
 end
 
-TunnelCommon.IsPlacementValid = function(placementEntity)
+TunnelCommon.IsPlacementOnRailGrid = function(placementEntity)
     if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
         return false
     else
@@ -63,13 +75,17 @@ TunnelCommon.IsPlacementValid = function(placementEntity)
     end
 end
 
-TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
+TunnelCommon.UndoInvalidTunnelPartPlacement = function(placementEntity, placer, mine)
+    TunnelCommon.UndoInvalidPlacement(placementEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
+end
+
+TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
     if placer ~= nil then
         local position, surface, entityName, ghostName, direction = placementEntity.position, placementEntity.surface, placementEntity.name, nil, placementEntity.direction
         if entityName == "entity-ghost" then
             ghostName = placementEntity.ghost_name
         end
-        TunnelCommon.EntityErrorMessage(placer, "Tunnel must be placed on the rail grid", surface, position)
+        TunnelCommon.EntityErrorMessage(placer, warningMessageText, surface, position)
         if mine then
             local result
             if placer.is_player() then
@@ -79,12 +95,17 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine)
                 result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
             end
             if result ~= true then
-                error("couldn't mine invalidly placed tunnel entity")
+                error("couldn't mine invalidly placed " .. errorEntityNameText .. " entity")
             end
         else
             placementEntity.destroy()
         end
-        TunnelCommon.HighlightValidPlacementPositions(placer, position, surface, entityName, ghostName, direction)
+        if highlightValidRailGridPositions then
+            TunnelCommon.HighlightValidPlacementPositions(placer, position, surface, entityName, ghostName, direction)
+        end
+    else
+        placementEntity.destroy()
+        game.print("invalid placement of " .. errorEntityNameText .. " by script at {" .. tostring(placementEntity.position.x) .. "," .. tostring(placementEntity.position.y) .. "} removed", Colors.red)
     end
 end
 
@@ -145,6 +166,15 @@ TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killFor
     local carriagesFound = refEntity.surface.find_entities_filtered {area = searchArea, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
     for _, carriage in pairs(carriagesFound) do
         Utils.EntityDie(carriage, killForce, killerCauseEntity)
+    end
+end
+
+TunnelCommon.GetCarriagePlacementDistance = function(carriageEntityName)
+    -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
+    if carriageEntityName == "railway_tunnel-tunnel_portal_pushing_locomotive" then
+        return 0.5
+    else
+        return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
     end
 end
 

@@ -1,6 +1,8 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Tunnel = {}
+local TunnelCommon = require("scripts/tunnel-common")
+local Utils = require("utility/utils")
 
 --[[
     Notes: We have to handle the "placed" versions being built as this is what blueprints get and when player is in the editor in "entity" mode and pipette's a placed entity. All other player modes select the placement item with pipette.
@@ -29,6 +31,7 @@ end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
+
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
     Interfaces.RegisterInterface("Tunnel.RegisterEndSignal", Tunnel.RegisterEndSignal)
     Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
@@ -40,6 +43,18 @@ Tunnel.OnLoad = function()
     Interfaces.RegisterInterface("Tunnel.On_PortalReplaced", Tunnel.On_PortalReplaced)
     Interfaces.RegisterInterface("Tunnel.On_SegmentReplaced", Tunnel.On_SegmentReplaced)
     Interfaces.RegisterInterface("Tunnel.GetTunnelsUsageEntry", Tunnel.GetTunnelsUsageEntry)
+
+    local rollingStockFilter = {
+        {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
+        {filter = "ghost_type", type = "locomotive"},
+        {filter = "ghost_type", type = "cargo-wagon"},
+        {filter = "ghost_type", type = "fluid-wagon"},
+        {filter = "ghost_type", type = "artillery-wagon"}
+    }
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
 end
 
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
@@ -208,6 +223,50 @@ Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
         end
     end
     return nil
+end
+
+Tunnel.OnBuiltEntity = function(event)
+    -- Check for any train carriages (real or ghost) being built on the portal or tunnel segments. Ghost placing train carriages doesn't raise the on_built_event for some reason.
+    -- Known limitation that you can't place a single carriage on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
+    local createdEntity = event.created_entity or event.entity
+    if (not createdEntity.valid or (not (createdEntity.type ~= "entity-ghost" and TunnelCommon.RollingStockTypes[createdEntity.type] ~= nil) and not (createdEntity.type == "entity-ghost" and TunnelCommon.RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
+        return
+    end
+
+    if createdEntity.type ~= "entity-ghost" then
+        -- Is a real entity so check it approperiately.
+
+        -- If its part of a multi carriage train then ignore it in this function. As other logic for handling manipulation of trains using tunnels will catch it. This is intended to purely catch single carriages being built on tunnels.
+        local train = createdEntity.train
+        if #createdEntity.train.carriages ~= 1 then
+            return
+        end
+
+        -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
+        if TunnelCommon.tunnelSurfaceRailEntityNames[train.front_rail.name] == nil and TunnelCommon.tunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+            return
+        end
+    else
+        -- Is a ghost so check it approperiately. This isn't perfect, but if it misses an invalid case the real entity being placed will catch it. Nicer to warn the player at the ghost stage however.
+
+        -- Have to check what rails are at the approximate ends of the ghost carriage.
+        local carriageLengthFromCenter, surface, tunnelRailFound = TunnelCommon.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
+        local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation), Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation - 0.5)
+        if #surface.find_entities_filtered {name = TunnelCommon.tunnelSurfaceRailEntityNames, position = frontRailPosition} ~= 0 then
+            tunnelRailFound = true
+        elseif #surface.find_entities_filtered {name = TunnelCommon.tunnelSurfaceRailEntityNames, position = backRailPosition} ~= 0 then
+            tunnelRailFound = true
+        end
+        if not tunnelRailFound then
+            return
+        end
+    end
+
+    local placer = event.robot -- Will be nil for player or script placed.
+    if placer == nil and event.player_index ~= nil then
+        placer = game.get_player(event.player_index)
+    end
+    TunnelCommon.UndoInvalidPlacement(createdEntity, placer, createdEntity.type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
 end
 
 return Tunnel
