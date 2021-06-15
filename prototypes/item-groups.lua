@@ -51,6 +51,12 @@ data:extend(
             name = "railway_tunnel-train_placement_blockers",
             group = "railway_tunnel-hidden",
             order = "f"
+        },
+        {
+            type = "item-subgroup",
+            name = "railway_tunnel-other",
+            group = "railway_tunnel-hidden",
+            order = "z"
         }
     }
 )

@@ -548,6 +548,7 @@ Test.Start = function(testName)
             recentChangeReason = the last change reason text for this action if there was one. Only occurs on single fire actions.
         }
     --]]
+    testData.tunnelUsageEntry = nil -- Populated during run with {enteringTrain, leavingTrain}
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -882,7 +883,7 @@ Test.GenerateTestScenarios = function(testName)
             end
         end
         tunnelUsageTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelUsageTypes, SpecificTunnelUsageTypesFilter)
-        playerInCarriagesTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(limitedPlayerInCarriagesTypes, SpecificForwardsPathingOptionAfterTunnelTypesFilter)
+        playerInCarriagesTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(limitedPlayerInCarriagesTypes, SpecificPlayerInCarriageTypesFilter)
         forwardsPathingOptionAfterTunnelTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ForwardsPathingOptionAfterTunnelTypes, SpecificForwardsPathingOptionAfterTunnelTypesFilter)
         backwardsPathingOptionAfterTunnelTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(BackwardsPathingOptionAfterTunnelTypes, SpecificBackwardsPathingOptionAfterTunnelTypesFilter)
         stationReservationCompetitorTrainExistsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StationReservationCompetitorTrainExists, SpecificStationReservationCompetitorTrainExists)

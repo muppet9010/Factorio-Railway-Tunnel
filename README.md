@@ -21,6 +21,7 @@ Usage Notes
 - If a train is using a tunnel and some track in its path is removed, it will try and repath like normal Factorio (forwards/backwards) from the tunnel. If it can't path it will pull to the front of the tunnel so it can be accessed by the player easier.
 - The tunnel parts can only be validly placed on the rail grid, however it isn't possible to snap these like regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted; A green square for buildable locations and a red square for blocked locations, based on ghost type placement.
 - Manually driven trains that enter a tunnel will go through on automatic for the tunnel journey, with control returned to the player when they emerge from the tunnel.
+- Any train using a tunnel that has an issue (runs out of fuel, has a carriage removed, etc) will be pushed fully out of the tunnel so it can be fixed by the player.
 
 
 Debug Release

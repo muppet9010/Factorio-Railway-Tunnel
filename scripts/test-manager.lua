@@ -58,7 +58,8 @@ local TestsToRun = {
     ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")},
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     PathToTunnelTests = {enabled = false, testScript = require("tests/path-to-tunnel-tests")},
-    RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")}
+    RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
+    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
