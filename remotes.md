@@ -50,6 +50,7 @@ Get a custom event id via a remote interface call that can be registered to be n
         - abortedApproach: Raised for "terminated" action. Occurs when a train aborts its approach before it starts to enter the tunnel, but after it has reserved the tunnel and the "startApproaching" action evet has been raised.
         - forwardPathLost: Raised for "reversedDuringUse" action. Is just to clarify why the train reversed during its use, in this case as the path out of the tunnel was lost and so the train had to reverse up the tunnel to reach its destination.
         - completedTunnelUsage: Raised for "terminated" action. The train finished leaving the portal tracks and the tunnel has been unlocked ready for future use. This is the successful completed clarification on the "terminated" action.
+        - tunnelRemoved: Raised once a tunnel is removed (destroyed) while the train is using it.
     - replacedtunnelUsageId: Normally nil, unless an old tunnel usage has been replaced by this new tunnel usage for some reason. When this occurs the new tunnel usage event data includes the old tunnel usage id as this attributes value. With the old tunnel usage reporting "terminated" action.
 
 

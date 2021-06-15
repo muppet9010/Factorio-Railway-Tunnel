@@ -93,6 +93,7 @@ TestManager.OnLoad = function()
     end
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
     EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests", TestManager.WaitForPlayerThenRunTests)
+    EventScheduler.RegisterScheduledEventType("TestManager.ClearMap", TestManager.ClearMap)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
     Interfaces.RegisterInterface("TestManager.GetTestScript", TestManager.GetTestScript)
@@ -179,13 +180,13 @@ TestManager.WaitForPlayerThenRunTests = function(event)
             end
         end
         game.tick_paused = true
-        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests")
+        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.ClearMap")
     else
-        TestManager.RunTests()
+        TestManager.ClearMap()
     end
 end
 
-TestManager.RunTests = function()
+TestManager.ClearMap = function()
     -- Clean any previous entities off the map. Remove any trains first and then everything else; to avoid triggering tunnel removal destroying trains alerts.
     for _, entityTypeFilter in pairs({{"cargo-wagon", "locomotive", "fluid-wagon"}, {}}) do
         for _, entity in pairs(global.testManager.testSurface.find_entities_filtered({name = entityTypeFilter})) do
@@ -198,6 +199,11 @@ TestManager.RunTests = function()
         player.clear_console()
     end
 
+    -- Wait 1 tick so any end of tick mod events from the mpa clearing are raised and ignored, before we start the next test.
+    EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests")
+end
+
+TestManager.RunTests = function()
     for testName, test in pairs(global.testManager.testsToRun) do
         if ((AllTests and not test.notInAllTests) or test.enabled) and test.runLoopsCount < test.runLoopsMax then
             TestManager.PrepPlayersForNextTest()

@@ -774,10 +774,13 @@ TrainManager.GetEnteringTrainLeadCarriageCache = function(trainManagerEntry, ent
 end
 
 TrainManager.DestroyDummyTrain = function(trainManagerEntry)
-    if trainManagerEntry.dummyTrain ~= nil then
-        global.trainManager.trainIdToManagedTrain[trainManagerEntry.dummyTrain.id] = nil
+    -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's trainManagerEntry id.
+    if trainManagerEntry.dummyTrain ~= nil and trainManagerEntry.dummyTrain.valid then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.dummyTrainId] = nil
         TrainManagerFuncs.DestroyTrainsCarriages(trainManagerEntry.dummyTrain)
-        trainManagerEntry.dummyTrain = nil
+        trainManagerEntry.dummyTrain, trainManagerEntry.dummyTrainId = nil, nil
+    elseif trainManagerEntry.dummyTrainId ~= nil then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.dummyTrainId] = nil
     end
 end
 
@@ -876,11 +879,10 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved)
                     managedTrain.leavingTrain.speed = 0
                 end
             end
-            TrainManager.DestroyDummyTrain(managedTrain)
 
             PlayerContainers.On_TunnelRemoved(managedTrain.undergroundTrain)
-            TrainManager.DestroyUndergroundTrain(managedTrain)
-            global.trainManager.managedTrains[managedTrain.id] = nil
+
+            TrainManager.TerminateTunnelTrip(managedTrain, TrainManager.TunnelUsageChangeReason.tunnelRemoved)
         end
     end
 end
@@ -1104,33 +1106,39 @@ TrainManager.TerminateTunnelTrip = function(trainManagerEntry, tunnelUsageChange
         PlayerContainers.On_TerminateTunnelTrip(trainManagerEntry.undergroundTrain)
         TrainManager.DestroyUndergroundTrain(trainManagerEntry)
     end
-    TrainManager.TidyManagedTrainGlobals(trainManagerEntry)
+    TrainManager.RemoveManagedTrainEntry(trainManagerEntry)
+
+    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
+    TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.terminated, tunnelUsageChangeReason)
+end
+
+TrainManager.RemoveManagedTrainEntry = function(trainManagerEntry)
+    -- Only remove the global if it points to this trainManagerEntry. The reversal process can have made the enteringTrain references invalid, and MAY have overwritten them, so check before removing.
+    if trainManagerEntry.enteringTrain and trainManagerEntry.enteringTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrain.id] and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrain.id].trainManagerEntry.id == trainManagerEntry.id then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrain.id] = nil
+    elseif trainManagerEntry.enteringTrainId and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId] and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId].trainManagerEntry.id == trainManagerEntry.id then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrain.id] = nil
+    end
+
+    if trainManagerEntry.leavingTrain and trainManagerEntry.leavingTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrain.id] and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrain.id].trainManagerEntry.id == trainManagerEntry.id then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrain.id] = nil
+    elseif trainManagerEntry.leavingTrainId and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId] and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId].trainManagerEntry.id == trainManagerEntry.id then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId] = nil
+    end
+
+    if trainManagerEntry.leftTrain and trainManagerEntry.leftTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrain.id] and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrain.id].trainManagerEntry.id == trainManagerEntry.id then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrain.id] = nil
+    elseif trainManagerEntry.leftTrainId and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId] and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId].trainManagerEntry.id == trainManagerEntry.id then
+        global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId] = nil
+    end
+
+    TrainManager.DestroyDummyTrain(trainManagerEntry)
 
     -- Set all states to finished so that the TrainManager.ProcessManagedTrains() loop won't execute anything further this tick.
     trainManagerEntry.primaryTrainPartName = PrimaryTrainPartNames.finished
     trainManagerEntry.enteringTrainState = EnteringTrainStates.finished
     trainManagerEntry.undergroundTrainState = UndergroundTrainStates.finished
     trainManagerEntry.leavingTrainState = LeavingTrainStates.finished
-
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", trainManagerEntry)
-    TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.terminated, tunnelUsageChangeReason)
-end
-
-TrainManager.TidyManagedTrainGlobals = function(trainManagerEntry)
-    -- Only remove the global if it points to this trainManagerEntry. The reversal process will have overwritten this already, so much be careful.
-    if trainManagerEntry.enteringTrain and trainManagerEntry.enteringTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId].trainManagerEntry.id == trainManagerEntry.id then
-        global.trainManager.trainIdToManagedTrain[trainManagerEntry.enteringTrainId] = nil
-    end
-    if trainManagerEntry.leavingTrain and trainManagerEntry.leavingTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId].trainManagerEntry.id == trainManagerEntry.id then
-        global.trainManager.trainIdToManagedTrain[trainManagerEntry.leavingTrainId] = nil
-    end
-    if trainManagerEntry.leftTrain and trainManagerEntry.leftTrain.valid and global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId].trainManagerEntry.id == trainManagerEntry.id then
-        global.trainManager.trainIdToManagedTrain[trainManagerEntry.leftTrainId] = nil
-    end
-
-    if trainManagerEntry.dummyTrain and trainManagerEntry.dummyTrain.valid then
-        TrainManager.DestroyDummyTrain(trainManagerEntry)
-    end
 
     global.trainManager.managedTrains[trainManagerEntry.id] = nil
 end
@@ -1336,7 +1344,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
     end
 
     -- Remove any left over bits of the oldTrainManagerEntry
-    TrainManager.TidyManagedTrainGlobals(oldTrainManagerEntry)
+    TrainManager.RemoveManagedTrainEntry(oldTrainManagerEntry)
 end
 
 TrainManager.UpdatePortalExitSignalPerTick = function(trainManagerEntry, forceSignalState)
@@ -1382,7 +1390,8 @@ TrainManager.TunnelUsageChangeReason = {
     reversedAfterLeft = "reversedAfterLeft",
     abortedApproach = "abortedApproach",
     forwardPathLost = "forwardPathLost",
-    completedTunnelUsage = "completedTunnelUsage"
+    completedTunnelUsage = "completedTunnelUsage",
+    tunnelRemoved = "tunnelRemoved"
 }
 
 TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes = function(tableToPopulate, trainManagerEntryId)
