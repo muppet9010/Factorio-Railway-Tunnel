@@ -404,8 +404,10 @@ TrainManager.TrainApproachingOngoing = function(trainManagerEntry)
             trainManagerEntry = trainManagerEntry,
             tunnelUsagePart = "dummyTrain"
         }
-        enteringTrain.schedule = nil -- Schedule has been transferred to dummy train.
         trainManagerEntry.undergroundTrainOldAbsoluteSpeed = math.abs(undergroundTrainSpeed)
+
+        TrainManager.HandleTrainNewlyEntering(trainManagerEntry)
+
         TrainManager.Remote_TunnelUsageChanged(trainManagerEntry.id, TrainManager.TunnelUsageAction.startedEntering) -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
     end
 end
@@ -731,6 +733,23 @@ end
 ----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------
+
+TrainManager.HandleTrainNewlyEntering = function(trainManagerEntry)
+    local enteringTrain = trainManagerEntry.enteringTrain
+
+    -- Schedule has been transferred to dummy train.
+    enteringTrain.schedule = {
+        current = 1,
+        records = {
+            {station = "ENTERING TUNNEL - EDIT LEAVING TRAIN"}
+        }
+    }
+
+    -- Prevent player from messing with all entering carriages.
+    for _, carriage in pairs(enteringTrain.carriages) do
+        carriage.operable = false
+    end
+end
 
 TrainManager.EnsureManagedTrainsFuel = function(trainManagerEntry, undergroundTrainSpeed)
     local undergroundTrain = trainManagerEntry.undergroundTrain
@@ -1218,7 +1237,6 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         newTrainManagerEntry.enteringTrainState = EnteringTrainStates.entering
         newTrainManagerEntry.enteringTrain = oldTrainManagerEntry.leavingTrain
         newTrainManagerEntry.enteringTrain.speed = 0 -- We don't want to change the cached forwards state we have just generated. This was most liekly set to 0 already by the train reversing, but force it to be safe.
-        newTrainManagerEntry.enteringTrain.schedule = nil -- Set to no scheule like a fresh enterign train would be.
         newTrainManagerEntry.enteringTrainId = oldTrainManagerEntry.leavingTrainId
         global.trainManager.trainIdToManagedTrain[newTrainManagerEntry.enteringTrainId] = {
             trainId = newTrainManagerEntry.enteringTrainId,
@@ -1227,6 +1245,8 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
         }
         newTrainManagerEntry.enteringTrainForwards = not oldTrainManagerEntry.leavingTrainForwards
         newTrainManagerEntry.enteringTrainLeadCarriageCache = nil -- Will be populated on first use.
+
+        TrainManager.HandleTrainNewlyEntering(newTrainManagerEntry)
 
         -- Old leaving train has an exiting pushing loco. We need to
         if oldTrainManagerEntry.leavingTrainPushingLoco ~= nil then
@@ -1257,6 +1277,12 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldTrainManagerEntry)
             trainManagerEntry = newTrainManagerEntry,
             tunnelUsagePart = "leavingTrain"
         }
+
+        -- Handle any carriages made in-operable in previous tunnel entry usage.
+        for _, carriage in pairs(newTrainManagerEntry.leavingTrain.carriages) do
+            carriage.operable = true
+        end
+
         if not TrainManagerFuncs.DoesTrainHaveAForwardsLoco(newTrainManagerEntry.leavingTrain, newTrainManagerEntry.trainTravelOrientation) then
             local rearCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(newTrainManagerEntry.leavingTrain, not newTrainManagerEntry.leavingTrainForwards)
             -- When pushing loco is added it may corrupt out cached Forwards state. So check if the trains idea of its front and back is changed and update accordingly.

@@ -238,7 +238,7 @@ end
 TunnelSegments.OnPreBuild = function(event)
     -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
     local player = game.get_player(event.player_index)
-    if TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[player.cursor_stack.name] == nil then
+    if not player.cursor_stack.valid or not player.cursor_stack.valid_for_read or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[player.cursor_stack.name] == nil then
         return
     end
     local surface = player.surface

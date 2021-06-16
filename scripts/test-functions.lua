@@ -185,25 +185,25 @@ TestFunctions.GetSnapshotOfTrain = function(train)
 end
 
 -- Compares 2 train snapshots to see if they are the same train structure. If Optional "allowPartialCurrentSnapshot" argument is true then the current snapshot can be one end of the origonal train.
-TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSnapshot, allowPartialCurrentSnapshot)
+TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
 
     local wagonsToIgnore = remote.call("railway_tunnel", "get_temporary_carriage_names")
-    local currentSnapshotCarriages = currentSnapshot.carriages
+    local currentSnapshotCarriages = currentTrainSnapshot.carriages
 
     -- If dummy/pushing locos are allowed then check the train ends and remove them if found, so they don't trigger a fail in comparison. Don't remove any from within the train as they shouldn't be there.
     if allowPartialCurrentSnapshot then
-        for _, currentCarriageCount in pairs({1, currentSnapshot.carriageCount}) do
+        for _, currentCarriageCount in pairs({1, currentTrainSnapshot.carriageCount}) do
             if wagonsToIgnore[currentSnapshotCarriages[currentCarriageCount].name] ~= nil then
                 table.remove(currentSnapshotCarriages, currentCarriageCount)
-                currentSnapshot.carriageCount = currentSnapshot.carriageCount - 1
+                currentTrainSnapshot.carriageCount = currentTrainSnapshot.carriageCount - 1
             end
         end
     end
 
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
-    if not allowPartialCurrentSnapshot and origionalSnapshot.carriageCount ~= currentSnapshot.carriageCount then
+    if not allowPartialCurrentSnapshot and origionalTrainSnapshot.carriageCount ~= currentTrainSnapshot.carriageCount then
         return false
     end
 
@@ -220,9 +220,9 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalSnapshot, currentSn
             }
         ) do
             local difference
-            for carriageNumber = 1, currentSnapshot.carriageCount do
+            for carriageNumber = 1, currentTrainSnapshot.carriageCount do
                 local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #currentSnapshotCarriages)
-                difference = TestFunctions._CarriageSnapshotsMatch(origionalSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
+                difference = TestFunctions._CarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
                 if difference then
                     break
                 end

@@ -5,9 +5,6 @@ Bugs
 Functionality not currently supported
 -------------------------------------
     - Handle a player adding/removing a carriage from a train while its using a tunnel. Should set the train to go to the end of the tunnel on each carriage being removed. If there are no forward loco's left then we should push the remaining train to the end of the portal, or until it has fullyLeft.
-    - Player changes a committed entering/leaving trains order. May cause reversion or need to be bleed through to dummy train/leaving end. At points the entering train will have no orders and be in manual mode.
-        - Maybe give entering train part a schedule order of "USING TUNNEL - CHNAGE ORDERS ON LEAVING TRAIN PART" and just keep on forcing this & manual mode on it.
-        - Maybe make the entering train part not allow player manipulation, as there's nothing to manipulate and just pop up a message when the player tries.
     - Handle player driven trains approaching the tunnel. Have it go through on auto for now from when it commits to when it starts leaving. Put the player in a pushing loco if needed when the train reaches other side and have the player inputs fed to the underground train somehow?
     - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train. TODO in "tests/path-to-tunnel-tests.lua" related to when this functionality is supported.
     - Handle 2 trains both entering the tunnel at once, due to manual control or free wheeling (manual mode with speed) second train.

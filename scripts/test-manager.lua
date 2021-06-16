@@ -59,7 +59,8 @@ local TestsToRun = {
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     PathToTunnelTests = {enabled = false, testScript = require("tests/path-to-tunnel-tests")},
     RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
-    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}
+    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
+    ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
