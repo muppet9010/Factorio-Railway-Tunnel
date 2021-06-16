@@ -32,8 +32,8 @@ local tunnelPortalSurfacePlacement = {
         },
         east = {
             filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-placement-east.png",
-            height = 192,
-            width = 1600
+            height = 360,
+            width = 1800
         },
         south = {
             filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-placement-south.png",
@@ -60,9 +60,42 @@ local tunnelPortalSurfacePlacement = {
 local tunnelPortalSurfacePlaced = Utils.DeepCopy(tunnelPortalSurfacePlacement)
 tunnelPortalSurfacePlaced.name = "railway_tunnel-tunnel_portal_surface-placed"
 tunnelPortalSurfacePlaced.flags = {"player-creation", "not-on-map"}
-tunnelPortalSurfacePlaced.render_layer = "ground-tile"
+tunnelPortalSurfacePlaced.render_layer = "ground-tile" -- Draw it under other objects on the map. Means the complete image acts as base with other entiteis apearing above.
 tunnelPortalSurfacePlaced.selection_box = tunnelPortalSurfacePlaced.collision_box
 tunnelPortalSurfacePlaced.corpse = "railway_tunnel-tunnel_portal_surface-remnant"
+
+local tunnelPortalSurfacePlacedFront = {
+    type = "simple-entity-with-owner",
+    name = "railway_tunnel-tunnel_portal_surface-placed_front",
+    icon = "__railway_tunnel__/graphics/icon/tunnel_portal_surface/railway_tunnel-tunnel_portal_surface-placement.png",
+    icon_size = 32,
+    flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable"},
+    render_layer = "higher-object-under", -- Draw this part of the image above other entities on the map, i.e. trains.
+    collision_mask = {},
+    selectable_in_game = false,
+    picture = {
+        north = {
+            filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-placement-north.png",
+            height = 1600,
+            width = 192
+        },
+        east = {
+            filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-placed-front-east.png",
+            height = 360,
+            width = 1800
+        },
+        south = {
+            filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-placement-south.png",
+            height = 1600,
+            width = 192
+        },
+        west = {
+            filename = "__railway_tunnel__/graphics/entity/tunnel_portal_surface/tunnel_portal_surface-placement-west.png",
+            height = 192,
+            width = 1600
+        }
+    }
+}
 
 local tunnelPortalSurfaceRemnant = {
     type = "corpse",
@@ -103,6 +136,7 @@ data:extend(
     {
         tunnelPortalSurfacePlacement,
         tunnelPortalSurfacePlaced,
+        tunnelPortalSurfacePlacedFront,
         tunnelPortalSurfaceRemnant,
         tunnelPortalSurfacePlacementItem
     }
