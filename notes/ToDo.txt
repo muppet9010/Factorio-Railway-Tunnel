@@ -4,40 +4,74 @@ Bugs
 
 Functionality not currently supported
 -------------------------------------
-    - Handle a player adding/removing a carriage from a train while its using a tunnel. Should set the train to go to the end of the tunnel on each carriage being removed. If there are no forward loco's left then we should push the remaining train to the end of the portal, or until it has fullyLeft.
-    - Handle player driven trains approaching the tunnel. Have it go through on auto for now from when it commits to when it starts leaving. Put the player in a pushing loco if needed when the train reaches other side and have the player inputs fed to the underground train somehow?
-    - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever. A train that can't power itself in this direction should be hard stopped at the tunnel entrance, otherwise treated like a player driven train. TODO in "tests/path-to-tunnel-tests.lua" related to when this functionality is supported.
-    - Handle 2 trains both entering the tunnel at once, due to manual control or free wheeling (manual mode with speed) second train.
-    - Handle all of the situations that a carriage/train can be destroyed. Do late on as will be time consuming and need updating on other major changes. Also cover players in trains for player with body and when in editor mode - PlayerContainers.On_TunnelRemoved(). Currently a destroyed tunnel piece rebuilt (ghost placed) by a robot caused the game to crash (creative mod), so something isn't quite right in the old tunnel segment/portal destroyed code.
+    - Interlinked adbnormal tunnel usage cases:
+        - Handle player driven trains approaching the tunnel.
+            - Have it go through on auto for now from when it commits to when it starts leaving.
+            - Put the player in a pushing loco if needed when the train reaches other side and have the player inputs fed to the underground train somehow?
+        - Handle the adding/removing a carriage from a train while its using a tunnel.
+            - On on_train_created will detect changes to trains composition or can use the built, mining and destroyed events.
+            - On adding carriages should set the train to go to the end of the tunnel on each carriage as vanilla would go to manual control.
+            - On a carriage being removed the main train part using the tunnel should continue, with the other new train (old part now disjoined) just stopping dead to avoid 2 trains using the tunnel.
+            - If there are no forward loco's left then we should push the remaining train to the end of the portal, or until it has fullyLeft, same as with low fuel (no path may achieve this already?).
+            - Any now coasting train entering the tunnel will be handled by the coasting logic.
+        - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever.
+            - A train that isn't actively moving should be hard stopped at the tunnel entrance if possible, otherwise treated like a player driven train. - TODO in "tests/path-to-tunnel-tests.lua" related to when this functionality is supported.
+            - A coasting train that reaches the END signal should be sent through the tunnel (became coasting once on the portal) as if it was on the portal it was already the only train.
+            - We need to avoid any double tunnel usage scenarios and keep the carriage placement area clear in worst cases.
+        - Handle 2 trains both using the tunnel and its portals at once.
+            - This second train may be a coasting train, player driven or track adding/removal outcome.
+            - This should be reduced by coasting trains and carriage add/remove logic.
+            - However a second train may end up on the portal and it must be stopped immediately upon the conflict being detected.
+            - Need to check/handle if it prevents the placing of blocking or dummy locos or ends up on the tunnel placement area.
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
-    - Check entering artillery trains stopped going in to the tunnel when the head has stopped coming out (signal). In vanialla an artillery train not stopped at station or in manual won't fire.
-    - Very very fast train mods may cause issues as they can move more than 15 tiles per tick, max speed is now 7386.3km/h or 34 tiles a tick. Either block or force to slow down for tunnels on approach/usage. The mod can only handle speeds up to 7 tiles per tick as only 1 carriage can be added/removed per tick. Maybe detect the speed on the approaching train and have a variable vanishing point based on this.
+        - Need to use the origional underground train as source for the others.
+        - Use functions to handle any updates to the underground train (fuel, carriages changing) as this will need to be replicated across.
+        - If the train is leaving the first tunnel and is approaching the second, but then repaths away from it, does this just work on current logic?
+    - Entering trains that stop due to the leavingTrain having come to a stop will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots.
+        - Can't use active state on rolling stock.
+        - Can try setting the enteringTrains artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
+        - Look at setting the enteringTrain's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the enteringTrain is never "stopped" and so nothing should ever activate.
+    - Damage done to trains (entering and leaving) should be mirrored underground. Any destroyed carriages will be handled by the adding/removing carraige logic.
+    - For very long trains or tunnels the rails in the underground might not be long enough. Place additional rails at the required distance from the tunnel ends. Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag)?
 
 
 Features planned to add
 ---------------
-    - Support 2 tunnels crossing:
-        UPDATED NOTES IN DEDICATED BRANCH FOR THIS
+    - Support 2 tunnels crossing - details vary - UPDATED NOTES IN DEDICATED BRANCH FOR THIS
     - Proper Graphics:
         - Icons
         - Ingame entities as layered graphics for underneath and on top of trains.
         - In/Out signals on the entrance end of the portal should fit in to the graphics.
         - Cursor and Blueprint entity graphics for both placed and placement as both can be seen.
-    - Look at TSM and LTN compatibility requirement or block them.
 
 
 Concepts / Ideas
 ----------------
     - Review what to allow to be built on top of the tunnel segments, either just belts & power poles or anything non trains. At present is nothing, but can be driven over.
     - When a tunnel is destroyed (by force):
-        - Any riding players should have their bodies dumped at the tunnel entrance, as in vanilla Factorio you can't loose a body.
+        - Any riding players should have their bodies dumped at the tunnel entrance position (it may be gone), as in vanilla Factorio you can't loose a body. At present the body ends up on the surface where the player's PlayerContainer was.
         - Detect any destroyed chest's spill on ground type mods and honour their settings for dropping train contents on ground at tunnel portals.
     - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels going under them or cause the cliffs to vanish as they can't reshape.
     - Look at if tunnel segments (not rail crossing ones) can be built under water. Should be same placement entity, just a differnet graphics entity on top to show the tunnel on the lake bed. If possible have to work out transition point.
     - Look at if tiles (concrete) can be placed over tunnel segments or something done to allow them to be paved over (even if just a visual). Maybe have tunnel segments have below tile graphics and I place tunnel tiles down, keeping a record of the old tile. This lets people concrete over and remove concrete. If the tunnel segment is removed I return the stored origional tile name back.
     - Request for big power poles to be able to be placed on tunnel entrances to keep tunnels like rail block blurprints (MOJO style). Maybe including big power poles at both ends of the tunnel portal and in the middle with red & green wires between them? Would need to expose wire connection points though. Or have power and red/green wires transmitted through tunnels with just a connection on the entrance of each portal?
     - Diagonal tunnel crossings. Would have to be a 8 long tunnel section to get the track to clear the 6 wide tunnel. If the collision box of the crossing was made 0.5~ in from each edge then rails diagonal rails should be placable up to the edge of it. The width doesn't prevent close and spaced double diagonal tracks from being built over a tunnel. Technically some existing entities on the edge would overlap with the mod placed rails, however this is unavoidable to let the player build diagonal rails up to the crossing.
+    - At present a train can emerge very fast from a tunnel and then suddenly break much faster that a regular track train would. When a train is leaving the underground we only work out its stopping position beyond the Exit portal entry signals once it starts leaving the tunnel.
+        - Do some basic math with the underground train's speed, weight and breaking distance and when it is going to have a stopping point beyond the Exit portal's entry signal have the dummy train test the path ahead.
+        - The dummy train can have its speed set, path recalculated(force = false), state checked and then speed set back to 0 all in the same tick. If its state was on_the_path then all is clear, otherwise dummy train will have arrive_signal and the stopping distance can be fed back underground.
+        - We only need to do this this check from the point between the breaking distance being beyond the Exit portal's entry signal and when the first carriage leaves. We shouldn't need to do this more than every 10 ticks as that will get the underground train to a sensible.
+        - We can't hold the signal for the leaving train using the dummy train as the instant the train loses its speed or has path recalculated it releases its hold on any signal and another train present can grab it.
+        - Does mean any underground tunnel train will have no priority at future signals until it starts leaving. Include in readme as part of existing signal note.
+    - Try putting the tunnel graphic in front of the train graphics to hide them when they are entering. Use LuaRendering to draw fake carriage animations with tining in their place. These rendered carriage animations can have their scale and position ammended to give the appearance of going down in to a hole.
 
+Mod Compatibility
+----------------
+    - Very very fast train mods may cause issues as they can move up to 34 tiles per tick (7386.3km/h).
+        - The mod can only handle speeds up to 7 tiles per tick as only 1 carriage can be added/removed per tick.
+        - Theres 10 tiles of overrun currently in the tunnel vanishing point, so carriage creation/removal is the lower mod limit.
+        - Force them to slow down for tunnels on approach/usage.
+    - Look at TSM compatibility.
+    - Look at LTN compatibility.
 
 Code Improvements
 ----------------
@@ -45,7 +79,6 @@ Code Improvements
     - Would having a single entity for each portal/segment and then just put another simple entity over the top to suppress any graphics not wanted when built achieve the desired outcome? Would mean blueprints show the placement graphics which is better than now. It would make code simplier and less fighting Factorio logic. I think the "placement" version is left over from when I was going to use pump type and custom tiles to force building on end of rail pieces. This may allow building a tunnel segment over another tunnel segment in a different orientation, need to recheck these type of scenarios. Was placement/placed seperate entities done all those months back just to let me have different graphics or does it offer something else as well? This may have impact on underwater segments (?) and if I ever want to make tunnels not be 1 solid hitbox so players can walk in to them I need the seperate placement/placed.
     - When looking to path backwards can we leave the reverse loco in place to see if the train naturally paths forwards/backwards. Rather than having to add and remove it each tick.
     - When looking to check for if train can reverse; check track segment at rear of train and see if we can detect signal directions. If the track segment doesn't allow reverse train then no need to try it this tick. May be another light way to rule out non reversible trains situations.
-    - For very long trains or tunnels the rails in the underground might not be long enough. Place additional rails at the require distance from the tunnel ends. Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag)?
     - Move the player riding tests to their own test(s) and remove them from other tests. Cover:
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
         - Have the train reverse mid tunnel use and at end of tunnel use (plyer returns to carriage and then back underground second time).

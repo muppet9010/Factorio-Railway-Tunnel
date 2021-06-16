@@ -155,7 +155,10 @@ TestManager.OnStartup = function()
         WaitForPlayerAtEndOfEachTest = false -- We don't want to pause in this mode.
     end
 
-    EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
+    if #global.testManager.testsToRun > 0 then
+        -- Only if there are tests do we need to start this loop. Otherwise test world setup is complete.
+        EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
+    end
 end
 
 TestManager.WaitForPlayerThenRunTests = function(event)
