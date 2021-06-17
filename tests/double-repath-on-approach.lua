@@ -18,7 +18,7 @@ Test.Start = function(testName)
     local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 50, y = 60}, testName)
 
     -- Get the stations placed by name.
-    local stationSouths, stationSouthEndViaTunnel, stationSouthEndNotTunnel, stationNorth = {}
+    local stationSouths, stationNorth = {}, nil
     for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
         if stationEntity.backer_name == "South" then
             table.insert(stationSouths, stationEntity)
@@ -26,6 +26,7 @@ Test.Start = function(testName)
             stationNorth = stationEntity
         end
     end
+    local stationSouthEndViaTunnel, stationSouthEndNotTunnel
     if stationSouths[1].position.x < stationSouths[2].position.x then
         stationSouthEndViaTunnel = stationSouths[1]
         stationSouthEndNotTunnel = stationSouths[2]

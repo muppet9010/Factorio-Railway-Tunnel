@@ -215,6 +215,7 @@ BiomeTrees._GetTreeData = function()
     local environmentData = global.UTILITYBIOMETREES.environmentData
     local moistureRangeAttributeName = global.UTILITYBIOMETREES.environmentData.moistureRangeAttributeName
     local treeEntities = game.get_filtered_entity_prototypes({{filter = "type", type = "tree"}, {mode = "and", filter = "autoplace"}})
+    -- NOTE: temperature_optimal and temperature_range show as warnings as API docs don't specifically list them, instead it lists generic dimensions which the machine parsing can't handle.
     for _, prototype in pairs(treeEntities) do
         Logging.LogPrint(prototype.name, logData)
         local autoplace = nil

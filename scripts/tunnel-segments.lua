@@ -87,7 +87,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
     end
 
     local positionString = Utils.FormatSurfacePositionTableToString(aboveSurface.index, centerPos)
-    local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.segmentPositions[positionString]
+    local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.segmentPositions[positionString], nil
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
     end

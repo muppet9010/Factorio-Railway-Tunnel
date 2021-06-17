@@ -158,7 +158,7 @@ Underground.AssignUndergroundTunnel = function(tunnel)
             if portalSignal.direction == "out" then
                 local signalStateCombinatorPosition = Utils.ApplyOffsetToPosition(undergroundSignalEntity.position, Utils.RotatePositionAround0(portal.entity.orientation, {x = 0, y = 1})) -- 1 tile towards the tunnel center from the signal.
                 undergroundSignal.signalStateCombinator = undergroundSurface.surface.create_entity {name = "constant-combinator", force = global.force.tunnelForce, position = signalStateCombinatorPosition}
-                local signalStateCombinatorControlBehavior = undergroundSignal.signalStateCombinator.get_or_create_control_behavior()
+                local signalStateCombinatorControlBehavior = undergroundSignal.signalStateCombinator.get_or_create_control_behavior() ---@type LuaConstantCombinatorControlBehavior
                 undergroundSignal.signalStateCombinatorControlBehavior = signalStateCombinatorControlBehavior
                 signalStateCombinatorControlBehavior.set_signal(1, {signal = {type = "virtual", name = "signal-red"}, count = 1})
                 signalStateCombinatorControlBehavior.enabled = false
