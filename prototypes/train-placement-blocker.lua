@@ -7,7 +7,7 @@ data:extend(
     {
         {
             type = "simple-entity",
-            name = "railway_tunnel-train_placement_blocker_2x2",
+            name = "railway_tunnel-train_blocker_2x2",
             icons = {
                 {
                     icon = "__base__/graphics/icons/locomotive.png",
@@ -21,13 +21,13 @@ data:extend(
                     icon_mipmaps = 0
                 }
             },
-            subgroup = "railway_tunnel-train_placement_blockers",
+            subgroup = "railway_tunnel-train_blockers",
             collision_box = {{-0.8, -0.8}, {0.8, 0.8}},
-            flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable"},
+            flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable", "placeable-off-grid"},
             selectable_in_game = false,
             collision_mask = {"train-layer"}, -- Just collide with trains.
-            picture = Utils.EmptyRotatedSprite()
-            --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
+            picture = Utils.EmptyRotatedSprite(),
+            selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
         }
     }
 )

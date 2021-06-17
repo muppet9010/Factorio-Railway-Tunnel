@@ -31,10 +31,23 @@ TunnelCommon.RollingStockTypes = {
     ["artillery-wagon"] = "artillery-wagon"
 }
 
-TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, startingTunnelPartPoint, tunnelPortals, tunnelSegments, checkingDirection, placer)
-    local orientation = Utils.DirectionToOrientation(checkingDirection)
-    local continueChecking = true
-    local nextCheckingPos = startingTunnelPartPoint
+---@param startingTunnelPart LuaEntity
+---@param startingTunnelPartPoint Position
+---@param checkingDirection defines.direction
+---@param placer EntityBuildPlacer
+---@return boolean
+---@return Portal[]
+---@return Segment[]
+TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
+    local tunnelPortals, tunnelSegments = {}, {}
+    if TunnelCommon.tunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
+        table.insert(tunnelSegments, startingTunnelPart)
+    elseif TunnelCommon.tunnelPortalPlacedEntityNames[startingTunnelPart.name] then
+        table.insert(tunnelPortals, startingTunnelPart)
+    else
+        error("TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart.name)
+    end
+    local orientation, continueChecking, nextCheckingPos = Utils.DirectionToOrientation(checkingDirection), true, startingTunnelPartPoint
     while continueChecking do
         nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
         local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
@@ -56,7 +69,7 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
                 continueChecking = false
                 if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
                     table.insert(tunnelPortals, connectedTunnelEntity)
-                    return true
+                    return true, tunnelPortals, tunnelSegments
                 else
                     TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 end
@@ -65,7 +78,7 @@ TunnelCommon.CheckTunnelPartsInDirection = function(startingTunnelPart, starting
             end
         end
     end
-    return false
+    return false, tunnelPortals, tunnelSegments
 end
 
 TunnelCommon.IsPlacementOnRailGrid = function(placementEntity)
@@ -178,5 +191,17 @@ TunnelCommon.GetCarriagePlacementDistance = function(carriageEntityName)
         return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
     end
 end
+
+---@class TunnelAlignment
+TunnelCommon.TunnelAlignment = {
+    vertical = "vertical",
+    horizontal = "horizontal"
+}
+
+---@class TunnelAlignmentOrientation
+TunnelCommon.TunnelAlignmentOrientation = {
+    vertical = 0,
+    horizontal = 0.25
+}
 
 return TunnelCommon

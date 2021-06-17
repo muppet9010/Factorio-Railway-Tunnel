@@ -7,26 +7,24 @@ local Utils = require("utility/utils")
 --[[
     Notes: We have to handle the "placed" versions being built as this is what blueprints get and when player is in the editor in "entity" mode and pipette's a placed entity. All other player modes select the placement item with pipette.
 ]]
+---@class Tunnel
+---@field public id Id @unqiue id of the tunnel.
+---@field public alignment TunnelAlignment
+---@field public alignmentOrientation TunnelAlignmentOrientation
+---@field public railAlignmentAxis Axis @ref to the undergroundTunnel's railAlignmentAxis.
+---@field public tunnelAlignmentAxis Axis @ref to the undergroundTunnel's tunnelAlignmentAxis.
+---@field public aboveSurface LuaSurface
+---@field public undergroundTunnel UndergroundTunnel
+---@field public portals Portal[]
+---@field public segments Segment[]
+---@field public managedTrain ManagedTrain @one is currently using this tunnel.
+---@field public tunnelRailEntities table<UnitNumber, LuaEntity> @the rail entities of the tunnel (invisible rail) on the surface.
+
 Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
     global.tunnel.nextTunnelId = global.tunnel.nextTunnelId or 1
-    global.tunnel.tunnels = global.tunnel.tunnels or {}
-    --[[
-        [id] = {
-            id = unqiue id of the tunnel.
-            alignment = either "horizontal" or "vertical".
-            alignmentOrientation = the orientation value of either 0.25 (horizontal) or 0 (vertical), no concept of direction though.
-            railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel. Ref to the undergroundSurface global objects attribute.
-            tunnelAlignmentAxis = the other axis from railAlignmentAxis.
-            aboveSurface = LuaSurface of the main world surface.
-            undergroundTunnel = reference to the underground tunnel global object.
-            portals = table of the 2 portal global objects that make up this tunnel.
-            segments = table of the segment global objects on the surface.
-            trainManagerEntry = a reference to the global.trainManager.managedTrains object that is currently using this tunnel.
-            tunnelRailEntities = table of all the rail entities of the tunnel (invisible rail) on the surface. Key'd by unit_number.
-        }
-    ]]
-    global.tunnel.endSignals = global.tunnel.endSignals or {} --  Reference to the "in" endSignal object in global.tunnelPortals.portals[id].endSignals. Is used as a way to check for trains stopping at this signal.
+    global.tunnel.tunnels = global.tunnel.tunnels or {} ---@type table<Id, Tunnel>
+    global.tunnel.endSignals = global.tunnel.endSignals or {} ---@type table<UnitNumber, PortalEndSignal> @the tunnel's portal's "in" endSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
 end
 
 Tunnel.OnLoad = function()
@@ -70,16 +68,22 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
 end
 
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
+    ---@typelist LuaForce, LuaSurface, LuaEntity
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
 
-    local tunnelPortals = Interfaces.Call("TunnelPortals.On_TunnelCompleted", tunnelPortalEntities, force, aboveSurface)
+    local tunnelPortals = Interfaces.Call("TunnelPortals.On_TunnelCompleted", tunnelPortalEntities, force, aboveSurface) ---@type table<int,Portal>
     local tunnelSegments = Interfaces.Call("TunnelSegments.On_TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
 
     -- Create the tunnel global object.
-    local alignment, alignmentOrientation = "vertical", 0
-    if refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
-        alignment = "horizontal"
-        alignmentOrientation = 0.25
+    local alignment, alignmentOrientation
+    if refTunnelPortalEntity.direction == defines.direction.north or refTunnelPortalEntity.direction == defines.direction.south then
+        alignment = TunnelCommon.TunnelAlignment.vertical
+        alignmentOrientation = TunnelCommon.TunnelAlignmentOrientation.vertical
+    elseif refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
+        alignment = TunnelCommon.TunnelAlignment.horizontal
+        alignmentOrientation = TunnelCommon.TunnelAlignmentOrientation.horizontal
+    else
+        error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity.direction)
     end
     local tunnel = {
         id = global.tunnel.nextTunnelId,
@@ -130,25 +134,25 @@ Tunnel.DeregisterEndSignal = function(endSignal)
     global.tunnel.endSignals[endSignal.entity.unit_number] = nil
 end
 
-Tunnel.TrainReservedTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
-    trainManagerEntry.tunnel.trainManagerEntry = trainManagerEntry
+Tunnel.TrainReservedTunnel = function(managedTrain)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
+    managedTrain.tunnel.managedTrain = managedTrain
 end
 
-Tunnel.TrainFinishedEnteringTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveEntrancePortal, trainManagerEntry)
+Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal, managedTrain)
 end
 
-Tunnel.TrainStartedExitingTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
+Tunnel.TrainStartedExitingTunnel = function(managedTrain)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
 end
 
-Tunnel.TrainReleasedTunnel = function(trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveEntrancePortal, trainManagerEntry)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForTrainManagerEntry", trainManagerEntry.aboveExitPortal, trainManagerEntry)
-    if trainManagerEntry.tunnel.trainManagerEntry ~= nil and trainManagerEntry.tunnel.trainManagerEntry.id == trainManagerEntry.id then
+Tunnel.TrainReleasedTunnel = function(managedTrain)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal, managedTrain)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
+    if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
-        trainManagerEntry.tunnel.trainManagerEntry = nil
+        managedTrain.tunnel.managedTrain = nil
     end
 end
 
@@ -181,7 +185,7 @@ end
 
 Tunnel.GetTunnelsUsageEntry = function(tunnelToCheck)
     -- Just checks if the tunnel is in use, i.e. if another train can start to use it or not.
-    return tunnelToCheck.trainManagerEntry
+    return tunnelToCheck.managedTrain
 end
 --[[- tunnelId = Id of the tunnel (INT).
 - portals = Array of the 2 portal entities in this tunnel.
@@ -196,7 +200,7 @@ Tunnel.Remote_GetTunnelDetails = function(tunnel)
         tunnelId = tunnel.id,
         portals = {tunnel.portals[1].entity, tunnel.portals[2].entity},
         segments = tunnelSegments,
-        tunnelUsageId = tunnel.trainManagerEntry.id
+        tunnelUsageId = tunnel.managedTrain.id
     }
     return tunnelDetails
 end

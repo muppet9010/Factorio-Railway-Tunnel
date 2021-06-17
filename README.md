@@ -26,6 +26,13 @@ Usage Notes
 - While a train is entering a tunnel access by the player is restricted. The leaving train can be manipulated if needed.
 
 
+Editor Mode
+===============
+
+- Don't mine any part of a tunnel while in Editor mode in the Entity tab. As this just removes the tunnel part without notifying the mod. If you are in any other tab (i.e. Time) then this is fine as Factorio notifies the mod. You know this has happened when the tunnel is removed, but other hidden parts of the tunnel (like rails) remain. In this case I'd advise loading a save from before this corrupted state was reached.
+- This may apply to other modded creative modes that don't raise events on removing entities from the map.
+
+
 Debug Release
 ==============
 

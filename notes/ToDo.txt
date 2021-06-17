@@ -4,7 +4,7 @@ Bugs
 
 Functionality not currently supported
 -------------------------------------
-    - Interlinked adbnormal tunnel usage cases:
+    - Interlinked abnormal tunnel usage cases:
         - Handle player driven trains approaching the tunnel.
             - Have it go through on auto for now from when it commits to when it starts leaving.
             - Put the player in a pushing loco if needed when the train reaches other side and have the player inputs fed to the underground train somehow?
@@ -86,3 +86,4 @@ Code Improvements
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey. This will indirectly confirm above and underground trains are in sync also.
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.
     - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
+    - Can we directly connect 2 signals on different surfaces by wires? If so can we use it save on syncing the exit signal from aboveground to underground?

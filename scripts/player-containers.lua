@@ -3,36 +3,23 @@ local Events = require("utility/events")
 local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
 local TunnelCommon = require("scripts/tunnel-common")
--- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the trainManagerEntry object passed in, rather than being abstracted.
+-- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the managedTrain object passed in, rather than being abstracted.
+
+---@class PlayerContainer
+---@field public id UnitNumber @Unit_number of the player container entity.
+---@field public entity LuaEntity @The player container entity the player is sitting in.
+---@field public player LuaPlayer @The player the container is for.
+---@field public undergroundCarriageEntity LuaEntity @The underground carriage entity this container is related to.
+---@field public undergroundCarriageId UnitNumber @The unit_number of the underground carriage entity this container is related to.
+---@field public managedTrain ManagedTrain @The global.trainManager.managedTrain object this is owned by.
 
 PlayerContainers.CreateGlobals = function()
     global.playerContainers = global.playerContainers or {}
-    global.playerContainers.containers = global.playerContainers.playerContainers or {}
-    --[[
-        [id] = {
-            id = unit_number of the player container entity.
-            entity = the player container entity the player is sitting in.
-            player = LuaPlayer.
-            undergroundCarriageEntity = the underground carriage entity this container is related to.
-            undergroundCarriageId = the unit_number of the underground carriage entity this container is related to.
-            trainManagerEntry = the global.trainManager.trainManagerEntry object this is owned by.
-        }
-    ]]
-    global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {}
-    global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {}
-    --[[
-        [id] = {
-            id = player index.
-            oldVehicle = the vehicle entity the player was in before they hit the enter/exit vehicle button.
-        }
-    ]]
-    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} -- Table for each underground carriage with a player container related to it. Key'd by underground carriage unit number. Value of the global.playerContainers.containers object.
-    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {}
-    --[[
-        [trainManagerEntry.id] = {
-            [playerContainer.id] = playerContainer
-        }
-    ]]
+    global.playerContainers.containers = global.playerContainers.playerContainers or {} ---@type table<Id, PlayerContainer>
+    global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the player index.
+    global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
+    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the underground carriage unit_number. Value is the player playerContainer related to it.
+    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<ManagedTrainId, table<Id, PlayerContainer>>
 end
 
 PlayerContainers.OnLoad = function()
@@ -54,7 +41,7 @@ PlayerContainers.OnToggleDrivingInput = function(event)
     else
         local playerVehicleType = playerVehicle.type
         if playerVehicle.name == "railway_tunnel-player_container" or TunnelCommon.RollingStockTypes[playerVehicleType] ~= nil then
-            global.playerContainers.playerTryLeaveVehicle[player.index] = {id = player.index, oldVehicle = playerVehicle}
+            global.playerContainers.playerTryLeaveVehicle[player.index] = playerVehicle
             EventScheduler.ScheduleEventOnce(-1, "PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index)
         end
     end
@@ -62,13 +49,13 @@ end
 
 PlayerContainers.OnPlayerDrivingChangedState = function(event)
     local player = game.get_player(event.player_index)
-    local details = global.playerContainers.playerTryLeaveVehicle[player.index]
-    if details == nil then
+    local oldVehicle = global.playerContainers.playerTryLeaveVehicle[player.index]
+    if oldVehicle == nil then
         return
     end
-    if details.oldVehicle.name == "railway_tunnel-player_container" then
+    if oldVehicle.name == "railway_tunnel-player_container" then
         -- In a player container so always handle the player as they will have jumped out of the tunnel mid length.
-        PlayerContainers.PlayerLeaveTunnelVehicle(player, nil, details.oldVehicle)
+        PlayerContainers.PlayerLeaveTunnelVehicle(player, nil, oldVehicle)
     else
         -- Driving state changed from a non player_container so is base game working correctly.
         PlayerContainers.CancelPlayerTryLeaveTrain(player)
@@ -79,13 +66,13 @@ PlayerContainers.OnToggleDrivingInputAfterChangedState = function(event)
     -- Triggers after the OnPlayerDrivingChangedState() has run for this if it is going to.
     -- When the player is in editor mode the game announces the player entering and leaving vehicles. This doesn't happen in freeplay mode.
     local player = game.get_player(event.instanceId)
-    local details = global.playerContainers.playerTryLeaveVehicle[player.index]
-    if details == nil then
+    local oldVehicle = global.playerContainers.playerTryLeaveVehicle[player.index]
+    if oldVehicle == nil then
         return
     end
-    if details.oldVehicle.name == "railway_tunnel-player_container" then
+    if oldVehicle.name == "railway_tunnel-player_container" then
         -- In a player container so always handle the player.
-        PlayerContainers.PlayerLeaveTunnelVehicle(player, nil, details.oldVehicle)
+        PlayerContainers.PlayerLeaveTunnelVehicle(player, nil, oldVehicle)
     elseif player.vehicle ~= nil then
         -- Was in a train carriage before trying to get out and still is, so check if its on a portal entity (blocks player getting out).
         local portalEntitiesFound = player.vehicle.surface.find_entities_filtered {position = player.vehicle.position, name = "railway_tunnel-tunnel_portal_surface-placed", limit = 1}
@@ -101,11 +88,11 @@ PlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalEntity, vehic
     local playerContainer = global.playerContainers.containers[vehicle.unit_number]
 
     if portalEntity == nil then
-        local trainManagerEntry = playerContainer.trainManagerEntry
-        if Utils.GetDistanceSingleAxis(trainManagerEntry.aboveEntrancePortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) < Utils.GetDistanceSingleAxis(trainManagerEntry.aboveExitPortal.entity.position, player.position, trainManagerEntry.tunnel.railAlignmentAxis) then
-            portalObject = trainManagerEntry.aboveEntrancePortal
+        local managedTrain = playerContainer.managedTrain
+        if Utils.GetDistanceSingleAxis(managedTrain.aboveEntrancePortal.entity.position, player.position, managedTrain.tunnel.railAlignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.aboveExitPortal.entity.position, player.position, managedTrain.tunnel.railAlignmentAxis) then
+            portalObject = managedTrain.aboveEntrancePortal
         else
-            portalObject = trainManagerEntry.aboveExitPortal
+            portalObject = managedTrain.aboveExitPortal
         end
     else
         portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
@@ -122,7 +109,10 @@ PlayerContainers.CancelPlayerTryLeaveTrain = function(player)
     EventScheduler.RemoveScheduledOnceEvents("PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index, game.tick)
 end
 
-PlayerContainers.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, driver, playersCarriage)
+---@param managedTrain table
+---@param driver LuaPlayer|LuaEntity
+---@param playersCarriage table
+PlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, playersCarriage)
     local player
     if not driver.is_player() then
         -- Is a character body player driving.
@@ -131,36 +121,36 @@ PlayerContainers.PlayerInCarriageEnteringTunnel = function(trainManagerEntry, dr
         -- Is a god/spectator player dirving (no character body).
         player = driver
     end
-    local playerContainerEntity = trainManagerEntry.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
+    local playerContainerEntity = managedTrain.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
     playerContainerEntity.operable = false
     playerContainerEntity.destructible = false -- Stops the container being opened by the player when riding in it from the toolbar area of the GUI.
     playerContainerEntity.set_driver(player)
 
     -- Record state for future updating.
-    local playersUndergroundCarriage = trainManagerEntry.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
+    local playersUndergroundCarriage = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
     local playerContainer = {
         id = playerContainerEntity.unit_number,
         player = player,
         entity = playerContainerEntity,
         undergroundCarriageEntity = playersUndergroundCarriage,
         undergroundCarriageId = playersUndergroundCarriage.unit_number,
-        trainManagerEntry = trainManagerEntry
+        managedTrain = managedTrain
     }
     global.playerContainers.undergroudCarriageIdsToPlayerContainer[playersUndergroundCarriage.unit_number] = playerContainer
     global.playerContainers.playerIdToPlayerContainer[playerContainer.player.index] = playerContainer
     global.playerContainers.containers[playerContainer.id] = playerContainer
-    global.playerContainers.trainManageEntriesPlayerContainers[trainManagerEntry.id] = global.playerContainers.trainManageEntriesPlayerContainers[trainManagerEntry.id] or {}
-    global.playerContainers.trainManageEntriesPlayerContainers[trainManagerEntry.id][playerContainer.id] = playerContainer
+    global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id] = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id] or {}
+    global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id][playerContainer.id] = playerContainer
 end
 
-PlayerContainers.MoveATrainsPlayerContainers = function(trainManagerEntry)
+PlayerContainers.MoveATrainsPlayerContainers = function(managedTrain)
     -- Update any player containers for this specific train.
-    local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[trainManagerEntry.id]
+    local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
     if thisTrainsPlayerContainers == nil then
         return
     end
     for _, playerContainer in pairs(thisTrainsPlayerContainers) do
-        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, trainManagerEntry.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
+        local playerContainerPosition = Utils.ApplyOffsetToPosition(playerContainer.undergroundCarriageEntity.position, managedTrain.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
         playerContainer.entity.teleport(playerContainerPosition)
     end
 end
@@ -183,11 +173,11 @@ PlayerContainers.RemovePlayerContainer = function(playerContainer)
     global.playerContainers.undergroudCarriageIdsToPlayerContainer[playerContainer.undergroundCarriageId] = nil
     global.playerContainers.playerIdToPlayerContainer[playerContainer.player.index] = nil
     global.playerContainers.containers[playerContainer.id] = nil
-    local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.trainManagerEntry.id]
+    local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id]
     if thisTrainsPlayerContainers ~= nil then
         thisTrainsPlayerContainers[playerContainer.id] = nil
         if #thisTrainsPlayerContainers == 0 then
-            global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.trainManagerEntry.id] = nil
+            global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id] = nil
         end
     end
 end
@@ -217,13 +207,13 @@ PlayerContainers.On_TunnelRemoved = function(undergroundTrain)
     end
 end
 
-PlayerContainers.On_TrainManagerReversed = function(oldTrainManagerEntry, newTrainManagerEntry)
-    local trainManagerEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[oldTrainManagerEntry.id]
+PlayerContainers.On_TrainManagerReversed = function(oldManagedTrain, newManagedTrain)
+    local trainManagerEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[oldManagedTrain.id]
     if trainManagerEntriesPlayerContainers ~= nil then
-        global.playerContainers.trainManageEntriesPlayerContainers[newTrainManagerEntry.id] = trainManagerEntriesPlayerContainers
-        global.playerContainers.trainManageEntriesPlayerContainers[oldTrainManagerEntry.id] = nil
+        global.playerContainers.trainManageEntriesPlayerContainers[newManagedTrain.id] = trainManagerEntriesPlayerContainers
+        global.playerContainers.trainManageEntriesPlayerContainers[oldManagedTrain.id] = nil
         for _, playerContainer in pairs(trainManagerEntriesPlayerContainers) do
-            playerContainer.trainManagerEntry = newTrainManagerEntry
+            playerContainer.managedTrain = newManagedTrain
         end
     end
 end

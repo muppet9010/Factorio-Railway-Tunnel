@@ -1,48 +1,42 @@
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
+local TunnelCommon = require("scripts/tunnel-common")
 local Underground = {}
+
+---@class UndergroundSurface
+---@field public alignment TunnelAlignment
+---@field public surface LuaSurface
+---@field public refRails LuaEntity[] @table of the rail entities on this underground that are to be cloned for each tunnel instance.
+---@field public trackLengthEachSide int @the distance of the ref rails each side of 0 on this surface.
+---@field public railAlignmentAxis Axis @the axis that the underground rails per tunnel are aligned upon (direction of travel).
+---@field public tunnelInstanceAxis Axis @the axis that each tunnel instance is spaced along underground (rows of tunnel's tracks).
+
+---@class UndergroundTunnel
+---@field public id Id @Id is a unique list for each alignment.
+---@field public alignment TunnelAlignment
+---@field public tunnel Tunnel @parent tunnel.
+---@field public undergroundSurface UndergroundSurface
+---@field public tunnelInstanceValue int @this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
+---@field public undergroundOffsetFromSurface Position @position offset of the underground entities from the surface entities.
+---@field public surfaceOffsetFromUnderground Position @position offset of the surface entities from the undergroud entities.
+---@field public undergroundLeadInTiles int @the tiles lead in of rail from 0
+---@field public undergroundSignals table<Id, UndergroundSignal>
+---@field public distanceBetweenPortalCenters int @The distance from the underground tunnel center to the portal center.
+---@field public tunnelRailCenterValue int @The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
+
+---@class UndergroundSignal
+---@field public id UnitNumber @unit_number of this signal.
+---@field public entity LuaEntity
+---@field public aboveGroundSignalPaired PortalEndSignal @the aboveground signal thats paired with this one.
+---@field public signalStateCombinator LuaEntity @the combinator controlling if this signal is forced closed or not.
+---@field public signalStateCombinatorControlBehavior LuaCombinatorControlBehavior @cached reference to the ControlBehavior of this undergroundSignal's signalStateCombinator.
+---@field public currentSignalStateCombinatorEnabled boolean @cached copy of if the combiantor was last enabled or not.
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
-    global.underground.surfaces = global.underground.surfaces or {}
-    --[[
-        [alignment] = {
-            alignment = either "hotizontal" or "vertical".
-            surface = The LuaSurface.
-            refRails = table of the rail entities on this underground that are to be cloned for each tunnel instance.
-            trackLengthEachSide = the distance of the ref rails each side of 0 on this surface.
-            railAlignmentAxis = the "x" or "y" axis the the underground rails are aligned upon per tunnel.
-            tunnelInstanceAxis = the "x" or "y" axis that each tunnel's tracks are spaced along on the underground.
-        }
-    --]]
-    global.underground.undergroundTunnels = global.underground.undergroundTunnels or {horizontal = {}, vertical = {}}
-    --[[
-        [alignment] = {
-            [id] = {
-                id = the underground tunnel's id. Unique list for each alignment.
-                alignment = either "hotizontal" or "vertical".
-                tunnel = the parent global tunnel object.
-                undergroundSurface = ref to underground surface globla object.
-                tunnelInstanceValue = this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
-                undergroundOffsetFromSurface = position offset of the underground entities from the surface entities.
-                surfaceOffsetFromUnderground = position offset of the surface entities from the undergroud entities.
-                undergroundLeadInTiles = the tiles lead in of rail from 0
-                undergroundSignals = {
-                    [id] = {
-                        id = undergroundSignalEntity.unit_number.
-                        entity = undergroundSignalEntity.
-                        aboveGroundSignalPaired = portalSignal.
-                        signalStateCombinator = the combinator controlling if this signal is forced closed or not.
-                        signalStateCombinatorControlBehavior = cached reference to the ControlBehavior of this undergroundSignal's signalStateCombinator.
-                        currentSignalStateCombinatorEnabled = cached copy of if the combiantor was last enabled or not.
-                    }
-                }
-                distanceBetweenPortalCenters = The distance from the underground tunnel center to the portal center.
-                tunnelRailCenterValue = The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
-            }
-        }
-    ]]
-    global.underground.freeUndergroundTunnels = global.underground.freeUndergroundTunnels or {horizontal = {}, vertical = {}} -- A table with a horizontal and vertical key'd lists of underground tunnels that currently aren't assigned to an aboveground tunnel object.
+    global.underground.surfaces = global.underground.surfaces or {} ---@type table<TunnelAlignment, UndergroundSurface>
+    global.underground.undergroundTunnels = global.underground.undergroundTunnels or {[TunnelCommon.TunnelAlignment.horizontal] = {}, [TunnelCommon.TunnelAlignment.vertical] = {}} ---@type table<TunnelAlignment, table<Id, Tunnel>>
+    global.underground.freeUndergroundTunnels = global.underground.freeUndergroundTunnels or {[TunnelCommon.TunnelAlignment.horizontal] = {}, [TunnelCommon.TunnelAlignment.vertical] = {}} -- A table with a horizontal and vertical key'd lists of underground tunnels that currently aren't assigned to an aboveground tunnel object.
 end
 
 Underground.PreOnLoad = function()
@@ -53,14 +47,16 @@ Underground.PreOnLoad = function()
 end
 
 Underground.OnStartup = function()
-    if global.underground.surfaces["horizontal"] == nil then
-        global.underground.surfaces["horizontal"] = Underground.CreateUndergroundSurface("horizontal")
+    if global.underground.surfaces[TunnelCommon.TunnelAlignment.horizontal] == nil then
+        global.underground.surfaces[TunnelCommon.TunnelAlignment.horizontal] = Underground.CreateUndergroundSurface(TunnelCommon.TunnelAlignment.horizontal)
     end
-    if global.underground.surfaces["vertical"] == nil then
-        global.underground.surfaces["vertical"] = Underground.CreateUndergroundSurface("vertical")
+    if global.underground.surfaces[TunnelCommon.TunnelAlignment.vertical] == nil then
+        global.underground.surfaces[TunnelCommon.TunnelAlignment.vertical] = Underground.CreateUndergroundSurface(TunnelCommon.TunnelAlignment.vertical)
     end
 end
 
+---@param alignment TunnelAlignment
+---@return UndergroundSurface
 Underground.CreateUndergroundSurface = function(alignment)
     local surfaceName = "railway_tunnel-undeground-" .. alignment
     if game.get_surface(surfaceName) ~= nil then
@@ -84,14 +80,16 @@ Underground.CreateUndergroundSurface = function(alignment)
     }
 
     local railDirection
-    if alignment == "vertical" then
+    if alignment == TunnelCommon.TunnelAlignment.vertical then
         undergroundSurface.railAlignmentAxis = "y"
         undergroundSurface.tunnelInstanceAxis = "x"
         railDirection = defines.direction.north
-    else
+    elseif alignment == TunnelCommon.TunnelAlignment.horizontal then
         undergroundSurface.railAlignmentAxis = "x"
         undergroundSurface.tunnelInstanceAxis = "y"
         railDirection = defines.direction.east
+    else
+        error("Unsupported alignment: " .. alignment)
     end
 
     -- Add reference rail.
@@ -102,6 +100,8 @@ Underground.CreateUndergroundSurface = function(alignment)
     return undergroundSurface
 end
 
+---@param tunnel Tunnel
+---@return UndergroundTunnel
 Underground.AssignUndergroundTunnel = function(tunnel)
     local undergroundTunnel, tunnelAlignment = nil, tunnel.alignment
 
@@ -179,6 +179,8 @@ Underground.AssignUndergroundTunnel = function(tunnel)
     return undergroundTunnel
 end
 
+---@param tunnel Tunnel
+---@return UndergroundTunnel
 Underground.CreateUndergroundTunnel = function(tunnel)
     local undergroundSurface = global.underground.surfaces[tunnel.alignment]
     local undergroundTunnelId = #global.underground.undergroundTunnels[tunnel.alignment] + 1
@@ -202,6 +204,8 @@ Underground.CreateUndergroundTunnel = function(tunnel)
     return undergroundTunnel
 end
 
+---@param undergroundSignal UndergroundSignal
+---@param sourceSignalState defines.signal_state
 Underground.SetUndergroundExitSignalState = function(undergroundSignal, sourceSignalState)
     local closeSignalOn
     if sourceSignalState == defines.signal_state.open then
@@ -215,6 +219,9 @@ Underground.SetUndergroundExitSignalState = function(undergroundSignal, sourceSi
     end
 end
 
+---@param undergroundTunnel UndergroundTunnel
+---@param trainTravelOrientation TrainTravelOrientation
+---@return Position
 Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTravelOrientation)
     return Utils.ApplyOffsetToPosition(
         Utils.RotatePositionAround0(
@@ -234,6 +241,7 @@ Underground.GetForwardsEndOfRailPosition = function(undergroundTunnel, trainTrav
     )
 end
 
+---@param undergroundTunnel UndergroundTunnel
 Underground.ReleaseUndergroundTunnel = function(undergroundTunnel)
     -- The aboveground tunnel object using this undergroundTunnel is releasing it for use by another future aboveground tunnel.
     table.insert(global.underground.freeUndergroundTunnels[undergroundTunnel.alignment], undergroundTunnel)

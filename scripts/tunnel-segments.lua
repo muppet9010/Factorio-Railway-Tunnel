@@ -4,29 +4,27 @@ local Utils = require("utility/utils")
 local TunnelCommon = require("scripts/tunnel-common")
 local TunnelSegments = {}
 
+---@class Segment
+---@field public id UnitNumber @unit_number of the placed segment entity.
+---@field public entity LuaEntity
+---@field public tunnelRailEntities table<UnitNumber, LuaEntity> @the tunnel (invisible) rail entities within the tunnel segment.
+---@field public signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
+---@field public tunnel Tunnel
+---@field public crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "tunnel_segment_surface_rail_crossing".
+---@field public surfacePositionString SurfacePositionString @used to back match to surfaceSegmentPositions global object.
+---@field public beingFastReplacedTick int @the tick the segment was marked as being fast replaced or nil.
+---@field public trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
+
+---@class SurfacePositionString @the entities surface and position as a string.
+
+---@class SurfaceSegmentPosition
+---@field public id SurfacePositionString
+---@field public segment Segment
+
 TunnelSegments.CreateGlobals = function()
     global.tunnelSegments = global.tunnelSegments or {}
-    global.tunnelSegments.segments = global.tunnelSegments.segments or {}
-    --[[
-        [id] = {
-            id = unit_number of the placed segment entity.
-            entity = ref to the placed entity
-            tunnelRailEntities = table of the rail entities within the tunnel segment. Key'd by the rail unit_number.
-            signalEntities = table of the hidden signal entities within the tunnel segment. Key'd by the signal unit_number.
-            tunnel = the tunnel this portal is part of.
-            crossingRailEntities = table of the rail entities that cross the tunnel segment. Table only exists for tunnel_segment_surface_rail_crossing. Key'd by the rail unit_number.
-            positionString = the entities position as a string with surface. Used to back match to segmentPositions global object.
-            beingFastReplacedTick = the tick the segment was marked as being fast replaced.
-            trainBlockerEntity = ref to the "railway_tunnel-train_placement_blocker_2x2" entity of this tunnel segment.
-        }
-    ]]
-    global.tunnelSegments.segmentPositions = global.tunnelSegments.segmentPositions or {}
-    --[[
-        [id] = {
-            id = the Segment global object's positionString - used for looking up by this unique string.
-            segment = ref to the segment global object
-        }
-    ]]
+    global.tunnelSegments.segments = global.tunnelSegments.segments or {} ---@type table<Id, Segment>
+    global.tunnelSegments.surfaceSegmentPositions = global.tunnelSegments.surfaceSegmentPositions or {} ---@type table<Id, SurfaceSegmentPosition>
 end
 
 TunnelSegments.OnLoad = function()
@@ -56,6 +54,7 @@ TunnelSegments.OnLoad = function()
     Interfaces.RegisterInterface("TunnelSegments.On_TunnelRemoved", TunnelSegments.On_TunnelRemoved)
 end
 
+---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 TunnelSegments.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[createdEntity.name] == nil then
@@ -68,6 +67,9 @@ TunnelSegments.OnBuiltEntity = function(event)
     TunnelSegments.PlacementTunnelSegmentSurfaceBuilt(createdEntity, placer)
 end
 
+---@param placementEntity LuaEntity
+---@param placer EntityBuildPlacer
+---@return boolean
 TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
 
@@ -86,8 +88,8 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         placeCrossingRails = true
     end
 
-    local positionString = Utils.FormatSurfacePositionTableToString(aboveSurface.index, centerPos)
-    local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.segmentPositions[positionString], nil
+    local surfacePositionString = Utils.FormatSurfacePositionTableToString(aboveSurface.index, centerPos)
+    local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.surfaceSegmentPositions[surfacePositionString], nil
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
     end
@@ -115,12 +117,12 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
     local segment = {
         id = abovePlacedTunnelSegment.unit_number,
         entity = abovePlacedTunnelSegment,
-        positionString = positionString
+        surfacePositionString = surfacePositionString
     }
 
     -- Place the train blocker entity on non crossing rail segments.
     if not placeCrossingRails then
-        segment.trainBlockerEntity = aboveSurface.create_entity {name = "railway_tunnel-train_placement_blocker_2x2", position = centerPos}
+        segment.trainBlockerEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos}
     end
 
     if placeCrossingRails then
@@ -150,8 +152,8 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         end
     end
     global.tunnelSegments.segments[segment.id] = segment
-    global.tunnelSegments.segmentPositions[segment.positionString] = {
-        id = segment.positionString,
+    global.tunnelSegments.surfaceSegmentPositions[segment.surfacePositionString] = {
+        id = segment.surfacePositionString,
         segment = segment
     }
     if fastReplacedSegment ~= nil then
@@ -176,12 +178,16 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
     end
 end
 
+---@param startingTunnelSegment LuaEntity
+---@param placer EntityBuildPlacer
+---@return boolean
+---@return table
+---@return table
 TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, placer)
-    local directionComplete
-    local tunnelPortals, tunnelSegments, directionValue = {}, {startingTunnelSegment}, startingTunnelSegment.direction
+    local directionComplete, tunnelPortals, tunnelSegments, directionValue = nil, {}, {}, startingTunnelSegment.direction
     for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
         -- Check "forwards" and then "backwards".
-        directionComplete = TunnelCommon.CheckTunnelPartsInDirection(startingTunnelSegment, startingTunnelSegment.position, tunnelPortals, tunnelSegments, checkingDirection, placer)
+        directionComplete, tunnelPortals, tunnelSegments = TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer)
         if not directionComplete then
             break
         end
@@ -219,6 +225,7 @@ TunnelSegments.On_TunnelCompleted = function(segmentEntities, force, aboveSurfac
     return segments
 end
 
+---@param event on_built_entity|on_robot_built_entity|script_raised_built
 TunnelSegments.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[createdEntity.ghost_name] == nil then
@@ -242,8 +249,8 @@ TunnelSegments.OnPreBuild = function(event)
         return
     end
     local surface = player.surface
-    local positionString = Utils.FormatSurfacePositionTableToString(surface.index, event.position)
-    local segmentPositionObject = global.tunnelSegments.segmentPositions[positionString]
+    local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, event.position)
+    local segmentPositionObject = global.tunnelSegments.surfaceSegmentPositions[surfacePositionString]
     if segmentPositionObject == nil then
         return
     end
@@ -303,10 +310,10 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
         signalEntities = oldSegment.signalEntities,
         tunnel = oldSegment.tunnel,
         crossingRailEntities = oldSegment.crossingRailEntities,
-        positionString = Utils.FormatSurfacePositionTableToString(newSegmentEntity.surface.index, newSegmentEntity.position)
+        surfacePositionString = Utils.FormatSurfacePositionTableToString(newSegmentEntity.surface.index, newSegmentEntity.position)
     }
     global.tunnelSegments.segments[newSegment.id] = newSegment
-    global.tunnelSegments.segmentPositions[newSegment.positionString].segment = newSegment
+    global.tunnelSegments.surfaceSegmentPositions[newSegment.surfacePositionString].segment = newSegment
     global.tunnelSegments.segments[oldSegment.id] = nil
     Interfaces.Call("Tunnel.On_SegmentReplaced", newSegment.tunnel, oldSegment, newSegment)
 end
@@ -323,7 +330,7 @@ TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.trainBlockerEntity ~= nil then
         segment.trainBlockerEntity.destroy()
     end
-    global.tunnelSegments.segmentPositions[segment.positionString] = nil
+    global.tunnelSegments.surfaceSegmentPositions[segment.surfacePositionString] = nil
     global.tunnelSegments.segments[segment.id] = nil
 end
 
