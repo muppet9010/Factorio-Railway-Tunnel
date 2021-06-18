@@ -4,6 +4,9 @@ local Logging = require("utility/logging")
 local TunnelCommon = require("scripts/tunnel-common")
 -- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
 
+---@param train LuaTrain
+---@param isFrontStockLeading boolean
+---@return LuaEntity
 TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
     if isFrontStockLeading then
         return train.front_stock
@@ -12,6 +15,8 @@ TrainManagerFuncs.GetLeadingWagonOfTrain = function(train, isFrontStockLeading)
     end
 end
 
+---@param train LuaTrain
+---@return boolean
 TrainManagerFuncs.IsTrainHealthlyState = function(train)
     -- Uses state and not LuaTrain.has_path, as a train waiting at a station doesn't have a path, but is a healthy state.
     local trainState = train.state
@@ -22,23 +27,27 @@ TrainManagerFuncs.IsTrainHealthlyState = function(train)
     end
 end
 
-TrainManagerFuncs.CarriageIsAForwardsLoco = function(carriage, trainOrientation)
-    return carriage.type == "locomotive" and carriage.orientation == trainOrientation
+---@param carriage LuaEntity
+---@param forwardsOrientation RealOrientation
+---@return boolean
+TrainManagerFuncs.CarriageIsAForwardsLoco = function(carriage, forwardsOrientation)
+    return carriage.type == "locomotive" and carriage.orientation == forwardsOrientation
 end
 
-TrainManagerFuncs.CarriageIsAReverseLoco = function(carriage, trainOrientation)
-    return carriage.type == "locomotive" and carriage.orientation ~= trainOrientation
-end
-
-TrainManagerFuncs.DoesTrainHaveAForwardsLoco = function(train, trainOrientation)
+---@param train LuaTrain
+---@param forwardsOrientation RealOrientation
+---@return boolean
+TrainManagerFuncs.DoesTrainHaveAForwardsLoco = function(train, forwardsOrientation)
     for _, carriage in pairs(train.carriages) do
-        if TrainManagerFuncs.CarriageIsAForwardsLoco(carriage, trainOrientation) then
+        if TrainManagerFuncs.CarriageIsAForwardsLoco(carriage, forwardsOrientation) then
             return true
         end
     end
     return false
 end
 
+---@param train LuaTrain
+---@return boolean
 TrainManagerFuncs.RemoveAnyPushingLocosFromTrain = function(train)
     -- Pushing locos should only be at either end of the train.
     local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
@@ -56,6 +65,9 @@ TrainManagerFuncs.RemoveAnyPushingLocosFromTrain = function(train)
     return aPushingLocoWasRemoved
 end
 
+---@param lastCarriage LuaEntity
+---@param trainOrientation RealOrientation
+---@return LuaEntity
 TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOrientation)
     local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
     local pushingLocoPlacementPosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainOrientation, lastCarriage, pushingLocoEntityName)
@@ -64,6 +76,12 @@ TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOr
     return pushingLocomotiveEntity
 end
 
+---@param targetSurface LuaSurface
+---@param refCarriage LuaEntity
+---@param newPosition Position
+---@param safeCarriageFlipPosition Position
+---@param requiredOrientation RealOrientation
+---@return LuaEntity
 TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
     -- Work out if we will need to flip the cloned carriage or not.
     local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
@@ -107,6 +125,8 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     return placedCarriage
 end
 
+---@param train LuaTrain
+---@param targetTrainStop LuaEntity
 TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
     if targetTrainStop ~= nil and targetTrainStop.valid then
         -- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto.
@@ -120,6 +140,11 @@ TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
     end
 end
 
+---@param exitPortalEntity LuaEntity
+---@param trainSchedule TrainSchedule
+---@param targetTrainStop LuaEntity
+---@param skipScheduling boolean
+---@return LuaTrain
 TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
     local locomotive =
@@ -145,6 +170,7 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, t
     return dummyTrain
 end
 
+---@param train LuaTrain
 TrainManagerFuncs.DestroyTrainsCarriages = function(train)
     if train ~= nil and train.valid then
         for _, carriage in pairs(train.carriages) do
@@ -153,6 +179,11 @@ TrainManagerFuncs.DestroyTrainsCarriages = function(train)
     end
 end
 
+---@param train LuaTrain
+---@param schedule TrainSchedule
+---@param isManual boolean
+---@param targetTrainStop LuaEntity
+---@param skipStateCheck boolean
 TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetTrainStop, skipStateCheck)
     train.schedule, skipStateCheck = schedule, skipStateCheck or false
     if not isManual then
@@ -166,6 +197,9 @@ TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetT
     end
 end
 
+---@param leavingTrain LuaTrain
+---@param leavingTrainPushingLoco LuaEntity
+---@return LuaEntity
 TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leavingTrainPushingLoco)
     -- Get the current rear carriage of the leaving train based on if a pushing loco was added. Handles train facing either direction (+/- speed) assuming the train is leaving the tunnel.
     local leavingTrainRearCarriage, leavingTrainRearCarriageIndex, leavingTrainRearCarriagePushingIndexMod
@@ -187,6 +221,9 @@ TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leaving
     return leavingTrainRearCarriage
 end
 
+---@param sourceTrain LuaTrain
+---@param leavingTrainCarriagesPlaced integer
+---@return LuaEntity
 TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
     -- Get the next carriage to be placed from the underground train.
     local currentSourceTrainCarriageIndex, nextSourceTrainCarriageIndex
@@ -204,6 +241,10 @@ TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leaving
     return nextSourceCarriageEntity
 end
 
+---@param train LuaTrain
+---@param targetEntity LuaEntity
+---@param trainGoingForwards boolean
+---@return double
 TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, targetEntity, trainGoingForwards)
     -- This measures to the nearest edge of the target's rail, so doesn't include any of the target's rail's length. The targetEntity can be a rail itself or an entity connected to a rail.
 
@@ -259,6 +300,9 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     return distanceForCarriageCenter
 end
 
+---@param train LuaTrain
+---@param trainGoingForwards boolean
+---@return double
 TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation = function(train, trainGoingForwards)
     local trainPath = train.path
     local distance = trainPath.total_distance - trainPath.travelled_distance
@@ -290,6 +334,9 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation = function(train,
     return distanceForCarriageCenter
 end
 
+---@param railEntity LuaEntity
+---@param forwardsOrientation RealOrientation
+---@return Position
 TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientation)
     local railFarEndPosition
     if railEntity.type == "straight-rail" then
@@ -370,6 +417,8 @@ TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientati
     return railFarEndPosition
 end
 
+---@param railEntityType string @Prototype name.
+---@return double
 TrainManagerFuncs.GetRailEntityLength = function(railEntityType)
     if railEntityType == "straight-rail" then
         return 2
@@ -380,6 +429,8 @@ TrainManagerFuncs.GetRailEntityLength = function(railEntityType)
     end
 end
 
+---@param undergroundTrain LuaTrain
+---@param position Position
 TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(undergroundTrain, position)
     undergroundTrain.schedule = {
         current = 1,
@@ -391,18 +442,29 @@ TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(underg
     }
 end
 
+---@param trainOrientation RealOrientation
+---@param lastCarriageEntityName LuaEntity
+---@param nextCarriageEntityName LuaEntity
+---@param extraDistance double
+---@return Position
 TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName, extraDistance)
     extraDistance = extraDistance or 0
     local carriagesDistance = TunnelCommon.GetCarriagePlacementDistance(lastCarriageEntityName) + TunnelCommon.GetCarriagePlacementDistance(nextCarriageEntityName)
     return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
 end
 
+---@param trainOrientation RealOrientation
+---@param lastCarriageEntity LuaEntity
+---@param nextCarriageEntityName string
+---@return Position
 TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)
     local carriagesDistance = TunnelCommon.GetCarriagePlacementDistance(lastCarriageEntity.name) + TunnelCommon.GetCarriagePlacementDistance(nextCarriageEntityName)
     local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
     return Utils.ApplyOffsetToPosition(lastCarriageEntity.position, nextCarriageOffset)
 end
 
+---@param carriageEntityName string
+---@return double
 TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
     -- For now we assume all unknown carriages have a joint of 4 as we can't get the joint distance via API. Can hard code custom values in future if needed.
     if carriageEntityName == "test" then
@@ -412,6 +474,9 @@ TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
     end
 end
 
+---@param undergroundTrain LuaTrain
+---@param distance double
+---@return Position
 TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
     -- Applies the target distance to the train's leading carriage for the train direction on a straight track.
     local leadCarriage
@@ -443,6 +508,12 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
     )
 end
 
+---@param train LuaTrain
+---@param expectedOrientation RealOrientation
+---@param oldFrontCarriageUnitNumber UnitNumber
+---@param oldBackCarriageUnitNumber UnitNumber
+---@param trainWasFacingForwards boolean
+---@return boolean
 TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(train, expectedOrientation, oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber, trainWasFacingForwards)
     -- Checks if a train is still facing in the expected direction (front and back stock). For use after changing a trains composition as this regenerates these attributes. Works with 0 speed trains as doesn't require or consider train speed +/-.
 
@@ -466,6 +537,7 @@ TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(tr
     end
 end
 
+---@param functionRef function
 TrainManagerFuncs.RunFunctionAndCatchErrors = function(functionRef, ...)
     -- Doesn't support returning values to caller as can't do this for unknown argument count.
     -- Uses a random number in file name to try and avoid overlapping errors in real game. If save is reloaded and nothing different done by player will be the same result however.
@@ -528,6 +600,9 @@ TrainManagerFuncs.RunFunctionAndCatchErrors = function(functionRef, ...)
     end
 end
 
+---@param thing any
+---@param _tablesLogged table
+---@return table
 TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
     _tablesLogged = _tablesLogged or {} -- Internal variable passed when self referencing to avoid loops.
 

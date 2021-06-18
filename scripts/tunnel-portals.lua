@@ -92,6 +92,9 @@ TunnelPortals.OnBuiltEntity = function(event)
     TunnelPortals.PlacementTunnelPortalBuilt(createdEntity, placer)
 end
 
+---@param placementEntity LuaEntity
+---@param placer EntityBuildPlacer
+---@return boolean
 TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
     local orientation = Utils.DirectionToOrientation(directionValue)
@@ -126,21 +129,26 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
 
     local tunnelComplete, tunnelPortals, tunnelSegments = TunnelPortals.CheckTunnelCompleteFromPortal(abovePlacedPortal, placer, portal)
     if not tunnelComplete then
-        return false
+        return
     end
+
     Interfaces.Call("Tunnel.CompleteTunnel", tunnelPortals, tunnelSegments)
 end
 
-TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortal, placer, portal)
-    local directionValue, orientation = startingTunnelPortal.direction, Utils.DirectionToOrientation(startingTunnelPortal.direction)
-    local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortal.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
-    return TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortal, startingTunnelPartPoint, directionValue, placer)
+---@param startingTunnelPortalEntity LuaEntity
+---@param placer EntityBuildPlacer
+---@param portal Portal
+---@return boolean, LuaEntity[], LuaEntity[]
+TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntity, placer, portal)
+    local directionValue, orientation = startingTunnelPortalEntity.direction, Utils.DirectionToOrientation(startingTunnelPortalEntity.direction)
+    local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
+    return TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer)
 end
 
----@param portalEntities table<int,LuaEntity>
+---@param portalEntities LuaEntity[]
 ---@param force LuaForce
 ---@param aboveSurface LuaSurface
----@return table<int,Portal>
+---@return Portal[]
 TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
     local portals = {}
 
@@ -275,11 +283,14 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
     return portals
 end
 
-TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen = function(railSignal, nonGreenSignalName, closeOnSignalName)
-    local controlBehavior = railSignal.get_or_create_control_behavior()
+---@param railSignalEntity LuaEntity
+---@param nonGreenSignalOutputName string @Virtual signal name to be output to the cirtuit network when the signal state isn't green.
+---@param closeOnSignalName string @Virtual signal name that triggers the singal state to be closed when its greater than 0 on the circuit network.
+TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen = function(railSignalEntity, nonGreenSignalOutputName, closeOnSignalName)
+    local controlBehavior = railSignalEntity.get_or_create_control_behavior() ---@type LuaRailSignalControlBehavior
     controlBehavior.read_signal = true
-    controlBehavior.red_signal = {type = "virtual", name = nonGreenSignalName}
-    controlBehavior.orange_signal = {type = "virtual", name = nonGreenSignalName}
+    controlBehavior.red_signal = {type = "virtual", name = nonGreenSignalOutputName}
+    controlBehavior.orange_signal = {type = "virtual", name = nonGreenSignalOutputName}
     controlBehavior.close_signal = true
     controlBehavior.circuit_condition = {condition = {first_signal = {type = "virtual", name = closeOnSignalName}, comparator = ">", constant = 0}, fulfilled = true}
 end
@@ -328,6 +339,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
     end
 end
 
+---@param oldPortal Portal
 TunnelPortals.ReplacePortalEntity = function(oldPortal)
     local centerPos, force, lastUser, directionValue, aboveSurface, entityName = oldPortal.entity.position, oldPortal.entity.force, oldPortal.entity.last_user, oldPortal.entity.direction, oldPortal.entity.surface, oldPortal.entity.name
     oldPortal.entity.destroy()
@@ -361,6 +373,9 @@ TunnelPortals.ReplacePortalEntity = function(oldPortal)
     Interfaces.Call("Tunnel.On_PortalReplaced", newPortal.tunnel, oldPortal, newPortal)
 end
 
+---@param portal Portal
+---@param killForce LuaForce
+---@param killerCauseEntity LuaEntity
 TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
     TunnelCommon.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
     for _, railEntity in pairs(portal.portalRailEntities) do
@@ -369,6 +384,9 @@ TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
     global.tunnelPortals.portals[portal.id] = nil
 end
 
+---@param portal Portal
+---@param killForce LuaForce
+---@param killerCauseEntity LuaEntity
 TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
     TunnelCommon.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
@@ -412,6 +430,8 @@ TunnelPortals.OnDiedEntity = function(event)
     TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
 end
 
+---@param portal Portal
+---@return LuaEntity @The placed blocking locomotive entity.
 TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
     -- Place a blocking loco just inside the portal. Have a valid path and without fuel to avoid path finding penalties.
     local portalEntity = portal.entity
@@ -438,6 +458,8 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
     return entranceSignalBlockingTrainEntity
 end
 
+---@param portal Portal
+---@param managedTrain ManagedTrain
 TunnelPortals.CloseEntranceSignalForManagedTrain = function(portal, managedTrain)
     -- This function should handle multiple trains at one time using the tunnel, should it occur. Thats what the checking complexity is for.
     if portal.trainManagersClosingEntranceSignal[managedTrain.id] ~= nil then
@@ -458,6 +480,8 @@ TunnelPortals.CloseEntranceSignalForManagedTrain = function(portal, managedTrain
     portal.entranceSignalBlockingTrainEntity = entranceSignalBlockingTrainEntity
 end
 
+---@param portal Portal
+---@param managedTrain ManagedTrain
 TunnelPortals.OpenEntranceSignalForManagedTrain = function(portal, managedTrain)
     -- This function should handle multiple trains at one time using the tunnel, should it occur. Thats what the checking complexity is for.
     if portal.trainManagersClosingEntranceSignal[managedTrain.id] == nil then

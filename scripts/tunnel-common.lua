@@ -35,15 +35,13 @@ TunnelCommon.RollingStockTypes = {
 ---@param startingTunnelPartPoint Position
 ---@param checkingDirection defines.direction
 ---@param placer EntityBuildPlacer
----@return boolean
----@return Portal[]
----@return Segment[]
+---@return boolean, LuaEntity[], LuaEntity[]
 TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
-    local tunnelPortals, tunnelSegments = {}, {}
+    local tunnelPortalEntities, tunnelSegmentEntities = {}, {}
     if TunnelCommon.tunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
-        table.insert(tunnelSegments, startingTunnelPart)
+        table.insert(tunnelSegmentEntities, startingTunnelPart)
     elseif TunnelCommon.tunnelPortalPlacedEntityNames[startingTunnelPart.name] then
-        table.insert(tunnelPortals, startingTunnelPart)
+        table.insert(tunnelPortalEntities, startingTunnelPart)
     else
         error("TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart.name)
     end
@@ -60,7 +58,7 @@ TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
                 continueChecking = false
             elseif TunnelCommon.tunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
-                    table.insert(tunnelSegments, connectedTunnelEntity)
+                    table.insert(tunnelSegmentEntities, connectedTunnelEntity)
                 else
                     TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                     continueChecking = false
@@ -68,19 +66,22 @@ TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
             elseif TunnelCommon.tunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
                 continueChecking = false
                 if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
-                    table.insert(tunnelPortals, connectedTunnelEntity)
-                    return true, tunnelPortals, tunnelSegments
+                    table.insert(tunnelPortalEntities, connectedTunnelEntity)
+                    return true, tunnelPortalEntities, tunnelSegmentEntities
                 else
                     TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 end
+                table.insert(tunnelSegmentEntities, connectedTunnelEntity)
             else
                 error("unhandled railway_tunnel entity type")
             end
         end
     end
-    return false, tunnelPortals, tunnelSegments
+    return false, tunnelPortalEntities, tunnelSegmentEntities
 end
 
+---@param placementEntity LuaEntity
+---@return boolean
 TunnelCommon.IsPlacementOnRailGrid = function(placementEntity)
     if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
         return false
@@ -89,10 +90,19 @@ TunnelCommon.IsPlacementOnRailGrid = function(placementEntity)
     end
 end
 
+---@param placementEntity LuaEntity
+---@param placer EntityBuildPlacer
+---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
 TunnelCommon.UndoInvalidTunnelPartPlacement = function(placementEntity, placer, mine)
     TunnelCommon.UndoInvalidPlacement(placementEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
 end
 
+---@param placementEntity LuaEntity
+---@param placer EntityBuildPlacer
+---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
+---@param highlightValidRailGridPositions boolean @If to show to the placer valid positions on the rail grid.
+---@param warningMessageText string @Text shown to the placer
+---@param errorEntityNameText string @Entity name shown if the process errors.
 TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
     if placer ~= nil then
         local position, surface, entityName, ghostName, direction = placementEntity.position, placementEntity.surface, placementEntity.name, nil, placementEntity.direction
@@ -123,6 +133,12 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, high
     end
 end
 
+---@param placer EntityBuildPlacer
+---@param position Position
+---@param surface LuaSurface
+---@param entityName string
+---@param ghostName string
+---@param direction defines.direction @Direction of the entity trying to be placed.
 TunnelCommon.HighlightValidPlacementPositions = function(placer, position, surface, entityName, ghostName, direction)
     local highlightAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
@@ -160,11 +176,18 @@ TunnelCommon.HighlightValidPlacementPositions = function(placer, position, surfa
     end
 end
 
+---@param entityDoingInteraction EntityBuildPlacer
+---@param text string @Text shown.
+---@param surface LuaSurface
+---@param position Position
 TunnelCommon.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
     local textAudience = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
     rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
+---@param railEntityList LuaEntity[]
+---@param killForce LuaForce
+---@param killerCauseEntity LuaEntity
 TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, killerCauseEntity)
     if Utils.IsTableEmpty(railEntityList) then
         return
@@ -183,6 +206,9 @@ TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killFor
     end
 end
 
+---comment
+---@param carriageEntityName string @The entity name.
+---@return double
 TunnelCommon.GetCarriagePlacementDistance = function(carriageEntityName)
     -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
     if carriageEntityName == "railway_tunnel-tunnel_portal_pushing_locomotive" then

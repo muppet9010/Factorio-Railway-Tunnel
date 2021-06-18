@@ -24,7 +24,7 @@ local Colors = require("utility/colors")
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
 local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
-local AllTests = true -- Does all the tests regardless of their enabled state below if TRUE.
+local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
 
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
@@ -75,17 +75,31 @@ local TestsToRun = {
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
+---@class Test
+---@field public testName TestName
+---@field public enabled boolean
+---@field public notInAllTests boolean
+---@field public runTime Ticks
+---@field public runLoopsMax integer
+---@field public runLoopsCount integer
+---@field public finished boolean
+---@field public success boolean
+
+---@class TestName:string
+
+---@class TestData:table
+
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
-    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false -- Used to flag when a save was started with tests already.
-    global.testManager.testSurface = global.testManager.testSurface or nil
-    global.testManager.playerForce = global.testManager.playerForce or nil
-    global.testManager.testData = global.testManager.testData or {} -- Used by tests to store their local data. Key'd by testName.
-    global.testManager.testsToRun = global.testManager.testsToRun or {} -- Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
-    global.testManager.justLogAllTests = JustLogAllTests
-    global.testManager.keepRunningTest = KeepRunningTest
-    global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60
-    global.testManager.forceTestsFullSuite = ForceTestsFullSuite
+    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @Used to flag when a save was started with tests already.
+    global.testManager.testSurface = global.testManager.testSurface or nil ---@type LuaSurface
+    global.testManager.playerForce = global.testManager.playerForce or nil ---@type LuaForce
+    global.testManager.testData = global.testManager.testData or {} ---@type table<TestName, TestData> @Used by tests to store their local data.
+    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
+    global.testManager.justLogAllTests = JustLogAllTests ---@type boolean
+    global.testManager.keepRunningTest = KeepRunningTest ---@type boolean
+    global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60 ---@type Ticks
+    global.testManager.forceTestsFullSuite = ForceTestsFullSuite ---@type boolean
 end
 
 TestManager.OnLoad = function()
@@ -235,6 +249,9 @@ TestManager.RunTests = function()
     game.print("All Tests Done", Colors.lightgreen)
 end
 
+--- Gets the test's internally generated display name.
+---@param testName TestName
+---@return string
 TestManager.GetTestDisplayName = function(testName)
     local displayTestName = testName
     if TestManager.GetTestScript(testName).GetTestDisplayName ~= nil then
@@ -268,11 +285,14 @@ TestManager.OnPlayerCreatedMakeCharacter = function(event)
     game.tick_paused = tickWasPaused
 end
 
--- Called when the test script needs to be referenced as it can't be stored in global data.
+--- Called when the test script needs to be referenced as it can't be stored in global data.
+---@param testName TestName
+---@return table @The script lua file of this test.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
 end
 
+---@param text string
 TestManager.LogTestOutcome = function(text)
     if global.testManager.justLogAllTests then
         game.write_file("RailwayTunnel_Tests.txt", text .. "\r\n", true)

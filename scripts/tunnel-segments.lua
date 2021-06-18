@@ -180,25 +180,27 @@ end
 
 ---@param startingTunnelSegment LuaEntity
 ---@param placer EntityBuildPlacer
----@return boolean
----@return table
----@return table
+---@return boolean, LuaEntity[], LuaEntity[]
 TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, placer)
-    local directionComplete, tunnelPortals, tunnelSegments, directionValue = nil, {}, {}, startingTunnelSegment.direction
+    local directionComplete, tunnelPortalEntities, tunnelSegmentEntities, directionValue = nil, {}, {}, startingTunnelSegment.direction
     for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
         -- Check "forwards" and then "backwards".
-        directionComplete, tunnelPortals, tunnelSegments = TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer)
+        directionComplete, tunnelPortalEntities, tunnelSegmentEntities = TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer)
         if not directionComplete then
             break
         end
     end
     if not directionComplete then
         -- If last direction checked was good then tunnel is complete, as we reset it each loop.
-        return false, tunnelPortals, tunnelSegments
+        return false, tunnelPortalEntities, tunnelSegmentEntities
     end
-    return true, tunnelPortals, tunnelSegments
+    return true, tunnelPortalEntities, tunnelSegmentEntities
 end
 
+---@param segmentEntities LuaEntity[]
+---@param force LuaForce
+---@param aboveSurface LuaSurface
+---@return Segment[]
 TunnelSegments.On_TunnelCompleted = function(segmentEntities, force, aboveSurface)
     local segments = {}
 
@@ -298,6 +300,7 @@ TunnelSegments.OnPreMinedEntity = function(event)
     end
 end
 
+---@param oldSegment Segment
 TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
     local centerPos, force, lastUser, directionValue, aboveSurface, entityName = oldSegment.entity.position, oldSegment.entity.force, oldSegment.entity.last_user, oldSegment.entity.direction, oldSegment.entity.surface, oldSegment.entity.name
     oldSegment.entity.destroy()
@@ -318,6 +321,9 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
     Interfaces.Call("Tunnel.On_SegmentReplaced", newSegment.tunnel, oldSegment, newSegment)
 end
 
+---@param segment Segment
+---@param killForce LuaForce
+---@param killerCauseEntity LuaEntity
 TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.crossingRailEntities ~= nil then
         TunnelCommon.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
@@ -334,6 +340,7 @@ TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     global.tunnelSegments.segments[segment.id] = nil
 end
 
+---@param segment Segment
 TunnelSegments.On_TunnelRemoved = function(segment)
     segment.tunnel = nil
     for _, railEntity in pairs(segment.tunnelRailEntities) do

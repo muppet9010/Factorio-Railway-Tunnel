@@ -20,6 +20,12 @@ local Utils = require("utility/utils")
 ---@field public managedTrain ManagedTrain @one is currently using this tunnel.
 ---@field public tunnelRailEntities table<UnitNumber, LuaEntity> @the rail entities of the tunnel (invisible rail) on the surface.
 
+---@class TunnelDetails
+---@field public tunnelId Id @Id of the tunnel.
+---@field public portals LuaEntity[] @Not in any special order.
+---@field public segments LuaEntity[] @Not in any special order.
+---@field public tunnelUsageId ManagedTrainId
+
 Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
     global.tunnel.nextTunnelId = global.tunnel.nextTunnelId or 1
@@ -67,6 +73,9 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     Interfaces.Call("TrainManager.RegisterTrainApproaching", train, global.tunnel.endSignals[signal.unit_number])
 end
 
+
+---@param tunnelPortalEntities LuaEntity[]
+---@param tunnelSegmentEntities LuaEntity[]
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     ---@typelist LuaForce, LuaSurface, LuaEntity
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
@@ -114,6 +123,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     tunnel.tunnelAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.tunnelInstanceAxis
 end
 
+---@param tunnel Tunnel
 Tunnel.RemoveTunnel = function(tunnel)
     Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
     for _, portal in pairs(tunnel.portals) do
@@ -126,27 +136,33 @@ Tunnel.RemoveTunnel = function(tunnel)
     global.tunnel.tunnels[tunnel.id] = nil
 end
 
+---@param endSignal PortalEndSignal
 Tunnel.RegisterEndSignal = function(endSignal)
     global.tunnel.endSignals[endSignal.entity.unit_number] = endSignal
 end
 
+---@param endSignal PortalEndSignal
 Tunnel.DeregisterEndSignal = function(endSignal)
     global.tunnel.endSignals[endSignal.entity.unit_number] = nil
 end
 
+---@param managedTrain ManagedTrain
 Tunnel.TrainReservedTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
     managedTrain.tunnel.managedTrain = managedTrain
 end
 
+---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal, managedTrain)
 end
 
+---@param managedTrain ManagedTrain
 Tunnel.TrainStartedExitingTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
 end
 
+---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal, managedTrain)
     Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
@@ -156,6 +172,9 @@ Tunnel.TrainReleasedTunnel = function(managedTrain)
     end
 end
 
+---@param tunnel Tunnel
+---@param oldPortal Portal
+---@param newPortal Portal
 Tunnel.On_PortalReplaced = function(tunnel, oldPortal, newPortal)
     if tunnel == nil then
         return
@@ -170,6 +189,9 @@ Tunnel.On_PortalReplaced = function(tunnel, oldPortal, newPortal)
     Interfaces.Call("TrainManager.On_PortalReplaced", tunnel, newPortal)
 end
 
+---@param tunnel Tunnel
+---@param oldSegment Segment
+---@param newSegment Segment
 Tunnel.On_SegmentReplaced = function(tunnel, oldSegment, newSegment)
     if tunnel == nil then
         return
@@ -183,28 +205,33 @@ Tunnel.On_SegmentReplaced = function(tunnel, oldSegment, newSegment)
     end
 end
 
+---@param tunnelToCheck Tunnel
+---@return ManagedTrain
 Tunnel.GetTunnelsUsageEntry = function(tunnelToCheck)
     -- Just checks if the tunnel is in use, i.e. if another train can start to use it or not.
     return tunnelToCheck.managedTrain
 end
---[[- tunnelId = Id of the tunnel (INT).
-- portals = Array of the 2 portal entities in this tunnel.
-- segments = Array of the tunnel segment entities in this tunnel.
-- tunnel usage id = Id (INT) of the tunnel usage entry using this tunnel if one is currently active. Can use the get_tunnel_usage_entry_for_id remote interface to get details of the tunnel usage entry.]]
+
+---@param tunnel Tunnel
+---@return TunnelDetails
 Tunnel.Remote_GetTunnelDetails = function(tunnel)
     local tunnelSegments = {}
     for _, segment in pairs(tunnel.segments) do
         table.insert(tunnelSegments, segment.entity)
     end
+    ---@type TunnelDetails
     local tunnelDetails = {
+        --TODO: somehow this is getting an "id" attribute ?
         tunnelId = tunnel.id,
-        portals = {tunnel.portals[1].entity, tunnel.portals[2].entity},
-        segments = tunnelSegments,
+        portals = {tunnel.portals[1].entity, tunnel.portals[2].entity}, ---@type LuaEntity[]
+        segments = tunnelSegments, ---@type LuaEntity[]
         tunnelUsageId = tunnel.managedTrain.id
     }
     return tunnelDetails
 end
 
+---@param tunnelId Id
+---@return TunnelDetails
 Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
     local tunnel = global.tunnel.tunnels[tunnelId]
     if tunnel == nil then
@@ -213,6 +240,8 @@ Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
     return Tunnel.Remote_GetTunnelDetails(tunnel)
 end
 
+---@param entityUnitNumber UnitNumber
+---@return TunnelDetails
 Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
     for _, tunnel in pairs(global.tunnel.tunnels) do
         for _, portal in pairs(tunnel.portals) do
