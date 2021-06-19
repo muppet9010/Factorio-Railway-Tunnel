@@ -125,7 +125,7 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, high
             placementEntity.destroy()
         end
         if highlightValidRailGridPositions then
-            TunnelCommon.HighlightValidPlacementPositions(placer, position, surface, entityName, ghostName, direction)
+            TunnelCommon.HighlightValidPlacementPositionsOnRailGrid(placer, position, surface, entityName, ghostName, direction)
         end
     else
         placementEntity.destroy()
@@ -133,13 +133,14 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, high
     end
 end
 
+--- Highlights the single tiles to the placer player/force that are valid centres for an entity on the rail grid.
 ---@param placer EntityBuildPlacer
 ---@param position Position
 ---@param surface LuaSurface
 ---@param entityName string
 ---@param ghostName string
 ---@param direction defines.direction @Direction of the entity trying to be placed.
-TunnelCommon.HighlightValidPlacementPositions = function(placer, position, surface, entityName, ghostName, direction)
+TunnelCommon.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
     local highlightAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
     local minX, maxX, minY, maxY
@@ -176,6 +177,7 @@ TunnelCommon.HighlightValidPlacementPositions = function(placer, position, surfa
     end
 end
 
+--- Shows warning/error text on the map to either the player (character) or the force (construction robots) doign the interaction.
 ---@param entityDoingInteraction EntityBuildPlacer
 ---@param text string @Text shown.
 ---@param surface LuaSurface

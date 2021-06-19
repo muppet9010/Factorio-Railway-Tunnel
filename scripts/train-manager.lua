@@ -6,7 +6,7 @@ local TrainManagerFuncs = require("scripts/train-manager-functions") -- Stateles
 local PlayerContainers = require("scripts/player-containers") -- Uses this file directly, rather than via interface. Details in the sub files notes.
 local Logging = require("utility/logging")
 local TunnelCommon = require("scripts/tunnel-common")
-local UndergroundSetUndergroundExitSignalStateFunction ---@type fun(undergroundSignal:UndergroundSignal, sourceSignalState:defines.signal_state) -- Cache the function reference during OnLoad. Saves using Interfaces every tick.
+local UndergroundSetUndergroundExitSignalStateFunction = nil ---@type fun(undergroundSignal:UndergroundSignal, sourceSignalState:defines.signal_state) -- Cache the function reference during OnLoad. Saves using Interfaces every tick.
 
 ---@class ManagedTrainId:int
 
@@ -16,7 +16,7 @@ local UndergroundSetUndergroundExitSignalStateFunction ---@type fun(undergroundS
 ---
 ---@field public enteringTrainState EnteringTrainStates @The current entering train's state.
 ---@field public enteringTrain LuaTrain
----@field public enteringTrainId int @The enteringTrain LuaTrain id.
+---@field public enteringTrainId Id @The enteringTrain LuaTrain id.
 ---@field public enteringTrainForwards boolean @If the train is moving forwards or backwards from its viewpoint.
 ---@field public enteringTrainLeadCarriageCache TrainLeadCarriageCache  @Cached details of the lead carriage of the entering train. Is only used and updated during TrainManager.TrainEnteringOngoing() and TrainManager.TrainApproachingOngoing().
 ---
@@ -32,7 +32,7 @@ local UndergroundSetUndergroundExitSignalStateFunction ---@type fun(undergroundS
 ---
 ---@field public leavingTrainState LeavingTrainStates @The current leaving train's state.
 ---@field public leavingTrain LuaTrain @The train created leaving the tunnel on the world surface.
----@field public leavingTrainId int @The LuaTrain ID of the above Train Leaving.
+---@field public leavingTrainId Id @The LuaTrain ID of the above Train Leaving.
 ---@field public leavingTrainForwards boolean @If the train is moving forwards or backwards from its viewpoint.
 ---@field public leavingTrainCarriagesPlaced int @Count of how many carriages placed so far in the above train while its leaving.
 ---@field public leavingTrainPushingLoco LuaEntity @Locomotive entity pushing the leaving train if it donesn't have a forwards facing locomotive yet, otherwise Nil.
@@ -43,10 +43,10 @@ local UndergroundSetUndergroundExitSignalStateFunction ---@type fun(undergroundS
 ---@field public leavingTrainRearCarriageCache LeavingTrainRearCarriageCache @Cache of the rear carriage of the leaving train. Is only used and updated during TrainManager.TrainLeavingOngoing().
 ---
 ---@field public leftTrain LuaTrain @The train thats left the tunnel.
----@field public leftTrainId int @The LuaTrain ID of the leftTrain.
+---@field public leftTrainId Id @The LuaTrain ID of the leftTrain.
 ---
 ---@field public dummyTrain LuaTrain @The dummy train used to keep the train stop reservation alive
----@field public dummyTrainId int @The LuaTrain ID of the dummy train.
+---@field public dummyTrainId Id @The LuaTrain ID of the dummy train.
 ---@field public trainTravelDirection defines.direction @The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes.
 ---@field public trainTravelOrientation TrainTravelOrientation @The orientation of the trainTravelDirection.
 ---@field public targetTrainStop LuaEntity @The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.

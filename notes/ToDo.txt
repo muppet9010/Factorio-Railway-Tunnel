@@ -1,3 +1,5 @@
+Test the full reversal test suite now we've changed the tunnel reservation logic a bit. Also need to review the reversals setting of portal usage state with the addition/changes to the portal usage states.
+
 Bugs
 ----
 

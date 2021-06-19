@@ -38,21 +38,31 @@ local function OnLoad()
     remote.add_interface(
         "railway_tunnel",
         {
+            ---@return defines.events
             get_tunnel_usage_changed_event_id = function()
                 return tunnelUsageChangedEventId
             end,
+            ---@param managedTrainId ManagedTrainId
+            ---@return TunnelUsageEntry
             get_tunnel_usage_entry_for_id = function(managedTrainId)
                 return TrainManager.Remote_GetTunnelUsageEntry(managedTrainId)
             end,
+            ---@param trainId Id
+            ---@return TunnelUsageEntry
             get_tunnel_usage_entry_for_train = function(trainId)
                 return TrainManager.Remote_GetATrainsTunnelUsageEntry(trainId)
             end,
+            ---@return table<string, string>
             get_temporary_carriage_names = function()
                 return TrainManager.Remote_GetTemporaryCarriageNames()
             end,
+            ---@param tunnelId Id
+            ---@return TunnelDetails
             get_tunnel_details_for_id = function(tunnelId)
                 return TunnelManager.Remote_GetTunnelDetailsForId(tunnelId)
             end,
+            ---@param entityUnitNumber UnitNumber
+            ---@return TunnelDetails
             get_tunnel_details_for_entity = function(entityUnitNumber)
                 return TunnelManager.Remote_GetTunnelDetailsForEntity(entityUnitNumber)
             end

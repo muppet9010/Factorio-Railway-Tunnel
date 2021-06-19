@@ -151,16 +151,18 @@ TestManager.OnStartup = function()
 
     -- Create the global test management state data. Lua script funcctions can't be included in to global object.
     for testName, test in pairs(TestsToRun) do
-        global.testManager.testsToRun[testName] = {
-            testName = testName,
-            enabled = test.enabled,
-            notInAllTests = test.notInAllTests,
-            runTime = test.testScript.RunTime,
-            runLoopsMax = test.testScript.RunLoopsMax or 1,
-            runLoopsCount = 0,
-            finished = false,
-            success = nil
-        }
+        if test.enabled then
+            global.testManager.testsToRun[testName] = {
+                testName = testName,
+                enabled = test.enabled,
+                notInAllTests = test.notInAllTests,
+                runTime = test.testScript.RunTime,
+                runLoopsMax = test.testScript.RunLoopsMax or 1,
+                runLoopsCount = 0,
+                finished = false,
+                success = nil
+            }
+        end
     end
 
     -- If logging tests clear out any old file.

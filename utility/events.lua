@@ -14,15 +14,18 @@ MOD.eventActionNameHandlerNameToEventActionNamesListIndex = MOD.eventActionNameH
 MOD.customEventNameToId = MOD.customEventNameToId or {}
 MOD.eventFilters = MOD.eventFilters or {}
 
--- Called from OnLoad() from each script file. Registers the event in Factorio and the handler function for all event types and custom events.
--- Filtered events have to expect to recieve results outside of their filter. As an event can only be registered one time, with multiple instances the most lienient or merged filters for all instances must be applied.
--- Returns the eventId, useful for custom event names when you need to store the eventId to return via a remote interface call.
--- If an empty table (not nil) is passed in to filterData then no event is registered and not eventId is returned. This is really for when a filter is dynamically generated and so we don;t want to do anything for an empty filer table oddity.
-Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterName, thisFilterData)
+--- Called from OnLoad() from each script file. Registers the event in Factorio and the handler function for all event types and custom events.
+--- Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
+---@param eventName defines.events|string @Either Factorio event or a custom modded event name.
+---@param handlerName string @Unique name of this event handler instance. Used to avoid duplicate handler registration and if removal is required.
+---@param handlerFunction function @The function that is called when the event triggers.
+---@param thisFilterData EventFilter[]|nil @List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected).
+---@return int @Useful for custom event names when you need to store the eventId to return via a remote interface call.
+Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData)
     if eventName == nil or handlerName == nil or handlerFunction == nil then
         error("Events.RegisterHandlerEvent called with missing arguments")
     end
-    local eventId = Events._RegisterEvent(eventName, thisFilterName, thisFilterData)
+    local eventId = Events._RegisterEvent(eventName, handlerName, thisFilterData)
     if eventId == nil then
         return nil
     end

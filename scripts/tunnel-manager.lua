@@ -73,7 +73,6 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     Interfaces.Call("TrainManager.RegisterTrainApproaching", train, global.tunnel.endSignals[signal.unit_number])
 end
 
-
 ---@param tunnelPortalEntities LuaEntity[]
 ---@param tunnelSegmentEntities LuaEntity[]
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
@@ -148,24 +147,25 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReservedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
+    Interfaces.Call("TunnelPortals.UsingEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveExitPortal)
     managedTrain.tunnel.managedTrain = managedTrain
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal, managedTrain)
+    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainStartedExitingTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
+    Interfaces.Call("TunnelPortals.UsingEntranceSignalForManagedTrain", managedTrain.aboveExitPortal)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal, managedTrain)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal, managedTrain)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal)
+    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
         managedTrain.tunnel.managedTrain = nil
@@ -219,12 +219,10 @@ Tunnel.Remote_GetTunnelDetails = function(tunnel)
     for _, segment in pairs(tunnel.segments) do
         table.insert(tunnelSegments, segment.entity)
     end
-    ---@type TunnelDetails
     local tunnelDetails = {
-        --TODO: somehow this is getting an "id" attribute ?
         tunnelId = tunnel.id,
-        portals = {tunnel.portals[1].entity, tunnel.portals[2].entity}, ---@type LuaEntity[]
-        segments = tunnelSegments, ---@type LuaEntity[]
+        portals = {tunnel.portals[1].entity, tunnel.portals[2].entity},
+        segments = tunnelSegments,
         tunnelUsageId = tunnel.managedTrain.id
     }
     return tunnelDetails

@@ -4,11 +4,13 @@ local Utils = require("utility/utils")
 local TunnelCommon = require("scripts/tunnel-common")
 local TunnelPortals = {}
 local Colors = require("utility/colors")
+local EventScheduler = require("utility/event-scheduler")
 
 local SetupValues = {
     -- Tunnels distances are from the portal position (center).
     entranceFromCenter = -25,
     entrySignalsDistance = -23.5,
+    entranceUsageDetectorEntityDistance = -24.5,
     entrySignalBlockingLocomotiveDistance = -21.5,
     farInvisibleSignalsDistance = 23.5,
     endSignalBlockingLocomotiveDistance = 20.5,
@@ -27,11 +29,10 @@ local SetupValues = {
 ---@field public portalRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the portal itself.
 ---@field public tunnelRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the connected tunnel for the portal.
 ---@field public tunnelOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the connected tunnel for the portal. Will be deleted before the tunnelRailEntities.
----@field public trainManagersClosingEntranceSignal table<Id, ManagedTrain> @table of TrainManager global objects that currently state this entrance should be closed. -- TODO: can this ever be more than 1?
 ---@field public entranceSignalBlockingTrainEntity LuaEntity @the locomotive entity thats blocking the entrance signal.
 ---@field public entranceDistanceFromCenter int @the distance in tiles of the entrance from the portal center.
 ---@field public portalEntrancePosition Position @the position of the entrance to the portal.
----@field public entranceUsageDetectorEntity LuaEntity @a hidden entity on the entrance to the portal that's death signifies a train is coming on to the portal's rails unexpectedly.
+---@field public entranceUsageDetectorEntity LuaEntity @hidden entity on the entrance to the portal that's death signifies a train is coming on to the portal's rails unexpectedly.
 
 ---@class PortalSignal
 ---@field public id int @unit_number of this signal.
@@ -49,6 +50,7 @@ local SetupValues = {
 TunnelPortals.CreateGlobals = function()
     global.tunnelPortals = global.tunnelPortals or {}
     global.tunnelPortals.portals = global.tunnelPortals.portals or {} ---@type table<int,Portal>
+    global.tunnelPortals.entranceUsageDetectorEntityIdToPortal = global.tunnelPortals.entranceUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @Used to be able to identify the portal when the entrance entity is killed.
 end
 
 TunnelPortals.OnLoad = function()
@@ -56,6 +58,7 @@ TunnelPortals.OnLoad = function()
     for _, name in pairs(TunnelCommon.tunnelPortalPlacedPlacementEntityNames) do
         table.insert(portalEntityNames_Filter, {filter = "name", name = name})
     end
+
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, "TunnelPortals.OnBuiltEntity", portalEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, "TunnelPortals.OnBuiltEntity", portalEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, "TunnelPortals.OnBuiltEntity", portalEntityNames_Filter)
@@ -76,8 +79,12 @@ TunnelPortals.OnLoad = function()
 
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelCompleted", TunnelPortals.On_TunnelCompleted)
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
+    Interfaces.RegisterInterface("TunnelPortals.UsingEntranceSignalForManagedTrain", TunnelPortals.UsingEntranceSignalForManagedTrain)
     Interfaces.RegisterInterface("TunnelPortals.CloseEntranceSignalForManagedTrain", TunnelPortals.CloseEntranceSignalForManagedTrain)
     Interfaces.RegisterInterface("TunnelPortals.OpenEntranceSignalForManagedTrain", TunnelPortals.OpenEntranceSignalForManagedTrain)
+
+    EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntityTrainBlocker", TunnelPortals.OnDiedEntityTrainBlocker, "TunnelPortals.OnDiedEntityTrainBlocker", {{filter = "name", name = "railway_tunnel-train_blocker_1x1"}})
 end
 
 TunnelPortals.OnBuiltEntity = function(event)
@@ -138,7 +145,9 @@ end
 ---@param startingTunnelPortalEntity LuaEntity
 ---@param placer EntityBuildPlacer
 ---@param portal Portal
----@return boolean, LuaEntity[], LuaEntity[]
+---@return boolean
+---@return LuaEntity[]
+---@return LuaEntity[]
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntity, placer, portal)
     local directionValue, orientation = startingTunnelPortalEntity.direction, Utils.DirectionToOrientation(startingTunnelPortalEntity.direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
@@ -164,7 +173,7 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
         local railOffsetFromEntrancePos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entrance position by rail placement.
         portal.tunnelRailEntities = {}
         for _ = 1, SetupValues.invisibleRailCountFromEntrance do
-            local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = nextRailPos, force = force, direction = directionValue}
+            local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = nextRailPos, force = force, direction = directionValue} ---@type LuaEntity
             placedRail.destructible = false
             portal.tunnelRailEntities[placedRail.unit_number] = placedRail
             nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntrancePos)
@@ -177,7 +186,7 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.entrySignalsDistance})),
             force = force,
             direction = directionValue
-        }
+        } ---@type LuaEntity
         entrySignalInEntity.destructible = false
         local entrySignalOutEntity =
             aboveSurface.create_entity {
@@ -185,7 +194,7 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.entrySignalsDistance})),
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
-        }
+        } ---@type LuaEntity
         portal.entrySignals = {
             ["in"] = {
                 id = entrySignalInEntity.unit_number,
@@ -208,14 +217,14 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.endSignalsDistance})),
             force = force,
             direction = directionValue
-        }
+        } ---@type LuaEntity
         local endSignalOutEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.endSignalsDistance})),
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
-        }
+        } ---@type LuaEntity
         portal.endSignals = {
             ["in"] = {
                 id = endSignalInEntity.unit_number,
@@ -239,21 +248,21 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.farInvisibleSignalsDistance})),
             force = force,
             direction = directionValue
-        }
+        } ---@type LuaEntity
         local farInvisibleSignalOutEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.farInvisibleSignalsDistance})),
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
-        }
+        } ---@type LuaEntity
         local endSignalBlockingLocomotiveEntity =
             aboveSurface.create_entity {
             name = "railway_tunnel-tunnel_portal_blocking_locomotive",
             position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.endSignalBlockingLocomotiveDistance})),
             force = global.force.tunnelForce,
             direction = Utils.LoopDirectionValue(directionValue + 2)
-        }
+        } ---@type LuaEntity
         endSignalBlockingLocomotiveEntity.train.schedule = {
             current = 1,
             records = {
@@ -270,10 +279,8 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
             [endSignalBlockingLocomotiveEntity.unit_number] = endSignalBlockingLocomotiveEntity
         }
 
-        -- Add the entranceUsageDetectorEntity to the entrance end of the portal. This is directly in line with the signals and will never quote be touched by a train stopping at the signal if approaching.
-        --portal.entranceUsageDetectorEntity = aboveSurface.create_entity() --TODO: this is where the blocker WIP got up to.
-
-        portal.trainManagersClosingEntranceSignal = {}
+        -- Add the entranceUsageDetectorEntity to the entrance end of the portal. This is directly in line with the signals and will never quite be touched by a train stopping at the signal if approaching.
+        TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
     end
 
     portals[1].entrySignals["in"].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals["in"].entity}
@@ -355,8 +362,8 @@ TunnelPortals.ReplacePortalEntity = function(oldPortal)
         portalRailEntities = oldPortal.portalRailEntities,
         tunnelRailEntities = oldPortal.tunnelRailEntities,
         tunnelOtherEntities = oldPortal.tunnelOtherEntities,
-        trainManagersClosingEntranceSignal = oldPortal.trainManagersClosingEntranceSignal,
         entranceSignalBlockingTrainEntity = oldPortal.entranceSignalBlockingTrainEntity,
+        entranceUsageDetectorEntity = oldPortal.entranceUsageDetectorEntity,
         entranceDistanceFromCenter = oldPortal.entranceDistanceFromCenter,
         portalEntrancePosition = oldPortal.portalEntrancePosition
     }
@@ -390,10 +397,8 @@ end
 TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
     TunnelCommon.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
-    if portal.entranceSignalBlockingTrainEntity ~= nil then
-        portal.entranceSignalBlockingTrainEntity.destroy()
-        portal.entranceSignalBlockingTrainEntity = nil
-    end
+    TunnelPortals.RemoveEntranceSignalBlockingLocomotiveFromPortal(portal)
+    TunnelPortals.RemoveEntranceUsageDetectionEntityFromPortal(portal)
     for _, otherEntity in pairs(portal.tunnelOtherEntities) do
         otherEntity.destroy()
     end
@@ -411,7 +416,6 @@ TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
         endSignal.entity.destroy()
     end
     portal.endSignals = nil
-    portal.trainManagersClosingEntranceSignal = nil
 end
 
 TunnelPortals.OnDiedEntity = function(event)
@@ -419,6 +423,7 @@ TunnelPortals.OnDiedEntity = function(event)
     if not diedEntity.valid or TunnelCommon.tunnelPortalPlacedPlacementEntityNames[diedEntity.name] == nil then
         return
     end
+
     local portal = global.tunnelPortals.portals[diedEntity.unit_number]
     if portal == nil then
         return
@@ -430,9 +435,18 @@ TunnelPortals.OnDiedEntity = function(event)
     TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
 end
 
+TunnelPortals.OnDiedEntityTrainBlocker = function(event)
+    local diedEntity, carriageEnteringPortalTrack = event.entity, event.cause
+    if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-train_blocker_1x1" then
+        return
+    end
+
+    local portal = global.tunnelPortals.entranceUsageDetectorEntityIdToPortal[diedEntity.unit_number]
+    --TODO
+end
+
 ---@param portal Portal
----@return LuaEntity @The placed blocking locomotive entity.
-TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
+TunnelPortals.AddEntranceSignalBlockingLocomotiveToPortal = function(portal)
     -- Place a blocking loco just inside the portal. Have a valid path and without fuel to avoid path finding penalties.
     local portalEntity = portal.entity
     local aboveSurface, directionValue = portal.tunnel.aboveSurface, portalEntity.direction
@@ -455,43 +469,81 @@ TunnelPortals.AddEntranceSignalBlockingLocomotive = function(portal)
     }
     entranceSignalBlockingTrainEntity.train.manual_mode = false
     entranceSignalBlockingTrainEntity.destructible = false -- This will stop unexpected trains entering the tunnel. Suitable in the short term.
-    return entranceSignalBlockingTrainEntity
-end
-
----@param portal Portal
----@param managedTrain ManagedTrain
-TunnelPortals.CloseEntranceSignalForManagedTrain = function(portal, managedTrain)
-    -- This function should handle multiple trains at one time using the tunnel, should it occur. Thats what the checking complexity is for.
-    if portal.trainManagersClosingEntranceSignal[managedTrain.id] ~= nil then
-        return
-    end
-
-    -- Record if we will need to create the entity before we record this managedTrain
-    local blockingLocoAlreadyExists = false
-    if not Utils.IsTableEmpty(portal.trainManagersClosingEntranceSignal) then
-        blockingLocoAlreadyExists = true
-    end
-    portal.trainManagersClosingEntranceSignal[managedTrain.id] = managedTrain
-    if blockingLocoAlreadyExists then
-        return
-    end
-
-    local entranceSignalBlockingTrainEntity = TunnelPortals.AddEntranceSignalBlockingLocomotive(portal)
     portal.entranceSignalBlockingTrainEntity = entranceSignalBlockingTrainEntity
 end
 
 ---@param portal Portal
----@param managedTrain ManagedTrain
-TunnelPortals.OpenEntranceSignalForManagedTrain = function(portal, managedTrain)
-    -- This function should handle multiple trains at one time using the tunnel, should it occur. Thats what the checking complexity is for.
-    if portal.trainManagersClosingEntranceSignal[managedTrain.id] == nil then
-        return
-    end
-    portal.trainManagersClosingEntranceSignal[managedTrain.id] = nil
-    if Utils.IsTableEmpty(portal.trainManagersClosingEntranceSignal) then
+TunnelPortals.RemoveEntranceSignalBlockingLocomotiveFromPortal = function(portal)
+    if portal.entranceSignalBlockingTrainEntity then
         portal.entranceSignalBlockingTrainEntity.destroy()
         portal.entranceSignalBlockingTrainEntity = nil
     end
+end
+
+---@param portal Portal
+TunnelPortals.AddEntranceUsageDetectionEntityToPortal = function(portal)
+    local portalEntity = portal.entity
+    local aboveSurface, directionValue = portal.entity.surface, portalEntity.direction
+    local orientation = Utils.DirectionToOrientation(directionValue)
+    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceUsageDetectorEntityDistance}))
+    TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition(nil, portal, aboveSurface, position)
+end
+
+---@param eventData table @eventData is a table returned by the scheduler including an inner "data" table attribute. This data table contains the other params posted back to itself.
+---@param portal Portal @either supplied or obtained from eventData.data table.
+---@param aboveSurface LuaSurface @either supplied or obtained from eventData.data table.
+---@param position Position @either supplied or obtained from eventData.data table.
+TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition = function(eventData, portal, aboveSurface, position)
+    if eventData ~= nil then
+        portal, aboveSurface, position = eventData.data.portal, eventData.data.aboveSurface, eventData.data.position
+    end
+
+    -- The left train will initially be within the collision box of where we want to place this. So check if it can be placed. For odd reasons the entity will "create" on top of a train and instantly be killed, so have to explicitly check.
+    if aboveSurface.can_place_entity {name = "railway_tunnel-train_blocker_1x1", force = global.force.tunnelForce, position = position} then
+        portal.entranceUsageDetectorEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_1x1", force = global.force.tunnelForce, position = position}
+        global.tunnelPortals.entranceUsageDetectorEntityIdToPortal[portal.entranceUsageDetectorEntity.unit_number] = portal
+    else
+        -- Schedule this to be tried again next tick.
+        local postbackData
+        if eventData ~= nil then
+            postbackData = eventData.data
+        else
+            postbackData = {portal = portal, aboveSurface = aboveSurface, position = position}
+        end
+        EventScheduler.ScheduleEventOnce(nil, "TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition", portal.id, postbackData)
+    end
+end
+
+---@param portal Portal
+TunnelPortals.RemoveEntranceUsageDetectionEntityFromPortal = function(portal)
+    if portal.entranceUsageDetectorEntity then
+        global.tunnelPortals.entranceUsageDetectorEntityIdToPortal[portal.entranceUsageDetectorEntity.unit_number] = nil
+        portal.entranceUsageDetectorEntity.destroy()
+        portal.entranceUsageDetectorEntity = nil
+    end
+    -- If it was trying to recreate this then stop it.
+    EventScheduler.RemoveScheduledOnceEvents("TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition", portal.id, game.tick + 1)
+end
+
+---@param portal Portal
+TunnelPortals.UsingEntranceSignalForManagedTrain = function(portal)
+    -- Remove any blocking and usage detection as we are using this portal.
+    TunnelPortals.RemoveEntranceSignalBlockingLocomotiveFromPortal(portal)
+    TunnelPortals.RemoveEntranceUsageDetectionEntityFromPortal(portal)
+end
+
+---@param portal Portal
+TunnelPortals.CloseEntranceSignalForManagedTrain = function(portal)
+    -- Remove the entrance usage detection entity and put the blocking loco in place instead.
+    TunnelPortals.RemoveEntranceUsageDetectionEntityFromPortal(portal)
+    TunnelPortals.AddEntranceSignalBlockingLocomotiveToPortal(portal)
+end
+
+---@param portal Portal
+TunnelPortals.OpenEntranceSignalForManagedTrain = function(portal)
+    -- Remove the blocking loco and put the usage detection entity in place instead.
+    TunnelPortals.RemoveEntranceSignalBlockingLocomotiveFromPortal(portal)
+    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
 end
 
 TunnelPortals.OnPlayerRotatedEntity = function(event)
