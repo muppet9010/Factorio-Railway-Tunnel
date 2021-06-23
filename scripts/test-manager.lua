@@ -24,8 +24,8 @@ local Colors = require("utility/colors")
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
 local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
-local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
-local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
+local AllTests = true -- Does all the tests regardless of their enabled state below if TRUE.
+local ForceTestsFullSuite = true -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
 
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
@@ -55,6 +55,7 @@ local TestsToRun = {
     PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
     PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
+    TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")},
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     PathToTunnelTests = {enabled = false, testScript = require("tests/path-to-tunnel-tests")},
@@ -80,14 +81,14 @@ local TestsToRun = {
 ---@field public enabled boolean
 ---@field public notInAllTests boolean
 ---@field public runTime Ticks
----@field public runLoopsMax integer
----@field public runLoopsCount integer
+---@field public runLoopsMax uint
+---@field public runLoopsCount uint
 ---@field public finished boolean
 ---@field public success boolean
 
 ---@class TestName:string
 
----@class TestData:table
+---@alias TestData table
 
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
@@ -262,6 +263,7 @@ TestManager.GetTestDisplayName = function(testName)
     return displayTestName
 end
 
+---@param event on_player_created
 TestManager.OnPlayerCreated = function(event)
     local player = game.get_player(event.player_index)
     if player.controller_type == defines.controllers.cutscene then

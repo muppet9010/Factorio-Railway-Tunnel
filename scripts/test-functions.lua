@@ -141,9 +141,8 @@ end
 ---@param eventName defines.events @The Factorio event to react to.
 ---@param testFunctionName string @Unique name of this event function handler.
 ---@param testFunction function @Function to be triggered when the event occurs.
----@param filterName string @OPTIONAL - If a Factorio event filter is being used it must have a unique name so we can manage it.
 ---@param filterData EventFilter @OPTIONAL - Factorio event filter to be used.
-TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterName, filterData)
+TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterData)
     -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
     local activeTestCheckFunc = function(event)
@@ -154,7 +153,7 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
             testFunction(event)
         end
     end
-    Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterName, filterData)
+    Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData)
 end
 
 --- Used to apply an optional filter list of keys against a full list. Includes error catching for passing in bad (empty) filter list.
@@ -178,7 +177,7 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
 end
 
 ---@class TrainSnapshot
----@field public carriageCount integer @how many carriages are in this train.
+---@field public carriageCount uint @how many carriages are in this train.
 ---@field public carriages CarriageSnapshot[]
 
 ---@class CarriageSnapshot

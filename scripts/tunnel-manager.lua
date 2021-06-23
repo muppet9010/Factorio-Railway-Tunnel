@@ -30,7 +30,7 @@ Tunnel.CreateGlobals = function()
     global.tunnel = global.tunnel or {}
     global.tunnel.nextTunnelId = global.tunnel.nextTunnelId or 1
     global.tunnel.tunnels = global.tunnel.tunnels or {} ---@type table<Id, Tunnel>
-    global.tunnel.endSignals = global.tunnel.endSignals or {} ---@type table<UnitNumber, PortalEndSignal> @the tunnel's portal's "in" endSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
+    global.tunnel.endSignals = global.tunnel.endSignals or {} ---@type table<UnitNumber, PortalEndSignal> @the tunnel's portal's "inSignal" endSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
 end
 
 Tunnel.OnLoad = function()
@@ -55,12 +55,13 @@ Tunnel.OnLoad = function()
         {filter = "ghost_type", type = "fluid-wagon"},
         {filter = "ghost_type", type = "artillery-wagon"}
     }
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, "Tunnel.OnBuiltEntity", rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
+---@param event on_train_changed_state
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
     if not train.valid or train.state ~= defines.train_state.arrive_signal then
@@ -70,7 +71,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if signal == nil or global.tunnel.endSignals[signal.unit_number] == nil then
         return
     end
-    Interfaces.Call("TrainManager.RegisterTrainApproaching", train, global.tunnel.endSignals[signal.unit_number])
+    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnel.endSignals[signal.unit_number])
 end
 
 ---@param tunnelPortalEntities LuaEntity[]
@@ -256,6 +257,7 @@ Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
     return nil
 end
 
+---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 Tunnel.OnBuiltEntity = function(event)
     -- Check for any train carriages (real or ghost) being built on the portal or tunnel segments. Ghost placing train carriages doesn't raise the on_built_event for some reason.
     -- Known limitation that you can't place a single carriage on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.

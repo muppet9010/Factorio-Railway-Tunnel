@@ -47,6 +47,7 @@ PlayerContainers.OnToggleDrivingInput = function(event)
     end
 end
 
+---@param event on_player_driving_changed_state
 PlayerContainers.OnPlayerDrivingChangedState = function(event)
     local player = game.get_player(event.player_index)
     local oldVehicle = global.playerContainers.playerTryLeaveVehicle[player.index]
@@ -117,7 +118,7 @@ end
 ---@param driver LuaPlayer|LuaEntity
 ---@param playersCarriage LuaEntity
 PlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, playersCarriage)
-    local player ---@type LuaPlayer
+    local player  ---@type LuaPlayer
     if not driver.is_player() then
         -- Is a character body player driving.
         player = driver.player

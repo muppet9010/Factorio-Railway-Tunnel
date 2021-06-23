@@ -98,6 +98,7 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     end
 
     -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
+    ---@typelist LuaEntity, LuaEntity
     local tempCarriage, sourceCarriage
     if haveToFlipCarriage then
         tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
@@ -222,7 +223,7 @@ TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leaving
 end
 
 ---@param sourceTrain LuaTrain
----@param leavingTrainCarriagesPlaced integer
+---@param leavingTrainCarriagesPlaced uint
 ---@return LuaEntity
 TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
     -- Get the next carriage to be placed from the underground train.

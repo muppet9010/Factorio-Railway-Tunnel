@@ -7,7 +7,7 @@ local Underground = {}
 ---@field public alignment TunnelAlignment
 ---@field public surface LuaSurface
 ---@field public refRails LuaEntity[] @table of the rail entities on this underground that are to be cloned for each tunnel instance.
----@field public trackLengthEachSide int @the distance of the ref rails each side of 0 on this surface.
+---@field public trackLengthEachSide uint @the distance of the ref rails each side of 0 on this surface.
 ---@field public railAlignmentAxis Axis @the axis that the underground rails per tunnel are aligned upon (direction of travel).
 ---@field public tunnelInstanceAxis Axis @the axis that each tunnel instance is spaced along underground (rows of tunnel's tracks).
 
@@ -16,13 +16,13 @@ local Underground = {}
 ---@field public alignment TunnelAlignment
 ---@field public tunnel Tunnel @parent tunnel.
 ---@field public undergroundSurface UndergroundSurface
----@field public tunnelInstanceValue int @this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
+---@field public tunnelInstanceValue uint @this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
 ---@field public undergroundOffsetFromSurface Position @position offset of the underground entities from the surface entities.
 ---@field public surfaceOffsetFromUnderground Position @position offset of the surface entities from the undergroud entities.
----@field public undergroundLeadInTiles int @the tiles lead in of rail from 0
+---@field public undergroundLeadInTiles uint @the tiles lead in of rail from 0
 ---@field public undergroundSignals table<Id, UndergroundSignal>
----@field public distanceBetweenPortalCenters int @The distance from the underground tunnel center to the portal center.
----@field public tunnelRailCenterValue int @The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
+---@field public distanceBetweenPortalCenters uint @The distance from the underground tunnel center to the portal center.
+---@field public tunnelRailCenterValue uint @The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
 
 ---@class UndergroundSignal
 ---@field public id UnitNumber @unit_number of this signal.
@@ -155,7 +155,7 @@ Underground.AssignUndergroundTunnel = function(tunnel)
                 aboveGroundSignalPaired = portalSignal
             }
 
-            if portalSignal.direction == "out" then
+            if portalSignal.direction == TunnelCommon.TunnelSignalDirection.outSignal then
                 local signalStateCombinatorPosition = Utils.ApplyOffsetToPosition(undergroundSignalEntity.position, Utils.RotatePositionAround0(portal.entity.orientation, {x = 0, y = 1})) -- 1 tile towards the tunnel center from the signal.
                 undergroundSignal.signalStateCombinator = undergroundSurface.surface.create_entity {name = "constant-combinator", force = global.force.tunnelForce, position = signalStateCombinatorPosition}
                 local signalStateCombinatorControlBehavior = undergroundSignal.signalStateCombinator.get_or_create_control_behavior() ---@type LuaConstantCombinatorControlBehavior

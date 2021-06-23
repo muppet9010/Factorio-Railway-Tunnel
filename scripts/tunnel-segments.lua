@@ -12,7 +12,7 @@ local TunnelSegments = {}
 ---@field public tunnel Tunnel
 ---@field public crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "tunnel_segment_surface_rail_crossing".
 ---@field public surfacePositionString SurfacePositionString @used to back match to surfaceSegmentPositions global object.
----@field public beingFastReplacedTick int @the tick the segment was marked as being fast replaced or nil.
+---@field public beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
 ---@field public trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
 
 ---@class SurfacePositionString @the entities surface and position as a string.
@@ -32,23 +32,23 @@ TunnelSegments.OnLoad = function()
     for _, name in pairs(TunnelCommon.tunnelSegmentPlacedPlacementEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, "TunnelSegments.OnBuiltEntity", segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, "TunnelSegments.OnBuiltEntity", segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, "TunnelSegments.OnBuiltEntity", segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, "TunnelSegments.OnBuiltEntity", segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, "TunnelSegments.OnPreMinedEntity", segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, "TunnelSegments.OnPreMinedEntity", segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelSegments.OnPreMinedEntity", TunnelSegments.OnPreMinedEntity, segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_build, "TunnelSegments.OnPreBuild", TunnelSegments.OnPreBuild)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, "TunnelSegments.OnDiedEntity", segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, "TunnelSegments.OnDiedEntity", segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, segmentEntityNames_Filter)
 
     local segmentEntityGhostNames_Filter = {}
     for _, name in pairs(TunnelCommon.tunnelSegmentPlacedPlacementEntityNames) do
         table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, "TunnelSegments.OnBuiltEntityGhost", segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, "TunnelSegments.OnBuiltEntityGhost", segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, "TunnelSegments.OnBuiltEntityGhost", segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
 
     Interfaces.RegisterInterface("TunnelSegments.On_TunnelCompleted", TunnelSegments.On_TunnelCompleted)
     Interfaces.RegisterInterface("TunnelSegments.On_TunnelRemoved", TunnelSegments.On_TunnelRemoved)
@@ -122,7 +122,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
 
     -- Place the train blocker entity on non crossing rail segments.
     if not placeCrossingRails then
-        segment.trainBlockerEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos}
+        segment.trainBlockerEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
     end
 
     if placeCrossingRails then
@@ -305,9 +305,10 @@ TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
     local centerPos, force, lastUser, directionValue, aboveSurface, entityName = oldSegment.entity.position, oldSegment.entity.force, oldSegment.entity.last_user, oldSegment.entity.direction, oldSegment.entity.surface, oldSegment.entity.name
     oldSegment.entity.destroy()
 
-    local newSegmentEntity = aboveSurface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
+    local newSegmentEntity = aboveSurface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser} ---@type LuaEntity
+    ---@type Segment
     local newSegment = {
-        id = newSegmentEntity.unit_number,
+        id = newSegmentEntity.unit_number, ---@type UnitNumber
         entity = newSegmentEntity,
         tunnelRailEntities = oldSegment.tunnelRailEntities,
         signalEntities = oldSegment.signalEntities,

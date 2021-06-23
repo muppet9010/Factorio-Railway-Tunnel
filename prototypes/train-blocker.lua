@@ -19,10 +19,13 @@ local baseBlockerPrototype = {
         }
     },
     subgroup = "railway_tunnel-train_blockers",
-    flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable", "placeable-off-grid"},
+    flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable", "placeable-off-grid", "not-in-kill-statistics"},
     selectable_in_game = false,
     collision_mask = {"train-layer"}, -- Just collide with trains.
-    picture = Utils.EmptyRotatedSprite()
+    picture = Utils.EmptyRotatedSprite(),
+    map_color = {0, 0, 0, 0}, -- No map color ever.
+    friendly_map_color = {0, 0, 0, 0}, -- No map color ever.
+    enemy_map_color = {0, 0, 0, 0} -- No map color ever.
     --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
 }
 

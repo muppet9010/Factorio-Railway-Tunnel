@@ -52,7 +52,7 @@ TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
-            local connectedTunnelEntity = connectedTunnelEntities[1]
+            local connectedTunnelEntity = connectedTunnelEntities[1] ---@type LuaEntity
             if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
                 TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 continueChecking = false
@@ -230,6 +230,12 @@ TunnelCommon.TunnelAlignment = {
 TunnelCommon.TunnelAlignmentOrientation = {
     vertical = 0,
     horizontal = 0.25
+}
+
+---@class TunnelSignalDirection
+TunnelCommon.TunnelSignalDirection = {
+    inSignal = "inSignal",
+    outSignal = "outSignal"
 }
 
 return TunnelCommon

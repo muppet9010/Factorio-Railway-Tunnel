@@ -1,5 +1,6 @@
 Test the full reversal test suite now we've changed the tunnel reservation logic a bit. Also need to review the reversals setting of portal usage state with the addition/changes to the portal usage states.
 
+
 Bugs
 ----
 
@@ -7,6 +8,12 @@ Bugs
 Functionality not currently supported
 -------------------------------------
     - Interlinked abnormal tunnel usage cases:
+        - Things that end up in the exit portals placement areas.
+            - When a leaving carriage tries to be placed, if it fails check what blocked it.
+            - If its part of the leavingTrain then error
+            - Otherwise kill the blocker and place a devider entity to stop any existing carraiges connecting to the newly placed carriage, then place the carriage again.
+            - This is to cater for when things end up on the exit portal unexpected.
+            - Once the leaving carriage is placed the speed control should let the tunnel just continue normally.
         - Handle player driven trains approaching the tunnel.
             - Have it go through on auto for now from when it commits to when it starts leaving.
             - Put the player in a pushing loco if needed when the train reaches other side and have the player inputs fed to the underground train somehow?
@@ -16,15 +23,12 @@ Functionality not currently supported
             - On a carriage being removed the main train part using the tunnel should continue, with the other new train (old part now disjoined) just stopping dead to avoid 2 trains using the tunnel.
             - If there are no forward loco's left then we should push the remaining train to the end of the portal, or until it has fullyLeft, same as with low fuel (no path may achieve this already?).
             - Any now coasting train entering the tunnel will be handled by the coasting logic.
-        - Handle no driver/order trains that "coast" in to the tunnel due to being damaged or whatever.
-            - A train that isn't actively moving should be hard stopped at the tunnel entrance if possible, otherwise treated like a player driven train. - TODO in "tests/path-to-tunnel-tests.lua" related to when this functionality is supported.
-            - A coasting train that reaches the END signal should be sent through the tunnel (became coasting once on the portal) as if it was on the portal it was already the only train.
-            - We need to avoid any double tunnel usage scenarios and keep the carriage placement area clear in worst cases.
         - Handle 2 trains both using the tunnel and its portals at once.
             - This second train may be a coasting train, player driven or track adding/removal outcome.
             - This should be reduced by coasting trains and carriage add/remove logic.
             - However a second train may end up on the portal and it must be stopped immediately upon the conflict being detected.
             - Need to check/handle if it prevents the placing of blocking or dummy locos or ends up on the tunnel placement area.
+
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
         - Need to use the origional underground train as source for the others.
         - Use functions to handle any updates to the underground train (fuel, carriages changing) as this will need to be replicated across.
