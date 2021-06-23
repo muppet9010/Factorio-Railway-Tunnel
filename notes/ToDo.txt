@@ -23,8 +23,8 @@ Functionality not currently supported
             - On a carriage being removed the main train part using the tunnel should continue, with the other new train (old part now disjoined) just stopping dead to avoid 2 trains using the tunnel.
             - If there are no forward loco's left then we should push the remaining train to the end of the portal, or until it has fullyLeft, same as with low fuel (no path may achieve this already?).
             - Any now coasting train entering the tunnel will be handled by the coasting logic.
-        - Handle 2 trains both using the tunnel and its portals at once.
-            - This second train may be a coasting train, player driven or track adding/removal outcome.
+        - Handle 2 trains both trying to use the tunnel and its portals at once.
+            - This first and second trains may each be coasting train, player driven or scheduled trains (not both scheduled).
             - This should be reduced by coasting trains and carriage add/remove logic.
             - However a second train may end up on the portal and it must be stopped immediately upon the conflict being detected.
             - Need to check/handle if it prevents the placing of blocking or dummy locos or ends up on the tunnel placement area.

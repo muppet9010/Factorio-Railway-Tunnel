@@ -24,7 +24,7 @@ local Colors = require("utility/colors")
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
 local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
-local AllTests = true -- Does all the tests regardless of their enabled state below if TRUE.
+local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = true -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
 
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
@@ -58,7 +58,7 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")},
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
-    PathToTunnelTests = {enabled = false, testScript = require("tests/path-to-tunnel-tests")},
+    PathToTunnelRailTests = {enabled = true, testScript = require("tests/path-to-tunnel-rail-tests")},
     RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
     RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
     ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}
@@ -152,7 +152,7 @@ TestManager.OnStartup = function()
 
     -- Create the global test management state data. Lua script funcctions can't be included in to global object.
     for testName, test in pairs(TestsToRun) do
-        if test.enabled then
+        if test.enabled or (AllTests and not test.notInAllTests) then
             global.testManager.testsToRun[testName] = {
                 testName = testName,
                 enabled = test.enabled,

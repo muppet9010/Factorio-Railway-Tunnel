@@ -127,9 +127,9 @@ TrainManager.OnLoad = function()
         end
     )
     Interfaces.RegisterInterface(
-        "TrainManager.RegisterTrainApproachingOnPortalTrack",
+        "TrainManager.RegisterTrainOnPortalTrack",
         function(...)
-            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.RegisterTrainApproachingOnPortalTrack, ...)
+            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.RegisterTrainOnPortalTrack, ...)
         end
     )
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
@@ -175,11 +175,11 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
     end
 end
 
+--- Used when a train is claiming a portals track, but not the tunnel yet. Is the opposite to a leftTrain. Only reached by pathing trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
 ---@param enteringTrain LuaTrain
 ---@param portal Portal
-TrainManager.RegisterTrainApproachingOnPortalTrack = function(enteringTrain, portal)
-    -- Should only be reached by trains pathing that enter the portal track before their breaking distance is the stopping signal or when driven manually.
-
+TrainManager.RegisterTrainOnPortalTrack = function(enteringTrain, portal)
+    --TODO: Register this train's use of the portal (and thus locking the tunnel) as a tracked train ID. Update the ManagedTrain attribute of the portal to track it. Add special state for ManagedTrain per tick. That way any other function that checks the tunnel's availablilty sees this as equal to a tunnel usage. The other portals entrance lights will be red due to circuit connection. Track the entrance portal entry signal light so we know when it either leaves or it triggers the portal END signal and we clear its portal reservation. This should make it impossible for 2 trains at opposite ends of a tunnel both try and path on to their local portals (not use the tunnel).
     local managedTrain = TrainManager.CreateManagedTrainObject(enteringTrain, portal.endSignals[TunnelCommon.TunnelSignalDirection.inSignal])
     TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, enteringTrain)
     managedTrain.primaryTrainPartName, managedTrain.enteringTrainState, managedTrain.undergroundTrainState, managedTrain.leavingTrainState = PrimaryTrainPartNames.approaching, EnteringTrainStates.approaching, UndergroundTrainStates.travelling, LeavingTrainStates.pre

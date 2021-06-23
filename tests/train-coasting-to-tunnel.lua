@@ -1,4 +1,4 @@
--- Sends a short train coasting in to a tunnel portal entrance with it in differnt schedule states. All should be stopped at portal entrance.
+-- Sends a single short train coasting in to a tunnel portal entrance while it is in the differnt mod handled schedule states. All should be stopped at portal entrance.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")

@@ -50,7 +50,7 @@ TunnelSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
 
-    Interfaces.RegisterInterface("TunnelSegments.On_TunnelCompleted", TunnelSegments.On_TunnelCompleted)
+    Interfaces.RegisterInterface("TunnelSegments.On_PreTunnelCompleted", TunnelSegments.On_PreTunnelCompleted)
     Interfaces.RegisterInterface("TunnelSegments.On_TunnelRemoved", TunnelSegments.On_TunnelRemoved)
 end
 
@@ -201,7 +201,7 @@ end
 ---@param force LuaForce
 ---@param aboveSurface LuaSurface
 ---@return Segment[]
-TunnelSegments.On_TunnelCompleted = function(segmentEntities, force, aboveSurface)
+TunnelSegments.On_PreTunnelCompleted = function(segmentEntities, force, aboveSurface)
     local segments = {}
 
     for _, segmentEntity in pairs(segmentEntities) do

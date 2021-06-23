@@ -27,10 +27,10 @@ local Utils = require("utility/utils")
 ---@field public tunnelUsageId ManagedTrainId
 
 Tunnel.CreateGlobals = function()
-    global.tunnel = global.tunnel or {}
-    global.tunnel.nextTunnelId = global.tunnel.nextTunnelId or 1
-    global.tunnel.tunnels = global.tunnel.tunnels or {} ---@type table<Id, Tunnel>
-    global.tunnel.endSignals = global.tunnel.endSignals or {} ---@type table<UnitNumber, PortalEndSignal> @the tunnel's portal's "inSignal" endSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
+    global.tunnels = global.tunnels or {}
+    global.tunnels.nextTunnelId = global.tunnels.nextTunnelId or 1
+    global.tunnels.tunnels = global.tunnels.tunnels or {} ---@type table<Id, Tunnel>
+    global.tunnels.endSignals = global.tunnels.endSignals or {} ---@type table<UnitNumber, PortalEndSignal> @the tunnel's portal's "inSignal" endSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
 end
 
 Tunnel.OnLoad = function()
@@ -68,10 +68,10 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
         return
     end
     local signal = train.signal
-    if signal == nil or global.tunnel.endSignals[signal.unit_number] == nil then
+    if signal == nil or global.tunnels.endSignals[signal.unit_number] == nil then
         return
     end
-    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnel.endSignals[signal.unit_number])
+    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnels.endSignals[signal.unit_number])
 end
 
 ---@param tunnelPortalEntities LuaEntity[]
@@ -80,8 +80,8 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     ---@typelist LuaForce, LuaSurface, LuaEntity
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
 
-    local tunnelPortals = Interfaces.Call("TunnelPortals.On_TunnelCompleted", tunnelPortalEntities, force, aboveSurface) ---@type table<int,Portal>
-    local tunnelSegments = Interfaces.Call("TunnelSegments.On_TunnelCompleted", tunnelSegmentEntities, force, aboveSurface)
+    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, aboveSurface) ---@type table<int,Portal>
+    local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, aboveSurface) ---@type table<int,Segment>
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation
@@ -95,7 +95,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity.direction)
     end
     local tunnel = {
-        id = global.tunnel.nextTunnelId,
+        id = global.tunnels.nextTunnelId,
         alignment = alignment,
         alignmentOrientation = alignmentOrientation,
         aboveSurface = refTunnelPortalEntity.surface,
@@ -103,8 +103,8 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         segments = tunnelSegments,
         tunnelRailEntities = {}
     }
-    global.tunnel.tunnels[tunnel.id] = tunnel
-    global.tunnel.nextTunnelId = global.tunnel.nextTunnelId + 1
+    global.tunnels.tunnels[tunnel.id] = tunnel
+    global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
     for _, portal in pairs(tunnelPortals) do
         portal.tunnel = tunnel
         for tunnelRailEntityUnitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
@@ -121,6 +121,10 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     tunnel.undergroundTunnel = Interfaces.Call("Underground.AssignUndergroundTunnel", tunnel)
     tunnel.railAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.railAlignmentAxis
     tunnel.tunnelAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.tunnelInstanceAxis
+
+    for _, portal in pairs(tunnelPortals) do
+        Interfaces.Call("TunnelPortals.On_PostTunnelCompleted", portal)
+    end
 end
 
 ---@param tunnel Tunnel
@@ -133,17 +137,17 @@ Tunnel.RemoveTunnel = function(tunnel)
         Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
     end
     Interfaces.Call("Underground.ReleaseUndergroundTunnel", tunnel.undergroundTunnel)
-    global.tunnel.tunnels[tunnel.id] = nil
+    global.tunnels.tunnels[tunnel.id] = nil
 end
 
 ---@param endSignal PortalEndSignal
 Tunnel.RegisterEndSignal = function(endSignal)
-    global.tunnel.endSignals[endSignal.entity.unit_number] = endSignal
+    global.tunnels.endSignals[endSignal.entity.unit_number] = endSignal
 end
 
 ---@param endSignal PortalEndSignal
 Tunnel.DeregisterEndSignal = function(endSignal)
-    global.tunnel.endSignals[endSignal.entity.unit_number] = nil
+    global.tunnels.endSignals[endSignal.entity.unit_number] = nil
 end
 
 ---@param managedTrain ManagedTrain
@@ -232,7 +236,7 @@ end
 ---@param tunnelId Id
 ---@return TunnelDetails
 Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
-    local tunnel = global.tunnel.tunnels[tunnelId]
+    local tunnel = global.tunnels.tunnels[tunnelId]
     if tunnel == nil then
         return nil
     end
@@ -242,7 +246,7 @@ end
 ---@param entityUnitNumber UnitNumber
 ---@return TunnelDetails
 Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
-    for _, tunnel in pairs(global.tunnel.tunnels) do
+    for _, tunnel in pairs(global.tunnels.tunnels) do
         for _, portal in pairs(tunnel.portals) do
             if portal.id == entityUnitNumber then
                 return Tunnel.Remote_GetTunnelDetails(tunnel)

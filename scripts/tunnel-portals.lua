@@ -75,7 +75,8 @@ TunnelPortals.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "TunnelPortals.OnPlayerRotatedEntity", TunnelPortals.OnPlayerRotatedEntity)
 
-    Interfaces.RegisterInterface("TunnelPortals.On_TunnelCompleted", TunnelPortals.On_TunnelCompleted)
+    Interfaces.RegisterInterface("TunnelPortals.On_PreTunnelCompleted", TunnelPortals.On_PreTunnelCompleted)
+    Interfaces.RegisterInterface("TunnelPortals.On_PostTunnelCompleted", TunnelPortals.On_PostTunnelCompleted)
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
     Interfaces.RegisterInterface("TunnelPortals.UsingEntranceSignalForManagedTrain", TunnelPortals.UsingEntranceSignalForManagedTrain)
     Interfaces.RegisterInterface("TunnelPortals.CloseEntranceSignalForManagedTrain", TunnelPortals.CloseEntranceSignalForManagedTrain)
@@ -159,7 +160,7 @@ end
 ---@param force LuaForce
 ---@param aboveSurface LuaSurface
 ---@return Portal[]
-TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
+TunnelPortals.On_PreTunnelCompleted = function(portalEntities, force, aboveSurface)
     local portals = {}
 
     for _, portalEntity in pairs(portalEntities) do
@@ -286,9 +287,6 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
             [farInvisibleSignalOutEntity.unit_number] = farInvisibleSignalOutEntity,
             [endSignalBlockingLocomotiveEntity.unit_number] = endSignalBlockingLocomotiveEntity
         }
-
-        -- Add the entranceUsageDetectorEntity to the entrance end of the portal. This is directly in line with the signals and will never quite be touched by a train stopping at the signal if approaching.
-        TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
     end
 
     portals[1].entrySignals[TunnelCommon.TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelCommon.TunnelSignalDirection.inSignal].entity}
@@ -296,6 +294,13 @@ TunnelPortals.On_TunnelCompleted = function(portalEntities, force, aboveSurface)
     TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[2].entrySignals[TunnelCommon.TunnelSignalDirection.inSignal].entity, "signal-2", "signal-1")
 
     return portals
+end
+
+--- Actions that require the tunnel to be completed and associated with the portal.
+---@param portal Portal
+TunnelPortals.On_PostTunnelCompleted = function(portal)
+    -- Add the entranceUsageDetectorEntity to the entrance end of the portal. This is directly in line with the signals and will never quite be touched by a train stopping at the signal if approaching.
+    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
 end
 
 ---@param railSignalEntity LuaEntity
@@ -456,10 +461,12 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.tunnelPortals.entranceUsageDetectorEntityIdToPortal[diedEntity.unit_number]
     portal.entranceUsageDetectorEntity = nil
+    global.tunnelPortals.entranceUsageDetectorEntityIdToPortal[diedEntity.unit_number] = nil
 
     if carriageEnteringPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
         TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+        return
     end
     local train = carriageEnteringPortalTrack.train
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
@@ -480,8 +487,8 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
         else
             -- This train hasn't reserved any tunnel.
             if portal.tunnel.managedTrain == nil then
-                -- Portal's tunnel isn't reserved so this train can grab it.
-                Interfaces.Call("TrainManager.RegisterTrainApproachingOnPortalTrack", train, portal)
+                -- Portal's tunnel isn't reserved so this train can grab the portal.
+                Interfaces.Call("TrainManager.RegisterTrainOnPortalTrack", train, portal)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train entering. Not sure how this could have happened, but just stop the new train here and restore the entrance detection entity.
@@ -490,6 +497,7 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
                 else
                     train.speed = 0
                     TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+                    rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[1].entity.position, time_to_live = 180, forces = portal.entity.force, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
                     return
                 end
             end
@@ -504,6 +512,7 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
     -- Train is coasting so stop it at the border and try to put the detection entity back.
     train.speed = 0
     TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+    rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[1].entity.position, time_to_live = 180, forces = portal.entity.force, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
 ---@param portal Portal
@@ -545,6 +554,9 @@ end
 ---@param portal Portal
 TunnelPortals.AddEntranceUsageDetectionEntityToPortal = function(portal)
     local portalEntity = portal.entity
+    if portalEntity == nil or not portalEntity.valid or portal.tunnel == nil then
+        return
+    end
     local aboveSurface, directionValue = portal.entity.surface, portalEntity.direction
     local orientation = Utils.DirectionToOrientation(directionValue)
     local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceUsageDetectorEntityDistance}))
@@ -558,6 +570,10 @@ end
 TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition = function(eventData, portal, aboveSurface, position)
     if eventData ~= nil then
         portal, aboveSurface, position = eventData.data.portal, eventData.data.aboveSurface, eventData.data.position
+    end
+    if portal.tunnel == nil then
+        -- The tunnel has been removed from the portal, so we shouldn't add the detection entity back.
+        return
     end
 
     -- The left train will initially be within the collision box of where we want to place this. So check if it can be placed. For odd reasons the entity will "create" on top of a train and instantly be killed, so have to explicitly check.
@@ -583,8 +599,6 @@ TunnelPortals.RemoveEntranceUsageDetectionEntityFromPortal = function(portal)
         portal.entranceUsageDetectorEntity.destroy()
         portal.entranceUsageDetectorEntity = nil
     end
-    -- If it was trying to recreate this then stop it.
-    EventScheduler.RemoveScheduledOnceEvents("TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition", portal.id, game.tick + 1)
 end
 
 ---@param portal Portal
