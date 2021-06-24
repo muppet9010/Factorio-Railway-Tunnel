@@ -1,8 +1,8 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Tunnel = {}
-local TunnelCommon = require("scripts/tunnel-common")
-local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = TunnelCommon.TunnelAlignment, TunnelCommon.RollingStockTypes, TunnelCommon.TunnelSurfaceRailEntityNames, TunnelCommon.TunnelAlignmentOrientation
+local Common = require("scripts/common")
+local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
 
 --[[
@@ -314,7 +314,7 @@ Tunnel.OnBuiltEntity = function(event)
         -- Is a ghost so check it approperiately. This isn't perfect, but if it misses an invalid case the real entity being placed will catch it. Nicer to warn the player at the ghost stage however.
 
         -- Have to check what rails are at the approximate ends of the ghost carriage.
-        local carriageLengthFromCenter, surface, tunnelRailFound = TunnelCommon.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
+        local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
         local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation), Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation - 0.5)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
@@ -346,7 +346,7 @@ Tunnel.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    TunnelCommon.UndoInvalidPlacement(createdEntity, placer, createdEntity.type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
+    Common.UndoInvalidPlacement(createdEntity, placer, createdEntity.type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
 end
 
 return Tunnel

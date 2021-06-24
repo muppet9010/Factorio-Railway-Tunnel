@@ -1,8 +1,8 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/tunnel-common")
-local TunnelSegmentPlacedPlacementEntityNames = TunnelCommon.TunnelSegmentPlacedPlacementEntityNames
+local Common = require("scripts/common")
+local TunnelSegmentPlacedPlacementEntityNames = Common.TunnelSegmentPlacedPlacementEntityNames
 local TunnelSegments = {}
 
 ---@class Segment
@@ -74,8 +74,8 @@ end
 TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
 
-    if not TunnelCommon.IsPlacementOnRailGrid(placementEntity) then
-        TunnelCommon.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
+    if not Common.IsPlacementOnRailGrid(placementEntity) then
+        Common.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
         return
     end
     placementEntity.destroy()
@@ -99,7 +99,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
             if not railCrossingTrackEntity.can_be_destroyed() then
                 -- Put the old correct entity back and correct whats been done.
-                TunnelCommon.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", aboveSurface, centerPos)
+                Common.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", aboveSurface, centerPos)
                 local oldId = fastReplacedSegment.id
                 fastReplacedSegment.entity = aboveSurface.create_entity {name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
                 local newId = fastReplacedSegment.entity.unit_number
@@ -186,7 +186,7 @@ TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, 
     local directionComplete, tunnelPortalEntities, tunnelSegmentEntities, directionValue = nil, {}, {}, startingTunnelSegment.direction
     for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
         -- Check "forwards" and then "backwards".
-        directionComplete, tunnelPortalEntities, tunnelSegmentEntities = TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer)
+        directionComplete, tunnelPortalEntities, tunnelSegmentEntities = Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer)
         if not directionComplete then
             break
         end
@@ -239,8 +239,8 @@ TunnelSegments.OnBuiltEntityGhost = function(event)
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelCommon.IsPlacementOnRailGrid(createdEntity) then
-        TunnelCommon.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
+    if not Common.IsPlacementOnRailGrid(createdEntity) then
+        Common.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
         return
     end
 end
@@ -282,7 +282,7 @@ TunnelSegments.OnPreMinedEntity = function(event)
     if segment.crossingRailEntities ~= nil then
         for _, railEntity in pairs(segment.crossingRailEntities) do
             if not railEntity.can_be_destroyed() then
-                TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is on crossing track", minedEntity.surface, minedEntity.position)
+                Common.EntityErrorMessage(miner, "Can not mine tunnel segment while train is on crossing track", minedEntity.surface, minedEntity.position)
                 TunnelSegments.ReplaceSegmentEntity(segment)
                 return
             end
@@ -292,7 +292,7 @@ TunnelSegments.OnPreMinedEntity = function(event)
         TunnelSegments.EntityRemoved(segment)
     else
         if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", segment.tunnel) then
-            TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel segment while train is using tunnel", minedEntity.surface, minedEntity.position)
+            Common.EntityErrorMessage(miner, "Can not mine tunnel segment while train is using tunnel", minedEntity.surface, minedEntity.position)
             TunnelSegments.ReplaceSegmentEntity(segment)
         else
             Interfaces.Call("Tunnel.RemoveTunnel", segment.tunnel)
@@ -328,7 +328,7 @@ end
 ---@param killerCauseEntity LuaEntity
 TunnelSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.crossingRailEntities ~= nil then
-        TunnelCommon.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
+        Common.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
         for _, crossingRailEntity in pairs(segment.crossingRailEntities) do
             if crossingRailEntity.valid then
                 crossingRailEntity.destroy()

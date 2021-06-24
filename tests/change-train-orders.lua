@@ -8,7 +8,7 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/tunnel-common")
+local Common = require("scripts/common")
 
 local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
@@ -271,12 +271,12 @@ Test.BuildTrain = function(buildStation, trainType, origionalStation, targetType
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = 0.5, y = -2}) -- offset to position first carriage correctly.
     for _, carriageDetails in pairs(carriagesDetails) do
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - TunnelCommon.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
         if carriageDetails.name == "locomotive" then
             placedCarriage.insert({name = "rocket-fuel", count = 10})
         end
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - TunnelCommon.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
     end
 
     local train = placedCarriage.train

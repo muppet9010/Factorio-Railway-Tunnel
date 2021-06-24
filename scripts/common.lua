@@ -1,24 +1,24 @@
 local Utils = require("utility/utils")
 local Colors = require("utility/colors")
-local TunnelCommon = {}
+local Common = {}
 
 -- Make the entity lists.
-TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelSegmentPlacementEntityNames, TunnelCommon.TunnelPortalPlacedEntityNames, TunnelCommon.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
+Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
 for _, coreName in pairs({"railway_tunnel-tunnel_segment_surface", "railway_tunnel-tunnel_segment_surface_rail_crossing"}) do
-    TunnelCommon.TunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    TunnelCommon.TunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
+    Common.TunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
+    Common.TunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
-TunnelCommon.TunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelSegmentPlacementEntityNames})
+Common.TunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames})
 for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
-    TunnelCommon.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    TunnelCommon.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
+    Common.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
+    Common.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
-TunnelCommon.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.TunnelPortalPlacedEntityNames, TunnelCommon.TunnelPortalPlacementEntityNames})
-TunnelCommon.TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelPortalPlacedEntityNames})
-TunnelCommon.TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelSegmentPlacementEntityNames, TunnelCommon.TunnelPortalPlacedEntityNames, TunnelCommon.TunnelPortalPlacementEntityNames})
+Common.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames})
+Common.TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelPortalPlacedEntityNames})
+Common.TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames})
 
 ---@class TunnelSurfaceRailEntityNames
-TunnelCommon.TunnelSurfaceRailEntityNames = {
+Common.TunnelSurfaceRailEntityNames = {
     -- Doesn't include the tunnel crossing rail as this isn't deemed part of the tunnel's rails.
     ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelSurfaceRailEntityNames
     ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
@@ -28,7 +28,7 @@ TunnelCommon.TunnelSurfaceRailEntityNames = {
 }
 
 ---@class RollingStockTypes
-TunnelCommon.RollingStockTypes = {
+Common.RollingStockTypes = {
     ["locomotive"] = "locomotive", ---@type RollingStockTypes
     ["cargo-wagon"] = "cargo-wagon", ---@type RollingStockTypes
     ["fluid-wagon"] = "fluid-wagon", ---@type RollingStockTypes
@@ -40,40 +40,40 @@ TunnelCommon.RollingStockTypes = {
 ---@param checkingDirection defines.direction
 ---@param placer EntityBuildPlacer
 ---@return boolean, LuaEntity[], LuaEntity[]
-TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
+Common.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
     local tunnelPortalEntities, tunnelSegmentEntities = {}, {}
-    if TunnelCommon.TunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
+    if Common.TunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
         table.insert(tunnelSegmentEntities, startingTunnelPart)
-    elseif TunnelCommon.TunnelPortalPlacedEntityNames[startingTunnelPart.name] then
+    elseif Common.TunnelPortalPlacedEntityNames[startingTunnelPart.name] then
         table.insert(tunnelPortalEntities, startingTunnelPart)
     else
-        error("TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart.name)
+        error("Common.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart.name)
     end
     local orientation, continueChecking, nextCheckingPos = Utils.DirectionToOrientation(checkingDirection), true, startingTunnelPartPoint
     while continueChecking do
         nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
-        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelCommon.TunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
+        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = Common.TunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
             local connectedTunnelEntity = connectedTunnelEntities[1] ---@type LuaEntity
             if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
-                TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity.position)
+                Common.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 continueChecking = false
-            elseif TunnelCommon.TunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif Common.TunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
                     table.insert(tunnelSegmentEntities, connectedTunnelEntity)
                 else
-                    TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity.position)
+                    Common.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                     continueChecking = false
                 end
-            elseif TunnelCommon.TunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif Common.TunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
                 continueChecking = false
                 if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
                     table.insert(tunnelPortalEntities, connectedTunnelEntity)
                     return true, tunnelPortalEntities, tunnelSegmentEntities
                 else
-                    TunnelCommon.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
+                    Common.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 end
                 table.insert(tunnelSegmentEntities, connectedTunnelEntity)
             else
@@ -86,7 +86,7 @@ end
 
 ---@param placementEntity LuaEntity
 ---@return boolean
-TunnelCommon.IsPlacementOnRailGrid = function(placementEntity)
+Common.IsPlacementOnRailGrid = function(placementEntity)
     if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
         return false
     else
@@ -97,8 +97,8 @@ end
 ---@param placementEntity LuaEntity
 ---@param placer EntityBuildPlacer
 ---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
-TunnelCommon.UndoInvalidTunnelPartPlacement = function(placementEntity, placer, mine)
-    TunnelCommon.UndoInvalidPlacement(placementEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
+Common.UndoInvalidTunnelPartPlacement = function(placementEntity, placer, mine)
+    Common.UndoInvalidPlacement(placementEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
 end
 
 ---@param placementEntity LuaEntity
@@ -107,13 +107,13 @@ end
 ---@param highlightValidRailGridPositions boolean @If to show to the placer valid positions on the rail grid.
 ---@param warningMessageText string @Text shown to the placer
 ---@param errorEntityNameText string @Entity name shown if the process errors.
-TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
+Common.UndoInvalidPlacement = function(placementEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
     if placer ~= nil then
         local position, surface, entityName, ghostName, direction = placementEntity.position, placementEntity.surface, placementEntity.name, nil, placementEntity.direction
         if entityName == "entity-ghost" then
             ghostName = placementEntity.ghost_name
         end
-        TunnelCommon.EntityErrorMessage(placer, warningMessageText, surface, position)
+        Common.EntityErrorMessage(placer, warningMessageText, surface, position)
         if mine then
             local result
             if placer.is_player() then
@@ -129,7 +129,7 @@ TunnelCommon.UndoInvalidPlacement = function(placementEntity, placer, mine, high
             placementEntity.destroy()
         end
         if highlightValidRailGridPositions then
-            TunnelCommon.HighlightValidPlacementPositionsOnRailGrid(placer, position, surface, entityName, ghostName, direction)
+            Common.HighlightValidPlacementPositionsOnRailGrid(placer, position, surface, entityName, ghostName, direction)
         end
     else
         placementEntity.destroy()
@@ -144,7 +144,7 @@ end
 ---@param entityName string
 ---@param ghostName string
 ---@param direction defines.direction @Direction of the entity trying to be placed.
-TunnelCommon.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
+Common.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
     local highlightAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
     local minX, maxX, minY, maxY
@@ -186,7 +186,7 @@ end
 ---@param text string @Text shown.
 ---@param surface LuaSurface
 ---@param position Position
-TunnelCommon.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
+Common.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
     local textAudience = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
     rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
@@ -194,7 +194,7 @@ end
 ---@param railEntityList LuaEntity[]
 ---@param killForce LuaForce
 ---@param killerCauseEntity LuaEntity
-TunnelCommon.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, killerCauseEntity)
+Common.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, killerCauseEntity)
     if Utils.IsTableEmpty(railEntityList) then
         return
     end
@@ -215,7 +215,7 @@ end
 ---comment
 ---@param carriageEntityName string @The entity name.
 ---@return double
-TunnelCommon.GetCarriagePlacementDistance = function(carriageEntityName)
+Common.GetCarriagePlacementDistance = function(carriageEntityName)
     -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
     if carriageEntityName == "railway_tunnel-tunnel_portal_pushing_locomotive" then
         return 0.5
@@ -225,21 +225,92 @@ TunnelCommon.GetCarriagePlacementDistance = function(carriageEntityName)
 end
 
 ---@class TunnelAlignment
-TunnelCommon.TunnelAlignment = {
+Common.TunnelAlignment = {
     vertical = "vertical",
     horizontal = "horizontal"
 }
 
 ---@class TunnelAlignmentOrientation
-TunnelCommon.TunnelAlignmentOrientation = {
+Common.TunnelAlignmentOrientation = {
     vertical = 0,
     horizontal = 0.25
 }
 
 ---@class TunnelSignalDirection
-TunnelCommon.TunnelSignalDirection = {
+Common.TunnelSignalDirection = {
     inSignal = "inSignal",
     outSignal = "outSignal"
 }
 
-return TunnelCommon
+---@class EnteringTrainStates
+Common.EnteringTrainStates = {
+    approaching = "approaching", ---@type EnteringTrainStates @Train is approaching the tunnel, but can still turn back.
+    entering = "entering", ---@type EnteringTrainStates @Train is committed to entering the tunnel.
+    finished = "finished" ---@type EnteringTrainStates @Train has fully completed entering the tunnel.
+}
+
+---@class UndergroundTrainStates
+Common.UndergroundTrainStates = {
+    travelling = "travelling", ---@type UndergroundTrainStates
+    finished = "finished" ---@type UndergroundTrainStates
+}
+
+---@class LeavingTrainStates
+Common.LeavingTrainStates = {
+    pre = "pre", ---@type LeavingTrainStates
+    leavingFirstCarriage = "leavingFirstCarriage", ---@type LeavingTrainStates
+    leaving = "leaving", ---@type LeavingTrainStates
+    trainLeftTunnel = "trainLeftTunnel", ---@type LeavingTrainStates
+    finished = "finished" ---@type LeavingTrainStates
+}
+
+---@class PrimaryTrainPartNames
+Common.PrimaryTrainPartNames = {
+    portalTrack = "portalTrack", ---@type PrimaryTrainPartNames
+    approaching = "approaching", ---@type PrimaryTrainPartNames
+    underground = "underground", ---@type PrimaryTrainPartNames
+    leaving = "leaving", ---@type PrimaryTrainPartNames
+    finished = "finished" ---@type PrimaryTrainPartNames
+}
+
+---@class TunnelUsageParts
+Common.TunnelUsageParts = {
+    enteringTrain = "enteringTrain", ---@type TunnelUsageParts
+    dummyTrain = "dummyTrain", ---@type TunnelUsageParts
+    leavingTrain = "leavingTrain", ---@type TunnelUsageParts
+    leftTrain = "leftTrain", ---@type TunnelUsageParts
+    portalTrack = "portalTrack" ---@type TunnelUsageParts
+}
+
+---@class LeavingTrainStoppingAtType
+Common.LeavingTrainStoppingAtType = {
+    signal = "signal", ---@type LeavingTrainStoppingAtType
+    schedule = "schedule" ---@type LeavingTrainStoppingAtType
+}
+
+---@class TunnelUsageAction
+Common.TunnelUsageAction = {
+    startApproaching = "startApproaching", ---@type TunnelUsageAction
+    terminated = "terminated", ---@type TunnelUsageAction
+    reversedDuringUse = "reversedDuringUse", ---@type TunnelUsageAction
+    startedEntering = "startedEntering", ---@type TunnelUsageAction
+    enteringCarriageRemoved = "enteringCarriageRemoved", ---@type TunnelUsageAction
+    fullyEntered = "fullyEntered", ---@type TunnelUsageAction
+    startedLeaving = "startedLeaving", ---@type TunnelUsageAction
+    leavingCarriageAdded = "leavingCarriageAdded", ---@type TunnelUsageAction
+    fullyLeft = "fullyLeft", ---@type TunnelUsageAction
+    portalTrack = "portalTrack" ---@type TunnelUsageAction
+}
+
+---@class TunnelUsageChangeReason
+Common.TunnelUsageChangeReason = {
+    reversedAfterLeft = "reversedAfterLeft", ---@type TunnelUsageChangeReason
+    abortedApproach = "abortedApproach", ---@type TunnelUsageChangeReason
+    forwardPathLost = "forwardPathLost", ---@type TunnelUsageChangeReason
+    completedTunnelUsage = "completedTunnelUsage", ---@type TunnelUsageChangeReason
+    tunnelRemoved = "tunnelRemoved", ---@type TunnelUsageChangeReason
+    portalTrackReleased = "portalTrackReleased", ---@type TunnelUsageChangeReason
+    enteringFromPortalTrack = "enteringFromPortalTrack" ---@type TunnelUsageChangeReason
+}
+
+return Common

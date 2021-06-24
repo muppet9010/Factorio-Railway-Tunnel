@@ -2,12 +2,12 @@ local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Utils = require("utility/utils")
-local TrainManagerFuncs = require("scripts/train-manager-functions") -- Stateless functions that don't directly use global objects.
-local PlayerContainers = require("scripts/player-containers") -- Uses this file directly, rather than via interface. Details in the sub files notes.
-local Logging = require("utility/logging")
-local TunnelCommon = require("scripts/tunnel-common")
-local TunnelSignalDirection = TunnelCommon.TunnelSignalDirection
-local UndergroundSetUndergroundExitSignalStateFunction = nil ---@type fun(undergroundSignal:UndergroundSignal, sourceSignalState:defines.signal_state) -- Cache the function reference during OnLoad. Saves using Interfaces every tick.
+local TrainManagerStateFuncs = require("scripts/train-manager-stateful-functions")
+local TrainManagerFuncs = require("scripts/train-manager-functions")
+local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
+local Common = require("scripts/common")
+local TunnelSignalDirection, TunnelUsageChangeReason, LeavingTrainStoppingAtType, TunnelUsageParts, PrimaryTrainPartNames, LeavingTrainStates, UndergroundTrainStates, EnteringTrainStates, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.LeavingTrainStoppingAtType, Common.TunnelUsageParts, Common.PrimaryTrainPartNames, Common.LeavingTrainStates, Common.UndergroundTrainStates, Common.EnteringTrainStates, Common.TunnelUsageAction
+local TrainManagerRemote = require("scripts/train-manager-remote")
 
 ---@class ManagedTrain
 ---@field public id Id @uniqiue id of this managed train passing through the tunnel.
@@ -83,52 +83,6 @@ local UndergroundSetUndergroundExitSignalStateFunction = nil ---@type fun(underg
 ---@field public managedTrain ManagedTrain
 ---@field public tunnelUsagePart TunnelUsageParts
 
----@class EnteringTrainStates
-local EnteringTrainStates = {
-    approaching = "approaching", ---@type EnteringTrainStates @Train is approaching the tunnel, but can still turn back.
-    entering = "entering", ---@type EnteringTrainStates @Train is committed to entering the tunnel.
-    finished = "finished" ---@type EnteringTrainStates @Train has fully completed entering the tunnel.
-}
-
----@class UndergroundTrainStates
-local UndergroundTrainStates = {
-    travelling = "travelling", ---@type UndergroundTrainStates
-    finished = "finished" ---@type UndergroundTrainStates
-}
-
----@class LeavingTrainStates
-local LeavingTrainStates = {
-    pre = "pre", ---@type LeavingTrainStates
-    leavingFirstCarriage = "leavingFirstCarriage", ---@type LeavingTrainStates
-    leaving = "leaving", ---@type LeavingTrainStates
-    trainLeftTunnel = "trainLeftTunnel", ---@type LeavingTrainStates
-    finished = "finished" ---@type LeavingTrainStates
-}
-
----@class PrimaryTrainPartNames
-local PrimaryTrainPartNames = {
-    portalTrack = "portalTrack", ---@type PrimaryTrainPartNames
-    approaching = "approaching", ---@type PrimaryTrainPartNames
-    underground = "underground", ---@type PrimaryTrainPartNames
-    leaving = "leaving", ---@type PrimaryTrainPartNames
-    finished = "finished" ---@type PrimaryTrainPartNames
-}
-
----@class TunnelUsageParts
-local TunnelUsageParts = {
-    enteringTrain = "enteringTrain", ---@type TunnelUsageParts
-    dummyTrain = "dummyTrain", ---@type TunnelUsageParts
-    leavingTrain = "leavingTrain", ---@type TunnelUsageParts
-    leftTrain = "leftTrain", ---@type TunnelUsageParts
-    portalTrack = "portalTrack" ---@type TunnelUsageParts
-}
-
----@class LeavingTrainStoppingAtType
-local LeavingTrainStoppingAtType = {
-    signal = "signal", ---@type LeavingTrainStoppingAtType
-    schedule = "schedule" ---@type LeavingTrainStoppingAtType
-}
-
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1 ---@type Id
@@ -138,7 +92,6 @@ TrainManager.CreateGlobals = function()
 end
 
 TrainManager.OnLoad = function()
-    UndergroundSetUndergroundExitSignalStateFunction = Interfaces.GetNamedFunction("Underground.SetUndergroundExitSignalState")
     Interfaces.RegisterInterface(
         "TrainManager.RegisterTrainApproachingPortalSignal",
         function(...)
@@ -152,10 +105,6 @@ TrainManager.OnLoad = function()
         end
     )
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
-    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManager.TrainTracking_OnTrainCreated)
-    Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManager.On_TunnelRemoved)
-    Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManager.On_PortalReplaced)
-    Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManager.GetTrainIdsManagedTrainDetails)
 end
 
 ----------------------------------------------------------------------------------------------------------
@@ -180,27 +129,27 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
             -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
             oldManagedTrainEntry = existingTrainIDTrackedObject.managedTrain
             -- Terminate the old tunnel usage that was delayed until this point. Don't try to reverse the tunnel usage as this event has naturally happened and the old tunnel usage was effectively over anyways.
-            TrainManager.TerminateTunnelTrip(oldManagedTrainEntry, TrainManager.TunnelUsageChangeReason.reversedAfterLeft)
+            TrainManagerStateFuncs.TerminateTunnelTrip(oldManagedTrainEntry, TunnelUsageChangeReason.reversedAfterLeft)
         elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrack then
             -- Train was using the portal track and is now entering the tunnel.
             oldManagedTrainEntry = existingTrainIDTrackedObject.managedTrain
             -- Terminate the old tunnel usage that was delayed until this point. Don't try to reverse the tunnel usage as this event has naturally happened and the old tunnel usage was effectively over anyways.
-            TrainManager.TerminateTunnelTrip(oldManagedTrainEntry, TrainManager.TunnelUsageChangeReason.enteringFromPortalTrack)
+            TrainManagerStateFuncs.TerminateTunnelTrip(oldManagedTrainEntry, TunnelUsageChangeReason.enteringFromPortalTrack)
         else
             error("Unsupported situation")
         end
     end
 
-    local managedTrain = TrainManager.CreateManagedTrainObject(enteringTrain, aboveEntrancePortalEndSignal, true)
+    local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(enteringTrain, aboveEntrancePortalEndSignal, true)
     managedTrain.primaryTrainPartName, managedTrain.enteringTrainState, managedTrain.undergroundTrainState, managedTrain.leavingTrainState = PrimaryTrainPartNames.approaching, EnteringTrainStates.approaching, UndergroundTrainStates.travelling, LeavingTrainStates.pre
-    TrainManager.CreateUndergroundTrainObject(managedTrain)
+    TrainManagerStateFuncs.CreateUndergroundTrainObject(managedTrain)
     Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
 
     if oldManagedTrainEntry ~= nil then
         -- Include in the new train approaching event the old leftTrain entry id that has been stopped.
-        TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.startApproaching, nil, oldManagedTrainEntry.id)
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, oldManagedTrainEntry.id)
     else
-        TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.startApproaching)
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching)
     end
 end
 
@@ -208,11 +157,11 @@ end
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
-    local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelSignalDirection.inSignal], false)
-    TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, trainOnPortalTrack)
+    local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelSignalDirection.inSignal], false)
+    TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, trainOnPortalTrack)
     managedTrain.primaryTrainPartName = PrimaryTrainPartNames.portalTrack
     Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
-    TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.portalTrack)
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.portalTrack)
 end
 
 TrainManager.ProcessManagedTrains = function()
@@ -221,19 +170,7 @@ TrainManager.ProcessManagedTrains = function()
         TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain)
     end
 
-    -- Raise any events from this tick for external listener mods to react to.
-    if #global.trainManager.eventsToRaise ~= 0 then
-        for _, eventData in pairs(global.trainManager.eventsToRaise) do
-            TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(eventData, eventData.tunnelUsageId)
-            -- Populate the leavingTrain attribute with the leftTrain value when the leavingTrain value isn't valid. Makes handling the events nicer by hiding this internal code oddity.
-            if (eventData.leavingTrain == nil or not eventData.leavingTrain.valid) and (eventData.leftTrain ~= nil and eventData.leftTrain.valid) then
-                eventData.leavingTrain = eventData.leftTrain
-                eventData.leftTrain = nil
-            end
-            Events.RaiseEvent(eventData)
-        end
-        global.trainManager.eventsToRaise = {}
-    end
+    TrainManagerRemote.ProcessTicksEvents()
 end
 
 ---@param managedTrain ManagedTrain
@@ -256,7 +193,7 @@ TrainManager.ProcessManagedTrain = function(managedTrain)
     if not skipThisTick and managedTrain.primaryTrainPartName == PrimaryTrainPartNames.approaching then
         -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
         if managedTrain.enteringTrain.state ~= defines.train_state.arrive_signal or managedTrain.enteringTrain.signal ~= managedTrain.aboveEntrancePortalEndSignal.entity then
-            TrainManager.TerminateTunnelTrip(managedTrain, TrainManager.TunnelUsageChangeReason.abortedApproach)
+            TrainManagerStateFuncs.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
             skipThisTick = true
         else
             -- Keep on running until the train is committed to entering the tunnel.
@@ -318,7 +255,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, manage
             return
         elseif trainWithBadStateName == "leavingTrain" then
             -- Check if the train is pathing in the expected direction or has just reversed on its own.
-            if TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(managedTrain, trainWithBadStateName, 1) then
+            if TrainManagerStateFuncs.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(managedTrain, trainWithBadStateName, 1) then
                 -- Train restarted in expected direction
                 return
             else
@@ -462,12 +399,12 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainApproachingOngoing = function(managedTrain)
-    TrainManager.UpdatePortalExitSignalPerTick(managedTrain)
+    TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain)
     local enteringTrain = managedTrain.enteringTrain
     local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
     -- managedTrain.enteringTrainForwards is updated by SetAbsoluteTrainSpeed().
-    TrainManager.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed))
-    local nextCarriage = TrainManager.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, managedTrain.enteringTrainForwards)
+    TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed))
+    local nextCarriage = TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, managedTrain.enteringTrainForwards)
 
     -- Check the train is on the same axis as the tunnel and then measure its distance along the rail alignment axis.
     if nextCarriage.position[managedTrain.tunnel.tunnelAlignmentAxis] == managedTrain.aboveEntrancePortal.entity.position[managedTrain.tunnel.tunnelAlignmentAxis] and Utils.GetDistanceSingleAxis(nextCarriage.position, managedTrain.aboveEntrancePortalEndSignal.entity.position, managedTrain.tunnel.railAlignmentAxis) < 14 then
@@ -485,9 +422,9 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
         }
         managedTrain.undergroundTrainOldAbsoluteSpeed = math.abs(undergroundTrainSpeed)
 
-        TrainManager.HandleTrainNewlyEntering(managedTrain)
+        TrainManagerStateFuncs.HandleTrainNewlyEntering(managedTrain)
 
-        TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.startedEntering) -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startedEntering) -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
     end
 end
 ---@param managedTrain ManagedTrain
@@ -497,16 +434,16 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
 
     -- Only update these when we aren't leaving. As a very long train can be entering and leaving at the same time.
     if managedTrain.leavingTrainState == LeavingTrainStates.pre then
-        TrainManager.UpdatePortalExitSignalPerTick(managedTrain)
-        TrainManager.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
+        TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain)
+        TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
     end
 
     -- Force an entering train to stay in manual mode.
     enteringTrain.manual_mode = true
 
     -- managedTrain.enteringTrainForwards is updated by SetAbsoluteTrainSpeed().
-    TrainManager.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed))
-    local nextCarriage = TrainManager.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, managedTrain.enteringTrainForwards)
+    TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed))
+    local nextCarriage = TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, managedTrain.enteringTrainForwards)
 
     -- Only try to remove a carriage if there is a speed. A 0 speed train can occur when a leaving train reverses.
     -- Check the train is on the same axis as the portal and then measure its distance along the rail alignment axis.
@@ -514,7 +451,7 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
         -- Handle any player in the train carriage.
         local driver = nextCarriage.get_driver()
         if driver ~= nil then
-            PlayerContainers.PlayerInCarriageEnteringTunnel(managedTrain, driver, nextCarriage)
+            TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel(managedTrain, driver, nextCarriage)
         end
 
         nextCarriage.destroy()
@@ -532,10 +469,10 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
 
         -- Force the cache to be updated if the train still exists.
         if enteringTrain.valid then
-            TrainManager.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, nil)
+            TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, nil)
         end
 
-        TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.enteringCarriageRemoved)
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.enteringCarriageRemoved)
     end
 
     if not enteringTrain.valid then
@@ -546,18 +483,18 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
         managedTrain.enteringTrainId = nil
         managedTrain.enteringCarriageIdToUndergroundCarriageEntity = nil
         Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
-        TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.fullyEntered)
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.fullyEntered)
     end
 end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainUndergroundOngoing = function(managedTrain)
-    PlayerContainers.MoveATrainsPlayerContainers(managedTrain)
+    TrainManagerPlayerContainers.MoveATrainsPlayerContainers(managedTrain)
 
     -- If the train is still entering then that is doing the updating. This underground function isn't looping once the train is leaving.
     if managedTrain.enteringTrainState == EnteringTrainStates.finished then
-        TrainManager.UpdatePortalExitSignalPerTick(managedTrain)
-        TrainManager.EnsureManagedTrainsFuel(managedTrain, math.abs(managedTrain.undergroundTrain.speed))
+        TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain)
+        TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(managedTrain.undergroundTrain.speed))
     end
 
     -- Check if the lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
@@ -582,22 +519,22 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
-    TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, managedTrain.dummyTrain)
+    TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, managedTrain.dummyTrain)
 
     -- Cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
     local schedule, isManual, targetTrainStop = managedTrain.dummyTrain.schedule, managedTrain.dummyTrain.manual_mode, managedTrain.dummyTrain.path_end_stop
-    TrainManager.DestroyDummyTrain(managedTrain)
+    TrainManagerStateFuncs.DestroyDummyTrain(managedTrain)
 
     -- Place initial leaving train carriage and set schedule and speed back.
-    local placedCarriage, undergroundLeadCarriage = TrainManager.CreateFirstCarriageForLeavingTrain(managedTrain)
+    local placedCarriage, undergroundLeadCarriage = TrainManagerStateFuncs.CreateFirstCarriageForLeavingTrain(managedTrain)
     TrainManagerFuncs.TrainSetSchedule(managedTrain.leavingTrain, schedule, isManual, targetTrainStop)
 
     -- Follow up items post train creation.
-    PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
+    TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
     Interfaces.Call("Tunnel.TrainStartedExitingTunnel", managedTrain)
-    TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.startedLeaving)
-    TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.leavingCarriageAdded)
-    TrainManager.UpdatePortalExitSignalPerTick(managedTrain, defines.signal_state.open) -- Reset the underground Exit signal state as the leaving train will now detect any signals.
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startedLeaving)
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leavingCarriageAdded)
+    TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain, defines.signal_state.open) -- Reset the underground Exit signal state as the leaving train will now detect any signals.
     managedTrain.undergroundTrainSetsSpeed = true
 
     -- Check if all train wagons placed and train fully left the tunnel, otherwise set state for future carriages with the ongoing state.
@@ -615,7 +552,7 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
     TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.schedule)
 
     local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
-    TrainManager.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
+    TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
 
     -- Get the desired speed for this tick.
     local desiredSpeed
@@ -629,7 +566,7 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
     -- Check if the leaving train has stopped, but the underground train is moving. This should only occur when the leaving train has lost its path and naturally is pathing back through the tunnel. As otherwise the state check would have caught it already this tick.
     if desiredSpeed ~= 0 and leavingTrainSpeed == 0 then
         -- Theres nothing broken with the state, but the mod doesn't expect it so we need to identify if the train is reversing on its own accord. We have to do this rather than a front/rear stock check as theres no train composition change to test around here. Its just what the base game thinks the train is doing.
-        if not TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(managedTrain, "leavingTrain", desiredSpeed) then
+        if not TrainManagerStateFuncs.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(managedTrain, "leavingTrain", desiredSpeed) then
             -- The leaving train is moving opposite to the underground train (desiredSpeed). So handle the reversal and stop processing.
             managedTrain.targetTrainStop = managedTrain.leavingTrain.path_end_stop -- Update this cached value as we know its been updated and te old is invalid.
             TrainManager.ReverseManagedTrainTunnelTrip(managedTrain)
@@ -657,15 +594,15 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
 
             -- Place new leaving train carriage and set schedule back.
             local nextSourceCarriageEntity = TrainManagerFuncs.GetCarriageToAddToLeavingTrain(managedTrain.undergroundTrain, managedTrain.leavingTrainCarriagesPlaced)
-            local placedCarriage = TrainManager.AddCarriageToLeavingTrain(managedTrain, nextSourceCarriageEntity, leavingTrainRearCarriage)
+            local placedCarriage = TrainManagerStateFuncs.AddCarriageToLeavingTrain(managedTrain, nextSourceCarriageEntity, leavingTrainRearCarriage)
             TrainManagerFuncs.TrainSetSchedule(managedTrain.leavingTrain, scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetTrainStopBeforeCarriageAttachment)
 
             -- Set the trains speed back to what it was before we added the carriage. This will update the global facing forwards state and correct any speed loss when the carriage was added (base Factorio behavour).
-            TrainManager.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", leavingAbsoluteSpeedBeforeCarriageAttachment)
+            TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", leavingAbsoluteSpeedBeforeCarriageAttachment)
 
             -- Follow up items post leaving train carriage addition.
-            PlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nextSourceCarriageEntity, placedCarriage)
-            TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.leavingCarriageAdded)
+            TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nextSourceCarriageEntity, placedCarriage)
+            TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leavingCarriageAdded)
             managedTrain.leavingTrainRearCarriageCache = {
                 speedPositive = managedTrain.leavingTrain.speed > 0,
                 carriage = TrainManagerFuncs.GetRearCarriageOfLeavingTrain(managedTrain.leavingTrain, managedTrain.leavingTrainPushingLoco)
@@ -673,21 +610,21 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
 
             -- Check if all train wagons placed and train fully left the tunnel.
             if managedTrain.leavingTrainCarriagesPlaced == managedTrain.undergroundTrainCarriageCount then
-                TrainManager.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", desiredSpeed)
+                TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", desiredSpeed)
                 TrainManager.TrainLeavingCompleted(managedTrain)
                 return
             end
         end
 
         -- Follow up items for the ontick, rather than related to a carriage being added.
-        PlayerContainers.MoveATrainsPlayerContainers(managedTrain)
+        TrainManagerPlayerContainers.MoveATrainsPlayerContainers(managedTrain)
     end
 
     -- Update which ever train isn't setting the desired speed.
     if managedTrain.undergroundTrainSetsSpeed then
-        TrainManager.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", desiredSpeed)
+        TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", desiredSpeed)
     else
-        TrainManager.SetAbsoluteTrainSpeed(managedTrain, "undergroundTrain", desiredSpeed)
+        TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "undergroundTrain", desiredSpeed)
     end
 end
 
@@ -755,7 +692,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(managedTrain,
             -- Is the same stopping target as last tick, so check if the leaving train is close to the stopping target and give it speed control if so.
             local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(leavingTrain, managedTrain.leavingTrainForwards)
             local leadCarriageDistanceFromStoppingEntity = Utils.GetDistance(leadCarriage.position, managedTrainStoppingTargetEntityAttribute.position)
-            local leavingTrainCloseToStoppingEntityDistance = TunnelCommon.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
+            local leavingTrainCloseToStoppingEntityDistance = Common.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
             if leadCarriageDistanceFromStoppingEntity < leavingTrainCloseToStoppingEntityDistance then
                 managedTrain.undergroundTrainSetsSpeed = false
             end
@@ -772,7 +709,7 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingCompleted = function(managedTrain)
-    TrainManager.DestroyUndergroundTrain(managedTrain)
+    TrainManagerStateFuncs.DestroyUndergroundTrain(managedTrain)
 
     managedTrain.leftTrain, managedTrain.leftTrainId = managedTrain.leavingTrain, managedTrain.leavingTrainId
     global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId].tunnelUsagePart = TunnelUsageParts.leftTrain -- Keep the table, just update its state, as same train id, etc between the leaving and left train at this state change point.
@@ -781,7 +718,7 @@ TrainManager.TrainLeavingCompleted = function(managedTrain)
     managedTrain.leavingTrainId = nil
     managedTrain.leavingTrain = nil
 
-    TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.fullyLeft)
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.fullyLeft)
 end
 
 ---@param managedTrain ManagedTrain
@@ -793,7 +730,7 @@ TrainManager.TrainLeftTunnelOngoing = function(managedTrain)
         global.trainManager.trainIdToManagedTrain[managedTrain.leftTrainId] = nil
         managedTrain.leftTrain = nil
         managedTrain.leftTrainId = nil
-        TrainManager.TerminateTunnelTrip(managedTrain, TrainManager.TunnelUsageChangeReason.completedTunnelUsage)
+        TrainManagerStateFuncs.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.completedTunnelUsage)
     end
 end
 
@@ -818,7 +755,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
                 -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
                 local placedDetectionEntity = Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal, false)
                 if placedDetectionEntity then
-                    TrainManager.TerminateTunnelTrip(managedTrain, TrainManager.TunnelUsageChangeReason.portalTrackReleased)
+                    TrainManagerStateFuncs.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
                 end
             end
         end
@@ -826,550 +763,8 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
         -- Track the tunnel's entrance portal entry rail signal so we can mark the tunnel as open for the next train if the current train leaves the portal track. Should the train trigger tunnel usage via the END signal this managed train entry will be terminated by that event. We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one.
         if entrancePortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
             -- No train in the block so our one must have left.
-            TrainManager.TerminateTunnelTrip(managedTrain, TrainManager.TunnelUsageChangeReason.portalTrackReleased)
+            TrainManagerStateFuncs.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
         end
-    end
-end
-
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
---
---                                  Functions using global objects section
---
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-
---- Update the passed in train schedule if the train is currently heading for an underground tunnel rail. If so change the target rail to be the end of the portal. Avoids the train infinite loop pathing through the tunnel trying to reach a tunnel rail it never can.
----@param managedTrain ManagedTrain
----@param train LuaTrain
-TrainManager.UpdateScheduleForTargetRailBeingTunnelRail = function(managedTrain, train)
-    local targetTrainStop, targetRail = train.path_end_stop, train.path_end_rail
-    if targetTrainStop == nil and targetRail ~= nil then
-        if targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" or targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" then
-            -- The target rail is the type used by a portal/segment for underground rail, so check if it belongs to the just used tunnel.
-            if managedTrain.tunnel.tunnelRailEntities[targetRail.unit_number] ~= nil then
-                -- The target rail is part of the tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.
-                local schedule = train.schedule
-                local currentScheduleRecord = schedule.records[schedule.current]
-                local exitPortalEntryRail = managedTrain.aboveExitPortalEntrySignalOut.entity.get_connected_rails()[1]
-                currentScheduleRecord.rail = exitPortalEntryRail
-                schedule.records[schedule.current] = currentScheduleRecord
-                train.schedule = schedule
-            end
-        end
-    end
-end
-
----@param managedTrain ManagedTrain
-TrainManager.HandleTrainNewlyEntering = function(managedTrain)
-    local enteringTrain = managedTrain.enteringTrain
-
-    -- Schedule has been transferred to dummy train.
-    enteringTrain.schedule = {
-        current = 1,
-        records = {
-            {station = "ENTERING TUNNEL - EDIT LEAVING TRAIN"}
-        }
-    }
-
-    -- Prevent player from messing with all entering carriages.
-    for _, carriage in pairs(enteringTrain.carriages) do
-        carriage.operable = false
-    end
-end
-
----@param managedTrain ManagedTrain
----@param undergroundTrainSpeed double
-TrainManager.EnsureManagedTrainsFuel = function(managedTrain, undergroundTrainSpeed)
-    local undergroundTrain = managedTrain.undergroundTrain
-    -- A train thats run out of fuel will still break for signals and stations. Only check if its on the path, as then it should not be losing speed.
-    if undergroundTrainSpeed < managedTrain.undergroundTrainOldAbsoluteSpeed and undergroundTrainSpeed < 0.1 and undergroundTrain.state == defines.train_state.on_the_path then
-        local leadLocoBurner = managedTrain.undergroundTrainAForwardsLocoBurnerCache
-        if managedTrain.undergroundTrainAForwardsLocoBurnerCache == nil then
-            -- Not cached so obtain and then store it.
-            local leadLoco
-            if managedTrain.undergroundTrainForwards then
-                leadLoco = undergroundTrain.locomotives.front_movers[1]
-            else
-                leadLoco = undergroundTrain.locomotives.back_movers[1]
-            end
-            leadLocoBurner = leadLoco.burner
-            managedTrain.undergroundTrainAForwardsLocoCache, managedTrain.undergroundTrainAForwardsLocoBurnerCache = leadLoco, leadLocoBurner
-        end
-        if leadLocoBurner.currently_burning == nil then
-            -- This loco has no fuel currently, so top it up.
-            leadLocoBurner.currently_burning = "railway_tunnel-temporary_fuel"
-            leadLocoBurner.remaining_burning_fuel = 200000
-        end
-    end
-    managedTrain.undergroundTrainOldAbsoluteSpeed = undergroundTrainSpeed
-end
-
----@param managedTrain ManagedTrain
----@param enteringTrain LuaTrain
----@param enteringTrainForwards boolean
----@return LuaEntity
-TrainManager.GetEnteringTrainLeadCarriageCache = function(managedTrain, enteringTrain, enteringTrainForwards)
-    -- Returns the cached lead carriage and records if needed.
-    if managedTrain.enteringTrainLeadCarriageCache == nil or managedTrain.enteringTrainLeadCarriageCache.trainForwards ~= enteringTrainForwards then
-        -- No cache entry or cache exists, but needs updating.
-        local enteringTrainLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, enteringTrainForwards)
-        managedTrain.enteringTrainLeadCarriageCache = {
-            trainForwards = enteringTrainForwards,
-            carriage = enteringTrainLeadCarriage
-        }
-        return enteringTrainLeadCarriage
-    else
-        -- Use the cache lead carriage.
-        return managedTrain.enteringTrainLeadCarriageCache.carriage
-    end
-end
-
----@param managedTrain ManagedTrain
-TrainManager.DestroyDummyTrain = function(managedTrain)
-    -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
-    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
-        global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
-        TrainManagerFuncs.DestroyTrainsCarriages(managedTrain.dummyTrain)
-        managedTrain.dummyTrain, managedTrain.dummyTrainId = nil, nil
-    elseif managedTrain.dummyTrainId ~= nil then
-        global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
-    end
-end
-
----@param managedTrain ManagedTrain
-TrainManager.DestroyUndergroundTrain = function(managedTrain)
-    if managedTrain.undergroundTrain ~= nil then
-        TrainManagerFuncs.DestroyTrainsCarriages(managedTrain.undergroundTrain)
-        managedTrain.undergroundTrain = nil
-    end
-end
-
----@param event on_train_created
-TrainManager.TrainTracking_OnTrainCreated = function(event)
-    if event.old_train_id_1 == nil then
-        return
-    end
-
-    local trackedTrainIdObject = global.trainManager.trainIdToManagedTrain[event.old_train_id_1] or global.trainManager.trainIdToManagedTrain[event.old_train_id_2]
-    if trackedTrainIdObject == nil then
-        return
-    end
-
-    -- Get the correct variables for this tunnel usage part.
-    local trainAttributeName, trainIdAttributeName
-    if trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.enteringTrain then
-        trainAttributeName = "enteringTrain"
-        trainIdAttributeName = "enteringTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.dummyTrain then
-        trainAttributeName = "dummyTrain"
-        trainIdAttributeName = "dummyTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.leavingTrain then
-        trainAttributeName = "leavingTrain"
-        trainIdAttributeName = "leavingTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.leftTrain then
-        trainAttributeName = "leftTrain"
-        trainIdAttributeName = "leftTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.portalTrack then
-        trainAttributeName = "portalTrackTrain"
-        trainIdAttributeName = "portalTrackTrainId"
-    else
-        error("unrecognised global.trainManager.trainIdToManagedTrain tunnelUsagePart: " .. tostring(trackedTrainIdObject.tunnelUsagePart))
-    end
-
-    -- Update the object and globals for the change of train and train id.
-    local newTrain, newTrainId = event.train, event.train.id
-    trackedTrainIdObject.managedTrain[trainAttributeName] = newTrain
-    trackedTrainIdObject.managedTrain[trainIdAttributeName] = newTrainId
-    trackedTrainIdObject.trainId = newTrainId
-    if event.old_train_id_1 ~= nil then
-        global.trainManager.trainIdToManagedTrain[event.old_train_id_1] = nil
-    end
-    if event.old_train_id_2 ~= nil then
-        global.trainManager.trainIdToManagedTrain[event.old_train_id_2] = nil
-    end
-    global.trainManager.trainIdToManagedTrain[newTrainId] = trackedTrainIdObject
-end
-
----@param managedTrain ManagedTrain
----@param trainAttributeName string
----@param absoluteSpeed double
-TrainManager.SetAbsoluteTrainSpeed = function(managedTrain, trainAttributeName, absoluteSpeed)
-    local train = managedTrain[trainAttributeName]
-
-    -- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.
-    local trainSpeed = train.speed
-    if trainSpeed > 0 then
-        managedTrain[trainAttributeName .. "Forwards"] = true
-        train.speed = absoluteSpeed
-    elseif trainSpeed < 0 then
-        managedTrain[trainAttributeName .. "Forwards"] = false
-        train.speed = -1 * absoluteSpeed
-    else
-        if managedTrain[trainAttributeName .. "Forwards"] == true then
-            train.speed = absoluteSpeed
-        elseif managedTrain[trainAttributeName .. "Forwards"] == false then
-            train.speed = -1 * absoluteSpeed
-        else
-            error("TrainManager.SetAbsoluteTrainSpeed() for '" .. trainAttributeName .. "' doesn't support train with current 0 speed and no 'Forwards' cached value.\n" .. trainAttributeName .. " id: " .. managedTrain.id)
-        end
-    end
-end
-
----@param tunnelRemoved Tunnel
-TrainManager.On_TunnelRemoved = function(tunnelRemoved)
-    for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if managedTrain.tunnel.id == tunnelRemoved.id then
-            if managedTrain.enteringTrainId ~= nil then
-                global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
-                if managedTrain.enteringTrain ~= nil and managedTrain.enteringTrain.valid then
-                    managedTrain.enteringTrain.manual_mode = true
-                    managedTrain.enteringTrain.speed = 0
-
-                    -- Try to recover a schedule to the entering train.
-                    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
-                        managedTrain.enteringTrain.schedule = managedTrain.dummyTrain.schedule
-                    elseif managedTrain.leavingTrain ~= nil and managedTrain.leavingTrain.valid then
-                        managedTrain.enteringTrain.schedule = managedTrain.leavingTrain.schedule
-                    end
-                end
-            end
-            if managedTrain.leavingTrainId ~= nil then
-                global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId] = nil
-                if managedTrain.leavingTrain ~= nil and managedTrain.leavingTrain.valid then
-                    managedTrain.leavingTrain.manual_mode = true
-                    managedTrain.leavingTrain.speed = 0
-                end
-            end
-
-            PlayerContainers.On_TunnelRemoved(managedTrain.undergroundTrain)
-
-            TrainManager.TerminateTunnelTrip(managedTrain, TrainManager.TunnelUsageChangeReason.tunnelRemoved)
-        end
-    end
-end
-
----@param managedTrain ManagedTrain
----@return LuaEntity, LuaEntity
-TrainManager.CreateFirstCarriageForLeavingTrain = function(managedTrain)
-    local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(managedTrain.undergroundTrain, managedTrain.undergroundTrainForwards)
-    local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, managedTrain.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
-    local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = managedTrain.aboveSurface, create_build_effect_smoke = false}
-    if placedCarriage == nil then
-        error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.aboveSurface.name .. "\nposition: " .. Logging.PositionToString(placementPosition) .. "\nsource carriage unit_number: " .. undergroundLeadCarriage.unit_number)
-    end
-    placedCarriage.train.speed = undergroundLeadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
-    managedTrain.leavingTrainCarriagesPlaced = 1
-    ---@typelist LuaTrain, Id
-    managedTrain.leavingTrain, managedTrain.leavingTrainId = placedCarriage.train, placedCarriage.train.id
-    global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId] = {
-        trainId = managedTrain.leavingTrainId,
-        managedTrain = managedTrain,
-        tunnelUsagePart = TunnelUsageParts.leavingTrain
-    }
-    managedTrain.leavingCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = undergroundLeadCarriage
-
-    -- Add a pushing loco if needed.
-    if not TrainManagerFuncs.CarriageIsAForwardsLoco(placedCarriage, managedTrain.trainTravelOrientation) then
-        managedTrain.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(placedCarriage, managedTrain.trainTravelOrientation)
-    end
-
-    local leavingTrainSpeed = managedTrain.leavingTrain.speed
-    if leavingTrainSpeed > 0 then
-        managedTrain.leavingTrainForwards = true
-    elseif leavingTrainSpeed < 0 then
-        managedTrain.leavingTrainForwards = true
-    else
-        error("TrainManager.CreateFirstCarriageForLeavingTrain() doesn't support 0 speed leaving train.\nleavingTrain id: " .. managedTrain.leavingTrain.id)
-    end
-
-    return placedCarriage, undergroundLeadCarriage
-end
-
----@param managedTrain ManagedTrain
----@param nextSourceCarriageEntity LuaEntity
----@param leavingTrainRearCarriage LuaEntity
----@return LuaEntity
-TrainManager.AddCarriageToLeavingTrain = function(managedTrain, nextSourceCarriageEntity, leavingTrainRearCarriage)
-    -- Remove the pushing loco if present before the next carriage is placed.
-    local hadPushingLoco = managedTrain.leavingTrainPushingLoco ~= nil
-    if managedTrain.leavingTrainPushingLoco ~= nil then
-        managedTrain.leavingTrainPushingLoco.destroy()
-        managedTrain.leavingTrainPushingLoco = nil
-    end
-
-    local aboveTrainOldCarriageCount = #leavingTrainRearCarriage.train.carriages
-    local nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, leavingTrainRearCarriage, nextSourceCarriageEntity.name)
-    local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = managedTrain.aboveSurface, create_build_effect_smoke = false}
-    if placedCarriage == nil then
-        error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.aboveSurface.name .. "\nposition: " .. Logging.PositionToString(nextCarriagePosition) .. "\nsource carriage unit_number: " .. nextSourceCarriageEntity.unit_number)
-    end
-    managedTrain.leavingTrainCarriagesPlaced = managedTrain.leavingTrainCarriagesPlaced + 1
-    if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
-        error("Placed carriage not part of leaving train as expected carriage count not right.\nleavingTrain id: " .. managedTrain.leavingTrain.id)
-    end
-    managedTrain.leavingCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = nextSourceCarriageEntity
-
-    -- If train had a pushing loco before and still needs one, add one back.
-    if hadPushingLoco and (not TrainManagerFuncs.CarriageIsAForwardsLoco(placedCarriage, managedTrain.trainTravelOrientation)) then
-        managedTrain.leavingTrainPushingLoco = TrainManagerFuncs.AddPushingLocoToAfterCarriage(placedCarriage, managedTrain.trainTravelOrientation)
-    end
-
-    return placedCarriage
-end
-
----@param train LuaTrain
----@param aboveEntrancePortalEndSignal PortalEndSignal
----@return ManagedTrain
-TrainManager.CreateManagedTrainObject = function(train, aboveEntrancePortalEndSignal, traversingTunnel)
-    ---@type Id, double
-    local trainId, trainSpeed = train.id, train.speed
-    ---@type ManagedTrain
-    local managedTrain = {
-        id = global.trainManager.nextManagedTrainId,
-        aboveEntrancePortalEndSignal = aboveEntrancePortalEndSignal,
-        aboveEntrancePortal = aboveEntrancePortalEndSignal.portal,
-        tunnel = aboveEntrancePortalEndSignal.portal.tunnel,
-        trainTravelDirection = Utils.LoopDirectionValue(aboveEntrancePortalEndSignal.entity.direction + 4),
-        enteringCarriageIdToUndergroundCarriageEntity = {},
-        leavingCarriageIdToUndergroundCarriageEntity = {},
-        leavingTrainExpectedBadState = false,
-        leavingTrainAtEndOfPortalTrack = false
-    }
-    if trainSpeed == 0 then
-        error("TrainManager.CreateManagedTrainObject() doesn't support 0 speed\ntrain id: " .. trainId)
-    end
-    local trainForwards = trainSpeed > 0
-
-    if traversingTunnel then
-        -- Normal tunnel usage.
-        managedTrain.enteringTrain = train
-        managedTrain.enteringTrainId = trainId
-        global.trainManager.trainIdToManagedTrain[trainId] = {
-            trainId = trainId,
-            managedTrain = managedTrain,
-            tunnelUsagePart = TunnelUsageParts.enteringTrain
-        }
-        managedTrain.enteringTrainForwards = trainForwards
-    else
-        -- Reserved tunnel, but not using it.
-        managedTrain.portalTrackTrain = train
-        managedTrain.portalTrackTrainId = trainId
-        global.trainManager.trainIdToManagedTrain[trainId] = {
-            trainId = trainId,
-            managedTrain = managedTrain,
-            tunnelUsagePart = TunnelUsageParts.portalTrack
-        }
-        managedTrain.portalTrackTrainInitiallyForwards = trainForwards
-        managedTrain.portalTrackTrainBySignal = false
-    end
-
-    global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1 ---@type Id
-    global.trainManager.managedTrains[managedTrain.id] = managedTrain
-    managedTrain.aboveSurface = managedTrain.tunnel.aboveSurface
-    managedTrain.trainTravelOrientation = Utils.DirectionToOrientation(managedTrain.trainTravelDirection)
-
-    -- Get the exit end signal on the other portal so we know when to bring the train back in.
-    for _, portal in pairs(managedTrain.tunnel.portals) do
-        if portal.id ~= aboveEntrancePortalEndSignal.portal.id then
-            managedTrain.aboveExitPortalEndSignal = portal.endSignals[TunnelSignalDirection.outSignal]
-            managedTrain.aboveExitPortal = portal
-            managedTrain.aboveExitPortalEntrySignalOut = portal.entrySignals[TunnelSignalDirection.outSignal]
-        end
-    end
-
-    return managedTrain
-end
-
----@param tunnel Tunnel
----@param newPortal Portal
-TrainManager.On_PortalReplaced = function(tunnel, newPortal)
-    if tunnel == nil then
-        return
-    end
-    -- Updated the cached portal object reference as they have bene recreated.
-    for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if managedTrain.tunnel.id == tunnel.id then
-            -- Only entity invalid is the portal entity reference itself. None of the portal's signal entities or objects are affected. So can use the signal entities to identify which local reference Entrance/Exit this changed portal was before.
-            if newPortal.endSignals[managedTrain.aboveEntrancePortalEndSignal.direction].id == managedTrain.aboveEntrancePortalEndSignal.id then
-                -- Is entrance portal of this tunnel usage.
-                managedTrain.aboveEntrancePortal = newPortal
-            elseif newPortal.endSignals[managedTrain.aboveExitPortalEndSignal.direction].id == managedTrain.aboveExitPortalEndSignal.id then
-                -- Is exit portal of this tunnel usage.
-                managedTrain.aboveExitPortal = newPortal
-            else
-                error("Portal replaced for tunnel and used by managedTrain, but endSignal not matched\n tunnel id: " .. tunnel.id .. "\nmanagedTrain id: " .. managedTrain.id .. "\nnewPortal id: " .. newPortal.id)
-            end
-        end
-    end
-end
-
----@param managedTrain ManagedTrain
-TrainManager.CreateUndergroundTrainObject = function(managedTrain)
-    -- Copy the above train underground and set it running.
-    -- The above ground and underground trains will never be exactly relational to one another, but should be within half a tile correctly aligned.
-    local firstCarriagePosition = TrainManager.GetUndergroundFirstWagonPosition(managedTrain)
-    local undergroundTrain = TrainManager.CopyEnteringTrainUnderground(managedTrain, firstCarriagePosition)
-    managedTrain.undergroundTrain = undergroundTrain
-    managedTrain.undergroundTrainCarriageCount = #undergroundTrain.carriages
-
-    local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", managedTrain.tunnel.undergroundTunnel, managedTrain.trainTravelOrientation)
-    TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(undergroundTrain, undergroundTrainEndScheduleTargetPos)
-
-    -- Set speed and cached 'Forwards' value manually so future use of TrainManager.SetAbsoluteTrainSpeed() works.
-    local enteringTrainSpeed = managedTrain.enteringTrain.speed
-    undergroundTrain.speed = enteringTrainSpeed
-    if enteringTrainSpeed > 0 then
-        managedTrain.undergroundTrainForwards = true
-    elseif enteringTrainSpeed < 0 then
-        managedTrain.undergroundTrainForwards = false
-    else
-        error("TrainManager.CreateUndergroundTrainObject() doesn't support 0 speed undergroundTrain.\nundergroundTrain id: " .. undergroundTrain.id)
-    end
-    undergroundTrain.manual_mode = false
-    if undergroundTrain.speed == 0 then
-        -- If the speed is undone (0) by setting to automatic then the underground train is moving opposite to the entering train. Simple way to handle the underground train being an unknown "forwards".
-        managedTrain.undergroundTrainForwards = not managedTrain.undergroundTrainForwards
-        undergroundTrain.speed = -1 * enteringTrainSpeed
-    end
-
-    managedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveExitPortal.portalEntrancePosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
-end
-
----@param managedTrain ManagedTrain
----@return Position
-TrainManager.GetUndergroundFirstWagonPosition = function(managedTrain)
-    -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.aboveEntrancePortalEndSignal.entity, managedTrain.enteringTrainForwards)
-
-    -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
-    local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})
-    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveEntrancePortalEndSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
-    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromEndSignalsRail)
-
-    -- Get the underground position for this above ground spot.
-    local firstCarriageUndergroundPosition = Utils.ApplyOffsetToPosition(firstCarriageAbovegroundPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
-    return firstCarriageUndergroundPosition
-end
-
----@param managedTrain ManagedTrain
----@param firstCarriagePosition Position
----@return LuaTrain
-TrainManager.CopyEnteringTrainUnderground = function(managedTrain, firstCarriagePosition)
-    local nextCarriagePosition, refTrain, targetSurface = firstCarriagePosition, managedTrain.enteringTrain, managedTrain.tunnel.undergroundTunnel.undergroundSurface.surface
-    local trainCarriagesForwardOrientation = managedTrain.trainTravelOrientation
-    if not managedTrain.enteringTrainForwards then
-        trainCarriagesForwardOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
-    end
-
-    local minCarriageIndex, maxCarriageIndex, carriageIterator
-    local refTrainSpeed, refTrainCarriages = refTrain.speed, refTrain.carriages
-    if (refTrainSpeed > 0) then
-        minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #refTrainCarriages, 1
-    elseif (refTrainSpeed < 0) then
-        minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrainCarriages, 1, -1
-    else
-        error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain.\nrefTrain id: " .. refTrain.id)
-    end
-    local placedCarriage
-    for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        local refCarriage = refTrainCarriages[currentSourceTrainCarriageIndex]
-        local carriageOrientation, refCarriageSpeed = trainCarriagesForwardOrientation, refCarriage.speed
-        if refCarriageSpeed ~= refTrainSpeed then
-            carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
-        end
-
-        local safeCarriageFlipPosition
-        if currentSourceTrainCarriageIndex ~= minCarriageIndex then
-            -- The first carriage in the train doesn't need incrementing.
-            nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, placedCarriage, refCarriage.name)
-            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, placedCarriage.name, refCarriage.name, 20))
-        else
-            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
-        end
-
-        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation)
-        managedTrain.enteringCarriageIdToUndergroundCarriageEntity[refCarriage.unit_number] = placedCarriage
-    end
-
-    return placedCarriage.train
-end
-
----@param managedTrain ManagedTrain
----@param tunnelUsageChangeReason TunnelUsageChangeReason
-TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason)
-    TrainManager.UpdatePortalExitSignalPerTick(managedTrain, defines.signal_state.open) -- Reset the underground Exit signal state to open for the next train.
-    if managedTrain.undergroundTrain then
-        PlayerContainers.On_TerminateTunnelTrip(managedTrain.undergroundTrain)
-        TrainManager.DestroyUndergroundTrain(managedTrain)
-    end
-    TrainManager.RemoveManagedTrainEntry(managedTrain)
-
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", managedTrain)
-    TrainManager.Remote_TunnelUsageChanged(managedTrain.id, TrainManager.TunnelUsageAction.terminated, tunnelUsageChangeReason)
-end
-
----@param managedTrain ManagedTrain
-TrainManager.RemoveManagedTrainEntry = function(managedTrain)
-    -- Only remove the global if it points to this managedTrain. The reversal process can have made the enteringTrain references invalid, and MAY have overwritten them, so check before removing.
-    if managedTrain.enteringTrain and managedTrain.enteringTrain.valid and global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrain.id] and global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrain.id].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrain.id] = nil
-    elseif managedTrain.enteringTrainId and global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] and global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrain.id] = nil
-    end
-
-    if managedTrain.leavingTrain and managedTrain.leavingTrain.valid and global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrain.id] and global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrain.id].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrain.id] = nil
-    elseif managedTrain.leavingTrainId and global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId] and global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId] = nil
-    end
-
-    if managedTrain.leftTrain and managedTrain.leftTrain.valid and global.trainManager.trainIdToManagedTrain[managedTrain.leftTrain.id] and global.trainManager.trainIdToManagedTrain[managedTrain.leftTrain.id].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.leftTrain.id] = nil
-    elseif managedTrain.leftTrainId and global.trainManager.trainIdToManagedTrain[managedTrain.leftTrainId] and global.trainManager.trainIdToManagedTrain[managedTrain.leftTrainId].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.leftTrainId] = nil
-    end
-
-    TrainManager.DestroyDummyTrain(managedTrain)
-
-    if managedTrain.portalTrackTrain and managedTrain.portalTrackTrain.valid and global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrain.id] and global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrain.id].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrain.id] = nil
-    elseif managedTrain.portalTrackTrainId and global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrainId] and global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrainId].managedTrain.id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrainId] = nil
-    end
-
-    -- Set all states to finished so that the TrainManager.ProcessManagedTrains() loop won't execute anything further this tick.
-    managedTrain.primaryTrainPartName = PrimaryTrainPartNames.finished
-    managedTrain.enteringTrainState = EnteringTrainStates.finished
-    managedTrain.undergroundTrainState = UndergroundTrainStates.finished
-    managedTrain.leavingTrainState = LeavingTrainStates.finished
-
-    global.trainManager.managedTrains[managedTrain.id] = nil
-end
-
----@param managedTrain ManagedTrain
----@param trainAttributeName string
----@param desiredSpeed double
----@return boolean
-TrainManager.Check0OnlySpeedTrainWithLocoGoingExpectedDirection = function(managedTrain, trainAttributeName, desiredSpeed)
-    -- This requires the train to have a locomotive so that it can be given a path.
-    -- This is the only known way to check which way a train with 0 speed and making no carriage changes is really wanting to go. As the LuaTrain attributes only update when the train has a speed or a carriage is added/removed.
-    local train = managedTrain[trainAttributeName]
-    local scheduleBackup, isManualBackup, targetTrainStop = train.schedule, train.manual_mode, train.path_end_stop
-
-    train.manual_mode = true
-    TrainManager.SetAbsoluteTrainSpeed(managedTrain, trainAttributeName, desiredSpeed)
-    TrainManagerFuncs.TrainSetSchedule(train, scheduleBackup, isManualBackup, targetTrainStop, true) -- Don't force validation.
-    local trainIsFacingExpectedDirection = train.speed ~= 0
-    train.speed = 0 -- Set speed back, everything else was reset by the setting train schedule.
-    if trainIsFacingExpectedDirection then
-        return true
-    else
-        return false
     end
 end
 
@@ -1441,7 +836,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         newManagedTrain.enteringTrainForwards = not oldManagedTrain.leavingTrainForwards
         newManagedTrain.enteringTrainLeadCarriageCache = nil -- Will be populated on first use.
 
-        TrainManager.HandleTrainNewlyEntering(newManagedTrain)
+        TrainManagerStateFuncs.HandleTrainNewlyEntering(newManagedTrain)
 
         -- Old leaving train has an exiting pushing loco. We need to
         if oldManagedTrain.leavingTrainPushingLoco ~= nil then
@@ -1535,7 +930,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
             newManagedTrain.enteringCarriageIdToUndergroundCarriageEntity[leavingCarriageId] = undergroundCarriageEntity
         end
     end
-    PlayerContainers.On_TrainManagerReversed(oldManagedTrain, newManagedTrain)
+    TrainManagerPlayerContainers.On_TrainManagerReversed(oldManagedTrain, newManagedTrain)
 
     -- Update underground trains path and speed. Variable state done previously.
     local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", newManagedTrain.tunnel.undergroundTunnel, newManagedTrain.trainTravelOrientation)
@@ -1543,7 +938,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.undergroundTrain.speed = 0 -- We don't want to change the cached forwards state we have just generated. This was most liekly set to 0 already by the train reversing, but force it to be safe.
     newManagedTrain.undergroundTrainOldAbsoluteSpeed = 0
 
-    TrainManager.Remote_TunnelUsageChanged(newManagedTrain.id, TrainManager.TunnelUsageAction.reversedDuringUse, TrainManager.TunnelUsageChangeReason.forwardPathLost, oldManagedTrain.id)
+    TrainManagerRemote.TunnelUsageChanged(newManagedTrain.id, TunnelUsageAction.reversedDuringUse, TunnelUsageChangeReason.forwardPathLost, oldManagedTrain.id)
 
     -- If this train is heading to a station check if another train has grabbed out reservation when the path was lost. If so reset their reservation claim.
     -- We can't avoid this path lost even if we react to the event, the other train will have already bene given the path and stated.
@@ -1565,141 +960,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     end
 
     -- Remove any left over bits of the oldManagedTrain
-    TrainManager.RemoveManagedTrainEntry(oldManagedTrain)
-end
-
----@param managedTrain ManagedTrain
----@param forceSignalState defines.signal_state
-TrainManager.UpdatePortalExitSignalPerTick = function(managedTrain, forceSignalState)
-    -- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Primary speed limiter before leaving train has got to a significant size and escaped the portal signals as a very small leaving/dummy train will have low breaking distance and thus very short signal block reservation/detecting distances.
-    -- Close the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
-    -- forceSignalState is optional and when set will be applied rather than the aboveground exit signal state.
-    if forceSignalState ~= nil then
-        UndergroundSetUndergroundExitSignalStateFunction(managedTrain.aboveExitPortalEntrySignalOut.undergroundSignalPaired, forceSignalState)
-    else
-        UndergroundSetUndergroundExitSignalStateFunction(managedTrain.aboveExitPortalEntrySignalOut.undergroundSignalPaired, managedTrain.aboveExitPortalEntrySignalOut.entity.signal_state)
-    end
-end
-
----@param trainId Id
----@return ManagedTrain
-TrainManager.GetTrainIdsManagedTrainDetails = function(trainId)
-    return global.trainManager.trainIdToManagedTrain[trainId]
-end
-
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
---
---                                  REMOTE INTERFACES
---
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-
----@class TunnelUsageAction
-TrainManager.TunnelUsageAction = {
-    startApproaching = "startApproaching", ---@type TunnelUsageAction
-    terminated = "terminated", ---@type TunnelUsageAction
-    reversedDuringUse = "reversedDuringUse", ---@type TunnelUsageAction
-    startedEntering = "startedEntering", ---@type TunnelUsageAction
-    enteringCarriageRemoved = "enteringCarriageRemoved", ---@type TunnelUsageAction
-    fullyEntered = "fullyEntered", ---@type TunnelUsageAction
-    startedLeaving = "startedLeaving", ---@type TunnelUsageAction
-    leavingCarriageAdded = "leavingCarriageAdded", ---@type TunnelUsageAction
-    fullyLeft = "fullyLeft", ---@type TunnelUsageAction
-    portalTrack = "portalTrack" ---@type TunnelUsageAction
-}
-
----@class TunnelUsageChangeReason
-TrainManager.TunnelUsageChangeReason = {
-    reversedAfterLeft = "reversedAfterLeft", ---@type TunnelUsageChangeReason
-    abortedApproach = "abortedApproach", ---@type TunnelUsageChangeReason
-    forwardPathLost = "forwardPathLost", ---@type TunnelUsageChangeReason
-    completedTunnelUsage = "completedTunnelUsage", ---@type TunnelUsageChangeReason
-    tunnelRemoved = "tunnelRemoved", ---@type TunnelUsageChangeReason
-    portalTrackReleased = "portalTrackReleased", ---@type TunnelUsageChangeReason
-    enteringFromPortalTrack = "enteringFromPortalTrack" ---@type TunnelUsageChangeReason
-}
-
----@class TunnelUsageEntry
----@field public tunnelUsageId Id
----@field public primaryState PrimaryTrainPartNames
----@field public enteringTrain LuaTrain
----@field public undegroundTrain LuaTrain
----@field public leavingTrain LuaTrain
----@field public leftTrain LuaTrain
----@field public tunnelId Id
-
----@param tableToPopulate table
----@param managedTrainId Id
-TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes = function(tableToPopulate, managedTrainId)
-    local managedTrain = global.trainManager.managedTrains[managedTrainId]
-    if managedTrain == nil then
-        return
-    end
-
-    -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
-    tableToPopulate.tunnelUsageId = managedTrainId
-    tableToPopulate.primaryState = managedTrain.primaryTrainPartName
-    tableToPopulate.enteringTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.enteringTrain)
-    tableToPopulate.undergroundTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.undergroundTrain)
-    tableToPopulate.leavingTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
-    tableToPopulate.leftTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leftTrain)
-    tableToPopulate.tunnelId = managedTrain.tunnel.id
-end
-
----@param managedTrainId Id
----@param action TunnelUsageAction
----@param changeReason TunnelUsageChangeReason
----@param replacedtunnelUsageId Id
-TrainManager.Remote_TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedtunnelUsageId)
-    -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
-    -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.
-    local data = {
-        tunnelUsageId = managedTrainId,
-        name = "RailwayTunnel.TunnelUsageChanged",
-        action = action,
-        changeReason = changeReason,
-        replacedtunnelUsageId = replacedtunnelUsageId
-    }
-    table.insert(global.trainManager.eventsToRaise, data)
-end
-
----@param managedTrainId Id
----@return TunnelUsageEntry
-TrainManager.Remote_GetTunnelUsageEntry = function(managedTrainId)
-    local tunnelUsageEntry = {}
-    TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrainId)
-    return tunnelUsageEntry
-end
-
----@param trainId Id
----@return TunnelUsageEntry
-TrainManager.Remote_GetATrainsTunnelUsageEntry = function(trainId)
-    local trackedTrainIdObject = global.trainManager.trainIdToManagedTrain[trainId]
-    if trackedTrainIdObject == nil then
-        return nil
-    end
-    local managedTrain = trackedTrainIdObject.managedTrain
-    if managedTrain ~= nil then
-        local tunnelUsageEntry = {}
-        TrainManager.Remote_PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrain.id)
-        return tunnelUsageEntry
-    else
-        return nil
-    end
-end
-
----@return table<string, string> @Entity names.
-TrainManager.Remote_GetTemporaryCarriageNames = function()
-    return {
-        ["railway_tunnel-tunnel_portal_pushing_locomotive"] = "railway_tunnel-tunnel_portal_pushing_locomotive",
-        ["railway_tunnel-tunnel_exit_dummy_locomotive"] = "railway_tunnel-tunnel_exit_dummy_locomotive",
-        ["railway_tunnel-tunnel_portal_blocking_locomotive"] = "railway_tunnel-tunnel_portal_blocking_locomotive"
-    }
+    TrainManagerStateFuncs.RemoveManagedTrainEntry(oldManagedTrain)
 end
 
 return TrainManager

@@ -1,9 +1,10 @@
+-- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
+
 local TrainManagerFuncs = {}
 local Utils = require("utility/utils")
 local Logging = require("utility/logging")
-local TunnelCommon = require("scripts/tunnel-common")
-local RollingStockTypes = TunnelCommon.RollingStockTypes
--- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
+local Common = require("scripts/common")
+local RollingStockTypes = Common.RollingStockTypes
 
 ---@param train LuaTrain
 ---@param isFrontStockLeading boolean
@@ -451,7 +452,7 @@ end
 ---@return Position
 TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName, extraDistance)
     extraDistance = extraDistance or 0
-    local carriagesDistance = TunnelCommon.GetCarriagePlacementDistance(lastCarriageEntityName) + TunnelCommon.GetCarriagePlacementDistance(nextCarriageEntityName)
+    local carriagesDistance = Common.GetCarriagePlacementDistance(lastCarriageEntityName) + Common.GetCarriagePlacementDistance(nextCarriageEntityName)
     return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
 end
 
@@ -460,7 +461,7 @@ end
 ---@param nextCarriageEntityName string
 ---@return Position
 TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)
-    local carriagesDistance = TunnelCommon.GetCarriagePlacementDistance(lastCarriageEntity.name) + TunnelCommon.GetCarriagePlacementDistance(nextCarriageEntityName)
+    local carriagesDistance = Common.GetCarriagePlacementDistance(lastCarriageEntity.name) + Common.GetCarriagePlacementDistance(nextCarriageEntityName)
     local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
     return Utils.ApplyOffsetToPosition(lastCarriageEntity.position, nextCarriageOffset)
 end

@@ -1,8 +1,8 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
-local TunnelCommon = require("scripts/tunnel-common")
-local TunnelPortalPlacedPlacementEntityNames, TunnelSignalDirection, TunnelPortalPlacedEntityNames = TunnelCommon.TunnelPortalPlacedPlacementEntityNames, TunnelCommon.TunnelSignalDirection, TunnelCommon.TunnelPortalPlacedEntityNames
+local Common = require("scripts/common")
+local TunnelPortalPlacedPlacementEntityNames, TunnelSignalDirection, TunnelPortalPlacedEntityNames = Common.TunnelPortalPlacedPlacementEntityNames, Common.TunnelSignalDirection, Common.TunnelPortalPlacedEntityNames
 local TunnelPortals = {}
 local Colors = require("utility/colors")
 local EventScheduler = require("utility/event-scheduler")
@@ -111,8 +111,8 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local orientation = Utils.DirectionToOrientation(directionValue)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceFromCenter}))
 
-    if not TunnelCommon.IsPlacementOnRailGrid(placementEntity) then
-        TunnelCommon.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
+    if not Common.IsPlacementOnRailGrid(placementEntity) then
+        Common.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
         return
     end
 
@@ -156,7 +156,7 @@ end
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntity, placer, portal)
     local directionValue, orientation = startingTunnelPortalEntity.direction, Utils.DirectionToOrientation(startingTunnelPortalEntity.direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
-    return TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer)
+    return Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer)
 end
 
 ---@param portalEntities LuaEntity[]
@@ -329,8 +329,8 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelCommon.IsPlacementOnRailGrid(createdEntity) then
-        TunnelCommon.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
+    if not Common.IsPlacementOnRailGrid(createdEntity) then
+        Common.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
         return
     end
 end
@@ -355,7 +355,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
         TunnelPortals.EntityRemoved(portal)
     else
         if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", portal.tunnel) then
-            TunnelCommon.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity.surface, minedEntity.position)
+            Common.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity.surface, minedEntity.position)
             TunnelPortals.ReplacePortalEntity(portal)
         else
             Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
@@ -402,7 +402,7 @@ end
 ---@param killForce LuaForce
 ---@param killerCauseEntity LuaEntity
 TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
-    TunnelCommon.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
+    Common.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
     for _, railEntity in pairs(portal.portalRailEntities) do
         railEntity.destroy()
     end
@@ -413,7 +413,7 @@ end
 ---@param killForce LuaForce
 ---@param killerCauseEntity LuaEntity
 TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
-    TunnelCommon.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
+    Common.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
     TunnelPortals.RemoveEntranceSignalBlockingLocomotiveFromPortal(portal)
     TunnelPortals.RemoveEntranceUsageDetectionEntityFromPortal(portal)

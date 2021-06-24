@@ -1,7 +1,7 @@
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
-local TunnelCommon = require("scripts/tunnel-common")
-local TunnelAlignment, TunnelSignalDirection = TunnelCommon.TunnelAlignment, TunnelCommon.TunnelSignalDirection
+local Common = require("scripts/common")
+local TunnelAlignment, TunnelSignalDirection = Common.TunnelAlignment, Common.TunnelSignalDirection
 local Underground = {}
 
 ---@class UndergroundSurface

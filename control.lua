@@ -4,9 +4,11 @@ local TunnelPortals = require("scripts/tunnel-portals")
 local TunnelSegments = require("scripts/tunnel-segments")
 local Underground = require("scripts/underground")
 local TrainManager = require("scripts/train-manager")
+local TrainManagerStateFuncs = require("scripts/train-manager-stateful-functions")
+local TrainManagerRemote = require("scripts/train-manager-remote")
 local TestManager = require("scripts/test-manager")
 local Force = require("scripts/force")
-local PlayerContainers = require("scripts/player-containers")
+local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local Events = require("utility/events")
 
 ---@class Id : uint @id attribute of this thing.
@@ -27,7 +29,7 @@ local function CreateGlobals()
     TunnelPortals.CreateGlobals()
     TunnelSegments.CreateGlobals()
     Underground.CreateGlobals()
-    PlayerContainers.CreateGlobals()
+    TrainManagerPlayerContainers.CreateGlobals()
 
     TestManager.CreateGlobals()
 end
@@ -46,26 +48,26 @@ local function OnLoad()
             ---@param managedTrainId Id
             ---@return TunnelUsageEntry
             get_tunnel_usage_entry_for_id = function(managedTrainId)
-                return TrainManager.Remote_GetTunnelUsageEntry(managedTrainId)
+                return TrainManagerRemote.GetTunnelUsageEntry(managedTrainId)
             end,
             ---@param trainId Id
             ---@return TunnelUsageEntry
             get_tunnel_usage_entry_for_train = function(trainId)
-                return TrainManager.Remote_GetATrainsTunnelUsageEntry(trainId)
+                return TrainManagerRemote.GetATrainsTunnelUsageEntry(trainId)
             end,
             ---@return table<string, string>
             get_temporary_carriage_names = function()
-                return TrainManager.Remote_GetTemporaryCarriageNames()
+                return TrainManagerRemote.GetTemporaryCarriageNames()
             end,
             ---@param tunnelId Id
             ---@return TunnelDetails
             get_tunnel_details_for_id = function(tunnelId)
-                return TunnelManager.Remote_GetTunnelDetailsForId(tunnelId)
+                return TrainManagerRemote.GetTunnelDetailsForId(tunnelId)
             end,
             ---@param entityUnitNumber UnitNumber
             ---@return TunnelDetails
             get_tunnel_details_for_entity = function(entityUnitNumber)
-                return TunnelManager.Remote_GetTunnelDetailsForEntity(entityUnitNumber)
+                return TrainManagerRemote.GetTunnelDetailsForEntity(entityUnitNumber)
             end
         }
     )
@@ -73,10 +75,11 @@ local function OnLoad()
     Underground.PreOnLoad() -- Do things that other OnLoad()s need.
 
     TrainManager.OnLoad()
+    TrainManagerStateFuncs.OnLoad()
     TunnelManager.OnLoad()
     TunnelPortals.OnLoad()
     TunnelSegments.OnLoad()
-    PlayerContainers.OnLoad()
+    TrainManagerPlayerContainers.OnLoad()
 
     TestManager.OnLoad()
 end
