@@ -1,6 +1,7 @@
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
 local TunnelCommon = require("scripts/tunnel-common")
+local TunnelAlignment, TunnelSignalDirection = TunnelCommon.TunnelAlignment, TunnelCommon.TunnelSignalDirection
 local Underground = {}
 
 ---@class UndergroundSurface
@@ -35,8 +36,8 @@ local Underground = {}
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}
     global.underground.surfaces = global.underground.surfaces or {} ---@type table<TunnelAlignment, UndergroundSurface>
-    global.underground.undergroundTunnels = global.underground.undergroundTunnels or {[TunnelCommon.TunnelAlignment.horizontal] = {}, [TunnelCommon.TunnelAlignment.vertical] = {}} ---@type table<TunnelAlignment, table<Id, Tunnel>>
-    global.underground.freeUndergroundTunnels = global.underground.freeUndergroundTunnels or {[TunnelCommon.TunnelAlignment.horizontal] = {}, [TunnelCommon.TunnelAlignment.vertical] = {}} -- A table with a horizontal and vertical key'd lists of underground tunnels that currently aren't assigned to an aboveground tunnel object.
+    global.underground.undergroundTunnels = global.underground.undergroundTunnels or {[TunnelAlignment.horizontal] = {}, [TunnelAlignment.vertical] = {}} ---@type table<TunnelAlignment, table<Id, Tunnel>>
+    global.underground.freeUndergroundTunnels = global.underground.freeUndergroundTunnels or {[TunnelAlignment.horizontal] = {}, [TunnelAlignment.vertical] = {}} -- A table with a horizontal and vertical key'd lists of underground tunnels that currently aren't assigned to an aboveground tunnel object.
 end
 
 Underground.PreOnLoad = function()
@@ -47,11 +48,11 @@ Underground.PreOnLoad = function()
 end
 
 Underground.OnStartup = function()
-    if global.underground.surfaces[TunnelCommon.TunnelAlignment.horizontal] == nil then
-        global.underground.surfaces[TunnelCommon.TunnelAlignment.horizontal] = Underground.CreateUndergroundSurface(TunnelCommon.TunnelAlignment.horizontal)
+    if global.underground.surfaces[TunnelAlignment.horizontal] == nil then
+        global.underground.surfaces[TunnelAlignment.horizontal] = Underground.CreateUndergroundSurface(TunnelAlignment.horizontal)
     end
-    if global.underground.surfaces[TunnelCommon.TunnelAlignment.vertical] == nil then
-        global.underground.surfaces[TunnelCommon.TunnelAlignment.vertical] = Underground.CreateUndergroundSurface(TunnelCommon.TunnelAlignment.vertical)
+    if global.underground.surfaces[TunnelAlignment.vertical] == nil then
+        global.underground.surfaces[TunnelAlignment.vertical] = Underground.CreateUndergroundSurface(TunnelAlignment.vertical)
     end
 end
 
@@ -80,11 +81,11 @@ Underground.CreateUndergroundSurface = function(alignment)
     }
 
     local railDirection
-    if alignment == TunnelCommon.TunnelAlignment.vertical then
+    if alignment == TunnelAlignment.vertical then
         undergroundSurface.railAlignmentAxis = "y"
         undergroundSurface.tunnelInstanceAxis = "x"
         railDirection = defines.direction.north
-    elseif alignment == TunnelCommon.TunnelAlignment.horizontal then
+    elseif alignment == TunnelAlignment.horizontal then
         undergroundSurface.railAlignmentAxis = "x"
         undergroundSurface.tunnelInstanceAxis = "y"
         railDirection = defines.direction.east
@@ -155,7 +156,7 @@ Underground.AssignUndergroundTunnel = function(tunnel)
                 aboveGroundSignalPaired = portalSignal
             }
 
-            if portalSignal.direction == TunnelCommon.TunnelSignalDirection.outSignal then
+            if portalSignal.direction == TunnelSignalDirection.outSignal then
                 local signalStateCombinatorPosition = Utils.ApplyOffsetToPosition(undergroundSignalEntity.position, Utils.RotatePositionAround0(portal.entity.orientation, {x = 0, y = 1})) -- 1 tile towards the tunnel center from the signal.
                 undergroundSignal.signalStateCombinator = undergroundSurface.surface.create_entity {name = "constant-combinator", force = global.force.tunnelForce, position = signalStateCombinatorPosition}
                 local signalStateCombinatorControlBehavior = undergroundSignal.signalStateCombinator.get_or_create_control_behavior() ---@type LuaConstantCombinatorControlBehavior

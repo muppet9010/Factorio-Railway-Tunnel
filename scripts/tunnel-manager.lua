@@ -2,6 +2,7 @@ local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Tunnel = {}
 local TunnelCommon = require("scripts/tunnel-common")
+local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = TunnelCommon.TunnelAlignment, TunnelCommon.RollingStockTypes, TunnelCommon.TunnelSurfaceRailEntityNames, TunnelCommon.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
 
 --[[
@@ -86,11 +87,11 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     -- Create the tunnel global object.
     local alignment, alignmentOrientation
     if refTunnelPortalEntity.direction == defines.direction.north or refTunnelPortalEntity.direction == defines.direction.south then
-        alignment = TunnelCommon.TunnelAlignment.vertical
-        alignmentOrientation = TunnelCommon.TunnelAlignmentOrientation.vertical
+        alignment = TunnelAlignment.vertical
+        alignmentOrientation = TunnelAlignmentOrientation.vertical
     elseif refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
-        alignment = TunnelCommon.TunnelAlignment.horizontal
-        alignmentOrientation = TunnelCommon.TunnelAlignmentOrientation.horizontal
+        alignment = TunnelAlignment.horizontal
+        alignmentOrientation = TunnelAlignmentOrientation.horizontal
     else
         error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity.direction)
     end
@@ -266,7 +267,7 @@ Tunnel.OnBuiltEntity = function(event)
     -- Check for any train carriages (real or ghost) being built on the portal or tunnel segments. Ghost placing train carriages doesn't raise the on_built_event for some reason.
     -- Known limitation that you can't place a single carriage on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
     local createdEntity = event.created_entity or event.entity
-    if (not createdEntity.valid or (not (createdEntity.type ~= "entity-ghost" and TunnelCommon.RollingStockTypes[createdEntity.type] ~= nil) and not (createdEntity.type == "entity-ghost" and TunnelCommon.RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
+    if (not createdEntity.valid or (not (createdEntity.type ~= "entity-ghost" and RollingStockTypes[createdEntity.type] ~= nil) and not (createdEntity.type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
         return
     end
 
@@ -289,19 +290,19 @@ Tunnel.OnBuiltEntity = function(event)
         end
         if trainFrontStockIsPlacedEntity and trainBackStockIsPlacedEntity then
             -- Both ends of the train is this carriage so its a train of 1.
-            if TunnelCommon.TunnelSurfaceRailEntityNames[train.front_rail.name] == nil and TunnelCommon.TunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+            if TunnelSurfaceRailEntityNames[train.front_rail.name] == nil and TunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
                 -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
                 return
             end
         elseif trainFrontStockIsPlacedEntity then
             -- Placed carriage is front of train
-            if TunnelCommon.TunnelSurfaceRailEntityNames[train.front_rail.name] == nil then
+            if TunnelSurfaceRailEntityNames[train.front_rail.name] == nil then
                 -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
                 return
             end
         elseif trainBackStockIsPlacedEntity then
             -- Placed carriage is rear of train
-            if TunnelCommon.TunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+            if TunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
                 -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
                 return
             end
@@ -318,7 +319,7 @@ Tunnel.OnBuiltEntity = function(event)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
         for _, railEntity in pairs(frontRailsFound) do
-            if TunnelCommon.TunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
+            if TunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
                 tunnelRailFound = true
             else
                 tunnelRailFound = false
@@ -328,7 +329,7 @@ Tunnel.OnBuiltEntity = function(event)
         if not tunnelRailFound then
             local backRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = backRailPosition}
             for _, railEntity in pairs(backRailsFound) do
-                if TunnelCommon.TunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
+                if TunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
                     tunnelRailFound = true
                 else
                     tunnelRailFound = false

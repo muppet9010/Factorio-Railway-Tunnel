@@ -3,6 +3,7 @@ local Events = require("utility/events")
 local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
 local TunnelCommon = require("scripts/tunnel-common")
+local RollingStockTypes = TunnelCommon.RollingStockTypes
 -- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the managedTrain object passed in, rather than being abstracted.
 
 ---@class PlayerContainer
@@ -40,7 +41,7 @@ PlayerContainers.OnToggleDrivingInput = function(event)
         return
     else
         local playerVehicleType = playerVehicle.type
-        if playerVehicle.name == "railway_tunnel-player_container" or TunnelCommon.RollingStockTypes[playerVehicleType] ~= nil then
+        if playerVehicle.name == "railway_tunnel-player_container" or RollingStockTypes[playerVehicleType] ~= nil then
             global.playerContainers.playerTryLeaveVehicle[player.index] = playerVehicle
             EventScheduler.ScheduleEventOnce(-1, "PlayerContainers.OnToggleDrivingInputAfterChangedState", player.index)
         end

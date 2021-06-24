@@ -2,6 +2,7 @@ local TrainManagerFuncs = {}
 local Utils = require("utility/utils")
 local Logging = require("utility/logging")
 local TunnelCommon = require("scripts/tunnel-common")
+local RollingStockTypes = TunnelCommon.RollingStockTypes
 -- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
 
 ---@param train LuaTrain
@@ -637,7 +638,7 @@ TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
                 speed = thing.speed,
                 backer_name = thing.backer_name
             }
-            if TunnelCommon.RollingStockTypes[thing.type] ~= nil then
+            if RollingStockTypes[thing.type] ~= nil then
                 entityDetails.trainId = thing.train.id
             end
 

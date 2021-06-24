@@ -6,6 +6,7 @@ local TrainManagerFuncs = require("scripts/train-manager-functions") -- Stateles
 local PlayerContainers = require("scripts/player-containers") -- Uses this file directly, rather than via interface. Details in the sub files notes.
 local Logging = require("utility/logging")
 local TunnelCommon = require("scripts/tunnel-common")
+local TunnelSignalDirection = TunnelCommon.TunnelSignalDirection
 local UndergroundSetUndergroundExitSignalStateFunction = nil ---@type fun(undergroundSignal:UndergroundSignal, sourceSignalState:defines.signal_state) -- Cache the function reference during OnLoad. Saves using Interfaces every tick.
 
 ---@class ManagedTrain
@@ -207,7 +208,7 @@ end
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
-    local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelCommon.TunnelSignalDirection.inSignal], false)
+    local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelSignalDirection.inSignal], false)
     TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, trainOnPortalTrack)
     managedTrain.primaryTrainPartName = PrimaryTrainPartNames.portalTrack
     Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
@@ -786,7 +787,7 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeftTunnelOngoing = function(managedTrain)
     -- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left. We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its end rail signal is our portal entrance one. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
-    local exitPortalEntrySignalEntity = managedTrain.aboveExitPortal.entrySignals[TunnelCommon.TunnelSignalDirection.inSignal].entity
+    local exitPortalEntrySignalEntity = managedTrain.aboveExitPortal.entrySignals[TunnelSignalDirection.inSignal].entity
     if exitPortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
         -- No train in the block so our one must have left.
         global.trainManager.trainIdToManagedTrain[managedTrain.leftTrainId] = nil
@@ -798,7 +799,7 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
-    local entrancePortalEntrySignalEntity = managedTrain.aboveEntrancePortal.entrySignals[TunnelCommon.TunnelSignalDirection.inSignal].entity
+    local entrancePortalEntrySignalEntity = managedTrain.aboveEntrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
 
     if not managedTrain.portalTrackTrainBySignal then
         -- Not tracking by singal yet. Initially we have to track the trains speed (direction) to confirm that its still entering until it triggers the Entry signal.
@@ -1175,9 +1176,9 @@ TrainManager.CreateManagedTrainObject = function(train, aboveEntrancePortalEndSi
     -- Get the exit end signal on the other portal so we know when to bring the train back in.
     for _, portal in pairs(managedTrain.tunnel.portals) do
         if portal.id ~= aboveEntrancePortalEndSignal.portal.id then
-            managedTrain.aboveExitPortalEndSignal = portal.endSignals[TunnelCommon.TunnelSignalDirection.outSignal]
+            managedTrain.aboveExitPortalEndSignal = portal.endSignals[TunnelSignalDirection.outSignal]
             managedTrain.aboveExitPortal = portal
-            managedTrain.aboveExitPortalEntrySignalOut = portal.entrySignals[TunnelCommon.TunnelSignalDirection.outSignal]
+            managedTrain.aboveExitPortalEntrySignalOut = portal.entrySignals[TunnelSignalDirection.outSignal]
         end
     end
 
@@ -1413,7 +1414,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.aboveEntrancePortalEndSignal = oldManagedTrain.aboveExitPortalEndSignal
     newManagedTrain.aboveExitPortal = oldManagedTrain.aboveEntrancePortal
     newManagedTrain.aboveExitPortalEndSignal = oldManagedTrain.aboveEntrancePortalEndSignal
-    newManagedTrain.aboveExitPortalEntrySignalOut = oldManagedTrain.aboveEntrancePortal.entrySignals[TunnelCommon.TunnelSignalDirection.outSignal]
+    newManagedTrain.aboveExitPortalEntrySignalOut = oldManagedTrain.aboveEntrancePortal.entrySignals[TunnelSignalDirection.outSignal]
     newManagedTrain.tunnel = oldManagedTrain.tunnel
     newManagedTrain.undergroundTunnel = oldManagedTrain.undergroundTunnel
     newManagedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(newManagedTrain.aboveExitPortal.portalEntrancePosition, newManagedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)

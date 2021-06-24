@@ -2,6 +2,7 @@ local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local TunnelCommon = require("scripts/tunnel-common")
+local TunnelSegmentPlacedPlacementEntityNames = TunnelCommon.TunnelSegmentPlacedPlacementEntityNames
 local TunnelSegments = {}
 
 ---@class Segment
@@ -29,7 +30,7 @@ end
 
 TunnelSegments.OnLoad = function()
     local segmentEntityNames_Filter = {}
-    for _, name in pairs(TunnelCommon.tunnelSegmentPlacedPlacementEntityNames) do
+    for _, name in pairs(TunnelSegmentPlacedPlacementEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelSegments.OnBuiltEntity", TunnelSegments.OnBuiltEntity, segmentEntityNames_Filter)
@@ -43,7 +44,7 @@ TunnelSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelSegments.OnDiedEntity", TunnelSegments.OnDiedEntity, segmentEntityNames_Filter)
 
     local segmentEntityGhostNames_Filter = {}
-    for _, name in pairs(TunnelCommon.tunnelSegmentPlacedPlacementEntityNames) do
+    for _, name in pairs(TunnelSegmentPlacedPlacementEntityNames) do
         table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelSegments.OnBuiltEntityGhost", TunnelSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
@@ -57,7 +58,7 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 TunnelSegments.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[createdEntity.name] == nil then
+    if not createdEntity.valid or TunnelSegmentPlacedPlacementEntityNames[createdEntity.name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
@@ -230,7 +231,7 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 TunnelSegments.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[createdEntity.ghost_name] == nil then
+    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or TunnelSegmentPlacedPlacementEntityNames[createdEntity.ghost_name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
@@ -247,7 +248,7 @@ end
 TunnelSegments.OnPreBuild = function(event)
     -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
     local player = game.get_player(event.player_index)
-    if not player.cursor_stack.valid or not player.cursor_stack.valid_for_read or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[player.cursor_stack.name] == nil then
+    if not player.cursor_stack.valid or not player.cursor_stack.valid_for_read or TunnelSegmentPlacedPlacementEntityNames[player.cursor_stack.name] == nil then
         return
     end
     local surface = player.surface
@@ -261,7 +262,7 @@ end
 
 TunnelSegments.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
-    if not minedEntity.valid or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[minedEntity.name] == nil then
+    if not minedEntity.valid or TunnelSegmentPlacedPlacementEntityNames[minedEntity.name] == nil then
         return
     end
     local segment = global.tunnelSegments.segments[minedEntity.unit_number]
@@ -360,7 +361,7 @@ end
 
 TunnelSegments.OnDiedEntity = function(event)
     local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
-    if not diedEntity.valid or TunnelCommon.tunnelSegmentPlacedPlacementEntityNames[diedEntity.name] == nil then
+    if not diedEntity.valid or TunnelSegmentPlacedPlacementEntityNames[diedEntity.name] == nil then
         return
     end
     local segment = global.tunnelSegments.segments[diedEntity.unit_number]

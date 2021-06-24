@@ -3,19 +3,19 @@ local Colors = require("utility/colors")
 local TunnelCommon = {}
 
 -- Make the entity lists.
-TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames = {}, {}, {}, {}
+TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelSegmentPlacementEntityNames, TunnelCommon.TunnelPortalPlacedEntityNames, TunnelCommon.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
 for _, coreName in pairs({"railway_tunnel-tunnel_segment_surface", "railway_tunnel-tunnel_segment_surface_rail_crossing"}) do
-    TunnelCommon.tunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    TunnelCommon.tunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
+    TunnelCommon.TunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
+    TunnelCommon.TunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
-TunnelCommon.tunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames})
+TunnelCommon.TunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelSegmentPlacementEntityNames})
 for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
-    TunnelCommon.tunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    TunnelCommon.tunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
+    TunnelCommon.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
+    TunnelCommon.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
-TunnelCommon.tunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
-TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames})
-TunnelCommon.tunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
+TunnelCommon.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.TunnelPortalPlacedEntityNames, TunnelCommon.TunnelPortalPlacementEntityNames})
+TunnelCommon.TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelPortalPlacedEntityNames})
+TunnelCommon.TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.TunnelSegmentPlacedEntityNames, TunnelCommon.TunnelSegmentPlacementEntityNames, TunnelCommon.TunnelPortalPlacedEntityNames, TunnelCommon.TunnelPortalPlacementEntityNames})
 
 ---@class TunnelSurfaceRailEntityNames
 TunnelCommon.TunnelSurfaceRailEntityNames = {
@@ -42,9 +42,9 @@ TunnelCommon.RollingStockTypes = {
 ---@return boolean, LuaEntity[], LuaEntity[]
 TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
     local tunnelPortalEntities, tunnelSegmentEntities = {}, {}
-    if TunnelCommon.tunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
+    if TunnelCommon.TunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
         table.insert(tunnelSegmentEntities, startingTunnelPart)
-    elseif TunnelCommon.tunnelPortalPlacedEntityNames[startingTunnelPart.name] then
+    elseif TunnelCommon.TunnelPortalPlacedEntityNames[startingTunnelPart.name] then
         table.insert(tunnelPortalEntities, startingTunnelPart)
     else
         error("TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart.name)
@@ -52,7 +52,7 @@ TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
     local orientation, continueChecking, nextCheckingPos = Utils.DirectionToOrientation(checkingDirection), true, startingTunnelPartPoint
     while continueChecking do
         nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
-        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
+        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = TunnelCommon.TunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
@@ -60,14 +60,14 @@ TunnelCommon.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
             if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
                 TunnelCommon.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 continueChecking = false
-            elseif TunnelCommon.tunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif TunnelCommon.TunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
                     table.insert(tunnelSegmentEntities, connectedTunnelEntity)
                 else
                     TunnelCommon.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                     continueChecking = false
                 end
-            elseif TunnelCommon.tunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif TunnelCommon.TunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
                 continueChecking = false
                 if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
                     table.insert(tunnelPortalEntities, connectedTunnelEntity)
