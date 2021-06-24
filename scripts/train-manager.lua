@@ -1,3 +1,5 @@
+-- Has the main state tracking and handling logic for Managed Trains.
+
 local TrainManager = {}
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
@@ -107,23 +109,11 @@ TrainManager.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
 end
 
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
---
---                                  State handling section
---
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------------
-
 ---@param enteringTrain LuaTrain
 ---@param aboveEntrancePortalEndSignal PortalEndSignal
 TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, aboveEntrancePortalEndSignal)
     -- Check if this train is already using the tunnel in some way.
-    local existingTrainIDTrackedObject, oldManagedTrainEntry = global.trainManager.trainIdToManagedTrain[enteringTrain.id], nil
+    local existingTrainIDTrackedObject, oldManagedTrainEntry, overwriteTunnelReservation = global.trainManager.trainIdToManagedTrain[enteringTrain.id], nil, false
     if existingTrainIDTrackedObject ~= nil then
         if existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.leftTrain then
             -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
@@ -133,8 +123,10 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
         elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrack then
             -- Train was using the portal track and is now entering the tunnel.
             oldManagedTrainEntry = existingTrainIDTrackedObject.managedTrain
-            -- Terminate the old tunnel usage that was delayed until this point. Don't try to reverse the tunnel usage as this event has naturally happened and the old tunnel usage was effectively over anyways.
-            TrainManagerStateFuncs.TerminateTunnelTrip(oldManagedTrainEntry, TunnelUsageChangeReason.enteringFromPortalTrack)
+            overwriteTunnelReservation = true
+            -- Remove the portalTrack ManagedTrain before the new one is added. The new ManagedTrain will silently take over the reservations.
+            TrainManagerStateFuncs.RemoveManagedTrainEntry(oldManagedTrainEntry)
+            TrainManagerRemote.TunnelUsageChanged(oldManagedTrainEntry.id, TunnelUsageAction.terminated, TunnelUsageChangeReason.enteringFromPortalTrack)
         else
             error("Unsupported situation")
         end
@@ -143,8 +135,12 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
     local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(enteringTrain, aboveEntrancePortalEndSignal, true)
     managedTrain.primaryTrainPartName, managedTrain.enteringTrainState, managedTrain.undergroundTrainState, managedTrain.leavingTrainState = PrimaryTrainPartNames.approaching, EnteringTrainStates.approaching, UndergroundTrainStates.travelling, LeavingTrainStates.pre
     TrainManagerStateFuncs.CreateUndergroundTrainObject(managedTrain)
-    Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
-
+    if not overwriteTunnelReservation then
+        Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
+    else
+        -- Silently update the tunnel reservation without changing the tunnel entities. Edge case for PortalTrack to Tunnel usage upgrade.
+        managedTrain.tunnel.managedTrain = managedTrain
+    end
     if oldManagedTrainEntry ~= nil then
         -- Include in the new train approaching event the old leftTrain entry id that has been stopped.
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, oldManagedTrainEntry.id)

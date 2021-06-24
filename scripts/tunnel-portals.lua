@@ -474,8 +474,9 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
     local train = carriageEnteringPortalTrack.train
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
         -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
-        local managedTrain = Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) ---@type ManagedTrain
-        if managedTrain ~= nil then
+        local trainIdToManagedTrain = Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
+        if trainIdToManagedTrain ~= nil then
+            local managedTrain = trainIdToManagedTrain.managedTrain
             -- This train has reserved a tunnel somewhere.
             if managedTrain.aboveEntrancePortal.id == portal.id then
                 -- This train has already reserved this tunnel so nothing further needed. Although this shouldn't be a reachable state.
@@ -496,7 +497,7 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
             else
                 -- Portal's tunnel is already being used so stop this train entering. Not sure how this could have happened, but just stop the new train here and restore the entrance detection entity.
                 if global.strictStateHandling then
-                    error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train\nthisTrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id .. "\reservedTrainId: " .. managedTrain.tunnel.managedTrain.id)
+                    error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train\nthisTrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
                 else
                     train.speed = 0
                     TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, true)
