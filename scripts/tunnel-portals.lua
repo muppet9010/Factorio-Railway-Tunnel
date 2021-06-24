@@ -86,6 +86,7 @@ TunnelPortals.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition)
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntityTrainBlocker", TunnelPortals.OnDiedEntityTrainBlocker, trainBlocker1x1_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntityTrainBlocker", TunnelPortals.OnDiedEntityTrainBlocker, trainBlocker1x1_Filter)
+    Interfaces.RegisterInterface("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", TunnelPortals.AddEntranceUsageDetectionEntityToPortal)
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
@@ -117,6 +118,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     placementEntity.destroy()
     local abovePlacedPortal = aboveSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
     abovePlacedPortal.rotatable = false -- Only stops players from rotating the placed entity, not editor mode. We track for editor use.
+    ---@type Portal
     local portal = {
         id = abovePlacedPortal.unit_number,
         entity = abovePlacedPortal,
@@ -300,7 +302,7 @@ end
 ---@param portal Portal
 TunnelPortals.On_PostTunnelCompleted = function(portal)
     -- Add the entranceUsageDetectorEntity to the entrance end of the portal. This is directly in line with the signals and will never quite be touched by a train stopping at the signal if approaching.
-    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, true)
 end
 
 ---@param railSignalEntity LuaEntity
@@ -465,7 +467,7 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
 
     if carriageEnteringPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
-        TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+        TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, true)
         return
     end
     local train = carriageEnteringPortalTrack.train
@@ -496,7 +498,7 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
                     error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train\nthisTrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id .. "\reservedTrainId: " .. managedTrain.tunnel.managedTrain.id)
                 else
                     train.speed = 0
-                    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+                    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, true)
                     rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[1].entity.position, time_to_live = 180, forces = portal.entity.force, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
                     return
                 end
@@ -511,8 +513,8 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
 
     -- Train is coasting so stop it at the border and try to put the detection entity back.
     train.speed = 0
-    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
-    rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[1].entity.position, time_to_live = 180, forces = portal.entity.force, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, true)
+    rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelCommon.TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
 ---@param portal Portal
@@ -552,7 +554,9 @@ end
 
 --- Will try and place the entrance detection entity now and if not posisble will keep on trying each tick until either successful or a tunnel state stops the attempts.
 ---@param portal Portal
-TunnelPortals.AddEntranceUsageDetectionEntityToPortal = function(portal)
+---@param retry boolean @If to retry next tick should it not be placable.
+---@return LuaEntity @The entranceUsageDetectorEntity if successfully placed.
+TunnelPortals.AddEntranceUsageDetectionEntityToPortal = function(portal, retry)
     local portalEntity = portal.entity
     if portalEntity == nil or not portalEntity.valid or portal.tunnel == nil then
         return
@@ -560,16 +564,20 @@ TunnelPortals.AddEntranceUsageDetectionEntityToPortal = function(portal)
     local aboveSurface, directionValue = portal.entity.surface, portalEntity.direction
     local orientation = Utils.DirectionToOrientation(directionValue)
     local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.entranceUsageDetectorEntityDistance}))
-    TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition(nil, portal, aboveSurface, position)
+    return TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition(nil, portal, aboveSurface, position, retry)
 end
 
----@param eventData table @eventData is a table returned by the scheduler including an inner "data" table attribute. This data table contains the other params posted back to itself.
----@param portal Portal @either supplied or obtained from eventData.data table.
----@param aboveSurface LuaSurface @either supplied or obtained from eventData.data table.
----@param position Position @either supplied or obtained from eventData.data table.
-TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition = function(eventData, portal, aboveSurface, position)
-    if eventData ~= nil then
-        portal, aboveSurface, position = eventData.data.portal, eventData.data.aboveSurface, eventData.data.position
+---@param event table @Event is a table returned by the scheduler including an inner "data" table attribute. Event data table contains the other params posted back to itself.
+---@param portal Portal @
+---@param aboveSurface LuaSurface @
+---@param position Position @
+---@param retry boolean @If to retry next tick should it not be placable.
+---@return LuaEntity @The entranceUsageDetectorEntity if successfully placed.
+TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition = function(event, portal, aboveSurface, position, retry)
+    local eventData
+    if event ~= nil then
+        eventData = event.data
+        portal, aboveSurface, position, retry = eventData.portal, eventData.aboveSurface, eventData.position, eventData.retry
     end
     if portal.tunnel == nil then
         -- The tunnel has been removed from the portal, so we shouldn't add the detection entity back.
@@ -580,13 +588,14 @@ TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition = function(eventDa
     if aboveSurface.can_place_entity {name = "railway_tunnel-train_blocker_1x1", force = global.force.tunnelForce, position = position} then
         portal.entranceUsageDetectorEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_1x1", force = global.force.tunnelForce, position = position}
         global.tunnelPortals.entranceUsageDetectorEntityIdToPortal[portal.entranceUsageDetectorEntity.unit_number] = portal
-    else
+        return portal.entranceUsageDetectorEntity
+    elseif retry then
         -- Schedule this to be tried again next tick.
         local postbackData
         if eventData ~= nil then
-            postbackData = eventData.data
+            postbackData = eventData
         else
-            postbackData = {portal = portal, aboveSurface = aboveSurface, position = position}
+            postbackData = {portal = portal, aboveSurface = aboveSurface, position = position, retry = retry}
         end
         EventScheduler.ScheduleEventOnce(nil, "TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition", portal.id, postbackData)
     end
@@ -619,7 +628,7 @@ end
 TunnelPortals.OpenEntranceSignalForManagedTrain = function(portal)
     -- Remove the blocking loco and put the usage detection entity in place instead.
     TunnelPortals.RemoveEntranceSignalBlockingLocomotiveFromPortal(portal)
-    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal)
+    TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, true)
 end
 
 ---@param event on_player_rotated_entity

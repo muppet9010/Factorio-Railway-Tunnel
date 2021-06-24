@@ -9,13 +9,13 @@ local Force = require("scripts/force")
 local PlayerContainers = require("scripts/player-containers")
 local Events = require("utility/events")
 
----@class Id:uint|string @id attribute of this thing.
----@class UnitNumber:uint @unit_number of the related entity.
+---@class Id : uint @id attribute of this thing.
+---@class UnitNumber : uint @unit_number of the related entity.
 ---@alias Axis "'x'"|"'y'"
 ---@class PlayerIndex:uint @Player index attribute.
 ---@alias EntityBuildPlacer LuaPlayer|LuaEntity|nil @The placer of a built entity: either player, construction robot or script(nil).
----@class Ticks:int
----@class Seconds:int
+---@class Ticks : int
+---@class Seconds : int
 
 local function CreateGlobals()
     global.debugRelease = true -- If TRUE it runs key code in a try/catch. Makes code run slower technically.
@@ -43,7 +43,7 @@ local function OnLoad()
             get_tunnel_usage_changed_event_id = function()
                 return tunnelUsageChangedEventId
             end,
-            ---@param managedTrainId ManagedTrainId
+            ---@param managedTrainId Id
             ---@return TunnelUsageEntry
             get_tunnel_usage_entry_for_id = function(managedTrainId)
                 return TrainManager.Remote_GetTunnelUsageEntry(managedTrainId)

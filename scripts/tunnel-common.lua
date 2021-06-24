@@ -16,19 +16,23 @@ end
 TunnelCommon.tunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
 TunnelCommon.tunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames})
 TunnelCommon.tunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({TunnelCommon.tunnelSegmentPlacedEntityNames, TunnelCommon.tunnelSegmentPlacementEntityNames, TunnelCommon.tunnelPortalPlacedEntityNames, TunnelCommon.tunnelPortalPlacementEntityNames})
-TunnelCommon.tunnelSurfaceRailEntityNames = {
+
+---@class TunnelSurfaceRailEntityNames
+TunnelCommon.TunnelSurfaceRailEntityNames = {
     -- Doesn't include the tunnel crossing rail as this isn't deemed part of the tunnel's rails.
-    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map",
-    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map",
-    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel",
-    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map",
-    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel"
+    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelSurfaceRailEntityNames
+    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
+    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel", ---@type TunnelSurfaceRailEntityNames
+    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
+    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel" ---@type TunnelSurfaceRailEntityNames
 }
+
+---@class RollingStockTypes
 TunnelCommon.RollingStockTypes = {
-    ["locomotive"] = "locomotive",
-    ["cargo-wagon"] = "cargo-wagon",
-    ["fluid-wagon"] = "fluid-wagon",
-    ["artillery-wagon"] = "artillery-wagon"
+    ["locomotive"] = "locomotive", ---@type RollingStockTypes
+    ["cargo-wagon"] = "cargo-wagon", ---@type RollingStockTypes
+    ["fluid-wagon"] = "fluid-wagon", ---@type RollingStockTypes
+    ["artillery-wagon"] = "artillery-wagon" ---@type RollingStockTypes
 }
 
 ---@param startingTunnelPart LuaEntity
