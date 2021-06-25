@@ -5,13 +5,17 @@ local Utils = require("utility/utils")
 local Events = require("utility/events")
 
 ---@class TunnelUsageEntry
----@field public tunnelUsageId Id
----@field public primaryState PrimaryTrainPartNames
----@field public enteringTrain LuaTrain
----@field public undegroundTrain LuaTrain
----@field public leavingTrain LuaTrain
----@field public leftTrain LuaTrain
----@field public tunnelId Id
+---@field tunnelUsageId Id
+---@field primaryState PrimaryTrainPartNames
+---@field enteringTrain LuaTrain
+---@field undegroundTrain LuaTrain
+---@field leavingTrain LuaTrain
+---@field leftTrain LuaTrain
+---@field tunnelId Id
+
+TrainManagerRemote.CreateGlobals = function()
+    global.trainManager.eventsToRaise = global.trainManager.eventsToRaise or {} ---@type table[] @Events are raised at end of tick to avoid other mods interupting this mod's process and breaking things.
+end
 
 TrainManagerRemote.ProcessTicksEvents = function()
     -- Raise any events from this tick for external listener mods to react to.

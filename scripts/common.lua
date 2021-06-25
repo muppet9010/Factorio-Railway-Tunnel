@@ -3,19 +3,20 @@ local Colors = require("utility/colors")
 local Common = {}
 
 -- Make the entity lists.
+---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
 Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
 for _, coreName in pairs({"railway_tunnel-tunnel_segment_surface", "railway_tunnel-tunnel_segment_surface_rail_crossing"}) do
     Common.TunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
     Common.TunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
-Common.TunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames})
+Common.TunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames}) ---@type table<string, string>
 for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
     Common.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
     Common.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
-Common.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames})
-Common.TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelPortalPlacedEntityNames})
-Common.TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames})
+Common.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames}) ---@type table<string, string>
+Common.TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelPortalPlacedEntityNames}) ---@type table<string, string>
+Common.TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames}) ---@type table<string, string>
 
 ---@class TunnelSurfaceRailEntityNames
 Common.TunnelSurfaceRailEntityNames = {
@@ -38,7 +39,7 @@ Common.RollingStockTypes = {
 ---@param startingTunnelPart LuaEntity
 ---@param startingTunnelPartPoint Position
 ---@param checkingDirection defines.direction
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@return boolean, LuaEntity[], LuaEntity[]
 Common.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
     local tunnelPortalEntities, tunnelSegmentEntities = {}, {}
@@ -95,14 +96,14 @@ Common.IsPlacementOnRailGrid = function(placementEntity)
 end
 
 ---@param placementEntity LuaEntity
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
 Common.UndoInvalidTunnelPartPlacement = function(placementEntity, placer, mine)
     Common.UndoInvalidPlacement(placementEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
 end
 
 ---@param placementEntity LuaEntity
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
 ---@param highlightValidRailGridPositions boolean @If to show to the placer valid positions on the rail grid.
 ---@param warningMessageText string @Text shown to the placer
@@ -138,14 +139,14 @@ Common.UndoInvalidPlacement = function(placementEntity, placer, mine, highlightV
 end
 
 --- Highlights the single tiles to the placer player/force that are valid centres for an entity on the rail grid.
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@param position Position
 ---@param surface LuaSurface
 ---@param entityName string
 ---@param ghostName string
 ---@param direction defines.direction @Direction of the entity trying to be placed.
 Common.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
-    local highlightAudience = Utils.GetRenderPlayersForcesFromActioner(placer)
+    local highlightAudiencePlayers, highlightAudienceForces = Utils.GetRenderPlayersForcesFromActioner(placer)
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
     local minX, maxX, minY, maxY
     if position.x % 2 == 1 then
@@ -176,19 +177,19 @@ Common.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, s
             else
                 thisHighlightSprite = invalidHighlightSprite
             end
-            rendering.draw_sprite {sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = highlightAudience.players, forces = highlightAudience.forces}
+            rendering.draw_sprite {sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = highlightAudiencePlayers, forces = highlightAudienceForces}
         end
     end
 end
 
 --- Shows warning/error text on the map to either the player (character) or the force (construction robots) doign the interaction.
----@param entityDoingInteraction EntityBuildPlacer
+---@param entityDoingInteraction EntityActioner
 ---@param text string @Text shown.
 ---@param surface LuaSurface
 ---@param position Position
 Common.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
-    local textAudience = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
-    rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudience.players, forces = textAudience.forces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+    local textAudiencePlayers, textAudienceForces = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
+    rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudiencePlayers, forces = textAudienceForces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
 ---@param railEntityList LuaEntity[]

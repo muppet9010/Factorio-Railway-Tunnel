@@ -1,6 +1,8 @@
 local Logging = {}
 local Constants = require("constants")
 
+---@param position Position
+---@return string
 Logging.PositionToString = function(position)
     if position == nil then
         return "nil position"
@@ -8,6 +10,8 @@ Logging.PositionToString = function(position)
     return "(" .. position.x .. ", " .. position.y .. ")"
 end
 
+---@param boundingBox BoundingBox
+---@return string
 Logging.BoundingBoxToString = function(boundingBox)
     if boundingBox == nil then
         return "nil boundingBox"
@@ -15,6 +19,8 @@ Logging.BoundingBoxToString = function(boundingBox)
     return "((" .. boundingBox.left_top.x .. ", " .. boundingBox.left_top.y .. "), (" .. boundingBox.right_bottom.x .. ", " .. boundingBox.right_bottom.y .. "))"
 end
 
+---@param text string
+---@param enabled boolean
 Logging.Log = function(text, enabled)
     if enabled ~= nil and not enabled then
         return
@@ -31,6 +37,8 @@ Logging.Log = function(text, enabled)
     end
 end
 
+---@param text string
+---@param enabled boolean
 Logging.LogPrint = function(text, enabled)
     if enabled ~= nil and not enabled then
         return

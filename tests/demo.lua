@@ -1,5 +1,4 @@
 local Test = {}
-local Utils = require("utility/utils")
 --local TestFunctions = require("scripts/test-functions")
 
 local yRailValue = 5
@@ -89,8 +88,7 @@ Test.Loop = function()
             table.insert(nauvisEntitiesToPlace, {name = "straight-rail", position = {11, y}, direction = defines.direction.north})
         end
     end
-    Utils.PushToList(
-        nauvisEntitiesToPlace,
+    for _, item in pairs(
         {
             {name = "curved-rail", position = {-10, -24}, direction = defines.direction.northeast},
             {name = "straight-rail", position = {-7, -27}, direction = defines.direction.northwest},
@@ -107,7 +105,9 @@ Test.Loop = function()
             {name = "rail-signal", position = {-0.5, -29.5}, direction = defines.direction.west},
             {name = "rail-signal", position = {0.5, 29.5}, direction = defines.direction.east}
         }
-    )
+    ) do
+        table.insert(nauvisEntitiesToPlace, item)
+    end
     for y = -15.5, 15.5, 10 do
         if y < yRailValue - 2 or y > yRailValue + 2 then
             table.insert(nauvisEntitiesToPlace, {name = "rail-signal", position = {-9.5, y}, direction = defines.direction.south})

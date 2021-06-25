@@ -1,7 +1,7 @@
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
-Utils.DeepCopy = factorioUtil.table.deepcopy
-Utils.TableMerge = factorioUtil.merge -- Takes an array of tables and returns a new table with copies of their contents
+Utils.DeepCopy = factorioUtil.table.deepcopy ---@type fun(object:table):table
+Utils.TableMerge = factorioUtil.merge ---@type fun(tables:table[]):table @Takes an array of tables and returns a new table with copies of their contents
 
 Utils.Are2EntitiesTheSame = function(entity1, entity2)
     -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
@@ -23,6 +23,9 @@ Utils.Are2EntitiesTheSame = function(entity1, entity2)
     end
 end
 
+---@param pos1 Position
+---@param pos2 Position
+---@return boolean
 Utils.ArePositionsTheSame = function(pos1, pos2)
     if (pos1.x or pos1[1]) == (pos2.x or pos2[1]) and (pos1.y or pos1[2]) == (pos2.y or pos2[2]) then
         return true
@@ -98,6 +101,8 @@ Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyFor
     end
 end
 
+---@param thing table
+---@return boolean
 Utils.IsTableValidPosition = function(thing)
     if thing.x ~= nil and thing.y ~= nil then
         if type(thing.x) == "number" and type(thing.y) == "number" then
@@ -116,6 +121,8 @@ Utils.IsTableValidPosition = function(thing)
     end
 end
 
+---@param thing table
+---@return Position
 Utils.TableToProperPosition = function(thing)
     if thing.x ~= nil and thing.y ~= nil then
         if type(thing.x) == "number" and type(thing.y) == "number" then
@@ -134,6 +141,8 @@ Utils.TableToProperPosition = function(thing)
     end
 end
 
+---@param thing table
+---@return boolean
 Utils.IsTableValidBoundingBox = function(thing)
     if thing.left_top ~= nil and thing.right_bottom ~= nil then
         if Utils.IsTableValidPosition(thing.left_top) and Utils.IsTableValidPosition(thing.right_bottom) then
@@ -152,6 +161,8 @@ Utils.IsTableValidBoundingBox = function(thing)
     end
 end
 
+---@param thing table
+---@return BoundingBox
 Utils.TableToProperBoundingBox = function(thing)
     if not Utils.IsTableValidBoundingBox(thing) then
         return nil
@@ -162,6 +173,10 @@ Utils.TableToProperBoundingBox = function(thing)
     end
 end
 
+---@param centrePos Position
+---@param boundingBox BoundingBox
+---@param orientation double
+---@return BoundingBox
 Utils.ApplyBoundingBoxToPosition = function(centrePos, boundingBox, orientation)
     centrePos = Utils.TableToProperPosition(centrePos)
     boundingBox = Utils.TableToProperBoundingBox(boundingBox)
@@ -193,18 +208,28 @@ Utils.ApplyBoundingBoxToPosition = function(centrePos, boundingBox, orientation)
     end
 end
 
+---@param pos Position
+---@param numDecimalPlaces uint
+---@return Position
 Utils.RoundPosition = function(pos, numDecimalPlaces)
     return {x = Utils.RoundNumberToDecimalPlaces(pos.x, numDecimalPlaces), y = Utils.RoundNumberToDecimalPlaces(pos.y, numDecimalPlaces)}
 end
 
+---@param pos Position
+---@return ChunkPosition
 Utils.GetChunkPositionForTilePosition = function(pos)
     return {x = math.floor(pos.x / 32), y = math.floor(pos.y / 32)}
 end
 
+---@param chunkPos ChunkPosition
+---@return Position
 Utils.GetLeftTopTilePositionForChunkPosition = function(chunkPos)
     return {x = chunkPos.x * 32, y = chunkPos.y * 32}
 end
 
+---@param orientation double
+---@param position Position
+---@return Position
 Utils.RotatePositionAround0 = function(orientation, position)
     local deg = orientation * 360
     local rad = math.rad(deg)
@@ -215,6 +240,9 @@ Utils.RotatePositionAround0 = function(orientation, position)
     return {x = rotatedX, y = rotatedY}
 end
 
+---@param point1 Position
+---@param point2 Position
+---@return BoundingBox
 Utils.CalculateBoundingBoxFrom2Points = function(point1, point2)
     local minX, maxX, minY, maxY = nil, nil, nil, nil
     if minX == nil or point1.x < minX then
@@ -244,6 +272,8 @@ Utils.CalculateBoundingBoxFrom2Points = function(point1, point2)
     return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
 end
 
+---@param listOfBoundingBoxs BoundingBox[]
+---@return BoundingBox
 Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs = function(listOfBoundingBoxs)
     local minX, maxX, minY, maxY = nil, nil, nil, nil
     for _, boundingBox in pairs(listOfBoundingBoxs) do
@@ -265,6 +295,9 @@ Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs = function(listOfBoundingBoxs
     return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
 end
 
+---@param position Position
+---@param offset Position
+---@return Position
 Utils.ApplyOffsetToPosition = function(position, offset)
     return {
         x = position.x + (offset.x or 0),
@@ -318,6 +351,10 @@ Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
     return result
 end
 
+---@param value int
+---@param min int
+---@param max int
+---@return int
 Utils.LoopIntValueWithinRange = function(value, min, max)
     -- This steps through the ints with min and max being seperatee steps.
     if value > max then
@@ -329,6 +366,10 @@ Utils.LoopIntValueWithinRange = function(value, min, max)
     end
 end
 
+---@param value double
+---@param min double
+---@param max double
+---@return double
 Utils.BoundFloatValueWithinRange = function(value, min, max)
     -- This treats the min and max values as equal when bounding: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
     if value > max then
@@ -340,6 +381,10 @@ Utils.BoundFloatValueWithinRange = function(value, min, max)
     end
 end
 
+---@param value double
+---@param minInclusive double
+---@param maxExclusive double
+---@return double
 Utils.BoundFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxExclusive)
     -- maxExclusive will give the minInclusive value. SO maxExclsuive can never be returned.
     if value >= maxExclusive then
@@ -407,6 +452,8 @@ Utils.FuzzyCompareDoubles = function(num1, logic, num2)
     end
 end
 
+---@param table table
+---@return boolean
 Utils.IsTableEmpty = function(table)
     if table == nil or next(table) == nil then
         return true
@@ -423,18 +470,20 @@ Utils.GetTableNonNilLength = function(table)
     return count
 end
 
+---@param table table
+---@return StringOrNumber
 Utils.GetFirstTableKey = function(table)
     return next(table)
 end
 
+---@param table table
+---@return any
 Utils.GetFirstTableValue = function(table)
     return table[next(table)]
 end
 
-Utils.GetFirstTableKeyValue = function(table)
-    return next(table), table[next(table)]
-end
-
+---@param table table
+---@return uint
 Utils.GetMaxKey = function(table)
     local max_key = 0
     for k in pairs(table) do
@@ -478,6 +527,9 @@ Utils.CalculateTilesUnderPositionedBoundingBox = function(positionedBoundingBox)
     return tiles
 end
 
+---@param pos1 Position
+---@param pos2 Position
+---@return number
 Utils.GetDistance = function(pos1, pos2)
     -- Don't do any valid checks as called so frequently, big UPS wastage.
     local dx = pos1.x - pos2.x
@@ -485,18 +537,28 @@ Utils.GetDistance = function(pos1, pos2)
     return math.sqrt(dx * dx + dy * dy)
 end
 
+---@param pos1 Position
+---@param pos2 Position
+---@param axis Axis
+---@return number
 Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
     -- Don't do any valid checks as called so frequently, big UPS wastage.
     return math.abs(pos1[axis] - pos2[axis])
 end
 
+---@param newPosition Position
+---@param basePosition Position
+---@return Position
 Utils.GetOffsetForPositionFromPosition = function(newPosition, basePosition)
     -- Returns the offset for the first position in relation to the second position.
     return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
 end
 
+---@param position Position
+---@param boundingBox BoundingBox
+---@param safeTiling boolean|nil @If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
+---@return boolean
 Utils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
-    -- safeTiling option means that the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
     if safeTiling == nil or not safeTiling then
         if position.x >= boundingBox.left_top.x and position.x <= boundingBox.right_bottom.x and position.y >= boundingBox.left_top.y and position.y <= boundingBox.right_bottom.y then
             return true
@@ -560,8 +622,12 @@ Utils.TableValueToCommaString = function(aTable)
     return newString
 end
 
+---@param targetTable table
+---@param name string|nil @If provided will appear as a "name:JSONData" output.
+---@param singleLineOutput boolean|nil @If provided and true removes all lines and spacing from the output.
+---@return string
 Utils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
-    -- targetTable is the only mandatory parameter. name if provided will appear as a "name:JSONData" output. singleLineOutput removes all lines and spacing from the output.
+    --
     singleLineOutput = singleLineOutput or false
     local tablesLogged = {}
     return Utils._TableContentsToJSON(targetTable, name, singleLineOutput, tablesLogged)
@@ -647,9 +713,12 @@ Utils.FormatSurfacePositionTableToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
 end
 
+---@param theTable table
+---@param value StringOrNumber
+---@param returnMultipleResults boolean|nil @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|nil @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@return StringOrNumber[] @table of keys.
 Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
-    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true).
-    -- Can have value as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local keysFound = {}
     for k, v in pairs(theTable) do
         if not isValueAList then
@@ -671,9 +740,13 @@ Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, is
     return keysFound
 end
 
+---@param theTable table
+---@param innerKey StringOrNumber
+---@param innerValue StringOrNumber
+---@param returnMultipleResults boolean|nil @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|nil @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@return StringOrNumber[] @table of keys.
 Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
-    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
-    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local keysFound = {}
     for k, innerTable in pairs(theTable) do
         if not isValueAList then
@@ -695,9 +768,13 @@ Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, re
     return keysFound
 end
 
+---@param theTable table
+---@param innerKey StringOrNumber
+---@param innerValue StringOrNumber
+---@param returnMultipleResults boolean|nil @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|nil @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@return table[] @table of values, which must be a table to have an inner key/value.
 Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
-    -- Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
-    -- Can have innerValue as a string/int (isValueAList = false/nil) or as a list of strings/ints (isValueAList = true)
     local valuesFound = {}
     for _, innerTable in pairs(theTable) do
         if not isValueAList then
@@ -803,12 +880,13 @@ Utils.ClearSpawnRespawnItems = function()
     remote.call("freeplay", "set_respawn_items", {})
 end
 
-Utils.SetStartingMapReveal = function(distance)
+---@param distanceTiles uint
+Utils.SetStartingMapReveal = function(distanceTiles)
     -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
     end
-    remote.call("freeplay", "set_chart_distance", distance)
+    remote.call("freeplay", "set_chart_distance", distanceTiles)
 end
 
 Utils.DisableIntroMessage = function()
@@ -906,6 +984,11 @@ Utils.DisplayTimeOfTicks = function(inputTicks, displayLargestTimeUnit, displayS
     end
 end
 
+---@param entityToClone table @Any entity prototype.
+---@param newEntityName string
+---@param subgroup string
+---@param collisionMask CollisionMask
+---@return table @A simple entity prototype.
 Utils.CreatePlacementTestEntityPrototype = function(entityToClone, newEntityName, subgroup, collisionMask)
     -- Doesn't handle mipmaps at all presently. Also ignores any of the extra data in an icons table of "Types/IconData". Think this should just duplicate the target icons table entry.
     local clonedIcon = entityToClone.icon
@@ -988,6 +1071,10 @@ Utils.GetPositionForAngledDistance = function(startingPos, distance, angle)
     return newPos
 end
 
+---@param startingPos Position
+---@param distance number
+---@param orientation double
+---@return Position
 Utils.GetPositionForOrientationDistance = function(startingPos, distance, orientation)
     return Utils.GetPositionForAngledDistance(startingPos, distance, orientation * 360)
 end
@@ -1165,6 +1252,7 @@ Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGr
     return itemAllMoved
 end
 
+---@param builder EntityActioner
 Utils.GetBuilderInventory = function(builder)
     if builder.is_player() then
         return builder.get_main_inventory()
@@ -1175,15 +1263,24 @@ Utils.GetBuilderInventory = function(builder)
     end
 end
 
+---@param actioner EntityActioner
+---@return LuaPlayer[] @Table of players or nil.
+---@return LuaForce[] @Table of forces or nil.
 Utils.GetRenderPlayersForcesFromActioner = function(actioner)
-    if actioner.is_player() then
-        return {players = {actioner}, forces = nil}
+    if actioner == nil then
+        -- Is a script.
+        return nil, nil
+    elseif actioner.is_player() then
+        -- Is a player.
+        return {actioner}, nil
     else
-        -- Is construction bot
-        return {players = nil, forces = {actioner.force}}
+        -- Is construction bot.
+        return nil, {actioner.force}
     end
 end
 
+---@param repeat_count int|nil @Defaults to 1 if not provided
+---@return Sprite
 Utils.EmptyRotatedSprite = function(repeat_count)
     return {
         direction_count = 1,
@@ -1194,17 +1291,19 @@ Utils.EmptyRotatedSprite = function(repeat_count)
     }
 end
 
+--[[
+    This function will set trackingTable to have the below entry. Query these keys in calling function:
+        trackingTable {
+            fuelName = STRING,
+            fuelCount = INT,
+            fuelValue = INT,
+        }
+--]]
+---@param trackingTable table @reference to an existing table that the function will populate.
+---@param itemName string
+---@param itemCount uint
+---@return boolean|nil @Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
 Utils.TrackBestFuelCount = function(trackingTable, itemName, itemCount)
-    --[[
-        The "trackingTable" argument should be an empty table created in the calling function. It should be passed in to each calling of this function to track the best fuel.
-        The function returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
-        This function will set trackingTable to have the below entry. Query these keys in calling function:
-            trackingTable {
-                fuelName = STRING,
-                fuelCount = INT,
-                fuelValue = INT,
-            }
-    --]]
     local itemPrototype = game.item_prototypes[itemName]
     local fuelValue = itemPrototype.fuel_value
     if fuelValue == nil then
@@ -1413,30 +1512,34 @@ Utils.StringTrim = function(text)
     return string.match(text, "^()%s*$") and "" or string.match(text, "^%s*(.*%S)")
 end
 
+---@param orientation double @Will be rounded to the nearest cardinal or intercardinal direction.
+---@return defines.direction
 Utils.OrientationToDirection = function(orientation)
     return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
 end
 
-Utils.DirectionToOrientation = function(direction)
-    return direction / 8
+---@param directionValue defines.direction
+---@return double
+Utils.DirectionToOrientation = function(directionValue)
+    return directionValue / 8
 end
 
-Utils.PushToList = function(list, itemsToPush)
-    -- Adds the items to the end of a list (table). Ignoring their keys.
-    for _, item in pairs(itemsToPush) do
-        table.insert(list, item)
-    end
-end
-
+---@param directionValue defines.direction
+---@return string
 Utils.DirectionValueToName = function(directionValue)
     local names = {[0] = "north", [1] = "northeast", [2] = "east", [3] = "southeast", [4] = "south", [5] = "southwest", [6] = "west", [7] = "northwest"}
     return names[directionValue]
 end
 
-Utils.LoopDirectionValue = function(inputValue)
-    return Utils.LoopIntValueWithinRange(inputValue, 0, 7)
+---@param directionValue defines.direction
+---@return int
+Utils.LoopDirectionValue = function(directionValue)
+    return Utils.LoopIntValueWithinRange(directionValue, 0, 7)
 end
 
+---@param entity LuaEntity
+---@param killerForce LuaForce
+---@param killerCauseEntity LuaEntity|nil
 Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     if killerCauseEntity ~= nil then
         entity.die(killerForce, killerCauseEntity)
@@ -1445,8 +1548,10 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     end
 end
 
-Utils.MaxTrainStopLimit = 4294967295 -- uint
+Utils.MaxTrainStopLimit = 4294967295 ---@type uint
 
+---@param luaObject LuaBaseClass
+---@return LuaBaseClass|nil
 Utils.ReturnValidLuaObjectOrNil = function(luaObject)
     if luaObject == nil or not luaObject.valid then
         return nil

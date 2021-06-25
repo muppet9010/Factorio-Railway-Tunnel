@@ -1,7 +1,7 @@
 -- SAMPLE TEST FILE - MANDATORY FUNCTIONS ARE INCLUDED
 -- Any created test has to be added to the test list at the top of test-manager.lua.
 -- A single test is run at a time and if the test is successful the map is cleared and the next test started. Each test only has to manage its own activities and feed back via the listed Interfaces.
--- The referenced TestFunctions file has comments on the public functions for their use.
+-- The referenced TestFunctions file has comments on the functions for their use.
 -- Tests should only use thier own blueprint items lists and any searched based off thier own tracked entities. SO no getting a forces train list, etc. This is to enable future concurrent running of tests.
 
 local Test = {}

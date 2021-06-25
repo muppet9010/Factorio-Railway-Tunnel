@@ -21,30 +21,30 @@ local SetupValues = {
 }
 
 ---@class Portal
----@field public id uint @unit_number of the placed tunnel portal entity.
----@field public entity LuaEntity @
----@field public entityDirection defines.direction @the expected direction of the portal. Can't block Editor users from rotating the portal entity so need to be able to check if its changed.
----@field public endSignals table<TunnelSignalDirection, PortalEndSignal> @These are the inner locked red signals that a train paths at to enter the tunnel.
----@field public entrySignals table<TunnelSignalDirection, PortalEntrySignal> @These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. The portals OUT direction signals are synced with their corrisponding underground OUT signals every tick.
----@field public tunnel Tunnel
----@field public portalRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the portal itself.
----@field public tunnelRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the connected tunnel for the portal.
----@field public tunnelOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the connected tunnel for the portal. Will be deleted before the tunnelRailEntities.
----@field public entranceSignalBlockingTrainEntity LuaEntity @the locomotive entity thats blocking the entrance signal.
----@field public entranceDistanceFromCenter uint @the distance in tiles of the entrance from the portal center.
----@field public portalEntrancePosition Position @the position of the entrance to the portal.
----@field public entranceUsageDetectorEntity LuaEntity @hidden entity on the entrance to the portal that's death signifies a train is coming on to the portal's rails unexpectedly.
+---@field id uint @unit_number of the placed tunnel portal entity.
+---@field entity LuaEntity @
+---@field entityDirection defines.direction @the expected direction of the portal. Can't block Editor users from rotating the portal entity so need to be able to check if its changed.
+---@field endSignals table<TunnelSignalDirection, PortalEndSignal> @These are the inner locked red signals that a train paths at to enter the tunnel.
+---@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. The portals OUT direction signals are synced with their corrisponding underground OUT signals every tick.
+---@field tunnel Tunnel
+---@field portalRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the portal itself.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the connected tunnel for the portal.
+---@field tunnelOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the connected tunnel for the portal. Will be deleted before the tunnelRailEntities.
+---@field entranceSignalBlockingTrainEntity LuaEntity @the locomotive entity thats blocking the entrance signal.
+---@field entranceDistanceFromCenter uint @the distance in tiles of the entrance from the portal center.
+---@field portalEntrancePosition Position @the position of the entrance to the portal.
+---@field entranceUsageDetectorEntity LuaEntity @hidden entity on the entrance to the portal that's death signifies a train is coming on to the portal's rails unexpectedly.
 
 ---@class PortalSignal
----@field public id uint @unit_number of this signal.
----@field public direction TunnelSignalDirection
----@field public entity LuaEntity
----@field public portal Portal
+---@field id uint @unit_number of this signal.
+---@field direction TunnelSignalDirection
+---@field entity LuaEntity
+---@field portal Portal
 
 ---@class PortalEndSignal : PortalSignal
 
 ---@class PortalEntrySignal : PortalSignal
----@field public undergroundSignalPaired UndergroundSignal @the underground signal thats paired with this one.
+---@field undergroundSignalPaired UndergroundSignal @the underground signal thats paired with this one.
 
 TunnelPortals.CreateGlobals = function()
     global.tunnelPortals = global.tunnelPortals or {}
@@ -104,7 +104,7 @@ TunnelPortals.OnBuiltEntity = function(event)
 end
 
 ---@param placementEntity LuaEntity
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@return boolean
 TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
@@ -148,7 +148,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
 end
 
 ---@param startingTunnelPortalEntity LuaEntity
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@param portal Portal
 ---@return boolean
 ---@return LuaEntity[]
@@ -569,10 +569,10 @@ TunnelPortals.AddEntranceUsageDetectionEntityToPortal = function(portal, retry)
     return TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition(nil, portal, aboveSurface, position, retry)
 end
 
----@param event table @Event is a table returned by the scheduler including an inner "data" table attribute. Event data table contains the other params posted back to itself.
----@param portal Portal @
----@param aboveSurface LuaSurface @
----@param position Position @
+---@param event ScheduledEvent
+---@param portal Portal
+---@param aboveSurface LuaSurface
+---@param position Position
 ---@param retry boolean @If to retry next tick should it not be placable.
 ---@return LuaEntity @The entranceUsageDetectorEntity if successfully placed.
 TunnelPortals.TryCreateEntranceUsageDetectionEntityAtPosition = function(event, portal, aboveSurface, position, retry)

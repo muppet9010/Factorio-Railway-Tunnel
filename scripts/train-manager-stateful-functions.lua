@@ -46,8 +46,10 @@ TrainManagerStateFuncs.HandleTrainNewlyEntering = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain
 
     -- Schedule has been transferred to dummy train.
+
     enteringTrain.schedule = {
-        current = 1,
+        current = 1, ---@type uint
+        ---@type TrainScheduleRecord[]
         records = {
             {station = "ENTERING TUNNEL - EDIT LEAVING TRAIN"}
         }
@@ -176,9 +178,10 @@ end
 ---@param trainAttributeName string
 ---@param absoluteSpeed double
 TrainManagerStateFuncs.SetAbsoluteTrainSpeed = function(managedTrain, trainAttributeName, absoluteSpeed)
-    local train = managedTrain[trainAttributeName]
+    local train = managedTrain[trainAttributeName] ---@type LuaTrain
 
-    -- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.
+    -- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.]
+
     local trainSpeed = train.speed
     if trainSpeed > 0 then
         managedTrain[trainAttributeName .. "Forwards"] = true
@@ -301,9 +304,10 @@ end
 
 ---@param train LuaTrain
 ---@param aboveEntrancePortalEndSignal PortalEndSignal
+---@param traversingTunnel boolean
 ---@return ManagedTrain
 TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntrancePortalEndSignal, traversingTunnel)
-    ---@type Id, double
+    ---@typelist Id, double
     local trainId, trainSpeed = train.id, train.speed
     ---@type ManagedTrain
     local managedTrain = {
@@ -326,6 +330,7 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
         -- Normal tunnel usage.
         managedTrain.enteringTrain = train
         managedTrain.enteringTrainId = trainId
+
         global.trainManager.trainIdToManagedTrain[trainId] = {
             trainId = trainId,
             managedTrain = managedTrain,

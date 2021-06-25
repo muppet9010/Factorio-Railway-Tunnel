@@ -91,7 +91,7 @@ TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, te
 end
 
 --- Schedule an event named function once at a given tick. To be called from Start().
----@param tick Ticks
+---@param tick Tick
 ---@param testName TestName
 ---@param eventName string @Name of the event to trigger.
 ---@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
@@ -177,15 +177,15 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
 end
 
 ---@class TrainSnapshot
----@field public carriageCount uint @how many carriages are in this train.
----@field public carriages CarriageSnapshot[]
+---@field carriageCount uint @how many carriages are in this train.
+---@field carriages CarriageSnapshot[]
 
 ---@class CarriageSnapshot
----@field public name string @Entity prototype name
----@field public health float @How much health the carriage has.
----@field public facingForwards boolean @If the carriage is facing forwards relative to the train's front.
----@field public cargoInventory string @The cargo of non-locomotives as a JSON string.
----@field public color string @Color attribute as a JSON string.
+---@field name string @Entity prototype name
+---@field health float @How much health the carriage has.
+---@field facingForwards boolean @If the carriage is facing forwards relative to the train's front.
+---@field cargoInventory string @The cargo of non-locomotives as a JSON string.
+---@field color string @Color attribute as a JSON string.
 
 --- Returns an abstract meta data of a train to be compared later.
 ---@param train LuaTrain
@@ -323,6 +323,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
     -- Utility function to build a blueprint from a string on the test surface.
     -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
     -- Returns the list of directly placed entities and scripted player interactable tunnel entities. Any other script reaction to entities being revived will lead to invalid entity references in the returned result.
+
     local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]
     local itemStack = player.cursor_stack

@@ -5,33 +5,33 @@ local TunnelAlignment, TunnelSignalDirection = Common.TunnelAlignment, Common.Tu
 local Underground = {}
 
 ---@class UndergroundSurface
----@field public alignment TunnelAlignment
----@field public surface LuaSurface
----@field public refRails LuaEntity[] @table of the rail entities on this underground that are to be cloned for each tunnel instance.
----@field public trackLengthEachSide uint @the distance of the ref rails each side of 0 on this surface.
----@field public railAlignmentAxis Axis @the axis that the underground rails per tunnel are aligned upon (direction of travel).
----@field public tunnelInstanceAxis Axis @the axis that each tunnel instance is spaced along underground (rows of tunnel's tracks).
+---@field alignment TunnelAlignment
+---@field surface LuaSurface
+---@field refRails LuaEntity[] @table of the rail entities on this underground that are to be cloned for each tunnel instance.
+---@field trackLengthEachSide uint @the distance of the ref rails each side of 0 on this surface.
+---@field railAlignmentAxis Axis @the axis that the underground rails per tunnel are aligned upon (direction of travel).
+---@field tunnelInstanceAxis Axis @the axis that each tunnel instance is spaced along underground (rows of tunnel's tracks).
 
 ---@class UndergroundTunnel
----@field public id Id @Id is a unique list for each alignment.
----@field public alignment TunnelAlignment
----@field public tunnel Tunnel @parent tunnel.
----@field public undergroundSurface UndergroundSurface
----@field public tunnelInstanceValue uint @this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
----@field public undergroundOffsetFromSurface Position @position offset of the underground entities from the surface entities.
----@field public surfaceOffsetFromUnderground Position @position offset of the surface entities from the undergroud entities.
----@field public undergroundLeadInTiles uint @the tiles lead in of rail from 0
----@field public undergroundSignals table<Id, UndergroundSignal>
----@field public distanceBetweenPortalCenters uint @The distance from the underground tunnel center to the portal center.
----@field public tunnelRailCenterValue uint @The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
+---@field id Id @Id is a unique list for each alignment.
+---@field alignment TunnelAlignment
+---@field tunnel Tunnel @parent tunnel.
+---@field undergroundSurface UndergroundSurface
+---@field tunnelInstanceValue uint @this tunnels static value of the tunnelInstanceAxis for the copied (moving) train carriages.
+---@field undergroundOffsetFromSurface Position @position offset of the underground entities from the surface entities.
+---@field surfaceOffsetFromUnderground Position @position offset of the surface entities from the undergroud entities.
+---@field undergroundLeadInTiles uint @the tiles lead in of rail from 0
+---@field undergroundSignals table<Id, UndergroundSignal>
+---@field distanceBetweenPortalCenters uint @The distance from the underground tunnel center to the portal center.
+---@field tunnelRailCenterValue uint @The tunnelRailCenterValue is for the railAlignmentAxis and has to be based on 1 tile offset from 0 as this is the rail grid. It does mean that odd track count tunnels are never centered around 0.
 
 ---@class UndergroundSignal
----@field public id UnitNumber @unit_number of this signal.
----@field public entity LuaEntity
----@field public aboveGroundSignalPaired PortalEndSignal @the aboveground signal thats paired with this one.
----@field public signalStateCombinator LuaEntity @the combinator controlling if this signal is forced closed or not.
----@field public signalStateCombinatorControlBehavior LuaCombinatorControlBehavior @cached reference to the ControlBehavior of this undergroundSignal's signalStateCombinator.
----@field public currentSignalStateCombinatorEnabled boolean @cached copy of if the combiantor was last enabled or not.
+---@field id UnitNumber @unit_number of this signal.
+---@field entity LuaEntity
+---@field aboveGroundSignalPaired PortalEndSignal @the aboveground signal thats paired with this one.
+---@field signalStateCombinator LuaEntity @the combinator controlling if this signal is forced closed or not.
+---@field signalStateCombinatorControlBehavior LuaCombinatorControlBehavior @cached reference to the ControlBehavior of this undergroundSignal's signalStateCombinator.
+---@field currentSignalStateCombinatorEnabled boolean @cached copy of if the combiantor was last enabled or not.
 
 Underground.CreateGlobals = function()
     global.underground = global.underground or {}

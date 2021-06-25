@@ -11,25 +11,18 @@ local Force = require("scripts/force")
 local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local Events = require("utility/events")
 
----@class Id : uint @id attribute of this thing.
----@class UnitNumber : uint @unit_number of the related entity.
----@alias Axis "'x'"|"'y'"
----@class PlayerIndex:uint @Player index attribute.
----@alias EntityBuildPlacer LuaPlayer|LuaEntity|nil @The placer of a built entity: either player, construction robot or script(nil).
----@class Ticks : int
----@class Seconds : int
-
 local function CreateGlobals()
     global.debugRelease = true -- If TRUE it runs key code in a try/catch. Makes code run slower technically.
     global.strictStateHandling = true -- If TRUE unexpected edge cases will raise an error, otherwise they just print to the screen and are handled in some rought manner.
 
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
+    TrainManagerRemote.CreateGlobals()
+    TrainManagerPlayerContainers.CreateGlobals()
     TunnelManager.CreateGlobals()
     TunnelPortals.CreateGlobals()
     TunnelSegments.CreateGlobals()
     Underground.CreateGlobals()
-    TrainManagerPlayerContainers.CreateGlobals()
 
     TestManager.CreateGlobals()
 end

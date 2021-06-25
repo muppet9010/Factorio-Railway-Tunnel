@@ -9,23 +9,23 @@ local Utils = require("utility/utils")
     Notes: We have to handle the "placed" versions being built as this is what blueprints get and when player is in the editor in "entity" mode and pipette's a placed entity. All other player modes select the placement item with pipette.
 ]]
 ---@class Tunnel
----@field public id Id @unqiue id of the tunnel.
----@field public alignment TunnelAlignment
----@field public alignmentOrientation TunnelAlignmentOrientation
----@field public railAlignmentAxis Axis @ref to the undergroundTunnel's railAlignmentAxis.
----@field public tunnelAlignmentAxis Axis @ref to the undergroundTunnel's tunnelAlignmentAxis.
----@field public aboveSurface LuaSurface
----@field public undergroundTunnel UndergroundTunnel
----@field public portals Portal[]
----@field public segments Segment[]
----@field public managedTrain ManagedTrain @one is currently using this tunnel.
----@field public tunnelRailEntities table<UnitNumber, LuaEntity> @the rail entities of the tunnel (invisible rail) on the surface.
+---@field id Id @unqiue id of the tunnel.
+---@field alignment TunnelAlignment
+---@field alignmentOrientation TunnelAlignmentOrientation
+---@field railAlignmentAxis Axis @ref to the undergroundTunnel's railAlignmentAxis.
+---@field tunnelAlignmentAxis Axis @ref to the undergroundTunnel's tunnelAlignmentAxis.
+---@field aboveSurface LuaSurface
+---@field undergroundTunnel UndergroundTunnel
+---@field portals Portal[]
+---@field segments Segment[]
+---@field managedTrain ManagedTrain @one is currently using this tunnel.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the rail entities of the tunnel (invisible rail) on the surface.
 
 ---@class TunnelDetails
----@field public tunnelId Id @Id of the tunnel.
----@field public portals LuaEntity[] @Not in any special order.
----@field public segments LuaEntity[] @Not in any special order.
----@field public tunnelUsageId Id
+---@field tunnelId Id @Id of the tunnel.
+---@field portals LuaEntity[] @Not in any special order.
+---@field segments LuaEntity[] @Not in any special order.
+---@field tunnelUsageId Id
 
 Tunnel.CreateGlobals = function()
     global.tunnels = global.tunnels or {}

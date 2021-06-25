@@ -1006,6 +1006,7 @@ Test.GenerateTestScenarios = function(testName)
     Test.WriteTestScenariosToFile(testName)
 end
 
+---@param startingSpeed double
 Test.BuildTrain = function(buildStation, carriagesDetails, scheduleStation, playerInCarriageNumber, startingSpeed, scheduleTargetType)
     -- Build the train from the station heading west. Give each loco fuel, set target schedule and to automatic.
     local placedCarriage

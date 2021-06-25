@@ -48,7 +48,7 @@ local TestsToRun = {
     PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
     TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
-    PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
+    PathfinderWeightings = {enabled = true, testScript = require("tests/pathfinder-weightings")},
     InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
     InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
     InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
@@ -77,14 +77,14 @@ local TestsToRun = {
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 ---@class Test
----@field public testName TestName
----@field public enabled boolean
----@field public notInAllTests boolean
----@field public runTime Ticks
----@field public runLoopsMax uint
----@field public runLoopsCount uint
----@field public finished boolean
----@field public success boolean
+---@field testName TestName
+---@field enabled boolean
+---@field notInAllTests boolean
+---@field runTime Tick
+---@field runLoopsMax uint
+---@field runLoopsCount uint
+---@field finished boolean
+---@field success boolean
 
 ---@class TestName:string
 
@@ -99,7 +99,7 @@ TestManager.CreateGlobals = function()
     global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests ---@type boolean
     global.testManager.keepRunningTest = KeepRunningTest ---@type boolean
-    global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60 ---@type Ticks
+    global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60 ---@type Tick
     global.testManager.forceTestsFullSuite = ForceTestsFullSuite ---@type boolean
 end
 
@@ -178,6 +178,7 @@ TestManager.OnStartup = function()
     end
 end
 
+---@param event ScheduledEvent
 TestManager.WaitForPlayerThenRunTests = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
@@ -273,6 +274,7 @@ TestManager.OnPlayerCreated = function(event)
     TestManager.OnPlayerCreatedMakeCharacter({instanceId = player.index})
 end
 
+---@param event ScheduledEvent
 TestManager.OnPlayerCreatedMakeCharacter = function(event)
     -- Add a character since it was lost in surface destruction. Then go to Map Editor, that way if we leave map editor we have a character to return to.
     local player = game.get_player(event.instanceId)

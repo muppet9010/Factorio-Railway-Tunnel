@@ -6,21 +6,21 @@ local TunnelSegmentPlacedPlacementEntityNames = Common.TunnelSegmentPlacedPlacem
 local TunnelSegments = {}
 
 ---@class Segment
----@field public id UnitNumber @unit_number of the placed segment entity.
----@field public entity LuaEntity
----@field public tunnelRailEntities table<UnitNumber, LuaEntity> @the tunnel (invisible) rail entities within the tunnel segment.
----@field public signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
----@field public tunnel Tunnel
----@field public crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "tunnel_segment_surface_rail_crossing".
----@field public surfacePositionString SurfacePositionString @used to back match to surfaceSegmentPositions global object.
----@field public beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
----@field public trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
+---@field id UnitNumber @unit_number of the placed segment entity.
+---@field entity LuaEntity
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the tunnel (invisible) rail entities within the tunnel segment.
+---@field signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
+---@field tunnel Tunnel
+---@field crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "tunnel_segment_surface_rail_crossing".
+---@field surfacePositionString SurfacePositionString @used to back match to surfaceSegmentPositions global object.
+---@field beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
+---@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
 
 ---@class SurfacePositionString @the entities surface and position as a string.
 
 ---@class SurfaceSegmentPosition
----@field public id SurfacePositionString
----@field public segment Segment
+---@field id SurfacePositionString
+---@field segment Segment
 
 TunnelSegments.CreateGlobals = function()
     global.tunnelSegments = global.tunnelSegments or {}
@@ -69,7 +69,7 @@ TunnelSegments.OnBuiltEntity = function(event)
 end
 
 ---@param placementEntity LuaEntity
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@return boolean
 TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
     local centerPos, force, lastUser, directionValue, aboveSurface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
@@ -180,7 +180,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
 end
 
 ---@param startingTunnelSegment LuaEntity
----@param placer EntityBuildPlacer
+---@param placer EntityActioner
 ---@return boolean, LuaEntity[], LuaEntity[]
 TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, placer)
     local directionComplete, tunnelPortalEntities, tunnelSegmentEntities, directionValue = nil, {}, {}, startingTunnelSegment.direction

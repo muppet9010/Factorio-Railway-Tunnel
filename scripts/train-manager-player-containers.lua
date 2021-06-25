@@ -7,12 +7,12 @@ local RollingStockTypes = Common.RollingStockTypes
 -- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the managedTrain object passed in, rather than being abstracted.
 
 ---@class PlayerContainer
----@field public id UnitNumber @Unit_number of the player container entity.
----@field public entity LuaEntity @The player container entity the player is sitting in.
----@field public player LuaPlayer @The player the container is for.
----@field public undergroundCarriageEntity LuaEntity @The underground carriage entity this container is related to.
----@field public undergroundCarriageId UnitNumber @The unit_number of the underground carriage entity this container is related to.
----@field public managedTrain ManagedTrain @The global.trainManager.managedTrain object this is owned by.
+---@field id UnitNumber @Unit_number of the player container entity.
+---@field entity LuaEntity @The player container entity the player is sitting in.
+---@field player LuaPlayer @The player the container is for.
+---@field undergroundCarriageEntity LuaEntity @The underground carriage entity this container is related to.
+---@field undergroundCarriageId UnitNumber @The unit_number of the underground carriage entity this container is related to.
+---@field managedTrain ManagedTrain @The global.trainManager.managedTrain object this is owned by.
 
 TrainManagerPlayerContainers.CreateGlobals = function()
     global.playerContainers = global.playerContainers or {}
@@ -29,6 +29,7 @@ TrainManagerPlayerContainers.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TrainManagerPlayerContainers.OnToggleDrivingInputAfterChangedState", TrainManagerPlayerContainers.OnToggleDrivingInputAfterChangedState)
 end
 
+---@param event CustomInputEvent
 TrainManagerPlayerContainers.OnToggleDrivingInput = function(event)
     -- Called before the game tries to change driving state. So the player.vehicle is the players state before the change. Let the game do its natural thing and then correct the outcome if needed.
     -- Function is called before this tick's on_tick event runs and so we can safely schedule tick events for the same tick in this case.
@@ -64,6 +65,7 @@ TrainManagerPlayerContainers.OnPlayerDrivingChangedState = function(event)
     end
 end
 
+---@param event ScheduledEvent
 TrainManagerPlayerContainers.OnToggleDrivingInputAfterChangedState = function(event)
     -- Triggers after the OnPlayerDrivingChangedState() has run for this if it is going to.
     -- When the player is in editor mode the game announces the player entering and leaving vehicles. This doesn't happen in freeplay mode.
@@ -119,7 +121,7 @@ end
 ---@param driver LuaPlayer|LuaEntity
 ---@param playersCarriage LuaEntity
 TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, playersCarriage)
-    local player  ---@type LuaPlayer
+    local player  ---type LuaPlayer
     if not driver.is_player() then
         -- Is a character body player driving.
         player = driver.player
