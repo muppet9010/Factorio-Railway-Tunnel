@@ -483,7 +483,8 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
-TrainManagerStateFuncs.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason)
+---@param releaseTunnel boolean|nil @If nil then tunnel is released (true).
+TrainManagerStateFuncs.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
     TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain, defines.signal_state.open) -- Reset the underground Exit signal state to open for the next train.
     if managedTrain.undergroundTrain then
         TrainManagerPlayerContainers.On_TerminateTunnelTrip(managedTrain.undergroundTrain)
@@ -491,7 +492,9 @@ TrainManagerStateFuncs.TerminateTunnelTrip = function(managedTrain, tunnelUsageC
     end
     TrainManagerStateFuncs.RemoveManagedTrainEntry(managedTrain)
 
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", managedTrain)
+    if releaseTunnel == nil or releaseTunnel == true then
+        Interfaces.Call("Tunnel.TrainReleasedTunnel", managedTrain)
+    end
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.terminated, tunnelUsageChangeReason)
 end
 

@@ -43,7 +43,6 @@ Tunnel.OnLoad = function()
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainFinishedEnteringTunnel", Tunnel.TrainFinishedEnteringTunnel)
-    Interfaces.RegisterInterface("Tunnel.TrainStartedExitingTunnel", Tunnel.TrainStartedExitingTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReleasedTunnel", Tunnel.TrainReleasedTunnel)
     Interfaces.RegisterInterface("Tunnel.On_PortalReplaced", Tunnel.On_PortalReplaced)
     Interfaces.RegisterInterface("Tunnel.On_SegmentReplaced", Tunnel.On_SegmentReplaced)
@@ -153,25 +152,18 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReservedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.UsingEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveExitPortal)
     managedTrain.tunnel.managedTrain = managedTrain
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.CloseEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal)
-end
-
----@param managedTrain ManagedTrain
-Tunnel.TrainStartedExitingTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.UsingEntranceSignalForManagedTrain", managedTrain.aboveExitPortal)
+    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveEntrancePortal)
-    Interfaces.Call("TunnelPortals.OpenEntranceSignalForManagedTrain", managedTrain.aboveExitPortal)
+    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal, true)
+    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveExitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
         managedTrain.tunnel.managedTrain = nil

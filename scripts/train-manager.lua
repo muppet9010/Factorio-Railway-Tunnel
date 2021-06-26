@@ -112,20 +112,16 @@ end
 ---@param aboveEntrancePortalEndSignal PortalEndSignal
 TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, aboveEntrancePortalEndSignal)
     -- Check if this train is already using the tunnel in some way.
-    local existingTrainIDTrackedObject, oldManagedTrainEntry, overwriteTunnelReservation = global.trainManager.trainIdToManagedTrain[enteringTrain.id], nil, false
+    local existingTrainIDTrackedObject, oldManagedTrain, tunnelTransferReason = global.trainManager.trainIdToManagedTrain[enteringTrain.id], nil, nil
     if existingTrainIDTrackedObject ~= nil then
         if existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.leftTrain then
             -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
-            oldManagedTrainEntry = existingTrainIDTrackedObject.managedTrain
-            -- Terminate the old tunnel usage that was delayed until this point. Don't try to reverse the tunnel usage as this event has naturally happened and the old tunnel usage was effectively over anyways.
-            TrainManagerStateFuncs.TerminateTunnelTrip(oldManagedTrainEntry, TunnelUsageChangeReason.reversedAfterLeft)
+            oldManagedTrain = existingTrainIDTrackedObject.managedTrain
+            tunnelTransferReason = TunnelUsageChangeReason.reversedAfterLeft
         elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrack then
             -- Train was using the portal track and is now entering the tunnel.
-            oldManagedTrainEntry = existingTrainIDTrackedObject.managedTrain
-            overwriteTunnelReservation = true
-            -- Remove the portalTrack ManagedTrain before the new one is added. The new ManagedTrain will silently take over the reservations.
-            TrainManagerStateFuncs.RemoveManagedTrainEntry(oldManagedTrainEntry)
-            TrainManagerRemote.TunnelUsageChanged(oldManagedTrainEntry.id, TunnelUsageAction.terminated, TunnelUsageChangeReason.enteringFromPortalTrack)
+            oldManagedTrain = existingTrainIDTrackedObject.managedTrain
+            tunnelTransferReason = TunnelUsageChangeReason.enteringFromPortalTrack
         else
             error("Unsupported situation")
         end
@@ -134,15 +130,12 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
     local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(enteringTrain, aboveEntrancePortalEndSignal, true)
     managedTrain.primaryTrainPartName, managedTrain.enteringTrainState, managedTrain.undergroundTrainState, managedTrain.leavingTrainState = PrimaryTrainPartNames.approaching, EnteringTrainStates.approaching, UndergroundTrainStates.travelling, LeavingTrainStates.pre
     TrainManagerStateFuncs.CreateUndergroundTrainObject(managedTrain)
-    if not overwriteTunnelReservation then
-        Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
-    else
-        -- Silently update the tunnel reservation without changing the tunnel entities. Edge case for PortalTrack to Tunnel usage upgrade.
-        managedTrain.tunnel.managedTrain = managedTrain
-    end
-    if oldManagedTrainEntry ~= nil then
+    Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
+    if oldManagedTrain ~= nil then
+        -- Terminate the old tunnel reservation, but don't release the tunnel as we have just overwritten its user already.
+        TrainManagerStateFuncs.TerminateTunnelTrip(oldManagedTrain, tunnelTransferReason, false)
         -- Include in the new train approaching event the old leftTrain entry id that has been stopped.
-        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, oldManagedTrainEntry.id)
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, oldManagedTrain.id)
     else
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching)
     end
@@ -155,7 +148,6 @@ TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
     local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelSignalDirection.inSignal], false)
     TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, trainOnPortalTrack)
     managedTrain.primaryTrainPartName = PrimaryTrainPartNames.portalTrack
-    Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.portalTrack)
 end
 
@@ -527,7 +519,6 @@ TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
 
     -- Follow up items post train creation.
     TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
-    Interfaces.Call("Tunnel.TrainStartedExitingTunnel", managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startedLeaving)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leavingCarriageAdded)
     TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain, defines.signal_state.open) -- Reset the underground Exit signal state as the leaving train will now detect any signals.
@@ -773,7 +764,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         error("Should be either valid or nil. Meant to be updated when the reversal function is called.")
     end
 
-    -- Release the tunnel from the old train manager. Later in this function it will be reclaimed accordingly.
+    -- Release the tunnel from the old train manager. This will try to return the entrance detection entities to both ends. In this function it will be reclaimed accordingly.
     Interfaces.Call("Tunnel.TrainReleasedTunnel", oldManagedTrain)
 
     ---@type ManagedTrain
@@ -809,6 +800,8 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.tunnel = oldManagedTrain.tunnel
     newManagedTrain.undergroundTunnel = oldManagedTrain.undergroundTunnel
     newManagedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(newManagedTrain.aboveExitPortal.portalEntrancePosition, newManagedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
+
+    newManagedTrain.tunnel.managedTrain = newManagedTrain -- Claim the tunnel for the new train entity. This will mean when any detection entity is hit by the new train in any manner it will just be accepted.
 
     -- Get the schedule from what ever old train there was.
     local newTrainSchedule
@@ -846,7 +839,6 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         end
     else
         newManagedTrain.enteringTrainState = EnteringTrainStates.finished
-        Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", newManagedTrain)
     end
 
     -- Handle new leaving train now all pre-req data set up.
@@ -882,9 +874,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         newManagedTrain.leavingTrainStoppingSignal = nil -- Intentionally reset this value.
         newManagedTrain.leavingTrainStoppingSchedule = nil -- Intentionally reset this value.
         TrainManagerFuncs.TrainSetSchedule(newManagedTrain.leavingTrain, newTrainSchedule, false, newManagedTrain.targetTrainStop, false)
-        Interfaces.Call("Tunnel.TrainStartedExitingTunnel", newManagedTrain)
     elseif oldManagedTrain.enteringTrainState == EnteringTrainStates.finished then
-        Interfaces.Call("Tunnel.TrainReservedTunnel", newManagedTrain) -- Claim the exit portal as no train leaving yet.
         newManagedTrain.leavingTrainState = LeavingTrainStates.pre
         newManagedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(newManagedTrain.aboveExitPortal.entity, newTrainSchedule, newManagedTrain.targetTrainStop, false)
         local dummyTrainId = newManagedTrain.dummyTrain.id ---@type Id

@@ -1,9 +1,12 @@
-Use the entranceUsageDetectorEntity to handle stopping approaching trains the whole time, rather than using the blocking (signal) loco. Move the blocking (signal) loco to be where the dummyLoco is. Maybe can use just 1 thing for both siganl blocking and dummy train?
-
-Pathfinder weightings have bene changed slightly it seems by recent changes.
+Entrance detection should be added when a protal is placed, not when the tunnel is completed. We stop you building carriages on portal tracks always, so should stop unexpected trains from driving on to them. Add/keep the signals when just the portal is placed, but have them force to red when no tunnel.
 
 Test the full reversal test suite now we've changed the tunnel reservation logic a bit. Also need to review the reversals setting of portal usage state with the addition/changes to the portal usage states.
 
+Use an upgrade event rather than termination for the portalTrack to entering managed train id changes.
+
+profile changes with "PostExitMultipleStationsWhenInTunnelLongTrain" to make sure I haven't made performance terrible.
+
+Update remote documentation.
 
 Bugs
 ----
@@ -15,7 +18,7 @@ Functionality not currently supported
         - Things that end up in the exit portals placement areas.
             - When a leaving carriage tries to be placed, if it fails check what blocked it.
             - If its part of the leavingTrain then error
-            - Otherwise kill the blocker and place a devider entity to stop any existing carraiges connecting to the newly placed carriage, then place the carriage again.
+            - Otherwise kill the blocker and place a devider entity to stop any existing carriages connecting to the newly placed carriage, then place the carriage again.
             - This is to cater for when things end up on the exit portal unexpected.
             - Once the leaving carriage is placed the speed control should let the tunnel just continue normally.
         - Handle player driven trains approaching the tunnel.
@@ -30,9 +33,8 @@ Functionality not currently supported
         - Handle 2 trains both trying to use the tunnel and its portals at once.
             - This first and second trains may each be coasting train, player driven or scheduled trains (not both scheduled).
             - This should be reduced by coasting trains and carriage add/remove logic.
-            - However a second train may end up on the portal and it must be stopped immediately upon the conflict being detected.
             - Need to check/handle if it prevents the placing of blocking or dummy locos or ends up on the tunnel placement area.
-            - Look at if we can easily detect when the train has fully moved on to the portal track and we can put the usage detection entity back down behid it before it has fully entered. Just lowers the chance of a train "sneaking" on to the portal tracks behind it.
+            - Look at if we can easily detect when the train has fully moved on to the portal track and we can put the usage detection entity back down behind it before it has fully entered. Just lowers the chance of a train "sneaking" on to the portal tracks behind it. Will have to get distance from back carriage to end signal until the train starts entering and then we can use its length to tell when its fully across the threshold. If its a short train and it pulls on to the portal and stops, we can't easily tell where the end carriage away from the END signal is without measuring distance ?
 
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
         - Need to use the origional underground train as source for the others.

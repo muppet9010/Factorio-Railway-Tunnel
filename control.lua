@@ -60,7 +60,7 @@ local function OnLoad()
             ---@param entityUnitNumber UnitNumber
             ---@return TunnelDetails
             get_tunnel_details_for_entity = function(entityUnitNumber)
-                return TrainManagerRemote.GetTunnelDetailsForEntity(entityUnitNumber)
+                return TunnelManager.Remote_GetTunnelDetailsForEntity(entityUnitNumber)
             end
         }
     )
