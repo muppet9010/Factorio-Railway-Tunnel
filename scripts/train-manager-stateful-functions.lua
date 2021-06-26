@@ -305,13 +305,21 @@ end
 ---@param train LuaTrain
 ---@param aboveEntrancePortalEndSignal PortalEndSignal
 ---@param traversingTunnel boolean
+---@param upgradeManagedTrain ManagedTrain @An existing ManagedTrain that is being updated/overwritten with fresh data.
 ---@return ManagedTrain
-TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntrancePortalEndSignal, traversingTunnel)
+TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntrancePortalEndSignal, traversingTunnel, upgradeManagedTrain)
     ---@typelist Id, double
     local trainId, trainSpeed = train.id, train.speed
+    local managedTrainId
+    if upgradeManagedTrain then
+        managedTrainId = upgradeManagedTrain.id
+    else
+        managedTrainId = global.trainManager.nextManagedTrainId
+        global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1 ---@type Id
+    end
     ---@type ManagedTrain
     local managedTrain = {
-        id = global.trainManager.nextManagedTrainId,
+        id = managedTrainId,
         aboveEntrancePortalEndSignal = aboveEntrancePortalEndSignal,
         aboveEntrancePortal = aboveEntrancePortalEndSignal.portal,
         tunnel = aboveEntrancePortalEndSignal.portal.tunnel,
@@ -350,7 +358,6 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
         managedTrain.portalTrackTrainBySignal = false
     end
 
-    global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId + 1 ---@type Id
     global.trainManager.managedTrains[managedTrain.id] = managedTrain
     managedTrain.aboveSurface = managedTrain.tunnel.aboveSurface
     managedTrain.trainTravelOrientation = Utils.DirectionToOrientation(managedTrain.trainTravelDirection)

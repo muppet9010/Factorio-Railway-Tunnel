@@ -36,7 +36,8 @@ Get a custom event id via a remote interface call that can be registered to be n
 - Event Attributes:
     - Tunnel Usage Entry Object Attributes for this tunnel usage.
     - action: the action that occured (STRING):
-        - startApproaching: When the train is first detected as using the tunnel, the tunnel is reserved and an underground train created to force the approaching train to maintain its speed. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
+        - onPortalTrack: When the train has initially moved on to the tunnel portals tracks. This may be on route to use the tunnel or may be just moving on to some tracks within the portal. Either way the tunnel and the other portal are now reserved for this train. If the train leaves the portal track without using the tunnel the terminated action will be raised with a "changeReason" of "portalTrackReleased". If the train moves in to use the tunnel then the "startApproaching" or action will be raised when the train reserves the inner end signals.
+        - startApproaching: When the train has first reserved the tunnel by pathing across the inner end of a tunnel portal. The tunnel is reserved and an underground train created to force the approaching train to maintain its speed. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
         - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
         - reversedDuringUse: Raised if while the train was using the tunnel something happened to cause the train to start to reverse back out. Will be raised for the new tunnel usage and include the "replacedtunnelUsageId" attribute with the old usage id in it. The "changeReason" attribute will include the specific cause.
         - startedEntering: Raised when the train starts to enter and the first carriage of the "enteringTrain" has been removed. Will occur on the same tick as the first instance of "enteringCarriageRemoved".
@@ -51,6 +52,7 @@ Get a custom event id via a remote interface call that can be registered to be n
         - forwardPathLost: Raised for "reversedDuringUse" action. Is just to clarify why the train reversed during its use, in this case as the path out of the tunnel was lost and so the train had to reverse up the tunnel to reach its destination.
         - completedTunnelUsage: Raised for "terminated" action. The train finished leaving the portal tracks and the tunnel has been unlocked ready for future use. This is the successful completed clarification on the "terminated" action.
         - tunnelRemoved: Raised once a tunnel is removed (destroyed) while the train is using it.
+        - portalTrackReleased: Raised when a train that had entered a tunnels portal rails leaves without using the tunnel.
     - replacedtunnelUsageId: Normally nil, unless an old tunnel usage has been replaced by this new tunnel usage for some reason. When this occurs the new tunnel usage event data includes the old tunnel usage id as this attributes value. With the old tunnel usage reporting "terminated" action.
 
 

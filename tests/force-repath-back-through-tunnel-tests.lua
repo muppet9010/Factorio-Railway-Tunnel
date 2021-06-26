@@ -559,7 +559,7 @@ end
 Test.TunnelUsageChanged = function(event)
     local testName, testData = event.testName, TestFunctions.GetTestDataObject(event.testName)
 
-    if testData.managedTrainId == 0 and event.action == "startApproaching" then
+    if testData.managedTrainId == 0 and (event.action == "startApproaching" or event.action == "portalTrack") then
         -- Keep hold of managed train id.
         testData.managedTrainId = event.tunnelUsageId
     end

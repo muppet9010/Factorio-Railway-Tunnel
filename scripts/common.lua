@@ -300,7 +300,7 @@ Common.TunnelUsageAction = {
     startedLeaving = "startedLeaving", ---@type TunnelUsageAction
     leavingCarriageAdded = "leavingCarriageAdded", ---@type TunnelUsageAction
     fullyLeft = "fullyLeft", ---@type TunnelUsageAction
-    portalTrack = "portalTrack" ---@type TunnelUsageAction
+    onPortalTrack = "onPortalTrack" ---@type TunnelUsageAction
 }
 
 ---@class TunnelUsageChangeReason
@@ -310,8 +310,7 @@ Common.TunnelUsageChangeReason = {
     forwardPathLost = "forwardPathLost", ---@type TunnelUsageChangeReason
     completedTunnelUsage = "completedTunnelUsage", ---@type TunnelUsageChangeReason
     tunnelRemoved = "tunnelRemoved", ---@type TunnelUsageChangeReason
-    portalTrackReleased = "portalTrackReleased", ---@type TunnelUsageChangeReason
-    enteringFromPortalTrack = "enteringFromPortalTrack" ---@type TunnelUsageChangeReason
+    portalTrackReleased = "portalTrackReleased" ---@type TunnelUsageChangeReason
 }
 
 return Common

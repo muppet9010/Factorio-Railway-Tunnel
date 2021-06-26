@@ -1,12 +1,6 @@
-Entrance detection should be added when a protal is placed, not when the tunnel is completed. We stop you building carriages on portal tracks always, so should stop unexpected trains from driving on to them. Add/keep the signals when just the portal is placed, but have them force to red when no tunnel.
+Entrance detection should be added when a portal is placed, not when the tunnel is completed. We stop you building carriages on portal tracks always, so should stop unexpected trains from driving on to them. Add/keep the signals when just the portal is placed, but have them force to red when no tunnel.
 
-Test the full reversal test suite now we've changed the tunnel reservation logic a bit. Also need to review the reversals setting of portal usage state with the addition/changes to the portal usage states.
-
-Use an upgrade event rather than termination for the portalTrack to entering managed train id changes.
-
-profile changes with "PostExitMultipleStationsWhenInTunnelLongTrain" to make sure I haven't made performance terrible.
-
-Update remote documentation.
+Test the full reversal test suite now we've changed the tunnel reservation logic a bit. Also need to review the reversals setting of portal usage state with the addition/changes to the portal usage states. These tests fail currently.
 
 Bugs
 ----
