@@ -280,7 +280,7 @@ Common.TunnelUsageParts = {
     dummyTrain = "dummyTrain", ---@type TunnelUsageParts
     leavingTrain = "leavingTrain", ---@type TunnelUsageParts
     leftTrain = "leftTrain", ---@type TunnelUsageParts
-    portalTrack = "portalTrack" ---@type TunnelUsageParts
+    portalTrackTrain = "portalTrackTrain" ---@type TunnelUsageParts
 }
 
 ---@class LeavingTrainStoppingAtType

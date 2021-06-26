@@ -121,10 +121,6 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     tunnel.undergroundTunnel = Interfaces.Call("Underground.AssignUndergroundTunnel", tunnel)
     tunnel.railAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.railAlignmentAxis
     tunnel.tunnelAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.tunnelInstanceAxis
-
-    for _, portal in pairs(tunnelPortals) do
-        Interfaces.Call("TunnelPortals.On_PostTunnelCompleted", portal)
-    end
 end
 
 ---@param tunnel Tunnel

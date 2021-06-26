@@ -153,7 +153,7 @@ TrainManagerStateFuncs.TrainTracking_OnTrainCreated = function(event)
     elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.leftTrain then
         trainAttributeName = "leftTrain"
         trainIdAttributeName = "leftTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.portalTrack then
+    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
         trainAttributeName = "portalTrackTrain"
         trainIdAttributeName = "portalTrackTrainId"
     else
@@ -352,7 +352,7 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
         global.trainManager.trainIdToManagedTrain[trainId] = {
             trainId = trainId,
             managedTrain = managedTrain,
-            tunnelUsagePart = TunnelUsageParts.portalTrack
+            tunnelUsagePart = TunnelUsageParts.portalTrackTrain
         }
         managedTrain.portalTrackTrainInitiallyForwards = trainForwards
         managedTrain.portalTrackTrainBySignal = false

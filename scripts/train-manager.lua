@@ -119,7 +119,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
             replacedManagedTrain = existingTrainIDTrackedObject.managedTrain
             -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
             TrainManagerStateFuncs.TerminateTunnelTrip(replacedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, false)
-        elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrack then
+        elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
             -- Train was using the portal track and is now entering the tunnel.
             upgradeManagedTrain = existingTrainIDTrackedObject.managedTrain
             -- Just tidy up the managedTrain's entities its related globals before the new one overwrites it. No tunnel trip or underground train to be dealt with.
@@ -764,9 +764,6 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         error("Should be either valid or nil. Meant to be updated when the reversal function is called.")
     end
 
-    -- Release the tunnel from the old train manager. This will try to return the entrance detection entities to both ends. In this function it will be reclaimed accordingly.
-    Interfaces.Call("Tunnel.TrainReleasedTunnel", oldManagedTrain)
-
     ---@type ManagedTrain
     local newManagedTrain = {
         id = global.trainManager.nextManagedTrainId
@@ -801,7 +798,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.undergroundTunnel = oldManagedTrain.undergroundTunnel
     newManagedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(newManagedTrain.aboveExitPortal.portalEntrancePosition, newManagedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
 
-    newManagedTrain.tunnel.managedTrain = newManagedTrain -- Claim the tunnel for the new train entity. This will mean when any detection entity is hit by the new train in any manner it will just be accepted.
+    Interfaces.Call("Tunnel.TrainReservedTunnel", newManagedTrain) -- This just updates the tunnel so it knows who its new user is.
 
     -- Get the schedule from what ever old train there was.
     local newTrainSchedule
