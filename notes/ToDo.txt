@@ -5,6 +5,9 @@ Bugs
 Functionality not currently supported
 -------------------------------------
     - Interlinked abnormal tunnel usage cases:
+        - Move the dummy train to be behind the END signals.
+            - Is so that it dosn't have to worry about if there is a random train on that part of the portal.
+            - See if we can shrink this and the blocking loco sizes down, without letting things connect to them still. So they both fit in current space.
         - Things that end up in the exit portals placement areas.
             - When a leaving carriage tries to be placed, if it fails check what blocked it.
             - If its part of the leavingTrain then error
@@ -12,8 +15,13 @@ Functionality not currently supported
             - This is to cater for when things end up on the exit portal unexpected.
             - Once the leaving carriage is placed the speed control should let the tunnel just continue normally.
         - Handle player driven trains approaching the tunnel.
+            - Can change the player container to be a car and put a dummy character in the passenger seat (so no one else can get in). means the players train control will be natural.
+            - have the train being manually driven for the full tunnel usage.
+            - Can read the players input from the train part/vehicle they happen to be in.
+            - Apply the acceleration to the underground train and let it naturally push its speed to both the entering and leaving train parts.
+            - Apply the players direction input to the leaving train part if they're not in it.
             - Have it go through on auto for now from when it commits to when it starts leaving.
-            - Put the player in a pushing loco if needed when the train reaches other side and have the player inputs fed to the underground train somehow?
+            - Will need to add tests for manually driven trains beign changed to automatic at various points in their tunnel usage.
         - Handle the adding/removing a carriage from a train while its using a tunnel.
             - On on_train_created will detect changes to trains composition or can use the built, mining and destroyed events.
             - On adding carriages should set the train to go to the end of the tunnel on each carriage as vanilla would go to manual control.
