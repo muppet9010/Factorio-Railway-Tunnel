@@ -126,7 +126,7 @@ end
 
 ---@param tunnel Tunnel
 Tunnel.RemoveTunnel = function(tunnel)
-    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
+    Interfaces.Call("TrainManagerStateFuncs.On_TunnelRemoved", tunnel)
     for _, portal in pairs(tunnel.portals) do
         Interfaces.Call("TunnelPortals.On_TunnelRemoved", portal)
     end
@@ -184,7 +184,7 @@ Tunnel.On_PortalReplaced = function(tunnel, oldPortal, newPortal)
             break
         end
     end
-    Interfaces.Call("TrainManager.On_PortalReplaced", tunnel, newPortal)
+    Interfaces.Call("TrainManagerStateFuncs.On_PortalReplaced", tunnel, newPortal)
 end
 
 ---@param tunnel Tunnel
@@ -267,7 +267,7 @@ Tunnel.OnBuiltEntity = function(event)
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
 
-        if Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) then
+        if Interfaces.Call("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", train.id) then
             -- Carriage was built on a managed train, so this will be handled by seperate train manipulation tracking logic.
             return
         end

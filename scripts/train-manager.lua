@@ -105,11 +105,18 @@ TrainManager.OnLoad = function()
             TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.RegisterTrainOnPortalTrack, ...)
         end
     )
+    Interfaces.RegisterInterface(
+        "TrainManager.TrainStartedEntering",
+        function(...)
+            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.TrainStartedEntering, ...)
+        end
+    )
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
 end
 
 ---@param enteringTrain LuaTrain
 ---@param aboveEntrancePortalEndSignal PortalEndSignal
+---@return ManagedTrain
 TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, aboveEntrancePortalEndSignal)
     -- Check if this train is already using the tunnel in some way.
     local existingTrainIDTrackedObject, replacedManagedTrain, upgradeManagedTrain = global.trainManager.trainIdToManagedTrain[enteringTrain.id], nil, nil
@@ -139,15 +146,18 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
     else
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching)
     end
+    return managedTrain
 end
 
---- Used when a train is claiming a portals track (and thus the tunnel), but not plannign to actively use the tunnel yet. Is like the opposite to a leftTrain monitoring. Only reached by pathing trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
+--- Used when a train is claiming a portals track (and thus the tunnel), but not planning to actively use the tunnel yet. Is like the opposite to a leftTrain monitoring. Only reached by pathing trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
-    local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelSignalDirection.inSignal], false)
+    local aboveEntrancePortalEndSignal = portal.endSignals[TunnelSignalDirection.inSignal]
+    local managedTrain = TrainManagerStateFuncs.CreateManagedTrainObject(trainOnPortalTrack, aboveEntrancePortalEndSignal, false)
     TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, trainOnPortalTrack)
     managedTrain.primaryTrainPartName = PrimaryTrainPartNames.portalTrack
+    Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
 end
 
@@ -391,30 +401,53 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain ---@type LuaTrain
     local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
     -- managedTrain.enteringTrainForwards is updated by SetAbsoluteTrainSpeed().
-    TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed))
+    TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed), true)
     local nextCarriage = TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache(managedTrain, enteringTrain, managedTrain.enteringTrainForwards)
 
     -- Check the train is on the same axis as the tunnel and then measure its distance along the rail alignment axis.
     if nextCarriage.position[managedTrain.tunnel.tunnelAlignmentAxis] == managedTrain.aboveEntrancePortal.entity.position[managedTrain.tunnel.tunnelAlignmentAxis] and Utils.GetDistanceSingleAxis(nextCarriage.position, managedTrain.aboveEntrancePortalEndSignal.entity.position, managedTrain.tunnel.railAlignmentAxis) < 14 then
         -- Train is now committed to use the tunnel so prepare for the entering loop.
-        managedTrain.enteringTrainState = EnteringTrainStates.entering
-        managedTrain.primaryTrainPartName = PrimaryTrainPartNames.underground
-        managedTrain.targetTrainStop = enteringTrain.path_end_stop
-        managedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveExitPortal.entity, enteringTrain.schedule, managedTrain.targetTrainStop, false)
-        local dummyTrainId = managedTrain.dummyTrain.id
-        managedTrain.dummyTrainId = dummyTrainId
-        global.trainManager.trainIdToManagedTrain[dummyTrainId] = {
-            trainId = dummyTrainId,
-            managedTrain = managedTrain,
-            tunnelUsagePart = TunnelUsageParts.dummyTrain
-        }
-        managedTrain.undergroundTrainOldAbsoluteSpeed = math.abs(undergroundTrainSpeed)
-
-        TrainManagerStateFuncs.HandleTrainNewlyEntering(managedTrain)
-
-        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startedEntering) -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
+        TrainManager.TrainReadyToStartEntering(managedTrain, enteringTrain, undergroundTrainSpeed)
     end
 end
+
+---@param enteringTrain LuaTrain
+---@param portal Portal
+TrainManager.TrainStartedEntering = function(enteringTrain, portal)
+    -- Do the standard full train approaching ManagedTrain generation logic.
+    local aboveEntrancePortalEndSignal = portal.endSignals[TunnelSignalDirection.inSignal]
+    local managedTrain = TrainManager.RegisterTrainApproachingPortalSignal(enteringTrain, aboveEntrancePortalEndSignal)
+
+    -- Advance the state to when the carriage is removed as its already at that point.
+    local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
+    TrainManager.TrainReadyToStartEntering(managedTrain, enteringTrain, undergroundTrainSpeed)
+
+    -- Trigger the first carriage to vanish this tick as the trains already at this point, rather than wait a tick for the first PrcoessManagedTrains to cycle.
+    TrainManager.TrainEnteringOngoing(managedTrain)
+end
+
+---@param managedTrain ManagedTrain
+---@param enteringTrain LuaTrain
+---@param undergroundTrainSpeed double
+TrainManager.TrainReadyToStartEntering = function(managedTrain, enteringTrain, undergroundTrainSpeed)
+    managedTrain.enteringTrainState = EnteringTrainStates.entering
+    managedTrain.primaryTrainPartName = PrimaryTrainPartNames.underground
+    managedTrain.targetTrainStop = enteringTrain.path_end_stop
+    managedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveExitPortal.entity, enteringTrain.schedule, managedTrain.targetTrainStop, false)
+    local dummyTrainId = managedTrain.dummyTrain.id
+    managedTrain.dummyTrainId = dummyTrainId
+    global.trainManager.trainIdToManagedTrain[dummyTrainId] = {
+        trainId = dummyTrainId,
+        managedTrain = managedTrain,
+        tunnelUsagePart = TunnelUsageParts.dummyTrain
+    }
+    managedTrain.undergroundTrainOldAbsoluteSpeed = math.abs(undergroundTrainSpeed)
+
+    TrainManagerStateFuncs.HandleTrainNewlyEntering(managedTrain)
+
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startedEntering) -- The same tick the first carriage will be removed by TrainManager.TrainEnteringOngoing() and this will fire an event.
+end
+
 ---@param managedTrain ManagedTrain
 TrainManager.TrainEnteringOngoing = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain

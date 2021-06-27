@@ -527,7 +527,7 @@ TunnelPortals.EntranceUsageDetectorEntityDied = function(diedEntity, carriageEnt
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local trainIdToManagedTrain = Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
+        local trainIdToManagedTrain = Interfaces.Call("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
         if trainIdToManagedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
             local managedTrain = trainIdToManagedTrain.managedTrain
@@ -572,7 +572,7 @@ TunnelPortals.EntranceUsageDetectorEntityDied = function(diedEntity, carriageEnt
     -- Train has a player in it so we assume its being actively driven. Can only detect if player input is being entered right now, not the players intention.
     if #train.passengers ~= 0 then
         if portal.tunnel.managedTrain ~= nil then
-            -- Already a train using the tunnel. Makes life simplier to just block the manually driven train at the portal entrance.
+            -- There's already a train using the tunnel. Makes life simplier to just block the manually driven train at the portal entrance.
             train.speed = 0
             TunnelPortals.AddEntranceUsageDetectorEntityToPortal(portal, true)
             rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
@@ -603,14 +603,51 @@ TunnelPortals.EnteringTunnelDetectorEntityDied = function(diedEntity, carriageEn
         TunnelPortals.AddEnteringTunnelDetectorEntityToPortal(portal)
         return
     end
-    local train = carriageEnteringPortalTrack.train
 
     -- If no tunnel then this entity doesn't need to exist, so just ignore its death
     if portal.tunnel == nil then
         return
     end
 
-    --TODO: handle cases.
+    local train = carriageEnteringPortalTrack.train
+    local trainIdToManagedTrain = Interfaces.Call("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
+    local enteringManagedTrain = nil
+    if trainIdToManagedTrain ~= nil then
+        -- This train has reserved a tunnel somewhere, so get the ManagedTrain object.
+        enteringManagedTrain = trainIdToManagedTrain.managedTrain
+    end
+
+    -- If the tunnel is already in use then this dictates outcome options.
+    if portal.tunnel.managedTrain ~= nil then
+        if enteringManagedTrain ~= nil and enteringManagedTrain.id == portal.tunnel.managedTrain.id then
+            if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
+                -- This train is already entering the tunnel and has just overshot the end spot as going fast or something. This is fine.
+                return
+            elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
+                -- This is an upgrade from OnPortalTrack to Entering, skipping the approaching state.
+                Interfaces.Call("TrainManager.TrainStartedEntering", train, portal)
+                return
+            end
+        else
+            -- Another train is using the tunnel, so stop this one as its a bad state.
+            train.speed = 0
+            train.manual_mode = true
+            TunnelPortals.AddEnteringTunnelDetectorEntityToPortal(portal, true)
+            rendering.draw_text {text = "Tunnel already in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+            return
+        end
+    end
+
+    -- Coasting trains are stopped from using the tunnel.
+    if train.manual_mode and #train.passengers == 0 then
+        train.speed = 0
+        TunnelPortals.AddEnteringTunnelDetectorEntityToPortal(portal, true)
+        rendering.draw_text {text = "Unpowered trains can't use tunnels", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+        return
+    end
+
+    -- The train hasn't reserved the portal, but has ended up entering the tunnel regardless.
+    Interfaces.Call("TrainManager.TrainStartedEntering", train, portal)
 end
 
 --- Will try and place the entrance detection entity now and if not possible will keep on trying each tick until either successful or a tunnel state setting stops the attempts. Is safe to call if the entity already exists as will just abort (initally or when in per tick loop).
@@ -675,7 +712,6 @@ TunnelPortals.RemoveEntranceUsageDetectorEntityFromPortal = function(portal)
 end
 
 ---@param portal Portal
----@return LuaEntity
 TunnelPortals.AddEnteringTunnelDetectorEntityToPortal = function(portal)
     local portalEntity = portal.entity
     if portalEntity == nil or not portalEntity.valid or portal.enteringTunnelDetectorEntity ~= nil then
@@ -685,6 +721,7 @@ TunnelPortals.AddEnteringTunnelDetectorEntityToPortal = function(portal)
     local orientation = Utils.DirectionToOrientation(directionValue)
     local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.enteringTunnelDetectorEntityDistance}))
     portal.enteringTunnelDetectorEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_1x1", force = global.force.tunnelForce, position = position}
+    global.tunnelPortals.enteringTunnelDetectorEntityIdToPortal[portal.enteringTunnelDetectorEntity.unit_number] = portal
 end
 
 ---@param portal Portal

@@ -15,9 +15,9 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 TrainManagerStateFuncs.OnLoad = function()
     UndergroundSetUndergroundExitSignalStateFunction = Interfaces.GetNamedFunction("Underground.SetUndergroundExitSignalState")
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManagerStateFuncs.TrainTracking_OnTrainCreated)
-    Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManagerStateFuncs.On_TunnelRemoved)
-    Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManagerStateFuncs.On_PortalReplaced)
-    Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails)
+    Interfaces.RegisterInterface("TrainManagerStateFuncs.On_TunnelRemoved", TrainManagerStateFuncs.On_TunnelRemoved)
+    Interfaces.RegisterInterface("TrainManagerStateFuncs.On_PortalReplaced", TrainManagerStateFuncs.On_PortalReplaced)
+    Interfaces.RegisterInterface("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails)
 end
 
 --- Update the passed in train schedule if the train is currently heading for an underground tunnel rail. If so change the target rail to be the end of the portal. Avoids the train infinite loop pathing through the tunnel trying to reach a tunnel rail it never can.
@@ -174,15 +174,14 @@ TrainManagerStateFuncs.TrainTracking_OnTrainCreated = function(event)
     global.trainManager.trainIdToManagedTrain[newTrainId] = trackedTrainIdObject
 end
 
+--- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.]
 ---@param managedTrain ManagedTrain
 ---@param trainAttributeName string
 ---@param absoluteSpeed double
 TrainManagerStateFuncs.SetAbsoluteTrainSpeed = function(managedTrain, trainAttributeName, absoluteSpeed)
     local train = managedTrain[trainAttributeName] ---@type LuaTrain
-
-    -- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.]
-
     local trainSpeed = train.speed
+
     if trainSpeed > 0 then
         managedTrain[trainAttributeName .. "Forwards"] = true
         train.speed = absoluteSpeed
@@ -435,10 +434,10 @@ TrainManagerStateFuncs.GetUndergroundFirstWagonPosition = function(managedTrain)
     -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
     local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.aboveEntrancePortalEndSignal.entity, managedTrain.enteringTrainForwards)
 
-    -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
-    local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})
-    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveEntrancePortalEndSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
-    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromEndSignalsRail)
+    -- Apply the straight line distance to the above portal's end signal's rail.
+    local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail + 2}) -- Account for measuring oddity.
+    local signalsRail = managedTrain.aboveEntrancePortalEndSignal.entity.get_connected_rails()[1].position
+    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRail, firstCarriageOffsetFromEndSignalsRail)
 
     -- Get the underground position for this above ground spot.
     local firstCarriageUndergroundPosition = Utils.ApplyOffsetToPosition(firstCarriageAbovegroundPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
