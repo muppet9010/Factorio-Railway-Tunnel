@@ -1,5 +1,6 @@
 Bugs
 ----
+     -- Add test to rebuild a tunnel after a part has been removed.
 
 
 Functionality not currently supported

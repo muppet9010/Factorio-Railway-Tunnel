@@ -193,13 +193,14 @@ end
 ---@param startingTunnelPortalEntity LuaEntity
 ---@param placer EntityActioner
 ---@param portal Portal
----@return boolean
----@return LuaEntity[]
----@return LuaEntity[]
+---@return boolean @Direction is completed successfully.
+---@return LuaEntity[] @Tunnel portal entities.
+---@return LuaEntity[] @Tunnel segment entities.
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntity, placer, portal)
-    local directionValue, orientation = startingTunnelPortalEntity.direction, Utils.DirectionToOrientation(startingTunnelPortalEntity.direction)
+    local tunnelPortalEntities, tunnelSegmentEntities, directionValue, orientation = {}, {}, startingTunnelPortalEntity.direction, Utils.DirectionToOrientation(startingTunnelPortalEntity.direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
-    return Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer)
+    local directionComplete = Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer, tunnelPortalEntities, tunnelSegmentEntities)
+    return directionComplete, tunnelPortalEntities, tunnelSegmentEntities
 end
 
 ---@param portalEntities LuaEntity[]
