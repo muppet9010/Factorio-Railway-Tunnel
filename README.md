@@ -20,8 +20,7 @@ Usage Notes
 - The train signal reservation for leaving a tunnel may be sub optimal and so it's advised to have some track and a signal block for the train to emerge in to. The train may also pull up to a blocking signal slowly when leaving a tunnel.
 - Trains using a tunnel will never be exactly aligned for the entering and leaving parts, but will be very close. This is a technical limitation of how the mod syncs train speeds each tick and isn't a bug.
 - If a train is using a tunnel and some track in its path is removed, it will try and repath like normal Factorio (forwards/backwards) from the tunnel. If it can't path it will pull to the front of the tunnel so it can be accessed by the player easier.
-- Manually driven trains can not enter a tunnel due to technical reasons. They will be stopped at the tunnel portal entrance track.
-- Trains that aren't following an automatic schedule or beign manually driven will be prevented from entering the tunell portal's tracks. Tunnels are reserved for intentional train traffic and not free wheeling trains.
+- Trains that aren't following an automatic schedule or being manually driven will be prevented from entering the tunnel portal's tracks. Tunnels are reserved for intentional train traffic and not free coasting trains.
 - Any train using a tunnel that has an issue (runs out of fuel, has a carriage removed, etc) will be pushed out of the tunnel so it can be fixed by the player.
 - Destroyed tunnels will lose the train and players within.
 - While a train is entering a tunnel access by the player is restricted. The leaving train can be manipulated if needed.

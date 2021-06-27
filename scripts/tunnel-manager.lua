@@ -61,6 +61,7 @@ Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
+--- Handles when a train has an END signal as what it is now slowing down for. Shows that the train is trying to utilise a path across the tunnel and is wantign to reserve the tunnel track right now.
 ---@param event on_train_changed_state
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
@@ -153,13 +154,16 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal, true)
+    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectorEntityToPortal", managedTrain.aboveEntrancePortal, true)
+    Interfaces.Call("TunnelPortals.AddEnteringTunnelDetectorEntityToPortal", managedTrain.aboveEntrancePortal)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal, true)
-    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveExitPortal, true)
+    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectorEntityToPortal", managedTrain.aboveEntrancePortal, true)
+    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectorEntityToPortal", managedTrain.aboveExitPortal, true)
+    Interfaces.Call("TunnelPortals.AddEnteringTunnelDetectorEntityToPortal", managedTrain.aboveEntrancePortal)
+    Interfaces.Call("TunnelPortals.AddEnteringTunnelDetectorEntityToPortal", managedTrain.aboveExitPortal)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
         managedTrain.tunnel.managedTrain = nil

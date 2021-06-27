@@ -1,3 +1,11 @@
+- Handle player driven trains approaching the tunnel.
+    - have the train being manually driven for the full tunnel usage.
+    - Can read the players input from the train part/vehicle they happen to be in.
+    - Apply the acceleration to the underground train and let it naturally push its speed to both the entering and leaving train parts.
+    - Apply the players direction input to the leaving train part if they're not in it.
+    - Will need to add tests for manually driven trains being changed to automatic at various points in their tunnel usage.
+
+
 Bugs
 ----
      -- Add test to rebuild a tunnel after a part has been removed.
@@ -15,14 +23,6 @@ Functionality not currently supported
             - Otherwise kill the blocker and place a devider entity to stop any existing carriages connecting to the newly placed carriage, then place the carriage again.
             - This is to cater for when things end up on the exit portal unexpected.
             - Once the leaving carriage is placed the speed control should let the tunnel just continue normally.
-        - Handle player driven trains approaching the tunnel.
-            - Can change the player container to be a car and put a dummy character in the passenger seat (so no one else can get in). means the players train control will be natural.
-            - have the train being manually driven for the full tunnel usage.
-            - Can read the players input from the train part/vehicle they happen to be in.
-            - Apply the acceleration to the underground train and let it naturally push its speed to both the entering and leaving train parts.
-            - Apply the players direction input to the leaving train part if they're not in it.
-            - Have it go through on auto for now from when it commits to when it starts leaving.
-            - Will need to add tests for manually driven trains beign changed to automatic at various points in their tunnel usage.
         - Handle the adding/removing a carriage from a train while its using a tunnel.
             - On on_train_created will detect changes to trains composition or can use the built, mining and destroyed events.
             - On adding carriages should set the train to go to the end of the tunnel on each carriage as vanilla would go to manual control.
@@ -97,5 +97,5 @@ Code Improvements
         - Tunnel destroyed while player underground.
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey. This will indirectly confirm above and underground trains are in sync also.
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.
-    - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
+    - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and technically adds track lag.
     - Can we directly connect 2 signals on different surfaces by wires? If so can we use it save on syncing the exit signal from aboveground to underground?
