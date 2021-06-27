@@ -11,7 +11,7 @@ local SetupValues = {
     -- Tunnels distances are from the portal position (center).
     entranceFromCenter = -25,
     entrySignalsDistance = -23.5,
-    entranceUsageDetectorEntityDistance = -24.5,
+    entranceUsageDetectorEntityDistance = -24, -- Perfect distance that it isn't triggered if the train stops at the signals naturally.
     entrySignalBlockingLocomotiveDistance = -21.5,
     farInvisibleSignalsDistance = 23.5,
     endSignalBlockingLocomotiveDistance = 20.5,
