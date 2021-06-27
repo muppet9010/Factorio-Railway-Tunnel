@@ -181,19 +181,17 @@ end
 
 ---@param startingTunnelSegment LuaEntity
 ---@param placer EntityActioner
----@return boolean, LuaEntity[], LuaEntity[]
+---@return boolean @Direction is completed successfully.
+---@return LuaEntity[] @Tunnel portal entities.
+---@return LuaEntity[] @Tunnel segment entities.
 TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, placer)
-    local directionComplete, tunnelPortalEntities, tunnelSegmentEntities, directionValue = nil, {}, {}, startingTunnelSegment.direction
+    local tunnelPortalEntities, tunnelSegmentEntities, directionValue = {}, {}, startingTunnelSegment.direction
     for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
         -- Check "forwards" and then "backwards".
-        directionComplete, tunnelPortalEntities, tunnelSegmentEntities = Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer)
+        local directionComplete = Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelSegment, startingTunnelSegment.position, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
         if not directionComplete then
-            break
+            return false, tunnelPortalEntities, tunnelSegmentEntities
         end
-    end
-    if not directionComplete then
-        -- If last direction checked was good then tunnel is complete, as we reset it each loop.
-        return false, tunnelPortalEntities, tunnelSegmentEntities
     end
     return true, tunnelPortalEntities, tunnelSegmentEntities
 end

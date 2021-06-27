@@ -40,11 +40,15 @@ Common.RollingStockTypes = {
 ---@param startingTunnelPartPoint Position
 ---@param checkingDirection defines.direction
 ---@param placer EntityActioner
----@return boolean, LuaEntity[], LuaEntity[]
-Common.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer)
-    local tunnelPortalEntities, tunnelSegmentEntities = {}, {}
+---@return boolean @Direction is completed successfully.
+---@return LuaEntity[] @Tunnel portal entities.
+---@return LuaEntity[] @Tunnel segment entities.
+Common.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
     if Common.TunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
-        table.insert(tunnelSegmentEntities, startingTunnelPart)
+        -- Only include the starting tunnel segment when we are checking its direction, not when checking from it the other direction. Otherwise we double add it.
+        if checkingDirection == startingTunnelPart.direction then
+            table.insert(tunnelSegmentEntities, startingTunnelPart)
+        end
     elseif Common.TunnelPortalPlacedEntityNames[startingTunnelPart.name] then
         table.insert(tunnelPortalEntities, startingTunnelPart)
     else
@@ -76,7 +80,6 @@ Common.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, 
                 else
                     Common.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
                 end
-                table.insert(tunnelSegmentEntities, connectedTunnelEntity)
             else
                 error("unhandled railway_tunnel entity type")
             end
