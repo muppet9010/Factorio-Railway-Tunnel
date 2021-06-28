@@ -443,7 +443,7 @@ TrainManager.TrainReadyToStartEntering = function(managedTrain, enteringTrain, u
     managedTrain.targetTrainStop = enteringTrain.path_end_stop
 
     -- Create a dummy train even for manual driving so we have the schedule cached to reapply later.
-    managedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveExitPortal.entity, enteringTrain.schedule, managedTrain.targetTrainStop, false)
+    managedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveExitPortal.entity, enteringTrain.schedule, enteringTrain.manual_mode, managedTrain.targetTrainStop, false)
     local dummyTrainId = managedTrain.dummyTrain.id
     managedTrain.dummyTrainId = dummyTrainId
     global.trainManager.trainIdToManagedTrain[dummyTrainId] = {
@@ -469,8 +469,10 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
         TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
     end
 
-    -- Force an entering train to stay in manual mode.
-    enteringTrain.manual_mode = true
+    -- Force an entering train to stay in manual mode. If we set it every tick it loses manually driven trains player's input.
+    if not enteringTrain.manual_mode then
+        enteringTrain.manual_mode = true
+    end
 
     -- managedTrain.enteringTrainForwards is updated by SetAbsoluteTrainSpeed().
     TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "enteringTrain", math.abs(undergroundTrainSpeed))
@@ -485,7 +487,10 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
             TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel(managedTrain, driver, nextCarriage)
         end
 
+        -- Removing the carriage will lose any current manual driving player's inputs from remaining entering train carriages. So get them before the removal and apply back to the player's afterwards.
+        local thisTrainsPlayersRidingStates = TrainManagerFuncs.GetTrainsCurrentPassengersRidingStates(enteringTrain)
         nextCarriage.destroy()
+        TrainManagerFuncs.UpdateSavedPassengersRidingStates(thisTrainsPlayersRidingStates)
         -- Update local variable as new train number after removing carriage.
         enteringTrain = managedTrain.enteringTrain
 
@@ -578,7 +583,6 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
-    -- TODO: needs to handle manaully driven leaving trains.
     TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, managedTrain.dummyTrain)
 
     -- Cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
@@ -606,16 +610,18 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingOngoing = function(managedTrain)
-    -- Handle if the train is stopping at a signal or scheduled stop (train-stop or rail). Updates managedTrain.undergroundTrainSetsSpeed and the underground train path if required.
-    TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.signal)
-    TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.schedule)
+    if managedTrain.trainFollowingAutomaticSchedule then
+        -- Handle if the train is stopping at a signal or scheduled stop (train-stop or rail). Updates managedTrain.undergroundTrainSetsSpeed and the underground train path if required.
+        TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.signal)
+        TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.schedule)
+    end
 
-    local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
+    local undergroundTrainSpeed, leavingTrain = managedTrain.undergroundTrain.speed, managedTrain.leavingTrain
     TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
 
     -- Get the desired speed for this tick.
     local desiredSpeed
-    local leavingTrainSpeed = managedTrain.leavingTrain.speed
+    local leavingTrainSpeed = leavingTrain.speed
     if managedTrain.undergroundTrainSetsSpeed then
         desiredSpeed = math.abs(undergroundTrainSpeed)
     else
@@ -627,7 +633,7 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
         -- Theres nothing broken with the state, but the mod doesn't expect it so we need to identify if the train is reversing on its own accord. We have to do this rather than a front/rear stock check as theres no train composition change to test around here. Its just what the base game thinks the train is doing.
         if not TrainManagerStateFuncs.Check0OnlySpeedTrainWithLocoGoingExpectedDirection(managedTrain, "leavingTrain", desiredSpeed) then
             -- The leaving train is moving opposite to the underground train (desiredSpeed). So handle the reversal and stop processing.
-            managedTrain.targetTrainStop = managedTrain.leavingTrain.path_end_stop -- Update this cached value as we know its been updated and te old is invalid.
+            managedTrain.targetTrainStop = leavingTrain.path_end_stop -- Update this cached value as we know its been updated and te old is invalid.
             TrainManager.ReverseManagedTrainTunnelTrip(managedTrain)
             return
         end
@@ -638,7 +644,7 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
         local leavingTrainRearCarriage
         if managedTrain.leavingTrainRearCarriageCache == nil or managedTrain.leavingTrainRearCarriageCache.speedPositive ~= (leavingTrainSpeed > 0) then
             -- No cache entry or cache exists, but needs updating.
-            leavingTrainRearCarriage = TrainManagerFuncs.GetRearCarriageOfLeavingTrain(managedTrain.leavingTrain, managedTrain.leavingTrainPushingLoco)
+            leavingTrainRearCarriage = TrainManagerFuncs.GetRearCarriageOfLeavingTrain(leavingTrain, managedTrain.leavingTrainPushingLoco)
             managedTrain.leavingTrainRearCarriageCache = {
                 speedPositive = leavingTrainSpeed > 0,
                 carriage = leavingTrainRearCarriage
@@ -648,13 +654,17 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
             leavingTrainRearCarriage = managedTrain.leavingTrainRearCarriageCache.carriage
         end
         if Utils.GetDistanceSingleAxis(leavingTrainRearCarriage.position, managedTrain.aboveExitPortalEndSignal.entity.position, managedTrain.tunnel.railAlignmentAxis) > 20 then
-            -- Reattaching next carriage can clobber speed, schedule and will set train to manual, so preserve state.
-            local scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetTrainStopBeforeCarriageAttachment, leavingAbsoluteSpeedBeforeCarriageAttachment = managedTrain.leavingTrain.schedule, managedTrain.leavingTrain.manual_mode, managedTrain.leavingTrain.path_end_stop, math.abs(leavingTrainSpeed)
+            -- Reattaching next carriage will clobber speed, schedule, playe's manualRidingState and will set train to manual, so preserve state.
+            local scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetTrainStopBeforeCarriageAttachment, leavingAbsoluteSpeedBeforeCarriageAttachment, thisTrainsPlayersRidingStates = leavingTrain.schedule, leavingTrain.manual_mode, leavingTrain.path_end_stop, math.abs(leavingTrainSpeed), TrainManagerFuncs.GetTrainsCurrentPassengersRidingStates(leavingTrain)
 
-            -- Place new leaving train carriage and set schedule back.
+            -- Place new leaving train carriage
             local nextSourceCarriageEntity = TrainManagerFuncs.GetCarriageToAddToLeavingTrain(managedTrain.undergroundTrain, managedTrain.leavingTrainCarriagesPlaced)
             local placedCarriage = TrainManagerStateFuncs.AddCarriageToLeavingTrain(managedTrain, nextSourceCarriageEntity, leavingTrainRearCarriage)
-            TrainManagerFuncs.TrainSetSchedule(managedTrain.leavingTrain, scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetTrainStopBeforeCarriageAttachment)
+            leavingTrain = managedTrain.leavingTrain
+
+            -- Set the lost schedule and players manualRidingStates back.
+            TrainManagerFuncs.TrainSetSchedule(leavingTrain, scheduleBeforeCarriageAttachment, isManualBeforeCarriageAttachment, targetTrainStopBeforeCarriageAttachment)
+            TrainManagerFuncs.UpdateSavedPassengersRidingStates(thisTrainsPlayersRidingStates)
 
             -- Set the trains speed back to what it was before we added the carriage. This will update the global facing forwards state and correct any speed loss when the carriage was added (base Factorio behavour).
             TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, "leavingTrain", leavingAbsoluteSpeedBeforeCarriageAttachment)
@@ -663,8 +673,8 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
             TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nextSourceCarriageEntity, placedCarriage)
             TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leavingCarriageAdded)
             managedTrain.leavingTrainRearCarriageCache = {
-                speedPositive = managedTrain.leavingTrain.speed > 0,
-                carriage = TrainManagerFuncs.GetRearCarriageOfLeavingTrain(managedTrain.leavingTrain, managedTrain.leavingTrainPushingLoco)
+                speedPositive = leavingTrain.speed > 0,
+                carriage = TrainManagerFuncs.GetRearCarriageOfLeavingTrain(leavingTrain, managedTrain.leavingTrainPushingLoco)
             }
 
             -- Check if all train wagons placed and train fully left the tunnel.
@@ -734,7 +744,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(managedTrain,
                 exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation(leavingTrain, managedTrain.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             else
                 -- For a signal we have to find the distance via the path rails.
-                exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(leavingTrain, leavingTrain[trainStoppingEntityAttributeName], managedTrain.leavingTrainForwards) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
+                exactDistanceFromTrainToTarget = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(leavingTrain, leavingTrain[trainStoppingEntityAttributeName], managedTrain.leavingTrainForwards, true) - 1 -- The -1 is to avoid any slight over reaching on to the next rail. Better to be short than long.
             end
             local undergroundTrainTargetPosition = TrainManagerFuncs.GetForwardPositionFromCurrentForDistance(managedTrain.undergroundTrain, exactDistanceFromTrainToTarget)
 

@@ -421,7 +421,6 @@ end
 ---@param locoPlayersWithInput table<Id, LuaPlayer> @List to be populated with those active driving input players in locomotives.
 ---@param cargoPlayersWithInput table<Id, LuaPlayer> @List to be populated with those active driving input players in cargo carriages.
 ---@param ridingTrainPart '"enteringTrain"'|'"undergroundTrain"'
----@return TrainTypePlayersWithInput
 TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput = function(playerList, locoPlayersWithInput, cargoPlayersWithInput, ridingTrainPart)
     ---@typelist uint, LuaPlayer
     for _, player in pairs(playerList) do
@@ -508,8 +507,9 @@ end
 ---@param managedTrain ManagedTrain
 ---@return Position
 TrainManagerStateFuncs.GetUndergroundFirstWagonPosition = function(managedTrain)
-    -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.aboveEntrancePortalEndSignal.entity, managedTrain.enteringTrainForwards)
+    -- Automatic mode train means we can use the detailed rail path to work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
+    -- Manually driven train means the train is already in the portal and so very close and on a straigh track to the target.
+    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.aboveEntrancePortalEndSignal.entity, managedTrain.enteringTrainForwards, managedTrain.trainFollowingAutomaticSchedule)
 
     -- Apply the straight line distance to the above portal's end signal's rail.
     local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail + 2}) -- Account for measuring oddity.

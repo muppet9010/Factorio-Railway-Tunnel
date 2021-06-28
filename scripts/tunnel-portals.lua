@@ -525,9 +525,10 @@ TunnelPortals.EntranceUsageDetectorEntityDied = function(diedEntity, carriageEnt
         return
     end
 
+    local trainIdToManagedTrain = Interfaces.Call("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
+
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local trainIdToManagedTrain = Interfaces.Call("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
         if trainIdToManagedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
             local managedTrain = trainIdToManagedTrain.managedTrain
@@ -572,6 +573,10 @@ TunnelPortals.EntranceUsageDetectorEntityDied = function(diedEntity, carriageEnt
     -- Train has a player in it so we assume its being actively driven. Can only detect if player input is being entered right now, not the players intention.
     if #train.passengers ~= 0 then
         if portal.tunnel.managedTrain ~= nil then
+            if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain or trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leftTrain then
+                -- This manual train is the one that reserved the tunnel and it is now trying to leave the portal.
+                return
+            end
             -- There's already a train using the tunnel. Makes life simplier to just block the manually driven train at the portal entrance.
             train.speed = 0
             TunnelPortals.AddEntranceUsageDetectorEntityToPortal(portal, true)

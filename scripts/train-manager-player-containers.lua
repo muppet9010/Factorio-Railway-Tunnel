@@ -129,6 +129,7 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
         -- Is a god/spectator player dirving (no character body).
         player = driver
     end
+    local cachedRidingState = driver.riding_state -- Have to transfer it to new vehicle, otherwise manaully driven trains loose player input.
     local playerContainerEntity = managedTrain.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
     playerContainerEntity.operable = false
     playerContainerEntity.destructible = false -- Stops the container being opened by the player when riding in it from the toolbar area of the GUI.
@@ -136,6 +137,7 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
     -- Stick a dummy character in the passanger seat to avoid another player being able to get in the car.
     local passangerCharacterEntity = managedTrain.aboveSurface.create_entity {name = "railway_tunnel-dummy_character", position = driver.position, force = driver.force}
     playerContainerEntity.set_passenger(passangerCharacterEntity)
+    driver.riding_state = cachedRidingState
 
     -- Record state for future updating.
     local playersUndergroundCarriage = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
@@ -174,7 +176,10 @@ TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarr
     -- Handle any players riding in this placed carriage.
     if global.playerContainers.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number] ~= nil then
         local playerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer[undergroundCarriage.unit_number]
-        placedCarriage.set_driver(playerContainer.player)
+        local player = playerContainer.player
+        local cachedRidingState = player.riding_state -- Have to transfer it to new vehicle, otherwise manaully driven trains loose player input.
+        placedCarriage.set_driver(player)
+        player.riding_state = cachedRidingState
         TrainManagerPlayerContainers.RemovePlayerContainer(playerContainer)
     end
 end

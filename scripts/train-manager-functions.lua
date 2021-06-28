@@ -145,10 +145,11 @@ end
 
 ---@param exitPortalEntity LuaEntity
 ---@param trainSchedule TrainSchedule
+---@param manualMode boolean
 ---@param targetTrainStop LuaEntity
 ---@param skipScheduling boolean
 ---@return LuaTrain
-TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, targetTrainStop, skipScheduling)
+TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, manualMode, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
     local locomotive =
         exitPortalEntity.surface.create_entity {
@@ -164,7 +165,7 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, t
     locomotive.burner.remaining_burning_fuel = 4000000
     local dummyTrain = locomotive.train
     if not skipScheduling then
-        TrainManagerFuncs.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop)
+        TrainManagerFuncs.TrainSetSchedule(dummyTrain, trainSchedule, manualMode, targetTrainStop)
         if dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
             error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortalEntity position: " .. Logging.PositionToString(exitPortalEntity.position))
@@ -248,8 +249,9 @@ end
 ---@param train LuaTrain
 ---@param targetEntity LuaEntity @Can be a rail itself or an entity connected to a rail.
 ---@param trainGoingForwards boolean
+---@param measureTrainRailPath boolean @If true measures the train rail path. If false does a straight line measurement (within portal only).
 ---@return double
-TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, targetEntity, trainGoingForwards)
+TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, targetEntity, trainGoingForwards, measureTrainRailPath)
     -- Get the rail we are measuring too.
     local targetRails
     local targetEntityType = targetEntity.type
@@ -265,24 +267,10 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
     local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(train, trainGoingForwards)
-    local leadCarriagePosition, targetRailPosition, distanceForCarriageCenter = leadCarriage.position, nil, nil
+    local leadCarriagePosition, targetRailPosition = leadCarriage.position, nil
+    local distanceForCarriageCenter
 
-    -- Can only measure by Axis distance if theres only 1 rail attached to the targetEntity. This will be fine for when the targetEntity is part of a portal.
-    local singleDifferentAxis
-    if #targetRails == 1 then
-        targetRailPosition = targetRails[1].position
-        if leadCarriagePosition.x == targetRailPosition.x then
-            singleDifferentAxis = "y"
-        elseif leadCarriagePosition.y == targetRailPosition.y then
-            singleDifferentAxis = "x"
-        end
-    end
-
-    if singleDifferentAxis ~= nil then
-        -- Just measure the single axis distance from the lead carriage to the target rail.
-        local distance = Utils.GetDistanceSingleAxis(leadCarriagePosition, targetRailPosition, singleDifferentAxis)
-        distanceForCarriageCenter = distance - TrainManagerFuncs.GetRailEntityLength(targetRails[1].type) -- Reduce the distance to be to the edge of the rail, rather than its center.
-    elseif train.has_path then
+    if measureTrainRailPath then
         -- Train has a path so measure the distance from the train to the target entity. Ignores trains exact position and just deals with the tracks. The first rail isn't included here as we get the remaining part of the rail's distance later in function.
         local distance, trainPathRails = 0, train.path.rails
         for i, railEntity in pairs(trainPathRails) do
@@ -318,7 +306,21 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
         -- Add the joint distance to the result to get the center position of the carriage.
         distanceForCarriageCenter = distance + TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)
     else
-        error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() not on safe single axis and train doesn't have path")
+        -- This mode expects the train to be in the portal as if its far away it won't detect curves in the track between equal axis aligned start and end points.
+        -- Can only measure by Axis distance if theres only 1 rail attached to the targetEntity. This will be fine for when the targetEntity is part of a portal.
+        local singleDifferentAxis
+        if #targetRails == 1 then
+            targetRailPosition = targetRails[1].position
+            if leadCarriagePosition.x == targetRailPosition.x then
+                singleDifferentAxis = "y"
+            elseif leadCarriagePosition.y == targetRailPosition.y then
+                singleDifferentAxis = "x"
+            end
+        end
+
+        -- Just measure the single axis distance from the lead carriage to the target rail.
+        local distance = Utils.GetDistanceSingleAxis(leadCarriagePosition, targetRailPosition, singleDifferentAxis)
+        distanceForCarriageCenter = distance - TrainManagerFuncs.GetRailEntityLength(targetRails[1].type) -- Reduce the distance to be to the edge of the rail, rather than its center.
     end
 
     return distanceForCarriageCenter
@@ -711,6 +713,10 @@ TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
     return returnedSafeTable
 end
 
+---@param train LuaTrain
+---@param trainFacingForwards boolean
+---@return LuaEntity @The first "forwards" locomotive.
+---@return LuaBurner @The first "forwards" locomotive's burner.
 TrainManagerFuncs.GetLeadingLocoAndBurner = function(train, trainFacingForwards)
     local leadLoco
     if trainFacingForwards then
@@ -721,10 +727,29 @@ TrainManagerFuncs.GetLeadingLocoAndBurner = function(train, trainFacingForwards)
     return leadLoco, leadLoco.burner
 end
 
+---@param carriage LuaEntity
+---@return LuaEntity @The driver charater added to the carriage.
 TrainManagerFuncs.AddDriverCharacterToCarriage = function(carriage)
     local driverCharacter = carriage.surface.create_entity {name = "railway_tunnel-dummy_character", position = carriage.position, force = carriage.force}
     carriage.set_driver(driverCharacter)
     return driverCharacter
+end
+
+---@param train LuaTrain
+---@return table<LuaPlayer, RidingState>
+TrainManagerFuncs.GetTrainsCurrentPassengersRidingStates = function(train)
+    local playersRidingStates = {}
+    for _, player in pairs(train.passengers) do
+        playersRidingStates[player] = player.riding_state
+    end
+    return playersRidingStates
+end
+
+---@param savedPlayersRidingStates table<LuaPlayer, RidingState>
+TrainManagerFuncs.UpdateSavedPassengersRidingStates = function(savedPlayersRidingStates)
+    for player, ridingState in pairs(savedPlayersRidingStates) do
+        player.riding_state = ridingState
+    end
 end
 
 return TrainManagerFuncs

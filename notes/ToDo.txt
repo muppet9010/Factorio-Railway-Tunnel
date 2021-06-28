@@ -1,8 +1,10 @@
 - Handle player driven trains approaching the tunnel.
-    - have the train being manually driven for the full tunnel usage.
-    - Apply the acceleration to the underground train and let it naturally push its speed to both the entering and leaving train parts.
     - Apply the players direction input to the leaving train part if they're not in it.
-    - Will need to add tests for manually driven trains being changed to automatic at various points in their tunnel usage.
+    - Make tests:
+        - manual trains braking and reversing at various points. Also do in, out, in to check flip flop is stable.
+        - if a leaving manual train hits something while leaving and stops the underground train continues I believe. So have some sort of feedback, likely same issue with automatic leaving trains.
+        - manually driven trains being changed to automatic at various points in their tunnel usage and the reverse.
+        - can't automatically test multiple real players having inputs unfortunatly.
 
 
 Bugs
@@ -44,6 +46,8 @@ Functionality not currently supported
         - Look at setting the enteringTrain's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the enteringTrain is never "stopped" and so nothing should ever activate.
     - Damage done to trains (entering and leaving) should be mirrored underground. Any destroyed carriages will be handled by the adding/removing carraige logic.
     - For very long trains or tunnels the rails in the underground might not be long enough. Place additional rails at the required distance from the tunnel ends. Currently 1000 tiles each side of tunnel hardcoded. Maybe default 1000 tiles runup is too long and is contributing to lag when making tunnel on large maps (track lag)?
+
+    - Multiple players trying to drive the same train using a tunnel. Not tested, but it should pick one and apply their speed underground. May mix & match underground and leaving train players inputs in some cases.
 
 
 Features planned to add
