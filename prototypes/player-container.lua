@@ -27,16 +27,8 @@ local playerContainer = {
     rotation_speed = 0
 }
 
-local playerContainerPassangerCharacter = Utils.DeepCopy(data.raw["character"]["character"])
-playerContainerPassangerCharacter.name = "railway_tunnel-player_container_passanger_character"
-playerContainerPassangerCharacter.subgroup = "railway_tunnel-hidden_cars"
-playerContainerPassangerCharacter.flags = {"not-on-map", "placeable-off-grid", "not-selectable-in-game"}
-playerContainerPassangerCharacter.collision_mask = {}
-playerContainerPassangerCharacter.corpse = nil
-
 data:extend(
     {
-        playerContainer,
-        playerContainerPassangerCharacter
+        playerContainer
     }
 )

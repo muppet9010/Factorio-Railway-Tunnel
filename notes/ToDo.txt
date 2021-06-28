@@ -1,6 +1,5 @@
 - Handle player driven trains approaching the tunnel.
     - have the train being manually driven for the full tunnel usage.
-    - Can read the players input from the train part/vehicle they happen to be in.
     - Apply the acceleration to the underground train and let it naturally push its speed to both the entering and leaving train parts.
     - Apply the players direction input to the leaving train part if they're not in it.
     - Will need to add tests for manually driven trains being changed to automatic at various points in their tunnel usage.

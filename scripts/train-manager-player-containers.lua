@@ -134,7 +134,7 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
     playerContainerEntity.destructible = false -- Stops the container being opened by the player when riding in it from the toolbar area of the GUI.
     playerContainerEntity.set_driver(player)
     -- Stick a dummy character in the passanger seat to avoid another player being able to get in the car.
-    local passangerCharacterEntity = managedTrain.aboveSurface.create_entity {name = "railway_tunnel-player_container_passanger_character", position = driver.position, force = driver.force}
+    local passangerCharacterEntity = managedTrain.aboveSurface.create_entity {name = "railway_tunnel-dummy_character", position = driver.position, force = driver.force}
     playerContainerEntity.set_passenger(passangerCharacterEntity)
 
     -- Record state for future updating.

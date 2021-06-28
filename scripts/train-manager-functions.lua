@@ -711,4 +711,20 @@ TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
     return returnedSafeTable
 end
 
+TrainManagerFuncs.GetLeadingLocoAndBurner = function(train, trainFacingForwards)
+    local leadLoco
+    if trainFacingForwards then
+        leadLoco = train.locomotives.front_movers[1]
+    else
+        leadLoco = train.locomotives.back_movers[1]
+    end
+    return leadLoco, leadLoco.burner
+end
+
+TrainManagerFuncs.AddDriverCharacterToCarriage = function(carriage)
+    local driverCharacter = carriage.surface.create_entity {name = "railway_tunnel-dummy_character", position = carriage.position, force = carriage.force}
+    carriage.set_driver(driverCharacter)
+    return driverCharacter
+end
+
 return TrainManagerFuncs

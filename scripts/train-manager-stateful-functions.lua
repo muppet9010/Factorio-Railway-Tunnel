@@ -12,6 +12,10 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local TrainManagerRemote = require("scripts/train-manager-remote")
 
+---@class TrainTypePlayersWithInput
+---@field player LuaPlayer
+---@field ridingTrainPart "'enteringTrain'"|"'undergroundTrain'"
+
 TrainManagerStateFuncs.OnLoad = function()
     UndergroundSetUndergroundExitSignalStateFunction = Interfaces.GetNamedFunction("Underground.SetUndergroundExitSignalState")
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManagerStateFuncs.TrainTracking_OnTrainCreated)
@@ -45,15 +49,16 @@ end
 TrainManagerStateFuncs.HandleTrainNewlyEntering = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain
 
-    -- Schedule has been transferred to dummy train.
-
-    enteringTrain.schedule = {
-        current = 1, ---@type uint
-        ---@type TrainScheduleRecord[]
-        records = {
-            {station = "ENTERING TUNNEL - EDIT LEAVING TRAIN"}
+    if managedTrain.trainFollowingAutomaticSchedule then
+        -- Schedule has been transferred to dummy train already
+        enteringTrain.schedule = {
+            current = 1, ---@type uint
+            ---@type TrainScheduleRecord[]
+            records = {
+                {station = "ENTERING TUNNEL - EDIT LEAVING TRAIN"}
+            }
         }
-    }
+    end
 
     -- Prevent player from messing with all entering carriages.
     for _, carriage in pairs(enteringTrain.carriages) do
@@ -68,17 +73,6 @@ TrainManagerStateFuncs.EnsureManagedTrainsFuel = function(managedTrain, undergro
     -- A train thats run out of fuel will still break for signals and stations. Only check if its on the path, as then it should not be losing speed.
     if undergroundTrainSpeed < managedTrain.undergroundTrainOldAbsoluteSpeed and undergroundTrainSpeed < 0.1 and undergroundTrain.state == defines.train_state.on_the_path then
         local leadLocoBurner = managedTrain.undergroundTrainAForwardsLocoBurnerCache
-        if managedTrain.undergroundTrainAForwardsLocoBurnerCache == nil then
-            -- Not cached so obtain and then store it.
-            local leadLoco
-            if managedTrain.undergroundTrainForwards then
-                leadLoco = undergroundTrain.locomotives.front_movers[1]
-            else
-                leadLoco = undergroundTrain.locomotives.back_movers[1]
-            end
-            leadLocoBurner = leadLoco.burner
-            managedTrain.undergroundTrainAForwardsLocoCache, managedTrain.undergroundTrainAForwardsLocoBurnerCache = leadLoco, leadLocoBurner
-        end
         if leadLocoBurner.currently_burning == nil then
             -- This loco has no fuel currently, so top it up.
             leadLocoBurner.currently_burning = "railway_tunnel-temporary_fuel"
@@ -326,7 +320,8 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
         enteringCarriageIdToUndergroundCarriageEntity = {},
         leavingCarriageIdToUndergroundCarriageEntity = {},
         leavingTrainExpectedBadState = false,
-        leavingTrainAtEndOfPortalTrack = false
+        leavingTrainAtEndOfPortalTrack = false,
+        trainFollowingAutomaticSchedule = not train.manual_mode
     }
     if trainSpeed == 0 then
         error("TrainManagerStateFuncs.CreateManagedTrainObject() doesn't support 0 speed\ntrain id: " .. trainId)
@@ -373,6 +368,76 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
     return managedTrain
 end
 
+---@param managedTrain ManagedTrain
+---@return DrivingPlayerDetails|nil @May return nil if no current active driver.
+TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
+    -- TODO: impliment in facing generation: Locomotives drive relative to their own facing. Wagons drive relative to the overall trains facing, ignoring own carriage facing.
+
+    local locoPlayersWithInput, cargoPlayersWithInput = {}, {}
+    if managedTrain.enteringTrain ~= nil then
+        TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput(managedTrain.enteringTrain.passengers, locoPlayersWithInput, cargoPlayersWithInput, "enteringTrain")
+    end
+    local trainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
+    if trainsPlayerContainers ~= nil then
+        local undergroundPassengers = {}
+        for _, container in pairs(trainsPlayerContainers) do
+            undergroundPassengers[container.player.index] = container.player
+        end
+        TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput(undergroundPassengers, locoPlayersWithInput, cargoPlayersWithInput, "undergroundTrain")
+    end
+    local firstDriverDetails = Utils.GetFirstTableValue(locoPlayersWithInput) or Utils.GetFirstTableValue(cargoPlayersWithInput) ---@type TrainTypePlayersWithInput
+    if firstDriverDetails == nil then
+        return nil
+    end
+
+    local playersCarriageFacingAsUndergroundTrain, undergroundCarriageEntity = nil, nil
+    if firstDriverDetails.ridingTrainPart == "enteringTrain" then
+        undergroundCarriageEntity = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[firstDriverDetails.player.vehicle.unit_number]
+    elseif firstDriverDetails.ridingTrainPart == "undergroundTrain" then
+        local playerContainer = global.playerContainers.playerIdToPlayerContainer[firstDriverDetails.player]
+        undergroundCarriageEntity = playerContainer.undergroundCarriageEntity
+    else
+        error("Unrecognised firstDriverDetails.ridingTrainPart: " .. tostring(firstDriverDetails.ridingTrainPart))
+    end
+    local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
+    if undergroundTrainSpeed == 0 then
+        -- TODO: handle in some way, not sure how right now.
+        error("Manual driving from a 0 speed underground train not currently supported")
+    elseif undergroundCarriageEntity.speed - undergroundTrainSpeed == 0 then
+        playersCarriageFacingAsUndergroundTrain = true
+    else
+        playersCarriageFacingAsUndergroundTrain = false
+    end
+
+    local drivingPlayerDetails = {
+        player = firstDriverDetails.player,
+        managedTrain = managedTrain,
+        playersCarriageFacingAsUndergroundTrain = playersCarriageFacingAsUndergroundTrain
+    }
+    return drivingPlayerDetails
+end
+
+---@param playerList table<int, LuaPlayer>
+---@param locoPlayersWithInput table<Id, LuaPlayer> @List to be populated with those active driving input players in locomotives.
+---@param cargoPlayersWithInput table<Id, LuaPlayer> @List to be populated with those active driving input players in cargo carriages.
+---@param ridingTrainPart '"enteringTrain"'|'"undergroundTrain"'
+---@return TrainTypePlayersWithInput
+TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput = function(playerList, locoPlayersWithInput, cargoPlayersWithInput, ridingTrainPart)
+    ---@typelist uint, LuaPlayer
+    for _, player in pairs(playerList) do
+        local playerRidingState = player.riding_state
+        if playerRidingState.acceleration ~= defines.riding.acceleration.nothing or playerRidingState.direction ~= defines.riding.direction.straight then
+            local listToAddTo
+            if player.vehicle.type == "locomotive" then
+                listToAddTo = locoPlayersWithInput
+            else
+                listToAddTo = cargoPlayersWithInput
+            end
+            listToAddTo[player.index] = {player = player, ridingTrainPart = ridingTrainPart}
+        end
+    end
+end
+
 ---@param tunnel Tunnel
 ---@param newPortal Portal
 TrainManagerStateFuncs.On_PortalReplaced = function(tunnel, newPortal)
@@ -405,6 +470,7 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
     managedTrain.undergroundTrain = undergroundTrain
     managedTrain.undergroundTrainCarriageCount = #undergroundTrain.carriages
 
+    -- Still do this for manually driven trains as we use it as part of detecting which way the undergroud train has been built facing.
     local undergroundTrainEndScheduleTargetPos = Interfaces.Call("Underground.GetForwardsEndOfRailPosition", managedTrain.tunnel.undergroundTunnel, managedTrain.trainTravelOrientation)
     TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(undergroundTrain, undergroundTrainEndScheduleTargetPos)
 
@@ -423,6 +489,17 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
         -- If the speed is undone (0) by setting to automatic then the underground train is moving opposite to the entering train. Simple way to handle the underground train being an unknown "forwards".
         managedTrain.undergroundTrainForwards = not managedTrain.undergroundTrainForwards
         undergroundTrain.speed = -1 * enteringTrainSpeed
+    end
+    if not managedTrain.trainFollowingAutomaticSchedule then
+        -- If being manually driven set back to manaul driving after working out which direction the train is facing for speed purposes.
+        undergroundTrain.manual_mode = true
+    end
+
+    managedTrain.undergroundTrainAForwardsLocoCache, managedTrain.undergroundTrainAForwardsLocoBurnerCache = TrainManagerFuncs.GetLeadingLocoAndBurner(undergroundTrain, managedTrain.undergroundTrainForwards)
+    managedTrain.undergroundTrainAForwardsLocoDummyDriverCache = TrainManagerFuncs.AddDriverCharacterToCarriage(managedTrain.undergroundTrainAForwardsLocoCache)
+    -- If its a manual train get the current driver and cache it.
+    if not managedTrain.trainFollowingAutomaticSchedule then
+        managedTrain.drivingPlayerDetails = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
     end
 
     managedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveExitPortal.portalEntrancePosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)

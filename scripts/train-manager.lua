@@ -14,6 +14,8 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@class ManagedTrain
 ---@field id Id @uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainPartNames @The primary real train part name that dictates the trains primary monitored object. Finished is for when the tunnel trip is completed.
+---@field trainFollowingAutomaticSchedule boolean @If the managed train is currently running on an automatic schedule, alternative is its being player driven.
+---@field drivingPlayerDetails DrivingPlayerDetails @The driving player details when train is being manually driven, or nil.
 ---
 ---@field enteringTrainState EnteringTrainStates @The current entering train's state.
 ---@field enteringTrain LuaTrain
@@ -28,8 +30,9 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field undergroundTrainCarriageCount uint @Cache of the total underground train carriage count.
 ---@field undergroundTrainLeadCarriageCache TrainLeadCarriageCache @Cached details of the lead carriage of the underground train. Is only used and updated during TrainManager.TrainUndergroundOngoing().
 ---@field undergroundTrainOldAbsoluteSpeed double @The absolute speed of the underground train last tick. Updated once enteringStarted up untill fullLeft.
----@field undergroundTrainAForwardsLocoCache LuaEntity @A loco facing forwards in the underground train, no specific one. Populated if the train runs out of fuel, not updated apart from a reversal clears it.
----@field undergroundTrainAForwardsLocoBurnerCache LuaBurner @The cached loco facing forward's burner in the underground train. Populated if the train runs out of fuel, not updated apart from a reversal clears it.
+---@field undergroundTrainAForwardsLocoCache LuaEntity @A loco facing forwards in the underground train, no specific one. Populated during undreground trian generation and updated for a train reversal.
+---@field undergroundTrainAForwardsLocoBurnerCache LuaBurner @The cached loco facing forward's burner in the underground train. Populated during undreground trian generation and updated for a train reversal.
+---@field undergroundTrainAForwardsLocoDummyDriverCache LuaEntity @The cached dummy character in the cached forward facing loco of the underground train. Populated during underground trian generation and updated for a train reversal.
 ---
 ---@field leavingTrainState LeavingTrainStates @The current leaving train's state.
 ---@field leavingTrain LuaTrain @The train created leaving the tunnel on the world surface.
@@ -77,6 +80,11 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@class LeavingTrainRearCarriageCache
 ---@field speedPositive boolean @If the leaving train's speed was positive when the cache was last updated.
 ---@field carriage LuaEntity @Cached ref to the rear carriage entity
+
+---@class DrivingPlayerDetails
+---@field player LuaPlayer
+---@field managedTrain ManagedTrain
+---@field playersCarriageFacingAsUndergroundTrain boolean @If the player's driving input are the same direction to the underground trains facing, or opposite to it.
 
 ---@alias TrainTravelOrientation "0"|"0.25"|"0.5"|"0.75"
 
@@ -433,6 +441,8 @@ TrainManager.TrainReadyToStartEntering = function(managedTrain, enteringTrain, u
     managedTrain.enteringTrainState = EnteringTrainStates.entering
     managedTrain.primaryTrainPartName = PrimaryTrainPartNames.underground
     managedTrain.targetTrainStop = enteringTrain.path_end_stop
+
+    -- Create a dummy train even for manual driving so we have the schedule cached to reapply later.
     managedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveExitPortal.entity, enteringTrain.schedule, managedTrain.targetTrainStop, false)
     local dummyTrainId = managedTrain.dummyTrain.id
     managedTrain.dummyTrainId = dummyTrainId
@@ -518,6 +528,34 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain)
         TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(managedTrain.undergroundTrain.speed))
     end
 
+    -- Handle manually driven train acceleration inputs if approperiate for this train.
+    if not managedTrain.trainFollowingAutomaticSchedule then
+        -- TODO: need to check if this is still right user to cache and if not look for a new driver.
+        if managedTrain.drivingPlayerDetails == nil then
+            managedTrain.drivingPlayerDetails = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
+        end
+
+        -- Get the current inputs to apply.
+        local accelerationInput, directionInput
+        if managedTrain.drivingPlayerDetails ~= nil then
+            -- There is an active driver then we impliment the inputs
+            local sourceRidingState = managedTrain.drivingPlayerDetails.player.riding_state
+            accelerationInput = sourceRidingState.acceleration
+            directionInput = sourceRidingState.direction
+        else
+            -- Theres no active driver so apply neutral inputs.
+            accelerationInput = defines.riding.acceleration.nothing
+            directionInput = defines.riding.direction.straight
+        end
+
+        -- Apply inputs.
+        managedTrain.undergroundTrainAForwardsLocoDummyDriverCache.riding_state = {acceleration = accelerationInput, direction = defines.riding.direction.straight}
+        if managedTrain.leavingTrain ~= nil then
+        -- TODO: apply directionInput, but also need to have something to control...
+        --managedTrain.leavingTrainForwardsLocoDummyDriverCache.riding_state = {acceleration = defines.riding.acceleration.nothing, direction = directionInput}
+        end
+    end
+
     -- Check if the lead carriage is close enough to the exit portal's entry signal to be safely in the leaving tunnel area.
     -- Gets the cached lead carriage and records if needed.
     local leadCarriage
@@ -540,6 +578,7 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
+    -- TODO: needs to handle manaully driven leaving trains.
     TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, managedTrain.dummyTrain)
 
     -- Cleanup dummy train to make room for the reemerging train, preserving schedule and target stop for later.
@@ -797,6 +836,9 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         error("Should be either valid or nil. Meant to be updated when the reversal function is called.")
     end
 
+    -- Remove the old dummyCharacter to avoid it being left in the now rear of the train.
+    oldManagedTrain.undergroundTrainAForwardsLocoDummyDriverCache.destroy()
+
     ---@type ManagedTrain
     local newManagedTrain = {
         id = global.trainManager.nextManagedTrainId
@@ -811,8 +853,8 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.undergroundTrainForwards = not oldManagedTrain.undergroundTrainForwards
     newManagedTrain.undergroundTrainCarriageCount = oldManagedTrain.undergroundTrainCarriageCount
     newManagedTrain.undergroundTrainLeadCarriageCache = nil -- Will be populated on first use.
-    newManagedTrain.undergroundTrainAForwardsLocoCache = nil -- Will be populated on first use if needed.
-    newManagedTrain.undergroundTrainAForwardsLocoBurnerCache = nil -- Will be populated on first use if needed.
+    newManagedTrain.undergroundTrainAForwardsLocoCache, newManagedTrain.undergroundTrainAForwardsLocoBurnerCache = TrainManagerFuncs.GetLeadingLocoAndBurner(newManagedTrain.undergroundTrain, newManagedTrain.undergroundTrainForwards) -- Regenerate these values now the underground train has reversed facing
+    newManagedTrain.undergroundTrainAForwardsLocoDummyDriverCache = TrainManagerFuncs.AddDriverCharacterToCarriage(newManagedTrain.undergroundTrainAForwardsLocoCache)
 
     newManagedTrain.trainTravelDirection = Utils.LoopDirectionValue(oldManagedTrain.trainTravelDirection + 4)
     newManagedTrain.trainTravelOrientation = Utils.DirectionToOrientation(newManagedTrain.trainTravelDirection)

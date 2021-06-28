@@ -1035,20 +1035,36 @@ Utils.CreateWaterPlacementTestEntityPrototype = function(entityToClone, newEntit
     return Utils.CreatePlacementTestEntityPrototype(entityToClone, newEntityName, subgroup, {"ground-tile", "colliding-with-tiles-only"})
 end
 
+--- Tries to converts a non boolean to a boolean value.
+---@param text string|int|boolean @The input to check.
+---@return boolean|nil @Returns a boolean if successful, or nil if not.
 Utils.ToBoolean = function(text)
     if text == nil then
         return nil
     end
-    if type(text) == "boolean" then
+    local textType = type(text)
+    if textType == "string" then
+        text = string.lower(text)
+        if text == "true" then
+            return true
+        elseif text == "false" then
+            return false
+        else
+            return nil
+        end
+    elseif textType == "number" then
+        if text == 0 then
+            return false
+        elseif text == 1 then
+            return true
+        else
+            return nil
+        end
+    elseif textType == "boolean" then
         return text
+    else
+        return nil
     end
-    text = string.lower(text)
-    if text == "true" then
-        return true
-    elseif text == "false" then
-        return false
-    end
-    return nil
 end
 
 Utils.RandomLocationInRadius = function(centrePos, maxRadius, minRadius)
