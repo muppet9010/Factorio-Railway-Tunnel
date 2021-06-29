@@ -25,6 +25,7 @@ Usage Notes
 - Any train using a tunnel that has an issue (runs out of fuel, has a carriage removed, etc) will be pushed out of the tunnel so it can be fixed by the player.
 - Destroyed tunnels will lose the train and players within.
 - While a train is entering a tunnel access by the player is restricted. The leaving train can be manipulated if needed.
+- Trains kill counts will be lost when using a tunnel as the Factorio API doesn't allow this to be set by a mod. It may also be artifically inflated by 1 when a train leaves the tunnel. Factorio API request: https://forums.factorio.com/viewtopic.php?f=28&t=99049
 
 
 Editor Mode

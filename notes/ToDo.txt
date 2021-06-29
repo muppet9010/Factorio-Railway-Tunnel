@@ -74,6 +74,8 @@ Concepts / Ideas
         - We can't hold the signal for the leaving train using the dummy train as the instant the train loses its speed or has path recalculated it releases its hold on any signal and another train present can grab it.
         - Does mean any underground tunnel train will have no priority at future signals until it starts leaving. Include in readme as part of existing signal note.
     - Try putting the tunnel graphic in front of the train graphics to hide them when they are entering. Use LuaRendering to draw fake carriage animations with tining in their place. These rendered carriage animations can have their scale and position ammended to give the appearance of going down in to a hole.
+    - When manually driving a train through a tunnel show a render of carriages underground. Have them appear semi transparent or tinted so obviously not real. Should be able to use the underground offset for their position, although it would show the discrepency between above and underground.
+
 
 Mod Compatibility
 ----------------
@@ -83,6 +85,7 @@ Mod Compatibility
         - Force them to slow down for tunnels on approach/usage.
     - Look at TSM compatibility.
     - Look at LTN compatibility.
+
 
 Code Improvements
 ----------------
@@ -98,3 +101,11 @@ Code Improvements
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.
     - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
     - Can we directly connect 2 signals on different surfaces by wires? If so can we use it save on syncing the exit signal from aboveground to underground?
+    - Speed discrepencies between trains.
+        - Entering and underground trains from when their approach triggers underground train to be made, to when the entering train starts entering.
+        - Also probably between underground and leaving.
+        - I think it's due to me syncing the speed at the end of each tick. Next tick the game applies breaking/acceleration independently and moves them. Then I sync speeds again. When entering this is noticeable as the entering train is breaking for the signal at high speed. So my setting speed just makes it break even more aggressively next tick.
+        - To investigate if this is issue need to try and track the speed across 2 ticks for entering train and compare them to expected speed and movement towards track.
+        - If this is the cause not sure what to do about it, maybe slow down underground train so they stay in sync, but keep on setting the entering trains speed back to what it should be.
+        - Make tests to compare position offsets from above and underground trains at various entry speeds and as the usage progresses. Try to identify when the diverge.
+        - Short term impact is it may cause a jump for when riding player moves from entering carriage to player container. Returning back to leaving carriage will be smooth as thats based on the underground train at that moment.
