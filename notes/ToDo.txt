@@ -8,6 +8,7 @@
         - driving player being in an early carriage to leave, underground carriage or entering carriage part. Have short and long trains (entering,underground and leaving all at once).
         - check player in forwards and rear facing locomotives and cargo wagons.
         - have train with leading carriage: loco forwards, loco backwards, cargo wagon forwards, cargo wagon backwards.
+    - Need to track players getting in/out of an entering/leaving train and player containers.
 
 - Low fuel check needs to handle the possibility of reverse only loco's with manually driven trains.
 

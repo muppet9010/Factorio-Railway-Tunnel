@@ -15,7 +15,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field id Id @uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainPartNames @The primary real train part name that dictates the trains primary monitored object. Finished is for when the tunnel trip is completed.
 ---@field trainFollowingAutomaticSchedule boolean @If the managed train is currently running on an automatic schedule, alternative is its being player driven.
----@field drivingPlayerDetails DrivingPlayerDetails @The driving player details when train is being manually driven, or nil.
+---@field drivingPlayerDetails DrivingPlayerDetails @The active driving player's details when train is being manually driven, or nil.
 ---
 ---@field enteringTrainState EnteringTrainStates @The current entering train's state.
 ---@field enteringTrain LuaTrain
@@ -83,8 +83,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 
 ---@class DrivingPlayerDetails
 ---@field player LuaPlayer
----@field managedTrain ManagedTrain
----@field playersCarriageFacingAsUndergroundCarriage boolean @If the player's driving input are the same direction to the underground trains facing, or opposite to it.
+---@field playersCarriageFacingSameAsUndergroundTrain boolean @If the player's driving input are the same direction to the underground trains facing, or opposite to it.
 
 ---@class UndergroundTrainManualDrivingDetails
 ---@field undergroundCarriageEntity LuaEntity
@@ -560,14 +559,22 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain)
         local accelerationInput, directionInput
         if sourceRidingState ~= nil then
             -- There is an active driver then we impliment the inputs. We do need to orientate them based on player's carriage to underground driver carriage facing.
-            -- TODO: playersCarriageFacingAsUndergroundCarriage needs caching per player from when underground train is made. As otherwise if a player starts/stops input between entering and being underground their reversing loco becomes a forwards car, but to player they are still pressing backwards to accelerate like when entering.
-            -- TODO: also issue when in a reverse loco the input is applied backwards at some point when the entering train's "forwards" flips? Not steady entering atleast.
-            if managedTrain.drivingPlayerDetails.playersCarriageFacingAsUndergroundCarriage then
-                -- Player facing same as underground carriage so can just take inputs as they are.
+
+            -- Work out if the players inputs are being reversed to what they were before the train started entering the tunnel.
+            local playersCarriageEntity = managedTrain.drivingPlayerDetails.player.vehicle
+            local playersTrainSameFacingAsUndergroundTrain
+            if playersCarriageEntity.name == "railway_tunnel-player_container" or playersCarriageEntity.speed == playersCarriageEntity.train.speed then
+                playersTrainSameFacingAsUndergroundTrain = managedTrain.drivingPlayerDetails.playersCarriageFacingSameAsUndergroundTrain
+            else
+                playersTrainSameFacingAsUndergroundTrain = not managedTrain.drivingPlayerDetails.playersCarriageFacingSameAsUndergroundTrain
+            end
+
+            if playersTrainSameFacingAsUndergroundTrain then
+                -- Player currently facing same as underground carriage so can just take inputs as they are.
                 accelerationInput = sourceRidingState.acceleration
                 directionInput = sourceRidingState.direction
             else
-                -- Player facing backwards to underground carriage so need to flip the inputs.
+                -- Player currently facing backwards to underground carriage so need to flip the inputs.
                 if sourceRidingState.acceleration == defines.riding.acceleration.accelerating then
                     accelerationInput = defines.riding.acceleration.reversing
                 elseif sourceRidingState.acceleration == defines.riding.acceleration.braking or sourceRidingState.acceleration == defines.riding.acceleration.reversing then
@@ -900,7 +907,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.undergroundTrainCarriageCount = oldManagedTrain.undergroundTrainCarriageCount
     newManagedTrain.undergroundTrainLeadCarriageCache = nil -- Will be populated on first use.
     newManagedTrain.undergroundTrainAForwardsLocoCache, newManagedTrain.undergroundTrainAForwardsLocoBurnerCache = TrainManagerFuncs.GetLeadingLocoAndBurner(newManagedTrain.undergroundTrain, newManagedTrain.undergroundTrainForwards) -- Regenerate these values now the underground train has reversed facing
-    newManagedTrain.undergroundTrainDriverCache = TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrainCarriage(newManagedTrain)
+    newManagedTrain.undergroundTrainDriverCache = TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrain(newManagedTrain)
 
     newManagedTrain.trainTravelDirection = Utils.LoopDirectionValue(oldManagedTrain.trainTravelDirection + 4)
     newManagedTrain.trainTravelOrientation = Utils.DirectionToOrientation(newManagedTrain.trainTravelDirection)
