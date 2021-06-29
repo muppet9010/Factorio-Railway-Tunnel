@@ -20,7 +20,7 @@ TrainManagerPlayerContainers.CreateGlobals = function()
     global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the player index.
     global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
     global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the underground carriage unit_number. Value is the player playerContainer related to it.
-    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<Id, PlayerContainer>> @Table of ManagedTrain.Id to table of player containers by their id.
+    global.playerContainers.trainManagerEntriesPlayerContainers = global.playerContainers.trainManagerEntriesPlayerContainers or {} ---@type table<Id, table<Id, PlayerContainer>> @Table of ManagedTrain.Id to table of player containers by their id.
 end
 
 TrainManagerPlayerContainers.OnLoad = function()
@@ -153,14 +153,14 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
     global.playerContainers.undergroudCarriageIdsToPlayerContainer[playersUndergroundCarriage.unit_number] = playerContainer
     global.playerContainers.playerIdToPlayerContainer[playerContainer.player.index] = playerContainer
     global.playerContainers.containers[playerContainer.id] = playerContainer
-    global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id] = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id] or {}
-    global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id][playerContainer.id] = playerContainer
+    global.playerContainers.trainManagerEntriesPlayerContainers[managedTrain.id] = global.playerContainers.trainManagerEntriesPlayerContainers[managedTrain.id] or {}
+    global.playerContainers.trainManagerEntriesPlayerContainers[managedTrain.id][playerContainer.id] = playerContainer
 end
 
 ---@param managedTrain ManagedTrain
 TrainManagerPlayerContainers.MoveATrainsPlayerContainers = function(managedTrain)
     -- Update any player containers for this specific train.
-    local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
+    local thisTrainsPlayerContainers = global.playerContainers.trainManagerEntriesPlayerContainers[managedTrain.id]
     if thisTrainsPlayerContainers == nil then
         return
     end
@@ -198,11 +198,11 @@ TrainManagerPlayerContainers.RemovePlayerContainer = function(playerContainer)
     global.playerContainers.undergroudCarriageIdsToPlayerContainer[playerContainer.undergroundCarriageId] = nil
     global.playerContainers.playerIdToPlayerContainer[playerContainer.player.index] = nil
     global.playerContainers.containers[playerContainer.id] = nil
-    local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id]
+    local thisTrainsPlayerContainers = global.playerContainers.trainManagerEntriesPlayerContainers[playerContainer.managedTrain.id]
     if thisTrainsPlayerContainers ~= nil then
         thisTrainsPlayerContainers[playerContainer.id] = nil
         if #thisTrainsPlayerContainers == 0 then
-            global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id] = nil
+            global.playerContainers.trainManagerEntriesPlayerContainers[playerContainer.managedTrain.id] = nil
         end
     end
 end
@@ -237,10 +237,10 @@ end
 ---@param oldManagedTrain ManagedTrain
 ---@param newManagedTrain ManagedTrain
 TrainManagerPlayerContainers.On_TrainManagerReversed = function(oldManagedTrain, newManagedTrain)
-    local trainManagerEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[oldManagedTrain.id]
+    local trainManagerEntriesPlayerContainers = global.playerContainers.trainManagerEntriesPlayerContainers[oldManagedTrain.id]
     if trainManagerEntriesPlayerContainers ~= nil then
-        global.playerContainers.trainManageEntriesPlayerContainers[newManagedTrain.id] = trainManagerEntriesPlayerContainers
-        global.playerContainers.trainManageEntriesPlayerContainers[oldManagedTrain.id] = nil
+        global.playerContainers.trainManagerEntriesPlayerContainers[newManagedTrain.id] = trainManagerEntriesPlayerContainers
+        global.playerContainers.trainManagerEntriesPlayerContainers[oldManagedTrain.id] = nil
         for _, playerContainer in pairs(trainManagerEntriesPlayerContainers) do
             playerContainer.managedTrain = newManagedTrain
         end

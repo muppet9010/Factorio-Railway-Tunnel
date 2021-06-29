@@ -370,13 +370,13 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
 end
 
 ---@param managedTrain ManagedTrain
----@return DrivingPlayerDetails|nil @May return nil if no current active driver.
+---@return LuaPlayer|nil @May return nil if no current active driver.
 TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
     local locoPlayersWithInput, cargoPlayersWithInput = {}, {}
     if managedTrain.enteringTrain ~= nil then
         TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput(managedTrain.enteringTrain.passengers, locoPlayersWithInput, cargoPlayersWithInput, "enteringTrain")
     end
-    local trainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
+    local trainsPlayerContainers = global.playerContainers.trainManagerEntriesPlayerContainers[managedTrain.id]
     if trainsPlayerContainers ~= nil then
         local undergroundPassengers = {}
         for _, container in pairs(trainsPlayerContainers) do
@@ -389,31 +389,7 @@ TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
         return nil
     end
 
-    --TODO: this should be calculated at initial underground creation stage as otherwise the results may be wrong if the entering train is facing a different direction once that player starts inputting.
-    local playersCarriageEntity, undergroundTrainSpeed = firstDriverDetails.player.vehicle, managedTrain.undergroundTrain.speed
-    local playersCarriageFacingSameAsUndergroundTrain
-    if firstDriverDetails.ridingCarriageType == "locomotive" then
-        -- Locomotives drive relative to their own facing.
-        if undergroundTrainSpeed == 0 then
-            -- TODO: handle in some way, not sure how right now.
-            error("Manual driving from a 0 speed underground train not currently supported")
-        elseif playersCarriageEntity.speed == undergroundTrainSpeed then
-            playersCarriageFacingSameAsUndergroundTrain = true
-        else
-            playersCarriageFacingSameAsUndergroundTrain = false
-        end
-    elseif firstDriverDetails.ridingCarriageType == "cargo" then
-        -- Non locomotive wagons drive relative to the overall trains facing, ignoring own carriage facing.
-        playersCarriageFacingSameAsUndergroundTrain = managedTrain.enteringTrain.speed == undergroundTrainSpeed
-    else
-        error("unsupported firstDriverDetails.ridingCarriageType: " .. firstDriverDetails.ridingCarriageType)
-    end
-
-    local drivingPlayerDetails = {
-        player = firstDriverDetails.player,
-        playersCarriageFacingSameAsUndergroundTrain = playersCarriageFacingSameAsUndergroundTrain
-    }
-    return drivingPlayerDetails
+    return firstDriverDetails.player
 end
 
 ---@param playerList table<int, LuaPlayer>
@@ -495,11 +471,33 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
         undergroundTrain.manual_mode = true
     end
 
+    -- Record the entering carriages facing Vs underground train's facing, underground train needs to have had its speed set for this to simply work.
+    managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain = {}
+    local undergroundTrainSpeed = undergroundTrain.speed
+    for _, enteringCarriage in pairs(managedTrain.enteringTrain.carriages) do
+        local undergroundCarriageEntity = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[enteringCarriage.unit_number]
+        local abovegroundCarriageSameFacingAsUndergroundTrain
+        if enteringCarriage.type == "locomotive" then
+            -- Locomotives drive relative to their own facing.
+            if undergroundTrainSpeed == 0 then
+                error("Underground train shouldn't be created ever at 0 speed")
+            elseif enteringCarriage.speed == undergroundTrainSpeed then
+                abovegroundCarriageSameFacingAsUndergroundTrain = true
+            else
+                abovegroundCarriageSameFacingAsUndergroundTrain = false
+            end
+        else
+            -- Non locomotive wagons drive relative to the overall trains facing, ignoring own carriage facing.
+            abovegroundCarriageSameFacingAsUndergroundTrain = managedTrain.enteringTrain.speed == undergroundTrainSpeed
+        end
+        managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain[undergroundCarriageEntity.unit_number] = abovegroundCarriageSameFacingAsUndergroundTrain
+    end
+
     managedTrain.undergroundTrainAForwardsLocoCache, managedTrain.undergroundTrainAForwardsLocoBurnerCache = TrainManagerFuncs.GetLeadingLocoAndBurner(undergroundTrain, managedTrain.undergroundTrainForwards)
     managedTrain.undergroundTrainDriverCache = TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrain(managedTrain)
     -- If its a manual train get the current driver and cache it.
     if not managedTrain.trainFollowingAutomaticSchedule then
-        managedTrain.drivingPlayerDetails = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
+        managedTrain.drivingPlayer = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
     end
 
     managedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveExitPortal.portalEntrancePosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
@@ -675,6 +673,86 @@ TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrain = function(managedTr
         driverCharacterEntity = driverCharacterEntity
     }
     return undergroundTrainManualDrivingDetails
+end
+
+---@param managedTrain ManagedTrain
+TrainManagerStateFuncs.HandleManuallyDrivenTrainInputs = function(managedTrain)
+    --Get a current active player's input.
+    local sourceRidingState, drivingPlayer
+    if managedTrain.drivingPlayer == nil then
+        -- No cached driver so find an active driver (if one exists).
+        managedTrain.drivingPlayer = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
+    else
+        -- Cached driver exists, so check if they're active or not.
+        sourceRidingState = managedTrain.drivingPlayer.riding_state
+        if sourceRidingState.acceleration == defines.riding.acceleration.nothing and sourceRidingState.direction == defines.riding.direction.straight then
+            sourceRidingState = nil
+            -- Cached driver isn't inputting anything, so see if anyone else is.
+            managedTrain.drivingPlayer = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
+        end
+    end
+    if managedTrain.drivingPlayer ~= nil then
+        drivingPlayer = managedTrain.drivingPlayer
+        sourceRidingState = drivingPlayer.riding_state
+    end
+
+    -- Convert the input to be approperaite for apply, handles player's carriage to underground train facing differences.
+    local accelerationInput, directionInput
+    if sourceRidingState ~= nil then
+        -- There is an active driver then we impliment the inputs. We do need to orientate them based on player's carriage to underground driver carriage facing.
+
+        -- Work out if the players inputs are being reversed to what they were before the train started entering the tunnel.
+        local playersCarriageEntity = drivingPlayer.vehicle
+        local playersTrainSameFacingAsUndergroundTrain
+        if playersCarriageEntity.name == "railway_tunnel-player_container" then
+            local undergroundCarriageId = global.playerContainers.playerIdToPlayerContainer[drivingPlayer.index].undergroundCarriageId
+            playersTrainSameFacingAsUndergroundTrain = managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain[undergroundCarriageId]
+        else
+            local undergroundCarriageId
+            --TODO: work out if the playersCarriageEntity is part of entering or leaving train. hard coded to entering train for now.
+            undergroundCarriageId = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[playersCarriageEntity.unit_number].unit_number
+
+            if playersCarriageEntity.speed == playersCarriageEntity.train.speed then
+                playersTrainSameFacingAsUndergroundTrain = managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain[undergroundCarriageId]
+            else
+                playersTrainSameFacingAsUndergroundTrain = not managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain[undergroundCarriageId]
+            end
+        end
+
+        -- Reverse the players inputs if needed.
+        if playersTrainSameFacingAsUndergroundTrain then
+            -- Player currently facing same as underground carriage so can just take inputs as they are.
+            accelerationInput = sourceRidingState.acceleration
+            directionInput = sourceRidingState.direction
+        else
+            -- Player currently facing backwards to underground carriage so need to flip the inputs.
+            if sourceRidingState.acceleration == defines.riding.acceleration.accelerating then
+                accelerationInput = defines.riding.acceleration.reversing
+            elseif sourceRidingState.acceleration == defines.riding.acceleration.braking or sourceRidingState.acceleration == defines.riding.acceleration.reversing then
+                accelerationInput = defines.riding.acceleration.accelerating
+            else
+                accelerationInput = defines.riding.acceleration.nothing
+            end
+            if sourceRidingState.direction == defines.riding.direction.left then
+                directionInput = defines.riding.direction.right
+            elseif sourceRidingState.direction == defines.riding.direction.right then
+                directionInput = defines.riding.direction.left
+            else
+                directionInput = defines.riding.direction.straight
+            end
+        end
+    else
+        -- Theres no active driver so apply neutral inputs.
+        accelerationInput = defines.riding.acceleration.nothing
+        directionInput = defines.riding.direction.straight
+    end
+
+    -- Apply inputs.
+    managedTrain.undergroundTrainDriverCache.driverCharacterEntity.riding_state = {acceleration = accelerationInput, direction = defines.riding.direction.straight}
+    if managedTrain.leavingTrain ~= nil then
+    -- TODO: apply directionInput, but also need to have something to control...
+    --managedTrain.leavingTrainForwardsLocoDummyDriverCache.riding_state = {acceleration = defines.riding.acceleration.nothing, direction = directionInput}
+    end
 end
 
 return TrainManagerStateFuncs
