@@ -15,6 +15,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@class TrainTypePlayersWithInput
 ---@field player LuaPlayer
 ---@field ridingTrainPart "'enteringTrain'"|"'undergroundTrain'"
+---@field ridingCarriageType "'locomotive'"|"'cargo'"
 
 TrainManagerStateFuncs.OnLoad = function()
     UndergroundSetUndergroundExitSignalStateFunction = Interfaces.GetNamedFunction("Underground.SetUndergroundExitSignalState")
@@ -371,8 +372,6 @@ end
 ---@param managedTrain ManagedTrain
 ---@return DrivingPlayerDetails|nil @May return nil if no current active driver.
 TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
-    -- TODO: impliment in facing generation: Locomotives drive relative to their own facing. Wagons drive relative to the overall trains facing, ignoring own carriage facing.
-
     local locoPlayersWithInput, cargoPlayersWithInput = {}, {}
     if managedTrain.enteringTrain ~= nil then
         TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput(managedTrain.enteringTrain.passengers, locoPlayersWithInput, cargoPlayersWithInput, "enteringTrain")
@@ -390,29 +389,38 @@ TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
         return nil
     end
 
-    local playersCarriageFacingAsUndergroundTrain, undergroundCarriageEntity = nil, nil
+    local playersCarriageFacingAsUndergroundCarriage, undergroundCarriageEntity = nil, nil
     if firstDriverDetails.ridingTrainPart == "enteringTrain" then
         undergroundCarriageEntity = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[firstDriverDetails.player.vehicle.unit_number]
     elseif firstDriverDetails.ridingTrainPart == "undergroundTrain" then
-        local playerContainer = global.playerContainers.playerIdToPlayerContainer[firstDriverDetails.player]
+        local playerContainer = global.playerContainers.playerIdToPlayerContainer[firstDriverDetails.player.index]
         undergroundCarriageEntity = playerContainer.undergroundCarriageEntity
     else
         error("Unrecognised firstDriverDetails.ridingTrainPart: " .. tostring(firstDriverDetails.ridingTrainPart))
     end
-    local undergroundTrainSpeed = managedTrain.undergroundTrain.speed
-    if undergroundTrainSpeed == 0 then
-        -- TODO: handle in some way, not sure how right now.
-        error("Manual driving from a 0 speed underground train not currently supported")
-    elseif undergroundCarriageEntity.speed - undergroundTrainSpeed == 0 then
-        playersCarriageFacingAsUndergroundTrain = true
+
+    if firstDriverDetails.ridingCarriageType == "locomotive" then
+        -- Locomotives drive relative to their own facing.
+        local undergroundCarriageEntitySpeed = managedTrain.undergroundTrainDriverCache.undergroundCarriageEntity.speed
+        if undergroundCarriageEntitySpeed == 0 then
+            -- TODO: handle in some way, not sure how right now.
+            error("Manual driving from a 0 speed underground train not currently supported")
+        elseif undergroundCarriageEntity.speed == undergroundCarriageEntitySpeed then
+            playersCarriageFacingAsUndergroundCarriage = true
+        else
+            playersCarriageFacingAsUndergroundCarriage = false
+        end
+    elseif firstDriverDetails.ridingCarriageType == "cargo" then
+        -- Non locomotive wagons drive relative to the overall trains facing, ignoring own carriage facing.
+        playersCarriageFacingAsUndergroundCarriage = true
     else
-        playersCarriageFacingAsUndergroundTrain = false
+        error("unsupported firstDriverDetails.ridingCarriageType: " .. firstDriverDetails.ridingCarriageType)
     end
 
     local drivingPlayerDetails = {
         player = firstDriverDetails.player,
         managedTrain = managedTrain,
-        playersCarriageFacingAsUndergroundTrain = playersCarriageFacingAsUndergroundTrain
+        playersCarriageFacingAsUndergroundCarriage = playersCarriageFacingAsUndergroundCarriage
     }
     return drivingPlayerDetails
 end
@@ -426,13 +434,15 @@ TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput = function(playerLis
     for _, player in pairs(playerList) do
         local playerRidingState = player.riding_state
         if playerRidingState.acceleration ~= defines.riding.acceleration.nothing or playerRidingState.direction ~= defines.riding.direction.straight then
-            local listToAddTo
+            local listToAddTo, ridingCarriageType
             if player.vehicle.type == "locomotive" then
                 listToAddTo = locoPlayersWithInput
+                ridingCarriageType = "locomotive"
             else
                 listToAddTo = cargoPlayersWithInput
+                ridingCarriageType = "cargo"
             end
-            listToAddTo[player.index] = {player = player, ridingTrainPart = ridingTrainPart}
+            listToAddTo[player.index] = {player = player, ridingTrainPart = ridingTrainPart, ridingCarriageType = ridingCarriageType}
         end
     end
 end
@@ -495,7 +505,7 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
     end
 
     managedTrain.undergroundTrainAForwardsLocoCache, managedTrain.undergroundTrainAForwardsLocoBurnerCache = TrainManagerFuncs.GetLeadingLocoAndBurner(undergroundTrain, managedTrain.undergroundTrainForwards)
-    managedTrain.undergroundTrainAForwardsLocoDummyDriverCache = TrainManagerFuncs.AddDriverCharacterToCarriage(managedTrain.undergroundTrainAForwardsLocoCache)
+    managedTrain.undergroundTrainDriverCache = TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrainCarriage(managedTrain)
     -- If its a manual train get the current driver and cache it.
     if not managedTrain.trainFollowingAutomaticSchedule then
         managedTrain.drivingPlayerDetails = TrainManagerStateFuncs.GetCurrentManualTrainDriver(managedTrain)
@@ -658,6 +668,19 @@ end
 ---@return ManagedTrain
 TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails = function(trainId)
     return global.trainManager.trainIdToManagedTrain[trainId]
+end
+
+---@param managedTrain ManagedTrain
+---@return UndergroundTrainManualDrivingDetails
+TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrainCarriage = function(managedTrain)
+    local undergroundCarriageEntity = managedTrain.undergroundTrain.carriages[1]
+    local driverCharacterEntity = undergroundCarriageEntity.surface.create_entity {name = "railway_tunnel-dummy_character", position = undergroundCarriageEntity.position, force = undergroundCarriageEntity.force}
+    undergroundCarriageEntity.set_driver(driverCharacterEntity)
+    local undergroundTrainManualDrivingDetails = {
+        undergroundCarriageEntity = undergroundCarriageEntity,
+        driverCharacterEntity = driverCharacterEntity
+    }
+    return undergroundTrainManualDrivingDetails
 end
 
 return TrainManagerStateFuncs

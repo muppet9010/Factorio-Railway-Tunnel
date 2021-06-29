@@ -5,7 +5,11 @@
         - if a leaving manual train hits something while leaving and stops the underground train continues I believe. So have some sort of feedback, likely same issue with automatic leaving trains.
         - manually driven trains being changed to automatic at various points in their tunnel usage and the reverse.
         - can't automatically test multiple real players having inputs unfortunatly.
+        - driving player being in an early carriage to leave, underground carriage or entering carriage part. Have short and long trains (entering,underground and leaving all at once).
+        - check player in forwards and rear facing locomotives and cargo wagons.
+        - have train with leading carriage: loco forwards, loco backwards, cargo wagon forwards, cargo wagon backwards.
 
+- Low fuel check needs to handle the possibility of reverse only loco's with manually driven trains.
 
 Bugs
 ----

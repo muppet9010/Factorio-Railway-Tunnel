@@ -727,14 +727,6 @@ TrainManagerFuncs.GetLeadingLocoAndBurner = function(train, trainFacingForwards)
     return leadLoco, leadLoco.burner
 end
 
----@param carriage LuaEntity
----@return LuaEntity @The driver charater added to the carriage.
-TrainManagerFuncs.AddDriverCharacterToCarriage = function(carriage)
-    local driverCharacter = carriage.surface.create_entity {name = "railway_tunnel-dummy_character", position = carriage.position, force = carriage.force}
-    carriage.set_driver(driverCharacter)
-    return driverCharacter
-end
-
 ---@param train LuaTrain
 ---@return table<LuaPlayer, RidingState>
 TrainManagerFuncs.GetTrainsCurrentPassengersRidingStates = function(train)

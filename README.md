@@ -24,7 +24,7 @@ Usage Notes
 - Any train using a tunnel that has an issue (runs out of fuel, has a carriage removed, etc) will be pushed out of the tunnel so it can be fixed by the player.
 - Destroyed tunnels will lose the train and players within.
 - While a train is entering a tunnel access by the player is restricted. The leaving train can be manipulated if needed.
-- When a manually driven train through a tunnel has multiple players in it and more than 1 player tries to drive the train the end result may be a mix of the players inputs. With single player it just works as expected.
+- When a manually driven train is passing through a tunnel and has multiple players in it, if more than 1 player tries to drive the train the end result may be a mix of the players inputs. With single player it just works as expected.
 
 
 Editor Mode
@@ -48,7 +48,3 @@ Contributors
 
 Rejected Ideas
 ===============
-
-Let players control manual trains speed through the tunnel
----------------
-While this is likely possible, its a lot of mod development work for very little reward. The current automatic tunnel journey enables support of manual trains without delaying wider mod development significantly for them.

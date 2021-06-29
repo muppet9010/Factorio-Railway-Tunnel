@@ -525,71 +525,56 @@ TunnelPortals.EntranceUsageDetectorEntityDied = function(diedEntity, carriageEnt
         return
     end
 
+    -- Get any existing Managed Trains related to this train Id.
     local trainIdToManagedTrain = Interfaces.Call("TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails", train.id) ---@type TrainIdToManagedTrain
+    local managedTrain
+    if trainIdToManagedTrain ~= nil then
+        managedTrain = trainIdToManagedTrain.managedTrain
+    end
 
-    -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
+    -- This train has reserved a tunnel somewhere so check if its this one.
+    if managedTrain ~= nil then
+        if managedTrain.tunnel.id == portal.tunnel.id then
+            -- The train has reserved this tunnel.
+            if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
+                -- Train had reserved the tunnel and is now trying to pass in to the tunnels entrance portal track. This is healthy activity.
+                return
+            elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain or trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leftTrain then
+                -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
+                return
+            else
+                error("Train is crossing a tunnel portal's threshold while not in an expected state.\ntrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                return
+            end
+        else
+            error("Train has entered one portal while it has a reservation on another.\ntrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+            return
+        end
+    end
+
+    -- There's already a train using this tunnel. So stop all trains at the entrance.
+    if portal.tunnel.managedTrain ~= nil then
+        train.speed = 0
+        TunnelPortals.AddEntranceUsageDetectorEntityToPortal(portal, true)
+        rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+        return
+    end
+
+    -- Is a scheduled train following its schedule, tunnel is free and this train has no tunnel reservations.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        if trainIdToManagedTrain ~= nil then
-            -- This train has reserved a tunnel somewhere.
-            local managedTrain = trainIdToManagedTrain.managedTrain
-            if managedTrain.tunnel.id == portal.tunnel.id then
-                -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
-                    -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entrance portal track. This is healthy activity.
-                    return
-                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain or trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leftTrain then
-                    -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
-                    return
-                else
-                    error("Train is crossing a tunnel portal's threshold while not in an expected state.\ntrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
-                    return
-                end
-            else
-                error("Train has entered one portal in automatic mode, while it has a reservation on another.\ntrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
-                return
-            end
-        else
-            -- This train hasn't reserved any tunnel.
-            if portal.tunnel.managedTrain == nil then
-                -- Portal's tunnel isn't reserved so this train can grab the portal.
-                Interfaces.Call("TrainManager.RegisterTrainOnPortalTrack", train, portal)
-                return
-            else
-                -- Portal's tunnel is already being used so stop this train entering. Not sure how this could have happened, but just stop the new train here and restore the entrance detection entity.
-                if global.strictStateHandling then
-                    -- This being a strict failure will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
-                    error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train.id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
-                    return
-                else
-                    train.speed = 0
-                    TunnelPortals.AddEntranceUsageDetectorEntityToPortal(portal, true)
-                    rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-                    return
-                end
-            end
-        end
+        -- Portal's tunnel isn't reserved so this train can grab the portal.
+        Interfaces.Call("TrainManager.RegisterTrainOnPortalTrack", train, portal)
+        return
     end
 
-    -- Train has a player in it so we assume its being actively driven. Can only detect if player input is being entered right now, not the players intention.
+    -- Train has a player in it so we assume its being actively driven, vs a coasting train with a player in it. We could only detect current player input, not the players intention.
     if #train.passengers ~= 0 then
-        if portal.tunnel.managedTrain ~= nil then
-            if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain or trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leftTrain then
-                -- This manual train is the one that reserved the tunnel and it is now trying to leave the portal.
-                return
-            end
-            -- There's already a train using the tunnel. Makes life simplier to just block the manually driven train at the portal entrance.
-            train.speed = 0
-            TunnelPortals.AddEntranceUsageDetectorEntityToPortal(portal, true)
-            rendering.draw_text {text = "Tunnel in use", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
-            return
-        else
-            -- Tunnel is free so claim the portal tracks.
-            Interfaces.Call("TrainManager.RegisterTrainOnPortalTrack", train, portal)
-            return
-        end
+        -- Tunnel is free so claim the portal tracks.
+        Interfaces.Call("TrainManager.RegisterTrainOnPortalTrack", train, portal)
+        return
     end
 
-    -- Train is coasting so stop it at the border and try to put the detection entity back.
+    -- Train is coasting so stop it at the border and put the detection entity back.
     train.speed = 0
     TunnelPortals.AddEntranceUsageDetectorEntityToPortal(portal, true)
     rendering.draw_text {text = "Unpowered trains can't use tunnels", surface = portal.tunnel.aboveSurface, target = portal.entrySignals[TunnelSignalDirection.inSignal].entity.position, time_to_live = 180, forces = {portal.entity.force}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
