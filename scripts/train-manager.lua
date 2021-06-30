@@ -71,8 +71,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field undergroundTunnel UndergroundTunnel @Ref to the global tunnel's underground tunnel object.
 ---@field undergroundLeavingPortalEntrancePosition Position @The underground position equivilent to the portal entrance that the underground train is measured against to decide when it starts leaving.
 ---
----@field enteringCarriageIdToUndergroundCarriageEntity table<UnitNumber, LuaEntity> @Each entering carriage's unit number to the corrisponding underground carriage entity in the train.
----@field leavingCarriageIdToUndergroundCarriageEntity table<UnitNumber, LuaEntity> @Each leaving carriage's unit number to the corrisponding underground carriage entity in the train.
+---@field surfaceCarriageIdToUndergroundCarriageEntity table<UnitNumber, LuaEntity> @Each surface (entering/leaving) carriage's unit number to the corrisponding underground carriage entity in the train. This will contain invalid references at all stages of transition, however as the surface carriages always have unique unit_numbers and we do the lookup on this it will be fine.
 
 ---@class TrainLeadCarriageCache
 ---@field trainForwards boolean @If the train was forwards when the cache was last updated.
@@ -517,7 +516,6 @@ TrainManager.TrainEnteringOngoing = function(managedTrain)
         global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
         managedTrain.enteringTrain = nil
         managedTrain.enteringTrainId = nil
-        managedTrain.enteringCarriageIdToUndergroundCarriageEntity = nil
         Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.fullyEntered)
     end
@@ -691,7 +689,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(managedTrain,
     else
         error("TrainManager.HandleLeavingTrainStoppingAtSignalSchedule() unsuported arriveAtName: " .. tostring(arriveAt))
     end
-    local managedTrainStoppingTargetEntityAttribute = managedTrain[stoppingTargetEntityAttributeName]
+    local managedTrainStoppingTargetEntityAttribute = managedTrain[stoppingTargetEntityAttributeName] ---@type LuaEntity
 
     -- 1: If leaving train is now arriving at a relvent stopping target (station or signal) check state in detail as we may need to update the underground train stop point.
     -- 2: Once the leaving train is stopped at a relevent stopping target, clear out stopping target arriving state.
@@ -967,14 +965,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     end
 
     -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage.
-    newManagedTrain.leavingCarriageIdToUndergroundCarriageEntity = {}
-    newManagedTrain.enteringCarriageIdToUndergroundCarriageEntity = {}
-    if newManagedTrain.enteringTrainState == EnteringTrainStates.entering then
-        -- Populate the new enteringCarriageId to undergroundCarriageEntity table from the old left carraige list. Any players in carriages still underground at this point are fine.
-        for leavingCarriageId, undergroundCarriageEntity in pairs(oldManagedTrain.leavingCarriageIdToUndergroundCarriageEntity) do
-            newManagedTrain.enteringCarriageIdToUndergroundCarriageEntity[leavingCarriageId] = undergroundCarriageEntity
-        end
-    end
+    newManagedTrain.surfaceCarriageIdToUndergroundCarriageEntity = oldManagedTrain.surfaceCarriageIdToUndergroundCarriageEntity
     TrainManagerPlayerContainers.On_TrainManagerReversed(oldManagedTrain, newManagedTrain)
 
     -- Update underground trains path and speed. Variable state done previously.

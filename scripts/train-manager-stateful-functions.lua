@@ -245,7 +245,7 @@ TrainManagerStateFuncs.CreateFirstCarriageForLeavingTrain = function(managedTrai
         managedTrain = managedTrain,
         tunnelUsagePart = TunnelUsageParts.leavingTrain
     }
-    managedTrain.leavingCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = undergroundLeadCarriage
+    managedTrain.surfaceCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = undergroundLeadCarriage
 
     -- Add a pushing loco if needed.
     if not TrainManagerFuncs.CarriageIsAForwardsLoco(placedCarriage, managedTrain.trainTravelOrientation) then
@@ -286,7 +286,7 @@ TrainManagerStateFuncs.AddCarriageToLeavingTrain = function(managedTrain, nextSo
     if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
         error("Placed carriage not part of leaving train as expected carriage count not right.\nleavingTrain id: " .. managedTrain.leavingTrain.id)
     end
-    managedTrain.leavingCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = nextSourceCarriageEntity
+    managedTrain.surfaceCarriageIdToUndergroundCarriageEntity[placedCarriage.unit_number] = nextSourceCarriageEntity
 
     -- If train had a pushing loco before and still needs one, add one back.
     if hadPushingLoco and (not TrainManagerFuncs.CarriageIsAForwardsLoco(placedCarriage, managedTrain.trainTravelOrientation)) then
@@ -318,8 +318,7 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
         aboveEntrancePortal = aboveEntrancePortalEndSignal.portal,
         tunnel = aboveEntrancePortalEndSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(aboveEntrancePortalEndSignal.entity.direction + 4),
-        enteringCarriageIdToUndergroundCarriageEntity = {},
-        leavingCarriageIdToUndergroundCarriageEntity = {},
+        surfaceCarriageIdToUndergroundCarriageEntity = {},
         leavingTrainExpectedBadState = false,
         leavingTrainAtEndOfPortalTrack = false,
         trainFollowingAutomaticSchedule = not train.manual_mode
@@ -475,7 +474,7 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
     managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain = {}
     local undergroundTrainSpeed = undergroundTrain.speed
     for _, enteringCarriage in pairs(managedTrain.enteringTrain.carriages) do
-        local undergroundCarriageEntity = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[enteringCarriage.unit_number]
+        local undergroundCarriageEntity = managedTrain.surfaceCarriageIdToUndergroundCarriageEntity[enteringCarriage.unit_number]
         local abovegroundCarriageSameFacingAsUndergroundTrain
         if enteringCarriage.type == "locomotive" then
             -- Locomotives drive relative to their own facing.
@@ -557,7 +556,7 @@ TrainManagerStateFuncs.CopyEnteringTrainUnderground = function(managedTrain, fir
         end
 
         placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation)
-        managedTrain.enteringCarriageIdToUndergroundCarriageEntity[refCarriage.unit_number] = placedCarriage
+        managedTrain.surfaceCarriageIdToUndergroundCarriageEntity[refCarriage.unit_number] = placedCarriage
     end
 
     return placedCarriage.train
@@ -708,10 +707,7 @@ TrainManagerStateFuncs.HandleManuallyDrivenTrainInputs = function(managedTrain)
             local undergroundCarriageId = global.playerContainers.playerIdToPlayerContainer[drivingPlayer.index].undergroundCarriageId
             playersTrainSameFacingAsUndergroundTrain = managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain[undergroundCarriageId]
         else
-            local undergroundCarriageId
-            --TODO: work out if the playersCarriageEntity is part of entering or leaving train. hard coded to entering train for now.
-            undergroundCarriageId = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[playersCarriageEntity.unit_number].unit_number
-
+            local undergroundCarriageId = managedTrain.surfaceCarriageIdToUndergroundCarriageEntity[playersCarriageEntity.unit_number].unit_number
             if playersCarriageEntity.speed == playersCarriageEntity.train.speed then
                 playersTrainSameFacingAsUndergroundTrain = managedTrain.undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain[undergroundCarriageId]
             else

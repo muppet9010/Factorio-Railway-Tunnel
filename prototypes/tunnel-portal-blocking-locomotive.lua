@@ -1,6 +1,8 @@
 local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
 local Utils = require("utility/utils")
 
+-- This has a collision_box (2) thats longer than the connection_distance (1.5) beyond joints of any vanilla carriage. This means no other carriage can ever connect to it. This train does have the minimum joint distane of 0.1 so techncially its 1.9 blocks 1.5.
+
 data:extend(
     {
         {
@@ -9,7 +11,7 @@ data:extend(
             icon = "__base__/graphics/icons/locomotive.png",
             icon_size = 64,
             icon_mipmaps = 4,
-            flags = {"not-deconstructable", "not-upgradable", "not-blueprintable"},
+            flags = {"not-deconstructable", "not-upgradable", "not-blueprintable", "placeable-off-grid"},
             subgroup = "railway_tunnel-hidden_locomotives",
             collision_box = {{-0.3, -2}, {0.3, 2}},
             collision_mask = CollisionMaskUtil.get_default_mask("locomotive"),

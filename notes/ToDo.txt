@@ -12,13 +12,15 @@
         - check player in forwards and rear facing locomotives and cargo wagons.
         - have train with leading carriage: loco forwards, loco backwards, cargo wagon forwards, cargo wagon backwards.
         - in a test with all carriages pointing west, the only loco point east with carraiges both sides. The vaniall train in my manual test was "facing" west. The train did have its first loco facing west, but this was removed at the end.
+        - tests should include steering as well as acceleration.
     - Need to track players getting in/out of an entering/leaving train and player containers.
 
 - Low fuel check needs to handle the possibility of reverse only loco's with manually driven trains.
 
 Bugs
 ----
-     -- Add test to rebuild a tunnel after a part has been removed.
+    -- Add test to rebuild a tunnel after a part has been removed.
+    -- Add pushing loco to leaving train test. Need to do all orientations. Just a simple does it not error and train reaches destination station.
 
 
 Functionality not currently supported
@@ -71,6 +73,7 @@ Features planned to add
 
 Concepts / Ideas
 ----------------
+    - Move the entrance/exit signals to the first tile in the tunnel. Will allow the entrance usage detector to move right up to the edge of the portal.
     - Review what to allow to be built on top of the tunnel segments, either just belts & power poles or anything non trains. At present is nothing, but can be driven over.
     - When a tunnel is destroyed (by force):
         - Any riding players should have their bodies dumped at the tunnel entrance position (it may be gone), as in vanilla Factorio you can't loose a body. At present the body ends up on the surface where the player's PlayerContainer was.

@@ -49,7 +49,7 @@ local TestsToRun = {
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
     TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
-    InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
+    InwardFacingTrain = {enabled = true, testScript = require("tests/inward-facing-train")},
     InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
     InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")},
     PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},

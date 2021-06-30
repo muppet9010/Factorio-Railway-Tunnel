@@ -140,7 +140,7 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
     driver.riding_state = cachedRidingState
 
     -- Record state for future updating.
-    local playersUndergroundCarriage = managedTrain.enteringCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
+    local playersUndergroundCarriage = managedTrain.surfaceCarriageIdToUndergroundCarriageEntity[playersCarriage.unit_number]
     ---@type PlayerContainer
     local playerContainer = {
         id = playerContainerEntity.unit_number,
