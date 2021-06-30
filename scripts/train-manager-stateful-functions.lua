@@ -12,11 +12,6 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local TrainManagerRemote = require("scripts/train-manager-remote")
 
----@class TrainTypePlayersWithInput
----@field player LuaPlayer
----@field ridingTrainPart "'enteringTrain'"|"'undergroundTrain'"
----@field ridingCarriageType "'locomotive'"|"'cargo'"
-
 TrainManagerStateFuncs.OnLoad = function()
     UndergroundSetUndergroundExitSignalStateFunction = Interfaces.GetNamedFunction("Underground.SetUndergroundExitSignalState")
     Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManagerStateFuncs.TrainTracking_OnTrainCreated)
@@ -373,7 +368,10 @@ end
 TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
     local locoPlayersWithInput, cargoPlayersWithInput = {}, {}
     if managedTrain.enteringTrain ~= nil then
-        TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput(managedTrain.enteringTrain.passengers, locoPlayersWithInput, cargoPlayersWithInput, "enteringTrain")
+        TrainManagerStateFuncs.GetActiveDrivingInputPlayersFromListByCarriageType(managedTrain.enteringTrain.passengers, locoPlayersWithInput, cargoPlayersWithInput)
+    end
+    if managedTrain.leavingTrain ~= nil then
+        TrainManagerStateFuncs.GetActiveDrivingInputPlayersFromListByCarriageType(managedTrain.leavingTrain.passengers, locoPlayersWithInput, cargoPlayersWithInput)
     end
     local trainsPlayerContainers = global.playerContainers.trainManagerEntriesPlayerContainers[managedTrain.id]
     if trainsPlayerContainers ~= nil then
@@ -381,34 +379,27 @@ TrainManagerStateFuncs.GetCurrentManualTrainDriver = function(managedTrain)
         for _, container in pairs(trainsPlayerContainers) do
             undergroundPassengers[container.player.index] = container.player
         end
-        TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput(undergroundPassengers, locoPlayersWithInput, cargoPlayersWithInput, "undergroundTrain")
+        TrainManagerStateFuncs.GetActiveDrivingInputPlayersFromListByCarriageType(undergroundPassengers, locoPlayersWithInput, cargoPlayersWithInput)
     end
-    local firstDriverDetails = Utils.GetFirstTableValue(locoPlayersWithInput) or Utils.GetFirstTableValue(cargoPlayersWithInput) ---@type TrainTypePlayersWithInput
-    if firstDriverDetails == nil then
-        return nil
-    end
-
-    return firstDriverDetails.player
+    local firstDriver = Utils.GetFirstTableValue(locoPlayersWithInput) or Utils.GetFirstTableValue(cargoPlayersWithInput)
+    return firstDriver
 end
 
 ---@param playerList table<int, LuaPlayer>
 ---@param locoPlayersWithInput table<Id, LuaPlayer> @List to be populated with those active driving input players in locomotives.
 ---@param cargoPlayersWithInput table<Id, LuaPlayer> @List to be populated with those active driving input players in cargo carriages.
----@param ridingTrainPart '"enteringTrain"'|'"undergroundTrain"'
-TrainManagerStateFuncs.CheckPlayerListForActiveDrivingInput = function(playerList, locoPlayersWithInput, cargoPlayersWithInput, ridingTrainPart)
+TrainManagerStateFuncs.GetActiveDrivingInputPlayersFromListByCarriageType = function(playerList, locoPlayersWithInput, cargoPlayersWithInput)
     ---@typelist uint, LuaPlayer
     for _, player in pairs(playerList) do
         local playerRidingState = player.riding_state
         if playerRidingState.acceleration ~= defines.riding.acceleration.nothing or playerRidingState.direction ~= defines.riding.direction.straight then
-            local listToAddTo, ridingCarriageType
+            local listToAddTo
             if player.vehicle.type == "locomotive" then
                 listToAddTo = locoPlayersWithInput
-                ridingCarriageType = "locomotive"
             else
                 listToAddTo = cargoPlayersWithInput
-                ridingCarriageType = "cargo"
             end
-            listToAddTo[player.index] = {player = player, ridingTrainPart = ridingTrainPart, ridingCarriageType = ridingCarriageType}
+            listToAddTo[player.index] = player
         end
     end
 end
@@ -660,13 +651,13 @@ end
 
 --- Adds a driver character to the first carriage of the underground train and returns details referencing it.
 ---@param managedTrain ManagedTrain
----@return UndergroundTrainManualDrivingDetails
+---@return UndergroundTrainManualDrivingCachedDetails
 TrainManagerStateFuncs.AddDriverCharacterToUndergroundTrain = function(managedTrain)
     local undergroundCarriageEntity = managedTrain.undergroundTrain.carriages[1]
     local driverCharacterEntity = undergroundCarriageEntity.surface.create_entity {name = "railway_tunnel-dummy_character", position = undergroundCarriageEntity.position, force = undergroundCarriageEntity.force}
     undergroundCarriageEntity.set_driver(driverCharacterEntity)
 
-    ---@type UndergroundTrainManualDrivingDetails
+    ---@type UndergroundTrainManualDrivingCachedDetails
     local undergroundTrainManualDrivingDetails = {
         undergroundCarriageEntity = undergroundCarriageEntity,
         driverCharacterEntity = driverCharacterEntity
@@ -692,13 +683,15 @@ TrainManagerStateFuncs.HandleManuallyDrivenTrainInputs = function(managedTrain)
     end
     if managedTrain.drivingPlayer ~= nil then
         drivingPlayer = managedTrain.drivingPlayer
-        sourceRidingState = drivingPlayer.riding_state
+        if sourceRidingState == nil then
+            sourceRidingState = drivingPlayer.riding_state
+        end
     end
 
     -- Convert the input to be approperaite for apply, handles player's carriage to underground train facing differences.
     local accelerationInput, directionInput
     if sourceRidingState ~= nil then
-        -- There is an active driver then we impliment the inputs. We do need to orientate them based on player's carriage to underground driver carriage facing.
+        -- There is an active driver so we need to impliment the inputs. We need to orientate the inputs based on player's carriage to underground train facing.
 
         -- Work out if the players inputs are being reversed to what they were before the train started entering the tunnel.
         local playersCarriageEntity = drivingPlayer.vehicle
@@ -746,9 +739,37 @@ TrainManagerStateFuncs.HandleManuallyDrivenTrainInputs = function(managedTrain)
     -- Apply inputs.
     managedTrain.undergroundTrainDriverCache.driverCharacterEntity.riding_state = {acceleration = accelerationInput, direction = defines.riding.direction.straight}
     if managedTrain.leavingTrain ~= nil then
-    -- TODO: apply directionInput, but also need to have something to control...
-    --managedTrain.leavingTrainForwardsLocoDummyDriverCache.riding_state = {acceleration = defines.riding.acceleration.nothing, direction = directionInput}
+        local leavingTrainDriverCache = managedTrain.leavingTrainDriverCache
+        if leavingTrainDriverCache.characterPlayerOwner == nil then
+            -- Is a dummy character so just apply steering.
+            leavingTrainDriverCache.driverCharacterEntity.riding_state = {acceleration = accelerationInput, direction = directionInput}
+        elseif leavingTrainDriverCache.characterPlayerOwner ~= drivingPlayer.index then
+            -- Is controlling a player, but it isn't this player trying to control themselves, so can apply the steering.
+            leavingTrainDriverCache.driverCharacterEntity.riding_state = {acceleration = accelerationInput, direction = directionInput}
+        end
     end
+end
+
+--- Caches the character entity used for steering the leaving train. If lead carriage doesn't have a player in it then a dummy character is added for the purpose.
+---@param managedTrain ManagedTrain
+---@param placedLeavingCarriage LuaEntity
+TrainManagerStateFuncs.CacheCreateLeavingTrainDriverEntity = function(managedTrain, placedLeavingCarriage)
+    local driverPlayer = placedLeavingCarriage.get_driver()
+    local driverEntity, driverPlayerId
+    if driverPlayer == nil then
+        -- Create driver entity
+        driverEntity = placedLeavingCarriage.surface.create_entity {name = "railway_tunnel-dummy_character", position = placedLeavingCarriage.position, force = placedLeavingCarriage.force}
+        placedLeavingCarriage.set_driver(driverEntity)
+    else
+        -- Use the player in the first carriage.
+        driverEntity = driverPlayer.character
+        driverPlayerId = driverPlayer.index
+    end
+    managedTrain.leavingTrainDriverCache = {
+        leavingCarriageEntity = placedLeavingCarriage,
+        driverCharacterEntity = driverEntity,
+        characterPlayerOwner = driverPlayerId
+    }
 end
 
 return TrainManagerStateFuncs

@@ -32,7 +32,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field undergroundTrainOldAbsoluteSpeed double @The absolute speed of the underground train last tick. Updated once enteringStarted up untill fullLeft.
 ---@field undergroundTrainAForwardsLocoCache LuaEntity @A loco facing forwards in the underground train, no specific one.
 ---@field undergroundTrainAForwardsLocoBurnerCache LuaBurner @The cached loco facing forward's burner in the underground train.
----@field undergroundTrainDriverCache UndergroundTrainManualDrivingDetails @The cached driver character of the underground train.
+---@field undergroundTrainDriverCache UndergroundTrainManualDrivingCachedDetails @The cached driver character of the underground train.
 ---@field undergroundTrainCarriagesCorrispondingSurfaceCarriageSameFacingAsUndergroundTrain table<UnitNumber, boolean> @If the surface carriage for a given underground carriage (UnitNumber) was facing the same (forwards) as the underground train at creation point. Can be used for calculating if a players riding inputs should be revesed when applied or not. Has to be stored like this so it can be utilised by players in entering, playerContainer and leaving trains.
 ---
 ---@field leavingTrainState LeavingTrainStates @The current leaving train's state.
@@ -46,6 +46,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field leavingTrainExpectedBadState boolean @If the leaving train is in a bad state and it can't be corrected. Avoids any repeating checks or trying bad actions, and just waits for the train to naturally path itself.
 ---@field leavingTrainAtEndOfPortalTrack boolean @If the leaving train is in a bad state and has reached the end of the portal track. It still needs to be checked for rear paths every tick via the mod.
 ---@field leavingTrainRearCarriageCache LeavingTrainRearCarriageCache @Cache of the rear carriage of the leaving train. Is only used and updated during TrainManager.TrainLeavingOngoing().
+---@field leavingTrainDriverCache LeavingTrainManualDrivingCachedDetails @Cached details of the driver character we will control. Is only used and updated during TrainManager.TrainLeavingFirstCarriage() and TrainManager.TrainLeavingOngoing(). In some cases this may be a player and so the primary steering input will be applied to them every tick to TRY and steer the train. We never update this, which we could; but I don't know which option is better: using a player and keeping lead carriage free for players to enter while leaving, or avoid using players as we are overwriting any current input they have.
 ---
 ---@field leftTrain LuaTrain @The train thats left the tunnel.
 ---@field leftTrainId Id @The LuaTrain ID of the leftTrain.
@@ -81,9 +82,14 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field speedPositive boolean @If the leaving train's speed was positive when the cache was last updated.
 ---@field carriage LuaEntity @Cached ref to the rear carriage entity
 
----@class UndergroundTrainManualDrivingDetails
+---@class UndergroundTrainManualDrivingCachedDetails
 ---@field undergroundCarriageEntity LuaEntity
 ---@field driverCharacterEntity LuaEntity
+
+---@class LeavingTrainManualDrivingCachedDetails
+---@field leavingCarriageEntity LuaEntity
+---@field driverCharacterEntity LuaEntity @The character to apply the steering to.
+---@field characterPlayerOwner PlayerIndex|nil @The player Id(if any) whos character this is.
 
 ---@alias TrainTravelOrientation "0"|"0.25"|"0.5"|"0.75"
 
@@ -575,11 +581,15 @@ TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
     TrainManagerStateFuncs.UpdatePortalExitSignalPerTick(managedTrain, defines.signal_state.open) -- Reset the underground Exit signal state as the leaving train will now detect any signals.
     managedTrain.undergroundTrainSetsSpeed = true
 
+    -- Create and cache the dummy driver for this train.
+    TrainManagerStateFuncs.CacheCreateLeavingTrainDriverEntity(managedTrain, placedCarriage)
+
     -- Check if all train wagons placed and train fully left the tunnel, otherwise set state for future carriages with the ongoing state.
     if managedTrain.leavingTrainCarriagesPlaced == managedTrain.undergroundTrainCarriageCount then
         TrainManager.TrainLeavingCompleted(managedTrain, nil)
     else
         managedTrain.leavingTrainState = LeavingTrainStates.leaving
+        TrainManagerStateFuncs.HandleManuallyDrivenTrainInputs(managedTrain)
     end
 end
 
@@ -590,6 +600,8 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
         TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.signal)
         TrainManager.HandleLeavingTrainStoppingAtSignalSchedule(managedTrain, LeavingTrainStoppingAtType.schedule)
     end
+
+    TrainManagerStateFuncs.HandleManuallyDrivenTrainInputs(managedTrain)
 
     local undergroundTrainSpeed, leavingTrain = managedTrain.undergroundTrain.speed, managedTrain.leavingTrain
     TrainManagerStateFuncs.EnsureManagedTrainsFuel(managedTrain, math.abs(undergroundTrainSpeed))
@@ -755,6 +767,11 @@ end
 TrainManager.TrainLeavingCompleted = function(managedTrain)
     TrainManagerStateFuncs.DestroyUndergroundTrain(managedTrain)
 
+    -- Remove any leaving train dummy driver character as no longer needed.
+    if managedTrain.leavingTrainDriverCache.characterPlayerOwner == nil and managedTrain.leavingTrainDriverCache.driverCharacterEntity.valid then
+        managedTrain.leavingTrainDriverCache.driverCharacterEntity.destroy()
+    end
+
     managedTrain.leftTrain, managedTrain.leftTrainId = managedTrain.leavingTrain, managedTrain.leavingTrainId
     global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId].tunnelUsagePart = TunnelUsageParts.leftTrain -- Keep the table, just update its state, as same train id, etc between the leaving and left train at this state change point.
     managedTrain.leavingTrainState = LeavingTrainStates.trainLeftTunnel
@@ -900,6 +917,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
 
     -- Handle new leaving train now all pre-req data set up.
     if oldManagedTrain.enteringTrainState == EnteringTrainStates.entering then
+        -- TODO update managedTrain.leavingTrainDriverCache in this section.
         newManagedTrain.leavingTrainState = LeavingTrainStates.leaving
         newManagedTrain.leavingTrain = oldManagedTrain.enteringTrain
         newManagedTrain.leavingTrain.speed = 0 -- We don't want to change the cached forwards state we have just generated. This was most liekly set to 0 already by the train reversing, but force it to be safe.
