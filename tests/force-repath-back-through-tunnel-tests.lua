@@ -67,339 +67,65 @@ local blueprintString = "0eNqtXNtu4kgU/Bc/Q+TTV3deV/sDu4+rCDHgyVgDNrJNZqOIf18bTE
 ---@type Test_TrainType
 local TrainTypes = {
     {
-        text = "<",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            }
-        }
+        text = "<"
     },
     {
-        text = "<-",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            }
-        }
+        text = "<-"
     },
     {
-        text = "-<",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            }
-        }
+        text = "-<"
     },
     {
-        text = "-<-",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            }
-        }
+        text = "-<-"
     },
     {
-        text = "<>",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            }
-        }
+        text = "<>"
     },
     {
-        text = "<->",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            }
-        }
+        text = "<->"
     },
     {
-        text = "<>-",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            }
-        }
+        text = "<>-"
     },
     {
-        text = "-<>",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            }
-        }
+        text = "-<>"
     },
     {
-        text = "-<>-",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            }
-        }
+        text = "-<>-"
     },
     {
-        text = "><",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            }
-        }
+        text = "><"
     },
     {
-        text = ">-<",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = false,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            }
-        }
+        text = ">~<"
     },
     {
-        text = "><-",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = false,
-                count = 1
-            }
-        }
+        text = "><~"
     },
     {
-        text = "-><",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            }
-        }
+        text = "-><"
     },
     {
-        text = "-><-",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 1
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = false,
-                count = 1
-            }
-        }
+        text = "-><~"
     },
     {
         text = "<-------------->",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 14
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            }
-        },
         startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
     },
     {
         text = ">--------------<",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 14
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            }
-        },
         startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
     },
     {
         text = "<>--------------",
-        carriages = {
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 14
-            }
-        },
         startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
     },
     {
         text = "--------------<>",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 14
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            }
-        },
         startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
     },
     {
-        text = "-------<>-------",
-        carriages = {
-            {
-                name = "cargo-wagon",
-                facingForwards = false,
-                count = 7
-            },
-            {
-                name = "locomotive",
-                facingForwards = true
-            },
-            {
-                name = "locomotive",
-                facingForwards = false
-            },
-            {
-                name = "cargo-wagon",
-                facingForwards = true,
-                count = 7
-            }
-        },
+        text = "~~~~~~~<>-------",
         startingSpeed = 0.3 -- Needed so the before committed state is triggered before the first carriage is removed.
     }
 }
@@ -904,7 +630,7 @@ Test.GenerateTestScenarios = function(testName)
     local positiveTestsByTrainTextLookup = {}
     for _, trainType in pairs(trainTypesToTest) do
         -- Get the full carraige details from the shorthand and find the last backwards facing loco.
-        local fullCarriageArray, backwardsLocoCarriageNumber = TestFunctions.ExpandTrainType(trainType.carriages)
+        local fullCarriageArray, backwardsLocoCarriageNumber = TestFunctions.ExpandTrainType(trainType)
         for _, tunnelUsageType in pairs(tunnelUsageTypesToTest) do
             for _, forwardsPathingOptionAfterTunnelType in pairs(forwardsPathingOptionAfterTunnelTypesToTest) do
                 for _, backwardsPathingOptionAfterTunnelType in pairs(backwardsPathingOptionAfterTunnelTypesToTest) do

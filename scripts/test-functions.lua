@@ -9,14 +9,7 @@ local Common = require("scripts/common")
 --- The shorthand specification of a train type.
 ---@class Test_TrainType
 ---@field text string @The human readable version of the train composition. Carriage symbols are listed as forwards, backwards. Locomotives: <, >. Cargo Wagons: -, ~.
----@field carriages Test_TrainTypeCarriages[]
----@field startingSpeed double @Train speed to be set when train created.
-
---- The shorthand specification of a train type's carriages.
----@class Test_TrainTypeCarriages
----@field name string @Prototype name.
----@field facingForwards boolean
----@field count? uint @Defults to 1 if not provided.
+---@field startingSpeed? double @Train speed to be set when train created, otherwise left as 0.
 
 --- The buildable specification of a train type's carriages after expanding from shorthand form.
 ---@class Test_TrainTypeCarriageDetails
@@ -450,20 +443,33 @@ TestFunctions.MakeCarriagesUnique = function(entities)
     end
 end
 
---- Expands train type shorthand to a full train carriage array.
----@param trainTypeCarriages Test_TrainTypeCarriages[]
+--- Expands train type text attribute to a full array of carriage details.
+---@param trainType Test_TrainType
 ---@return Test_TrainTypeCarriageDetails[] @The carriage details of the train.
 ---@return uint @The index of the last backwards facing loco in the returned carriage array or 0 if none.
-TestFunctions.ExpandTrainType = function(trainTypeCarriages)
+TestFunctions.ExpandTrainType = function(trainType)
     local fullCarriageArray = {} ---@type Test_TrainTypeCarriageDetails[]
     local backwardsLocoCarriageNumber = 0
-    for _, carriage in pairs(trainTypeCarriages) do
-        carriage.count = carriage.count or 1
-        for i = 1, carriage.count do
-            table.insert(fullCarriageArray, {name = carriage.name, facingForwards = carriage.facingForwards})
-            if carriage.name == "locomotive" and carriage.facingForwards == false then
-                backwardsLocoCarriageNumber = #fullCarriageArray
-            end
+    for carriageTextChar in trainType.text:gmatch "." do
+        local carriageName, carriageFacingForwards = nil, nil
+        if carriageTextChar == "<" then
+            carriageName = "locomotive"
+            carriageFacingForwards = true
+        elseif carriageTextChar == ">" then
+            carriageName = "locomotive"
+            carriageFacingForwards = false
+        elseif carriageTextChar == "-" then
+            carriageName = "cargo-wagon"
+            carriageFacingForwards = true
+        elseif carriageTextChar == "~" then
+            carriageName = "cargo-wagon"
+            carriageFacingForwards = false
+        else
+            error("Unsupported carriageText character: " .. carriageTextChar)
+        end
+        table.insert(fullCarriageArray, {name = carriageName, facingForwards = carriageFacingForwards})
+        if carriageName == "locomotive" and carriageFacingForwards == false then
+            backwardsLocoCarriageNumber = #fullCarriageArray
         end
     end
     return fullCarriageArray, backwardsLocoCarriageNumber
@@ -489,6 +495,9 @@ TestFunctions.BuildTrain = function(firstCarriageFrontPosition, carriagesDetails
         end
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, Utils.RotatePositionAround0(backwardsOrientation, {x = 0, y = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name)})) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(orientation), force = force}
+        if placedCarriage == nil then
+            error("TestFunctions.BuildTrain failed to build carriage at position")
+        end
         if carriageDetails.name == "locomotive" and locomotiveFuel ~= nil then
             placedCarriage.insert(locomotiveFuel)
         end

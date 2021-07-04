@@ -343,7 +343,7 @@ TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, manage
             end
         else
             -- Handle trains that have fully entered the tunnel.
-            local pathTestTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveEntrancePortal.entity, nil, nil, true)
+            local pathTestTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveEntrancePortal.entity, nil, true, nil, true)
             TrainManagerFuncs.TrainSetSchedule(pathTestTrain, schedule, isManual, targetTrainStop, true)
             if pathTestTrain.has_path then
                 canPathBackwards = true

@@ -8,7 +8,6 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
-local Common = require("scripts/common")
 
 local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
@@ -267,8 +266,8 @@ Test.BuildTrain = function(buildStation, trainType, origionalStation, targetType
         }
     end
 
-    local startingPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = -0.5, y = 2}) -- offset for first carriages front for a station.
-    local train = TestFunctions.BuildTrain(startingPosition, carriagesDetails, 0.75, {name = "rocket-fuel", count = 10})
+    local startingPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = 0.5, y = -2}) -- offset for first carriages front for a station.
+    local train = TestFunctions.BuildTrain(startingPosition, carriagesDetails, 0.25, {name = "rocket-fuel", count = 10})
 
     if targetType == TargetTypes.trainStop then
         train.schedule = {

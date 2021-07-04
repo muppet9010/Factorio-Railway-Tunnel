@@ -1,14 +1,14 @@
 --[[
-    A series of tests that manually drives a train and does various actions during tunnel usage. Uses a short tunnel so longest train can be using both ends of it at once.
+    A series of tests that manually drives a train and does various actions during tunnel usage. Uses a short tunnel so longest train can be using both ends of it at once. Can't test for exact final outcome, but can alteast confirm it doesn't crash and steering works in all cases.
     Tests the various combinations:
+        - Train types: one of the local TrainTypes variable train type texts.
+        - Player inputs (up to 3 "bursts" per test):
+            - start state (per carraige): beginning, carriageEntering, fullyEntered, carriageLeaving, fullyLeft.
+            - stop state (per carriage): carriageEntering, fullyEntered, carriageLeaving, fullyLeft, tunnelUsageCompleted.
+            - acceleration (from players viewpoint pre tunnel): forwards, backwards, nothing
+            - direction: left, right, straight
+        - Player riding in: 1st and last carriage and locomotive per train.
         - Train starting speed (tiles per tick): 0, 0.5, 1
-        - Train state for player input (up to 3 "bursts"):
-            - acceleration input: forwards, backwards
-            - direction input: left, right
-            - players input starts (per carraige): none, carriageEntering, fullyEntered, carriageLeaving, fullyLeft.
-            - players input stops (per carriage): carriageEntering, fullyEntered, carriageLeaving, fullyLeft, tunnelUsageCompleted.
-        - Train types: singleLocoForwards, singleLocoBackwards, 1C_1L_1C_Forwards, 1C_1L_1C_Backwards, 1L_4C_Forwards, 4C_1L_Forwards, 1L_4C_Backwards, 4C_1L_Backwards, 1L_4C_1L, 2L_8C_2L
-        - Player riding in: each locomotive, 1st and last carriage in train.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -16,24 +16,45 @@ local Utils = require("utility/utils")
 
 local DoMinimalTests = false -- If TRUE does minimal tests just to check the general manual driving behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
-local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
-local SpecificTrainTypesFilter = {""} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
-local SpecificTunnelUsageTypesFilter = {"carriageLeaving"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
-local SpecificReverseOnCarriageNumberFilter = {6} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
-local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local DoSpecificTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
+local SpecificTrainTypesFilter = {} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1StartStatesFilter = {} -- Pass in array of StartStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1StopStatesFilter = {} -- Pass in array of StopStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1AccelerationActionsFilter = {} -- Pass in array of AccelerationActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1DirectionActionsFilter = {} -- Pass in array of DirectionActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2StartStatesFilter = {} -- Pass in array of StartStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2StopStatesFilter = {} -- Pass in array of StopStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2AccelerationActionsFilter = {} -- Pass in array of AccelerationActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2DirectionActionsFilter = {} -- Pass in array of DirectionActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3StartStatesFilter = {} -- Pass in array of StartStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3StopStatesFilter = {} -- Pass in array of StopStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3AccelerationActionsFilter = {} -- Pass in array of AccelerationActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3DirectionActionsFilter = {} -- Pass in array of DirectionActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerRidingInCarriageTypesFilter = {} -- Pass in an array of PlayerRidingInCarriageTypes to do just those specific carriage type tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE. Setting to a carriage type that isn't present on the specified train will throw an intentional error.
+local SpecificPlayerRidingInCarriagePositionsFilter = {} -- Pass in an array of PlayerRidingInCarriagePositions to do just those specific carriage position tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE. Setting to "last" with only 1 of that carriage type will throw an intentional error.
+local SpecificStartingTrainSpeedsFilter = {} -- Pass in array of any train speed values to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE. Speed value is blindly applied, doesn't have to be on the StartingTrainSpeeds variable list.
 
-local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
+local DebugOutputTestScenarioDetails = true -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
 Test.TestScenarios = {} -- Populated when script loaded.
 --[[
     {
-        trainState = the TrainStates of this test.
-        tunnelPart = the TunnelParts of this test.
-        removalAction = the RemovalActions of this test.
-        expectedTunnelState = the FinalTunnelStates of this test. Either complete or broken.
-        expectedTrainState = the FinalTrainStates of this test. Either complete, halfDestroyed or fullyDestroyed. Train is a 1-1 so when half in/out there will be just 1 carriage left.
+        trainTypeText = human readable text of the trains makeup.
+        trainTypeCarriages = array of Test_TrainTypeCarriageDetails (buildable).
+        playerInput1 = {
+            startState = the StartStates for when this input starts in this test.
+            stopState = the StopStates for when this input stops in this test.
+            accelerationAction = the AccelerationActions for during this input period in this test.
+            directionActions = the DirectionActions for during this input period in this test.
+        }
+        playerInput2 = same structure as playerInput1 or nil.
+        playerInput3 = same structure as playerInput1 or nil.
+        playerRidingInCarriageType = the PlayerRidingInCarriageTypes for this test.
+        playerRidingInCarriagePositions = the PlayerRidingInCarriagePositions for this test.
+        trainStartingSpeed = the speed of the train at test start.
+        expectedTrainState = the FinalTrainStates of this test. Will be updated during the test in many cases as may not be predictable.
     }
 ]]
 Test.OnLoad = function(testName)
@@ -42,93 +63,151 @@ Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
 end
 
-local blueprintString = "0eNqtml1P4kAUhv/LXINhPjof3O9v2IuNIRVHbLa0pC3uGsN/31b8IAvG5xhv1ELnnUOfPtKcmSd1U+/zrquaQS2fVLVum14tfz2pvto0ZT29NjzuslqqashbNVNNuZ2OurKq/5SPq2HfNLmeH3+tdm03lPWq33d35TrPd/X4c5vH6MNMVc1t/quW+jBD4SdDzOF6psaUaqjysbjng8dVs9/e5G7MfBs5jEObeT+0uzFt1/bjkLaZ5hlj5nY871EtbRijb6sur49v+pnqh/L4t/qZ+6nasynMFz757XkNryWksxIeyq56KUJfmN9+Mn+fN9OFfi1gNZ21Wndt31fN5sNyinCxHPNpOU5WzscFpC8WUHxTAV5/sQD/PTdE/CqB8DZ/P930m/th/qzNx7f9/1NcCI041CQcmnhowKF6wVMLnqp5quWphqdyVtriVM1hacdTBbQKniqg5XmqgBY3SwtocbUEsLhanJXhZnFUhovFSRnuFQdlsFaCTCyV4MNjpQSUsFBaIJQJPFVQa+Spgps/8VTuqcVKacEXgNU8ldOyhqdyWpZbJXgIsI6nCmhhs7Tg0cpyt6yAFnfLCmhxt6yAFnfLclqOu+U4LcfdcpyW4245Tstxtxyn5bhbTkCLu1UIaHG3CgEt7lYhoMXdKgS0uFsFp1VwtzynVXC3PKdVcLc8p1VwtzynVXC3vIAWdysIaHG3goAWdysIaHG3goAWdytwWp67FTktz92KnJbnbkVOy3O3IqfluVtRQIu7lQS0uFtJQIu7lQS0uFtJQIu7lTitgN0yC04raJ7KaQXDUzmtYHkqpxUcTxXQwm4ZQcMteJ4qoBV4qoBW5KkCWomnclqRuyXoZUTulqCXEd/dqtt1u22H6iFfigxXi2RPHzTarhqzXpZfFlfTW9MSZT+N6Nr17zzM7/a5ntYhDpcm5voJmiiR6ydookSun6CJEj279NZ9cumN9NJzQyULY9xQQfcmckMF3ZvEDRV0bxI3VNC9SfzbT9C9SVw/QfcmObTN4LVQp8+WdN+3Gfwop20G1+NL6/t8u69f9jW8qzIdj/++oj8557gv43yrwlnsFPy8o2J5srtjph5y1x9LidqFZIJNC6+DPxz+AeZROY0="
+local blueprintString = "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"
 
-local TrainStates = {
-    none = "none",
-    startApproaching = "startApproaching",
-    enteringCarriageRemoved = "enteringCarriageRemoved",
+local TrainTypes = {
+    {
+        text = "<"
+    },
+    {
+        text = ">"
+    },
+    {
+        text = "-<-"
+    },
+    {
+        text = "~<~"
+    },
+    {
+        text = "->-"
+    },
+    {
+        text = "~>~"
+    },
+    {
+        text = "----<"
+    },
+    {
+        text = "~~~~<"
+    },
+    {
+        text = "---->"
+    },
+    {
+        text = "~~~~>"
+    },
+    {
+        text = "<<-------->>"
+    },
+    {
+        text = "<<~~~~~~~~>>"
+    }
+}
+local StartStates = {
+    beginning = "beginning",
+    carriageEntering = "carriageEntering",
     fullyEntered = "fullyEntered",
-    startedLeaving = "startedLeaving",
+    carriageLeaving = "carriageLeaving",
     fullyLeft = "fullyLeft"
 }
-local TunnelParts = {
-    entrancePortal = "entrancePortal",
-    tunnelSegment = "tunnelSegment",
-    exitPortal = "exitPortal"
+local StopStates = {
+    carriageEntering = "carriageEntering",
+    fullyEntered = "fullyEntered",
+    carriageLeaving = "carriageLeaving",
+    fullyLeft = "fullyLeft",
+    tunnelUsageCompleted = "tunnelUsageCompleted"
 }
-local RemovalActions = {
-    mine = "mine",
-    destroy = "destroy"
+local AccelerationActions = {
+    forwards = "forwards",
+    backwards = "backwards",
+    nothing = "nothing"
 }
-local FinalTunnelStates = {
-    complete = "complete",
-    broken = "broken"
+local DirectionActions = {
+    left = "left",
+    right = "right",
+    straight = "straight"
 }
-local FinalTrainStates = {
-    complete = "complete",
-    halfDestroyed = "halfDestroyed", -- Train is only a 1-1. So when partially in/out there will be just 1 carriage on the surface.
-    fullyDestroyed = "fullyDestroyed"
+local PlayerRidingInCarriageTypes = {
+    locomotive = "locomotive",
+    ["cargo-wagon"] = "cargo-wagon"
 }
+local PlayerRidingInCarriagePositions = {
+    first = "first",
+    last = "last"
+}
+local StartingTrainSpeeds = {
+    0,
+    0.5,
+    1
+}
+local FinalTrainStates = {} --TODO
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
-    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainState .. "     " .. testScenario.tunnelPart .. "     " .. testScenario.removalAction .. "     Expected result: " .. testScenario.expectedTunnelState .. " tunnel - " .. testScenario.expectedTrainState .. " train"
+    local GeneratePlayerInputText = function(playerInput)
+        if playerInput == nil then
+            return ""
+        else
+            return "\nInput 1: " .. playerInput.startState .. " to " .. playerInput.stopState .. " - " .. playerInput.accelerationAction .. " - " .. playerInput.directionAction
+        end
+    end
+    local playerInput1, playerInput2, playerInput3 = GeneratePlayerInputText(testScenario.playerInput1), GeneratePlayerInputText(testScenario.playerInput2), GeneratePlayerInputText(testScenario.playerInput3)
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainTypeText .. "     " .. testScenario.playerRidingInCarriagePositions .. " " .. testScenario.playerRidingInCarriageType .. "     " .. testScenario.trainStartingSpeed .. "speed       Expected result: " .. testScenario.expectedTrainState .. playerInput1 .. playerInput2 .. playerInput3
 end
 
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 40}, testName)
 
     -- Get the stations from the blueprint
-    local stationEast, stationWest
+    local stationEastTop, stationEastMiddle, stationEastBottom, stationWestTop, stationWestMiddle, stationWestBottom
     for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
-        if stationEntity.backer_name == "East" then
-            stationEast = stationEntity
-        elseif stationEntity.backer_name == "West" then
-            stationWest = stationEntity
+        if stationEntity.backer_name == "EastTop" then
+            stationEastTop = stationEntity
+        elseif stationEntity.backer_name == "EastMiddle" then
+            stationEastMiddle = stationEntity
+        elseif stationEntity.backer_name == "EastBottom" then
+            stationEastBottom = stationEntity
+        elseif stationEntity.backer_name == "WestTop" then
+            stationWestTop = stationEntity
+        elseif stationEntity.backer_name == "WestMiddle" then
+            stationWestMiddle = stationEntity
+        elseif stationEntity.backer_name == "WestBottom" then
+            stationWestBottom = stationEntity
         end
     end
 
     -- Get the portals.
-    local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
+    local westPortal, westPortalXPos, eastPortal, eastPortalXPos = nil, -100000, nil, 100000
     for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed", true, false)) do
-        if portalEntity.position.x > entrancePortalXPos then
-            entrancePortal = portalEntity
-            entrancePortalXPos = portalEntity.position.x
+        if portalEntity.position.x > westPortalXPos then
+            westPortal = portalEntity
+            westPortalXPos = portalEntity.position.x
         end
-        if portalEntity.position.x < exitPortalXPos then
-            exitPortal = portalEntity
-            exitPortalXPos = portalEntity.position.x
-        end
-    end
-
-    -- Get the eastern most segment. Its touching a portal and has the othe segments to its west.
-    local tunnelSegmentToRemove, tunnelSegmentXPos = nil, -1000000
-    for _, semmentEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_segment_surface-placed", true, false)) do
-        if semmentEntity.position.x > tunnelSegmentXPos then
-            tunnelSegmentToRemove = semmentEntity
-            tunnelSegmentXPos = semmentEntity.position.x
+        if portalEntity.position.x < eastPortalXPos then
+            eastPortal = portalEntity
+            eastPortalXPos = portalEntity.position.x
         end
     end
 
-    -- Get the train from any locomotive as only 1 train is placed in this test.
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train
+    -- Place train so it ends safely to the left of the east middle station (don't just build it backwards from the station).
+    local firstCarriagePosition = Utils.ApplyOffsetToPosition(stationEastMiddle.position, {x = (#testScenario.trainTypeCarriages * 7) + 4, y = -0.5})
+    local train = TestFunctions.BuildTrain(firstCarriagePosition, testScenario.trainTypeCarriages, 0.75, {name = "rocket-fuel", count = 10})
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationEast = stationEast
-    testData.stationWest = stationWest
-    testData.entrancePortal = entrancePortal
-    testData.exitPortal = exitPortal
-    testData.tunnelSegmentToRemove = tunnelSegmentToRemove
+    testData.stationEastTop = stationEastTop
+    testData.stationEastMiddle = stationEastMiddle
+    testData.stationEastBottom = stationEastBottom
+    testData.stationWestTop = stationWestTop
+    testData.stationWestMiddle = stationWestMiddle
+    testData.stationWestBottom = stationWestBottom
+    testData.eastPortal = eastPortal
+    testData.westPortal = westPortal
     testData.train = train
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.tunnelPartRemoved = false
-    testData.westReached = false
-    testData.eastReached = false
     testData.testScenario = testScenario
     testData.actions = {}
     --[[
@@ -167,185 +246,7 @@ Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     local testScenario = testData.testScenario
 
-    if not testData.tunnelPartRemoved then
-        if Test.ShouldTunnelPartBeRemoved(testData) then
-            -- This is the correct state to remove the tunnel part.
-            game.print("train reached tunnel part removal state")
-            local entityToDestroy, otherTunnelEntity
-            if testScenario.tunnelPart == TunnelParts.entrancePortal then
-                entityToDestroy = testData.entrancePortal
-                otherTunnelEntity = testData.tunnelSegmentToRemove
-            elseif testScenario.tunnelPart == TunnelParts.exitPortal then
-                entityToDestroy = testData.exitPortal
-                otherTunnelEntity = testData.tunnelSegmentToRemove
-            elseif testScenario.tunnelPart == TunnelParts.tunnelSegment then
-                entityToDestroy = testData.tunnelSegmentToRemove
-                otherTunnelEntity = testData.entrancePortal
-            else
-                error("Unrecognised tunnelPart for test scenario: " .. testScenario.tunnelPart)
-            end
-            if testScenario.removalAction == RemovalActions.mine then
-                local player = game.connected_players[1]
-                local mined = player.mine_entity(entityToDestroy, true)
-                if testScenario.expectedTunnelState == FinalTunnelStates.broken and not mined then
-                    -- If the tunnel was expected to end up broken then the mine should have worked. But if we expected the tunnel to remain complete then we expect the mine to fail and so do nothing.
-                    error("failed to mine tunnel part: " .. testScenario.tunnelPart)
-                end
-            elseif testScenario.removalAction == RemovalActions.destroy then
-                entityToDestroy.damage(9999999, entityToDestroy.force, "impact", otherTunnelEntity)
-            else
-                error("Unrecognised removal action: " .. testScenario.removalAction)
-            end
-            testData.tunnelPartRemoved = true
-
-            -- Check the Tunnel Details API returns the expected results for one of the non removed entities
-            local tunnelObject = remote.call("railway_tunnel", "get_tunnel_details_for_entity", otherTunnelEntity.unit_number)
-            local apiResultAsExpected
-            if testScenario.expectedTunnelState == FinalTunnelStates.complete then
-                apiResultAsExpected = tunnelObject ~= nil
-            else
-                apiResultAsExpected = tunnelObject == nil
-            end
-            if apiResultAsExpected then
-                game.print("API Result as expected.")
-            else
-                TestFunctions.TestFailed(testName, "tunnel API wrong result, tunnelObject is '" .. tostring(tunnelObject) .. "'")
-                return
-            end
-
-            -- Check if the trains/tunnel usage existance meets expectations.
-            if not Test.CheckTrainPostTunnelPartRemoval(testData, testName, tunnelObject) then
-                return -- Function raised any TestFailed() internally.
-            end
-            game.print("Train in expected state post tunnel part removal.")
-
-            -- Complete the tests that end after the tunnel part removal.
-            if testScenario.expectedTrainState == FinalTrainStates.fullyDestroyed or testScenario.expectedTrainState == FinalTrainStates.halfDestroyed then
-                TestFunctions.TestCompleted(testName)
-                return
-            end
-
-            -- Complete the tests that end with a broken tunnel after tunnel part removal.
-            if testScenario.expectedTunnelState == FinalTunnelStates.broken then
-                TestFunctions.TestCompleted(testName)
-                return
-            end
-        end
-        return -- End the tick loop here every time we check for the tunnel part removal. Regardless of if its removed or not.
-    end
-
-    -- Keep on checking the outcomes that have working tunnel usages to confirm the train reaches the stations as expected.
-    if testScenario.trainState == TrainStates.none then
-        if testData.train == nil or not testData.train.valid then
-            -- Train should still exist as it never entered the tunnel
-            TestFunctions.TestFailed(testName, "Train doesn't exist, but it shouldn't have entered the tunnel.")
-            return
-        end
-        if testData.train.state == defines.train_state.no_path then
-            -- Train should have no path as tunnel is invalid.
-            TestFunctions.TestCompleted(testName)
-            return
-        else
-            -- Train should have no path as tunnel is invalid.
-            TestFunctions.TestFailed(testName, "Train should have reached no path state on tunnel removal.")
-            return
-        end
-    else
-        if not testData.westReached then
-            local stationWestTrain = testData.stationWest.get_stopped_train()
-            if stationWestTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
-                    TestFunctions.TestFailed(testName, "Train at west station not identical")
-                    return
-                end
-                testData.westReached = true
-            end
-        elseif not testData.eastReached then
-            local stationEastTrain = testData.stationEast.get_stopped_train()
-            if stationEastTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
-                    TestFunctions.TestFailed(testName, "Train at east station not identical")
-                    return
-                end
-                testData.eastReached = true
-            end
-        else
-            TestFunctions.TestCompleted(testName)
-            return
-        end
-    end
-end
-
-Test.ShouldTunnelPartBeRemoved = function(testData)
-    local testScenario = testData.testScenario
-    if testScenario.trainState == TrainStates.none then
-        return true
-    else
-        if testData.actions[testScenario.trainState] ~= nil and testData.actions[testScenario.trainState].count == 1 then
-            return true
-        else
-            return false
-        end
-    end
-end
-
-Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject)
-    local testScenario = testData.testScenario
-    local inspectionArea = {left_top = {x = testData.stationWest.position.x, y = testData.stationWest.position.y}, right_bottom = {x = testData.stationEast.position.x, y = testData.stationEast.position.y}} -- Inspection area needs to find trains that are anywhere on the tracks between the stations
-    local trainOnSurface = TestFunctions.GetTrainInArea(inspectionArea)
-    local tunnelUsageEntry  ---@type TunnelUsageEntry
-    if tunnelObject ~= nil then
-        tunnelUsageEntry = remote.call("railway_tunnel", "get_tunnel_usage_entry_for_id", tunnelObject.tunnelUsageId)
-    end
-
-    if testScenario.expectedTrainState == FinalTrainStates.complete then
-        -- We expect the train to exist so either: the train is on the surface and identical, or it is using the tunnel at present.
-        if tunnelUsageEntry ~= nil then
-            -- Train is using the underground so it must be complete. There may be a surface train, but it will be incomplete and so check underground first.
-            if tunnelUsageEntry.undergroundTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.undergroundTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
-                    TestFunctions.TestFailed(testName, "Train underground not identical")
-                    return false
-                end
-                return true
-            end
-        elseif trainOnSurface ~= nil then
-            -- Train isn't underground and so the surface train must be complete.
-            local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
-                TestFunctions.TestFailed(testName, "Train on surface not identical")
-                return false
-            end
-            return true
-        else
-            TestFunctions.TestFailed(testName, "No train on surface or underground")
-        end
-    elseif testScenario.expectedTrainState == FinalTrainStates.fullyDestroyed then
-        if trainOnSurface ~= nil then
-            TestFunctions.TestFailed(testName, "Shouldn't be a train on the surface")
-            return false
-        end
-        if tunnelUsageEntry ~= nil then
-            TestFunctions.TestFailed(testName, "Shouldn't be any underground tunnel")
-            return false
-        end
-        return true
-    elseif testScenario.expectedTrainState == FinalTrainStates.halfDestroyed then
-        -- Confirm that theres a partial train on the surface.
-        if trainOnSurface == nil then
-            TestFunctions.TestFailed(testName, "Should be a partial train on the surface")
-            return false
-        end
-        local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
-        if TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
-            TestFunctions.TestFailed(testName, "Train on surface is the same, but should be partial")
-            return false
-        end
-        return true
-    end
+    --TODO
 end
 
 Test.GenerateTestScenarios = function(testName)
@@ -379,7 +280,7 @@ Test.GenerateTestScenarios = function(testName)
                     tunnelPart = tunnelPart,
                     removalAction = removalAction
                 }
-                scenario.expectedTunnelState, scenario.expectedTrainState = Test.CalculateExpectedResults(scenario)
+                scenario.expectedTrainState = Test.CalculateExpectedResults(scenario)
                 Test.RunLoopsMax = Test.RunLoopsMax + 1
                 table.insert(Test.TestScenarios, scenario)
             end
@@ -391,46 +292,11 @@ Test.GenerateTestScenarios = function(testName)
 end
 
 Test.CalculateExpectedResults = function(testScenario)
-    local expectedTunnelState, expectedTrainState
+    local expectedTrainState
 
-    if testScenario.removalAction == RemovalActions.mine then
-        -- Mine actions end tunnel states are affected by where the train is (blocking the mine action).
-        if testScenario.trainState == TrainStates.none then
-            -- Tunnel not in use so mined tunnel part won't be returned.
-            expectedTunnelState = FinalTunnelStates.broken
-        else
-            -- Tunnel in use so mined tunnel part should be returned.
-            expectedTunnelState = FinalTunnelStates.complete
-        end
-    elseif testScenario.removalAction == RemovalActions.destroy then
-        -- destroy actions always make a broken tunnel.
-        expectedTunnelState = FinalTunnelStates.broken
-    else
-        error("invalid testScenario.removalAction: " .. testScenario.removalAction)
-    end
+    -- TODO
 
-    if testScenario.removalAction == RemovalActions.mine then
-        -- Mine action, so the train will always be either intact or complete using the tunnel.
-        expectedTrainState = FinalTrainStates.complete
-    elseif testScenario.removalAction == RemovalActions.destroy then
-        -- Destroy action.
-        if testScenario.trainState == TrainStates.none or testScenario.trainState == TrainStates.startApproaching then
-            expectedTrainState = FinalTrainStates.complete
-        elseif testScenario.trainState == TrainStates.fullyLeft and testScenario.tunnelPart ~= TunnelParts.exitPortal then
-            -- Train has fully left and is on the exit portal. So as long as this portal isn't destroyed the train will be fine.
-            expectedTrainState = FinalTrainStates.complete
-        elseif (testScenario.trainState == TrainStates.enteringCarriageRemoved and testScenario.tunnelPart ~= TunnelParts.entrancePortal) or (testScenario.trainState == TrainStates.startedLeaving and testScenario.tunnelPart ~= TunnelParts.exitPortal) then
-            -- Train will be half underground when the other portal/tunnel segment is removed. So only half the train will be lost as well as the tunnel.
-            expectedTrainState = FinalTrainStates.halfDestroyed
-        else
-            -- Train is lost entirely with the tunnels loss.
-            expectedTrainState = FinalTrainStates.fullyDestroyed
-        end
-    else
-        error("invalid testScenario.removalAction: " .. testScenario.removalAction)
-    end
-
-    return expectedTunnelState, expectedTrainState
+    return expectedTrainState
 end
 
 Test.WriteTestScenariosToFile = function(testName)
@@ -441,10 +307,10 @@ Test.WriteTestScenariosToFile = function(testName)
     end
 
     local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#,trainState,tunnelPart,removalAction,expectedTunnelState,expectedTrainState" .. "\r\n", false)
+    game.write_file(fileName, "#,trainTypeText,playerInput1StartState,playerInput1StopState,playerInput1AccelerationAction,playerInput1DirectionAction,playerInput2StartState,playerInput2StopState,playerInput2AccelerationAction,playerInput2DirectionAction,playerInput3StartState,playerInput3StopState,playerInput3AccelerationAction,playerInput3DirectionAction,playerRidingInCarriageType, playerRidingInCarriagePosition,trainStartingSpeed,expectedTrainState" .. "\r\n", false)
 
     for testIndex, test in pairs(Test.TestScenarios) do
-        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.trainState) .. "," .. tostring(test.tunnelPart) .. "," .. tostring(test.removalAction) .. "," .. tostring(test.expectedTunnelState) .. "," .. tostring(test.expectedTrainState) .. "\r\n", true)
+        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.trainTypeText) .. "," .. tostring(test.playerInput1StartState) .. "," .. tostring(test.playerInput1StopState) .. "," .. tostring(test.playerInput1AccelerationAction) .. "," .. tostring(test.playerInput1DirectionAction) .. "," .. tostring(test.playerInput2StartState) .. "," .. tostring(test.playerInput2StopState) .. "," .. tostring(test.playerInput2AccelerationAction) .. "," .. tostring(test.playerInput2DirectionAction) .. "," .. tostring(test.playerInput3StartState) .. "," .. tostring(test.playerInput3StopState) .. "," .. tostring(test.playerInput3AccelerationAction) .. "," .. tostring(test.playerInput3DirectionAction) .. "," .. tostring(test.playerRidingInCarriageType) .. "," .. tostring(test.playerRidingInCarriagePosition) .. "," .. tostring(test.trainStartingSpeed) .. "," .. tostring(test.expectedTrainState) .. "\r\n", true)
     end
 end
 

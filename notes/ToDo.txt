@@ -4,6 +4,7 @@
     - Tests to cover (not part of main manual driving test):
         - manually driven trains being changed to automatic at various points in their tunnel usage and the reverse.
     - can't automatically test multiple real players having inputs unfortunatly. So need to do this manualyl at the end of feature development.
+    - Run full test suite as this has broken some of the other tests, known: change-train-orders
 
 
 Bugs
