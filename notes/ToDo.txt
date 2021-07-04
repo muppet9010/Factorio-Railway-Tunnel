@@ -1,18 +1,9 @@
 - Handle player driven trains approaching the tunnel.
-    - Known issues:
-        - It doesn't detect/handle reversing yet. So if the underground part of an entering or leaving train tries to reverse the surface bit goes backwards.
-    - Make tests:
-        - manual trains braking and reversing at various points. Also do in, out, in to check flip flop is stable.
-        - if a leaving manual train hits something while leaving and stops the underground train continues I believe. So have some sort of feedback, likely same issue with automatic leaving trains.
-        - manually driven trains being changed to automatic at various points in their tunnel usage and the reverse.
-        - can't automatically test multiple real players having inputs unfortunatly.
-        - driving player being in an early carriage to leave, underground carriage or entering carriage part. Have short and long trains (entering,underground and leaving all at once).
-        - check player in forwards and rear facing locomotives and cargo wagons.
-        - have train with leading carriage: loco forwards, loco backwards, cargo wagon forwards, cargo wagon backwards.
-        - in a test with all carriages pointing west, the only loco point east with carraiges both sides. The vaniall train in my manual test was "facing" west. The train did have its first loco facing west, but this was removed at the end.
-        - tests should include steering as well as acceleration.
+    - It doesn't detect/handle reversing yet. So if the underground part of an entering or leaving train tries to reverse the surface bit goes backwards.
     - Need to track players getting in/out of an entering/leaving train and player containers. Will need to update a bunch of these cached entries. Including "managedTrain.leavingTrainDriverCache"
-
+    - Tests to cover (not part of main manual driving test):
+        - manually driven trains being changed to automatic at various points in their tunnel usage and the reverse.
+    - can't automatically test multiple real players having inputs unfortunatly. So need to do this manualyl at the end of feature development.
 
 
 Bugs
@@ -20,6 +11,8 @@ Bugs
     - Low fuel check needs to handle the possibility of reverse only loco's with manually driven trains.
     - Make a new test to remove a tunnel part and then rebuild it, then  check that the train can still use the tunnel.
     - Add pushing loco to leaving train test. Need to do all orientations. Just a simple does it not error and train reaches destination station. I broke it earlier by having the entering tunnel usage detector overlap with where the pushing loco would go.
+    - Any tests with enteringCarriageRemoved for first carriage only change to just use startedEntering.
+    - If a leaving manual train hits something while leaving and stops the underground train continues I believe. So have some sort of feedback, likely same issue with automatic leaving trains.
 
 
 Functionality not currently supported

@@ -4,6 +4,24 @@ local EventScheduler = require("utility/event-scheduler")
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Colors = require("utility/colors")
+local Common = require("scripts/common")
+
+--- The shorthand specification of a train type.
+---@class Test_TrainType
+---@field text string @The human readable version of the train composition. Carriage symbols are listed as forwards, backwards. Locomotives: <, >. Cargo Wagons: -, ~.
+---@field carriages Test_TrainTypeCarriages[]
+---@field startingSpeed double @Train speed to be set when train created.
+
+--- The shorthand specification of a train type's carriages.
+---@class Test_TrainTypeCarriages
+---@field name string @Prototype name.
+---@field facingForwards boolean
+---@field count? uint @Defults to 1 if not provided.
+
+--- The buildable specification of a train type's carriages after expanding from shorthand form.
+---@class Test_TrainTypeCarriageDetails
+---@field name string @Prototype name.
+---@field facingForwards boolean
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -94,10 +112,9 @@ end
 ---@param tick Tick
 ---@param testName TestName
 ---@param eventName string @Name of the event to trigger.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @OPTIONAL - data table passed back in to the handler function when triggered.
+---@param instanceId? string @Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData? table @Data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, instanceId, eventData)
-    -- instanceId and eventData are optional.
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
         instanceId = testName
@@ -108,8 +125,8 @@ end
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
 ---@param testName TestName
 ---@param eventName string @Name of the event to trigger.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @OPTIONAL - data table passed back in to the handler function when triggered.
+---@param instanceId? string @Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData? table @Data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instanceId, eventData)
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
@@ -121,7 +138,7 @@ end
 --- Remove any instances of future scheduled once events. To be called from Stop().
 ---@param testName TestName
 ---@param eventName string @Name of the event to remove the schedule of.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param instanceId? string @Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledOnceEvents(completeName, instanceId)
@@ -130,7 +147,7 @@ end
 --- Remove any instances of future scheduled every tick events. To be called from Stop().
 ---@param testName TestName
 ---@param eventName string @Name of the event to remove the schedule of.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param instanceId? string @Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledEventFromEachTick(completeName, instanceId)
@@ -141,7 +158,7 @@ end
 ---@param eventName defines.events @The Factorio event to react to.
 ---@param testFunctionName string @Unique name of this event function handler.
 ---@param testFunction function @Function to be triggered when the event occurs.
----@param filterData EventFilter @OPTIONAL - Factorio event filter to be used.
+---@param filterData? EventFilter @Factorio event filter to be used.
 TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterData)
     -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
@@ -231,10 +248,10 @@ TestFunctions.GetSnapshotOfTrain = function(train)
     return snapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure. If Optional "allowPartialCurrentSnapshot" argument is true then the current snapshot can be one end of the origonal train.
+--- Compares 2 train snapshots to see if they are the same train structure.
 ---@param origionalTrainSnapshot TrainSnapshot
 ---@param currentTrainSnapshot TrainSnapshot
----@param allowPartialCurrentSnapshot boolean
+---@param allowPartialCurrentSnapshot? boolean @Defaults to false. If true then the current snapshot can be one end of the origonal train.
 ---@return boolean
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
@@ -433,6 +450,55 @@ TestFunctions.MakeCarriagesUnique = function(entities)
     end
 end
 
+--- Expands train type shorthand to a full train carriage array.
+---@param trainTypeCarriages Test_TrainTypeCarriages[]
+---@return Test_TrainTypeCarriageDetails[] @The carriage details of the train.
+---@return uint @The index of the last backwards facing loco in the returned carriage array or 0 if none.
+TestFunctions.ExpandTrainType = function(trainTypeCarriages)
+    local fullCarriageArray = {} ---@type Test_TrainTypeCarriageDetails[]
+    local backwardsLocoCarriageNumber = 0
+    for _, carriage in pairs(trainTypeCarriages) do
+        carriage.count = carriage.count or 1
+        for i = 1, carriage.count do
+            table.insert(fullCarriageArray, {name = carriage.name, facingForwards = carriage.facingForwards})
+            if carriage.name == "locomotive" and carriage.facingForwards == false then
+                backwardsLocoCarriageNumber = #fullCarriageArray
+            end
+        end
+    end
+    return fullCarriageArray, backwardsLocoCarriageNumber
+end
+
+--- Build the train from the starting position away from the forwards orientation.
+---@param firstCarriageFrontPosition Position @Location of first carriage's front, will be placed approperiately back from this.
+---@param carriagesDetails Test_TrainTypeCarriageDetails
+---@param forwardsOrientation double
+---@param locomotiveFuel? ItemStackIdentification
+---@return LuaTrain
+TestFunctions.BuildTrain = function(firstCarriageFrontPosition, carriagesDetails, forwardsOrientation, locomotiveFuel)
+    local placedCarriage
+    local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+    local placementPosition = firstCarriageFrontPosition
+    local backwardsOrientation = Utils.BoundFloatValueWithinRange(forwardsOrientation + 0.5, 0, 1)
+    for _, carriageDetails in pairs(carriagesDetails) do
+        local orientation
+        if carriageDetails.facingForwards then
+            orientation = forwardsOrientation
+        else
+            orientation = backwardsOrientation
+        end
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, Utils.RotatePositionAround0(backwardsOrientation, {x = 0, y = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name)})) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
+        placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(orientation), force = force}
+        if carriageDetails.name == "locomotive" and locomotiveFuel ~= nil then
+            placedCarriage.insert(locomotiveFuel)
+        end
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, Utils.RotatePositionAround0(backwardsOrientation, {x = 0, y = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name)})) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
+    end
+
+    local train = placedCarriage.train
+    TestFunctions.MakeCarriagesUnique(train.carriages)
+    return train
+end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------

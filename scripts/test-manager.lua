@@ -56,12 +56,13 @@ local TestsToRun = {
     PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
-    ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")},
+    ForceRepathBackThroughTunnelTests = {enabled = true, testScript = require("tests/force-repath-back-through-tunnel-tests")},
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
     RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
-    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
-    ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}
+    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}
+    --ChangeTrainOrders = {enabled = true, testScript = require("tests/change-train-orders")},
+    --ManualDriving = {enabled = true, testScript = require("tests/manual-driving")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

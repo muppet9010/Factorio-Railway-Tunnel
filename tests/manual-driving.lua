@@ -1,23 +1,26 @@
 --[[
-    A series of tests that mines the tunnel during various states of use and confirms that the tunnel ends up in the expected state.
-    Tests the below combinations end in an expected outcome:
-        - Train state: none, startApproaching, enteringCarriageRemoved, fullyEntered, startedLeaving, fullyLeft.
-        - Tunnel part: entrancePortal, tunnelSegment, exitPortal.
-        - Removal action: mine, destroy
-    Tunnel checks:
-        - Check that the tunnel has an expected result from the API after part is removed. If it was mined and in use at the time the part should be replaced.
-        - Check that the tunnel can/can't be used in both directions based on if the tunnel part was replaced or the train is left with no path to its destination.
+    A series of tests that manually drives a train and does various actions during tunnel usage. Uses a short tunnel so longest train can be using both ends of it at once.
+    Tests the various combinations:
+        - Train starting speed (tiles per tick): 0, 0.5, 1
+        - Train state for player input (up to 3 "bursts"):
+            - acceleration input: forwards, backwards
+            - direction input: left, right
+            - players input starts (per carraige): none, carriageEntering, fullyEntered, carriageLeaving, fullyLeft.
+            - players input stops (per carriage): carriageEntering, fullyEntered, carriageLeaving, fullyLeft, tunnelUsageCompleted.
+        - Train types: singleLocoForwards, singleLocoBackwards, 1C_1L_1C_Forwards, 1C_1L_1C_Backwards, 1L_4C_Forwards, 4C_1L_Forwards, 1L_4C_Backwards, 4C_1L_Backwards, 1L_4C_1L, 2L_8C_2L
+        - Player riding in: each locomotive, 1st and last carriage in train.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
-local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
+local DoMinimalTests = false -- If TRUE does minimal tests just to check the general manual driving behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
-local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainStateFilter = {"startApproaching"} -- Pass in array of TrainStates keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelPartFilter = {"entrancePortal"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
-local SpecificRemovalActionFilter = {"mine"} -- Pass in array of RemovalActions keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
+local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
+local SpecificTrainTypesFilter = {""} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificTunnelUsageTypesFilter = {"carriageLeaving"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificReverseOnCarriageNumberFilter = {6} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
+local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 

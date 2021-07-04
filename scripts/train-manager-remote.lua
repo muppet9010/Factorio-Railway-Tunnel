@@ -7,10 +7,10 @@ local Events = require("utility/events")
 ---@class TunnelUsageEntry
 ---@field tunnelUsageId Id
 ---@field primaryState PrimaryTrainPartNames
----@field enteringTrain LuaTrain
----@field undegroundTrain LuaTrain
----@field leavingTrain LuaTrain
----@field leftTrain LuaTrain
+---@field enteringTrain? LuaTrain
+---@field undergroundTrain? LuaTrain
+---@field leavingTrain? LuaTrain
+---@field leftTrain? LuaTrain
 ---@field tunnelId Id
 
 TrainManagerRemote.CreateGlobals = function()

@@ -630,13 +630,12 @@ TrainManagerStateFuncs.Check0OnlySpeedTrainWithLocoGoingExpectedDirection = func
     end
 end
 
+--- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Closes the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
 ---@param managedTrain ManagedTrain
----@param forceSignalState defines.signal_state
+---@param forceSignalState? defines.signal_state @When provided this state will be applied rather than the aboveground exit signal state.
 TrainManagerStateFuncs.UpdatePortalExitSignalPerTick = function(managedTrain, forceSignalState)
-    -- Mirror aboveground exit signal state to underground signal so primary train (underground) honours stopping points. Primary speed limiter before leaving train has got to a significant size and escaped the portal signals as a very small leaving/dummy train will have low breaking distance and thus very short signal block reservation/detecting distances.
-    -- Close the underground Exit signal if the aboveground Exit signal isn't open, otherwise open it.
-    -- forceSignalState is optional and when set will be applied rather than the aboveground exit signal state.
-    if forceSignalState ~= nil then
+    -- Primary speed limiter before leaving train has got to a significant size and escaped the portal signals as a very small leaving/dummy train will have low breaking distance and thus very short signal block reservation/detecting distances.
+    if forceSignalState then
         UndergroundSetUndergroundExitSignalStateFunction(managedTrain.aboveExitPortalEntrySignalOut.undergroundSignalPaired, forceSignalState)
     else
         UndergroundSetUndergroundExitSignalStateFunction(managedTrain.aboveExitPortalEntrySignalOut.undergroundSignalPaired, managedTrain.aboveExitPortalEntrySignalOut.entity.signal_state)

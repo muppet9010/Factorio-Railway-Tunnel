@@ -231,55 +231,45 @@ Test.BuildTrain = function(buildStation, trainType, origionalStation, targetType
     local carriagesDetails
     if trainType == TrainTypes.shortForwards then
         carriagesDetails = {
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "locomotive", orientation = 0.75}
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "locomotive", facingForwards = true}
         }
     elseif trainType == TrainTypes.shortDual then
         carriagesDetails = {
-            {name = "locomotive", orientation = 0.25},
-            {name = "locomotive", orientation = 0.75}
+            {name = "locomotive", facingForwards = false},
+            {name = "locomotive", facingForwards = true}
         }
     elseif trainType == TrainTypes.longFowards then
         carriagesDetails = {
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "locomotive", orientation = 0.75}
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "locomotive", facingForwards = true}
         }
     elseif trainType == TrainTypes.longDual then
         carriagesDetails = {
-            {name = "locomotive", orientation = 0.25},
-            {name = "cargo-wagon", orientation = 0.25},
-            {name = "cargo-wagon", orientation = 0.25},
-            {name = "cargo-wagon", orientation = 0.25},
-            {name = "cargo-wagon", orientation = 0.25},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "cargo-wagon", orientation = 0.75},
-            {name = "locomotive", orientation = 0.75}
+            {name = "locomotive", facingForwards = false},
+            {name = "cargo-wagon", facingForwards = false},
+            {name = "cargo-wagon", facingForwards = false},
+            {name = "cargo-wagon", facingForwards = false},
+            {name = "cargo-wagon", facingForwards = false},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "cargo-wagon", facingForwards = true},
+            {name = "locomotive", facingForwards = true}
         }
     end
 
-    local placedCarriage
-    local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
-    local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = 0.5, y = -2}) -- offset to position first carriage correctly.
-    for _, carriageDetails in pairs(carriagesDetails) do
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
-        placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
-        if carriageDetails.name == "locomotive" then
-            placedCarriage.insert({name = "rocket-fuel", count = 10})
-        end
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
-    end
+    local startingPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = -0.5, y = 2}) -- offset for first carriages front for a station.
+    local train = TestFunctions.BuildTrain(startingPosition, carriagesDetails, 0.75, {name = "rocket-fuel", count = 10})
 
-    local train = placedCarriage.train
     if targetType == TargetTypes.trainStop then
         train.schedule = {
             current = 1,

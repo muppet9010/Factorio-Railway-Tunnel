@@ -386,7 +386,7 @@ end
 ---@param maxExclusive double
 ---@return double
 Utils.BoundFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxExclusive)
-    -- maxExclusive will give the minInclusive value. SO maxExclsuive can never be returned.
+    -- maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
     if value >= maxExclusive then
         return minInclusive + (value - maxExclusive)
     elseif value < minInclusive then
@@ -832,9 +832,13 @@ Utils.WasCreativeModeInstantDeconstructionUsed = function(event)
     end
 end
 
+--- Updates the 'chancePropertyName' named attribute of each entry in the referenced `dataSet` table to be proportional of a combined dataSet value of 1.
+---@param dataSet table[] @The dataSet to be reviewed and updated.
+---@param chancePropertyName string @The attribute name that has the chance value per dataSet entry.
+---@param skipFillingEmptyChance boolean @If TRUE then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
+---@return table[] @Same object passed in by reference as dataSet, so technically no return is needed, legacy.
 Utils.NormaliseChanceList = function(dataSet, chancePropertyName, skipFillingEmptyChance)
     -- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
-    -- By default the dataSet's total chance (key with name chancePropertyName) is manipulated in to a 0-1 range. But if optional skipFillingEmptyChance is set to true then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
     local totalChance = 0
     for _, v in pairs(dataSet) do
         totalChance = totalChance + v[chancePropertyName]
