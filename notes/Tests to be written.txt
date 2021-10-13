@@ -1,0 +1,67 @@
+Tests the various combinations:
+        - Train types: one of the local TrainTypes variable train type texts.
+        - Player inputs (up to 3 "bursts" per test):
+            - start state (per carraige): beginning, carriageEntering, fullyEntered, carriageLeaving, fullyLeft.
+            - stop state (per carriage): carriageEntering, fullyEntered, carriageLeaving, fullyLeft, tunnelUsageCompleted.
+            - acceleration (from players viewpoint pre tunnel): forwards, backwards, nothing
+            - direction: left, right, straight
+        - Player riding in: 1st and last carriage and locomotive per train.
+        - Train starting speed (tiles per tick): 0, 0.5, 1
+
+
+
+
+
+
+local DoMinimalTests = false -- If TRUE does minimal tests just to check the general manual driving behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
+
+local DoSpecificTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
+local SpecificTrainTypesFilter = {} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1StartStatesFilter = {} -- Pass in array of StartStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1StopStatesFilter = {} -- Pass in array of StopStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1AccelerationActionsFilter = {} -- Pass in array of AccelerationActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput1DirectionActionsFilter = {} -- Pass in array of DirectionActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2StartStatesFilter = {} -- Pass in array of StartStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2StopStatesFilter = {} -- Pass in array of StopStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2AccelerationActionsFilter = {} -- Pass in array of AccelerationActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput2DirectionActionsFilter = {} -- Pass in array of DirectionActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3StartStatesFilter = {} -- Pass in array of StartStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3StopStatesFilter = {} -- Pass in array of StopStates keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3AccelerationActionsFilter = {} -- Pass in array of AccelerationActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInput3DirectionActionsFilter = {} -- Pass in array of DirectionActions keys to do just those. Leave as nil or empty table for all player input types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerRidingInCarriageTypesFilter = {} -- Pass in an array of PlayerRidingInCarriageTypes to do just those specific carriage type tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE. Setting to a carriage type that isn't present on the specified train will throw an intentional error.
+local SpecificPlayerRidingInCarriagePositionsFilter = {} -- Pass in an array of PlayerRidingInCarriagePositions to do just those specific carriage position tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE. Setting to "last" with only 1 of that carriage type will throw an intentional error.
+local SpecificStartingTrainSpeedsFilter = {} -- Pass in array of any train speed values to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE. Speed value is blindly applied, doesn't have to be on the StartingTrainSpeeds variable list.
+
+
+
+
+
+Test.TestScenarios = {} -- Populated when script loaded.
+--[[
+    {
+        trainTypeText = human readable text of the trains makeup.
+        trainTypeCarriages = array of Test_TrainTypeCarriageDetails (buildable).
+        playerInput1 = {
+            startState = the StartStates for when this input starts in this test.
+            stopState = the StopStates for when this input stops in this test.
+            accelerationAction = the AccelerationActions for during this input period in this test.
+            directionActions = the DirectionActions for during this input period in this test.
+        }
+        playerInput2 = same structure as playerInput1 or nil.
+        playerInput3 = same structure as playerInput1 or nil.
+        playerRidingInCarriageType = the PlayerRidingInCarriageTypes for this test.
+        playerRidingInCarriagePositions = the PlayerRidingInCarriagePositions for this test.
+        trainStartingSpeed = the speed of the train at test start.
+        expectedTrainState = the FinalTrainStates of this test. Either complete, halfDestroyed or fullyDestroyed. Train is a 1-1 so when half in/out there will be just 1 carriage left.
+    }
+]]
+
+
+
+
+
+
+
+Test Template from notes - likely needs a test made for it???
+0eNqtXNtu2zgU/Bc924XOoXjLryyKwHVUr7C2ZMhy2iDIv1e2s63rZeMZLl9ytUcnmhlS5BnmtfqyPbb7seun6uG16tZDf6ge/nqtDt2mX21PP5te9m31UHVTu6sWVb/anb4bV9322+rlcTr2fbtdXj497odxWm0fD8fx62rdLvfb+eOunaHfFlXXP7Xfqwd5W0DgV2/Rt8+Lakbppq69FHf+5uWxP+6+tOOM+fOd6+P43D4tzwCLaj8c5vcM/elCM85STL2oXuYvtJ7Rn7qxXV9+7U5F3YAqCqqaBjUJUPMT9DDNeJu/pz/Xai6w4n+H9QnYBoeVmIaVBKyF76t7B23ugzoUVH6BJmA8XFu4wLjfS7MJzACX1iQxmwRmRDGbC+aNiDQBKTVOdyOXSs19bYoQKkrDpm6qwEaqQ+oOpPQuJmMgekpc09vzJeVmOFhUz6uxW/1ZxNLcKeDQbk4D3/0KmpiqQO9XYItV4DMrcMUqsJkV+GIVmMwKQrEKJLOCWKoCk6lErYtVkKlElWIVZCpRtVgFmUpUU6yCTCVqsTFRc5VYbEzUXCUWGxM1V4nFxkTNVWKxMVFzlVhsTJRMJZpiY6JkKtEUGxMlU4mm2JgomUo0xcZEyVSiKTYm5gqx2JCYq8NiI2KuDIsNiLkqDGUWK7njsYn4ui6mZZbaciAWodHDqMQaNFoYVQlUA6MSmzlRYFRiLyfgbFkCFWfLEag4W55AxdkKBCrOFuEtD7NlCW95mC1LeMvDbFnCWx5myxLe8jBblvCWw9kivOVwtghvOZwtwlsOZ4vwlsPZIrxlYbYc4S0Ls+UIb1mYLUd4y8JsOcJbFmbLEd5qcLYsuX2u9/e5HeGsBlcA4awGVwDhrAZXQKQbCACqJ5xlYAV4wlkGZssTzjIwW55v7yGohLMMzhYxaynOFuEtxdkivKU4W4S3FGeL8JbCbIWa7vAiqEzHD2YrEN4SmK1AeEtgtkJDNif1fnAgWLqPilRKOKvGFUA4q8YVQDirxhVAOKuGFRAJZ9UwWxF2Fv4sFGFf4U9tEXYV/nwZ4fkKfxKOsKfwZ/Z4lURZjZth+W21mV/7H0Qnn8LVengYuxnofb+t/nT6Tdc/zz8axvkV/XG7TV0L9hm+komwy/A1V4Q9hq8OpYYthi9kz158B90O62E3TN1zm0AMd8mb2t3h9OpxWP/TTsuvx3Z7SrIkLwpbEF/on8cqEDTioLAJ8e2T81iNOMbb/+8YqeEJzxNShH3oCSnCRvSEKmAn4vuKcpUc+5DAoAUIxPNk+H6rCOxAfGtYBHYgvostVxGxj+91LHGv4fkR390XgR0YCAnCDoyEKmAHRkIVESMwugIEKjxH4m0vUdiBeIdOFHYg3kyUq/TSR7P5PFd+dK+VnM4VniSJR39Ri6PialSHoxIK8TgqIZGAOWeej0pYJ+J/A65IAxuSWMSLERwV14ZRHBXXhjE4Kq4Ng3tOCLZwzynBFu45JdjCPacEWwFHJdjCvYVvEgueHSE2tAXPjhCb74JnR4hGgeDZEaKpIXh2hGjACJ4dIZpFgmdHiMaW4NkRogkneHaEaBgKnh0hGqaCZ0eI5q7g2RGiES14doRomgueHSEa/IJnR4gwguDZESI4IXh2hAh5CJ4dIQIpgmdHiPCM4NkRIugjeHaECCUJnh0hAlSCZ0eIsJfg2REimCZ4doQI0YnDvUVsQFHpkQusvX8oVpj4iCRhk+ckXSCPyYbkQtlF8mRsAP7kq7wIdrxYgOO24oU8XyzAwWCh8iLvJo0IriGPrqsCrPuGPLt+i5pUPpMY+XfpFm/jWJ8vOzQzxq//O7ContvxcLlwmJ+gonoT/cykeXv7AQUEbJk=
