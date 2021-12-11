@@ -260,19 +260,15 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
 
     -- Check the 2 trains starting in the same order and facingForwards as this is most likely scenario (perfect copy). Then check combinations of facing backwards (new train is declared backwards due to build order by Factorio magic) and iterate the carriage list backwards (new train is generally running backwards).
     for _, reverseFacingFowards in pairs({false, true}) do
-        for _, currentCarriageIteratorFunc in pairs(
-            {
-                function(origCarriageCount)
-                    return origCarriageCount
-                end,
-                function(origCarriageCount, carriageMax)
-                    return (carriageMax - origCarriageCount) + 1
-                end
-            }
-        ) do
+        for _, currentCarriageIterator in pairs({"iterateCarriagesForwards", "iterateCarriagesBackwards"}) do
             local difference
             for carriageNumber = 1, currentTrainSnapshot.carriageCount do
-                local currentCarriageCount = currentCarriageIteratorFunc(carriageNumber, #currentSnapshotCarriages)
+                local currentCarriageCount
+                if currentCarriageIterator == "iterateCarriagesForwards" then
+                    currentCarriageCount = carriageNumber
+                else
+                    currentCarriageCount = (carriageNumber - #currentSnapshotCarriages) + 1
+                end
                 difference = TestFunctions._CarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
                 if difference then
                     break

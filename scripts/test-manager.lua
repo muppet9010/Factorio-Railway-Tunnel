@@ -36,8 +36,9 @@ local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test conti
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
 
 -- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
-local TestsToRun = {
-    demo = {enabled = false, testScript = require("tests/demo"), notInAllTests = true},
+local TestsToRun = {}
+-- OLD TESTS IN NEED OF UPDATING
+--[[
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
     ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")},
     ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")},
@@ -62,8 +63,7 @@ local TestsToRun = {
     RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
     RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
     ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}
-}
-
+--]]
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------

@@ -526,7 +526,7 @@ TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
 
     -- Check if all train wagons placed and train fully left the tunnel, otherwise set state for future carriages with the ongoing state.
     if managedTrain.leavingTrainCarriagesPlaced == managedTrain.undergroundTrainCarriageCount then
-        TrainManager.TrainLeavingCompleted(managedTrain, nil)
+        TrainManager.TrainLeavingCompleted(managedTrain)
     else
         managedTrain.leavingTrainState = LeavingTrainStates.leaving
     end
