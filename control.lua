@@ -2,7 +2,6 @@ local EventScheduler = require("utility/event-scheduler")
 local TunnelManager = require("scripts/tunnel-manager")
 local TunnelPortals = require("scripts/tunnel-portals")
 local TunnelSegments = require("scripts/tunnel-segments")
-local Underground = require("scripts/underground")
 local TrainManager = require("scripts/train-manager")
 local TrainManagerStateFuncs = require("scripts/train-manager-stateful-functions")
 local TrainManagerRemote = require("scripts/train-manager-remote")
@@ -22,7 +21,6 @@ local function CreateGlobals()
     TunnelManager.CreateGlobals()
     TunnelPortals.CreateGlobals()
     TunnelSegments.CreateGlobals()
-    Underground.CreateGlobals()
 
     TestManager.CreateGlobals()
 end
@@ -65,8 +63,6 @@ local function OnLoad()
         }
     )
 
-    Underground.PreOnLoad() -- Do things that other OnLoad()s need.
-
     TrainManager.OnLoad()
     TrainManagerStateFuncs.OnLoad()
     TunnelManager.OnLoad()
@@ -88,7 +84,6 @@ local function OnStartup()
     OnLoad()
     --OnSettingChanged(nil)
     Force.OnStartup()
-    Underground.OnStartup()
 
     TestManager.OnStartup()
 end

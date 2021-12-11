@@ -12,10 +12,9 @@ local Utils = require("utility/utils")
 ---@field id Id @unqiue id of the tunnel.
 ---@field alignment TunnelAlignment
 ---@field alignmentOrientation TunnelAlignmentOrientation
----@field railAlignmentAxis Axis @ref to the undergroundTunnel's railAlignmentAxis.
----@field tunnelAlignmentAxis Axis @ref to the undergroundTunnel's tunnelAlignmentAxis.
+---@field railAlignmentAxis Axis @ref to the tunnel's railAlignmentAxis.
+---@field tunnelAlignmentAxis Axis @ref to the tunnel's tunnelAlignmentAxis.
 ---@field aboveSurface LuaSurface
----@field undergroundTunnel UndergroundTunnel
 ---@field portals Portal[]
 ---@field segments Segment[]
 ---@field managedTrain ManagedTrain @one is currently using this tunnel.
@@ -61,6 +60,7 @@ Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
+-- Light - Needed so we detect when a train is targetting the end signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
 ---@param event on_train_changed_state
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
@@ -118,9 +118,9 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         end
     end
 
-    tunnel.undergroundTunnel = Interfaces.Call("Underground.AssignUndergroundTunnel", tunnel)
-    tunnel.railAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.railAlignmentAxis
-    tunnel.tunnelAlignmentAxis = tunnel.undergroundTunnel.undergroundSurface.tunnelInstanceAxis
+    -- TODO: OVERHAUL - both these need calculating based on tunnel as used by runtime code.
+    tunnel.railAlignmentAxis = "x"
+    tunnel.tunnelAlignmentAxis = "y"
 end
 
 ---@param tunnel Tunnel
@@ -132,7 +132,6 @@ Tunnel.RemoveTunnel = function(tunnel)
     for _, segment in pairs(tunnel.segments) do
         Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
     end
-    Interfaces.Call("Underground.ReleaseUndergroundTunnel", tunnel.undergroundTunnel)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 

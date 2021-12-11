@@ -45,7 +45,6 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
     tableToPopulate.tunnelUsageId = managedTrainId
     tableToPopulate.primaryState = managedTrain.primaryTrainPartName
     tableToPopulate.enteringTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.enteringTrain)
-    tableToPopulate.undergroundTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.undergroundTrain)
     tableToPopulate.leavingTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
     tableToPopulate.leftTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leftTrain)
     tableToPopulate.tunnelId = managedTrain.tunnel.id

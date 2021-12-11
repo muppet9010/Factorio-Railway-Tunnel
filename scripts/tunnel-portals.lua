@@ -25,7 +25,7 @@ local SetupValues = {
 ---@field entity LuaEntity @
 ---@field entityDirection defines.direction @the expected direction of the portal. Can't block Editor users from rotating the portal entity so need to be able to check if its changed.
 ---@field endSignals table<TunnelSignalDirection, PortalEndSignal> @These are the inner locked red signals that a train paths at to enter the tunnel.
----@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. The portals OUT direction signals are synced with their corrisponding underground OUT signals every tick.
+---@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire.
 ---@field tunnel Tunnel
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the portal itself.
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the connected tunnel for the portal.
@@ -43,7 +43,6 @@ local SetupValues = {
 ---@class PortalEndSignal : PortalSignal
 
 ---@class PortalEntrySignal : PortalSignal
----@field undergroundSignalPaired UndergroundSignal @the underground signal thats paired with this one.
 
 TunnelPortals.CreateGlobals = function()
     global.tunnelPortals = global.tunnelPortals or {}
@@ -477,6 +476,8 @@ end
 TunnelPortals.OnDiedEntityTrainBlocker = function(event)
     local diedEntity, carriageEnteringPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-train_blocker_1x1" then
+        error("state should never be reached")
+        -- TODO: do we need this check? added the above error on code review.
         return
     end
 

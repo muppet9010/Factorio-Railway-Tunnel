@@ -221,9 +221,7 @@ end
 ---@return double
 Common.GetCarriagePlacementDistance = function(carriageEntityName)
     -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
-    if carriageEntityName == "railway_tunnel-tunnel_portal_pushing_locomotive" then
-        return 0.5
-    else
+    if carriageEntityName ~= nil then
         return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
     end
 end
@@ -251,12 +249,6 @@ Common.EnteringTrainStates = {
     approaching = "approaching", ---@type EnteringTrainStates @Train is approaching the tunnel, but can still turn back.
     entering = "entering", ---@type EnteringTrainStates @Train is committed to entering the tunnel.
     finished = "finished" ---@type EnteringTrainStates @Train has fully completed entering the tunnel.
-}
-
----@class UndergroundTrainStates
-Common.UndergroundTrainStates = {
-    travelling = "travelling", ---@type UndergroundTrainStates
-    finished = "finished" ---@type UndergroundTrainStates
 }
 
 ---@class LeavingTrainStates

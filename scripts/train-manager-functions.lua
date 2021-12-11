@@ -29,105 +29,6 @@ TrainManagerFuncs.IsTrainHealthlyState = function(train)
     end
 end
 
----@param carriage LuaEntity
----@param forwardsOrientation RealOrientation
----@return boolean
-TrainManagerFuncs.CarriageIsAForwardsLoco = function(carriage, forwardsOrientation)
-    return carriage.type == "locomotive" and carriage.orientation == forwardsOrientation
-end
-
----@param train LuaTrain
----@param forwardsOrientation RealOrientation
----@return boolean
-TrainManagerFuncs.DoesTrainHaveAForwardsLoco = function(train, forwardsOrientation)
-    for _, carriage in pairs(train.carriages) do
-        if TrainManagerFuncs.CarriageIsAForwardsLoco(carriage, forwardsOrientation) then
-            return true
-        end
-    end
-    return false
-end
-
----@param train LuaTrain
----@return boolean
-TrainManagerFuncs.RemoveAnyPushingLocosFromTrain = function(train)
-    -- Pushing locos should only be at either end of the train.
-    local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
-    local safeTrainCarriage = train.back_stock -- An entity to hold on to so we can get the train if we have to delete a carriage and the train ref becomes invalid.
-    local aPushingLocoWasRemoved = false
-    if train.front_stock.name == pushingLocoEntityName then
-        train.front_stock.destroy()
-        train = safeTrainCarriage.train
-        aPushingLocoWasRemoved = true
-    end
-    if train.back_stock.name == pushingLocoEntityName then
-        train.back_stock.destroy()
-        aPushingLocoWasRemoved = true
-    end
-    return aPushingLocoWasRemoved
-end
-
----@param lastCarriage LuaEntity
----@param trainOrientation RealOrientation
----@return LuaEntity
-TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOrientation)
-    local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
-    local pushingLocoPlacementPosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainOrientation, lastCarriage, pushingLocoEntityName)
-    local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = pushingLocoEntityName, position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
-    pushingLocomotiveEntity.destructible = false
-    return pushingLocomotiveEntity
-end
-
----@param targetSurface LuaSurface
----@param refCarriage LuaEntity
----@param newPosition Position
----@param safeCarriageFlipPosition Position
----@param requiredOrientation RealOrientation
----@return LuaEntity
-TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
-    -- Work out if we will need to flip the cloned carriage or not.
-    local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
-    local haveToFlipCarriage = false
-    if orientationDif > 0.25 and orientationDif < 0.75 then
-        -- Will need to flip the carriage.
-        haveToFlipCarriage = true
-    elseif orientationDif == 0.25 or orientationDif == 0.75 then
-        -- May end up the correct way, depending on what rotation we want. Factorio rotates positive orientation when equally close.
-        if Utils.BoundFloatValueWithinRangeMaxExclusive(refCarriage.orientation + 0.25, 0, 1) ~= requiredOrientation then
-            -- After a positive rounding the carriage isn't going to be facing the right way.
-            haveToFlipCarriage = true
-        end
-    end
-
-    -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
-    ---@typelist LuaEntity, LuaEntity
-    local tempCarriage, sourceCarriage
-    if haveToFlipCarriage then
-        tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
-        if tempCarriage.orientation == requiredOrientation then
-            error("underground carriage flipping not needed, but predicted. \nrequiredOrientation: " .. tostring(requiredOrientation) .. "\ntempCarriage.orientation: " .. tostring(tempCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
-        end
-        tempCarriage.rotate()
-        sourceCarriage = tempCarriage
-    else
-        sourceCarriage = refCarriage
-    end
-
-    local placedCarriage = sourceCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
-    if placedCarriage == nil then
-        error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
-    end
-
-    if haveToFlipCarriage then
-        tempCarriage.destroy()
-    end
-    if placedCarriage.orientation ~= requiredOrientation then
-        error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
-    end
-
-    return placedCarriage
-end
-
 ---@param train LuaTrain
 ---@param targetTrainStop LuaEntity
 TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
@@ -198,50 +99,6 @@ TrainManagerFuncs.TrainSetSchedule = function(train, schedule, isManual, targetT
     else
         train.manual_mode = true
     end
-end
-
----@param leavingTrain LuaTrain
----@param leavingTrainPushingLoco LuaEntity
----@return LuaEntity
-TrainManagerFuncs.GetRearCarriageOfLeavingTrain = function(leavingTrain, leavingTrainPushingLoco)
-    -- Get the current rear carriage of the leaving train based on if a pushing loco was added. Handles train facing either direction (+/- speed) assuming the train is leaving the tunnel.
-    local leavingTrainRearCarriage, leavingTrainRearCarriageIndex, leavingTrainRearCarriagePushingIndexMod
-    local leavingTrainSpeed, leavingTrainCarriages = leavingTrain.speed, leavingTrain.carriages
-    if (leavingTrainSpeed > 0) then
-        leavingTrainRearCarriageIndex = #leavingTrainCarriages
-        leavingTrainRearCarriagePushingIndexMod = -1
-    elseif (leavingTrainSpeed < 0) then
-        leavingTrainRearCarriageIndex = 1
-        leavingTrainRearCarriagePushingIndexMod = 1
-    else
-        error("TrainManagerFuncs.GetRearCarriageOfLeavingTrain() doesn't support 0 speed\nleavingTrain id: " .. leavingTrain.id)
-    end
-    if leavingTrainPushingLoco ~= nil then
-        leavingTrainRearCarriageIndex = leavingTrainRearCarriageIndex + leavingTrainRearCarriagePushingIndexMod
-    end
-    leavingTrainRearCarriage = leavingTrainCarriages[leavingTrainRearCarriageIndex]
-
-    return leavingTrainRearCarriage
-end
-
----@param sourceTrain LuaTrain
----@param leavingTrainCarriagesPlaced uint
----@return LuaEntity
-TrainManagerFuncs.GetCarriageToAddToLeavingTrain = function(sourceTrain, leavingTrainCarriagesPlaced)
-    -- Get the next carriage to be placed from the underground train.
-    local currentSourceTrainCarriageIndex, nextSourceTrainCarriageIndex
-    local sourceTrainSpeed, sourceTrainCarriages = sourceTrain.speed, sourceTrain.carriages
-    if (sourceTrainSpeed > 0) then
-        currentSourceTrainCarriageIndex = leavingTrainCarriagesPlaced
-        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex + 1
-    elseif (sourceTrainSpeed < 0) then
-        currentSourceTrainCarriageIndex = #sourceTrainCarriages - leavingTrainCarriagesPlaced
-        nextSourceTrainCarriageIndex = currentSourceTrainCarriageIndex
-    else
-        error("TrainManagerFuncs.GetCarriageToAddToLeavingTrain() doesn't support 0 speed sourceTrain\nsourceTrain id: " .. sourceTrain.id)
-    end
-    local nextSourceCarriageEntity = sourceTrainCarriages[nextSourceTrainCarriageIndex]
-    return nextSourceCarriageEntity
 end
 
 ---@param train LuaTrain
@@ -432,19 +289,6 @@ TrainManagerFuncs.GetRailEntityLength = function(railEntityType)
     end
 end
 
----@param undergroundTrain LuaTrain
----@param position Position
-TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition = function(undergroundTrain, position)
-    undergroundTrain.schedule = {
-        current = 1,
-        records = {
-            {
-                rail = undergroundTrain.front_stock.surface.find_entity("straight-rail", position)
-            }
-        }
-    }
-end
-
 ---@param trainOrientation RealOrientation
 ---@param lastCarriageEntityName LuaEntity
 ---@param nextCarriageEntityName LuaEntity
@@ -456,16 +300,6 @@ TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, la
     return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
 end
 
----@param trainOrientation RealOrientation
----@param lastCarriageEntity LuaEntity
----@param nextCarriageEntityName string
----@return Position
-TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)
-    local carriagesDistance = Common.GetCarriagePlacementDistance(lastCarriageEntity.name) + Common.GetCarriagePlacementDistance(nextCarriageEntityName)
-    local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
-    return Utils.ApplyOffsetToPosition(lastCarriageEntity.position, nextCarriageOffset)
-end
-
 ---@param carriageEntityName string
 ---@return double
 TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
@@ -474,69 +308,6 @@ TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
         return 0 -- Placeholder to stop syntax warnings on function variable. Will be needed when we support mods with custom train lengths.
     else
         return 2 -- Half of vanilla carriages 4 joint distance.
-    end
-end
-
----@param undergroundTrain LuaTrain
----@param distance double
----@return Position
-TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroundTrain, distance)
-    -- Applies the target distance to the train's leading carriage for the train direction on a straight track.
-    local leadCarriage
-    local undergroundTrainSpeed = undergroundTrain.speed
-    if undergroundTrainSpeed > 0 then
-        leadCarriage = undergroundTrain.front_stock
-    elseif undergroundTrainSpeed < 0 then
-        leadCarriage = undergroundTrain.back_stock
-    else
-        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.\nundergroundTrain id: " .. undergroundTrain.id)
-    end
-    local undergroundTrainOrientation
-    if leadCarriage.speed > 0 then
-        undergroundTrainOrientation = leadCarriage.orientation
-    elseif leadCarriage.speed < 0 then
-        undergroundTrainOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
-    else
-        error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.\nundergroundTrain id: " .. undergroundTrain.id)
-    end
-    return Utils.ApplyOffsetToPosition(
-        leadCarriage.position,
-        Utils.RotatePositionAround0(
-            undergroundTrainOrientation,
-            {
-                x = 0,
-                y = 0 - distance
-            }
-        )
-    )
-end
-
----@param train LuaTrain
----@param expectedOrientation RealOrientation
----@param oldFrontCarriageUnitNumber UnitNumber
----@param oldBackCarriageUnitNumber UnitNumber
----@param trainWasFacingForwards boolean
----@return boolean
-TrainManagerFuncs.TrainStillFacingSameDirectionAfterCarriageChange = function(train, expectedOrientation, oldFrontCarriageUnitNumber, oldBackCarriageUnitNumber, trainWasFacingForwards)
-    -- Checks if a train is still facing in the expected direction (front and back stock). For use after changing a trains composition as this regenerates these attributes. Works with 0 speed trains as doesn't require or consider train speed +/-.
-
-    -- Check trains make up depending on its length.
-    if #train.carriages == 1 then
-        -- A single carriage train will have the same carriage referenced by front and back stock attributes. So just use its orientation to decide if its facing the expected direction.
-        if train.front_stock.orientation == expectedOrientation then
-            return trainWasFacingForwards
-        else
-            return not trainWasFacingForwards
-        end
-    else
-        -- With >= 2 carriages we can check if either the trains front or back stock attributes have renamed the same (train direction not rotated).
-        if train.front_stock.unit_number == oldFrontCarriageUnitNumber or train.back_stock.unit_number == oldBackCarriageUnitNumber then
-            -- One end changed as was a pushing loco, but other is the same, so train still same direction.
-            return true
-        else
-            -- Neither are the same so the train must have reversed direction.
-            return false
-        end
     end
 end
 
