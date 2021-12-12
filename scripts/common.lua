@@ -216,7 +216,6 @@ Common.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, ki
     end
 end
 
----comment
 ---@param carriageEntityName string @The entity name.
 ---@return double
 Common.GetCarriagePlacementDistance = function(carriageEntityName)
@@ -244,65 +243,40 @@ Common.TunnelSignalDirection = {
     outSignal = "outSignal"
 }
 
----@class EnteringTrainStates
-Common.EnteringTrainStates = {
-    approaching = "approaching", ---@type EnteringTrainStates @Train is approaching the tunnel, but can still turn back.
-    entering = "entering", ---@type EnteringTrainStates @Train is committed to entering the tunnel.
-    finished = "finished" ---@type EnteringTrainStates @Train has fully completed entering the tunnel.
+-- The managed train's state. Finished is for when the tunnel trip is completed.
+---@class PrimaryTrainState
+Common.PrimaryTrainState = {
+    portalTrack = "portalTrack", ---@type PrimaryTrainState
+    approaching = "approaching", ---@type PrimaryTrainState
+    underground = "underground", ---@type PrimaryTrainState
+    leaving = "leaving", ---@type PrimaryTrainState
+    finished = "finished" ---@type PrimaryTrainState
 }
 
----@class LeavingTrainStates
-Common.LeavingTrainStates = {
-    pre = "pre", ---@type LeavingTrainStates
-    leavingFirstCarriage = "leavingFirstCarriage", ---@type LeavingTrainStates
-    leaving = "leaving", ---@type LeavingTrainStates
-    trainLeftTunnel = "trainLeftTunnel", ---@type LeavingTrainStates
-    finished = "finished" ---@type LeavingTrainStates
-}
-
----@class PrimaryTrainPartNames
-Common.PrimaryTrainPartNames = {
-    portalTrack = "portalTrack", ---@type PrimaryTrainPartNames
-    approaching = "approaching", ---@type PrimaryTrainPartNames
-    underground = "underground", ---@type PrimaryTrainPartNames
-    leaving = "leaving", ---@type PrimaryTrainPartNames
-    finished = "finished" ---@type PrimaryTrainPartNames
-}
-
+-- A specific LuaTrain's role within its parent managed train object.
 ---@class TunnelUsageParts
 Common.TunnelUsageParts = {
     enteringTrain = "enteringTrain", ---@type TunnelUsageParts
     dummyTrain = "dummyTrain", ---@type TunnelUsageParts
-    leavingTrain = "leavingTrain", ---@type TunnelUsageParts
     leftTrain = "leftTrain", ---@type TunnelUsageParts
     portalTrackTrain = "portalTrackTrain" ---@type TunnelUsageParts
 }
 
----@class LeavingTrainStoppingAtType
-Common.LeavingTrainStoppingAtType = {
-    signal = "signal", ---@type LeavingTrainStoppingAtType
-    schedule = "schedule" ---@type LeavingTrainStoppingAtType
-}
-
+-- The train's state - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageAction
 Common.TunnelUsageAction = {
     startApproaching = "startApproaching", ---@type TunnelUsageAction
     terminated = "terminated", ---@type TunnelUsageAction
-    reversedDuringUse = "reversedDuringUse", ---@type TunnelUsageAction
-    startedEntering = "startedEntering", ---@type TunnelUsageAction
-    enteringCarriageRemoved = "enteringCarriageRemoved", ---@type TunnelUsageAction
     fullyEntered = "fullyEntered", ---@type TunnelUsageAction
-    startedLeaving = "startedLeaving", ---@type TunnelUsageAction
-    leavingCarriageAdded = "leavingCarriageAdded", ---@type TunnelUsageAction
     fullyLeft = "fullyLeft", ---@type TunnelUsageAction
     onPortalTrack = "onPortalTrack" ---@type TunnelUsageAction
 }
 
+-- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageChangeReason
 Common.TunnelUsageChangeReason = {
     reversedAfterLeft = "reversedAfterLeft", ---@type TunnelUsageChangeReason
     abortedApproach = "abortedApproach", ---@type TunnelUsageChangeReason
-    forwardPathLost = "forwardPathLost", ---@type TunnelUsageChangeReason
     completedTunnelUsage = "completedTunnelUsage", ---@type TunnelUsageChangeReason
     tunnelRemoved = "tunnelRemoved", ---@type TunnelUsageChangeReason
     portalTrackReleased = "portalTrackReleased" ---@type TunnelUsageChangeReason

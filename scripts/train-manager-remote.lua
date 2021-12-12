@@ -6,9 +6,8 @@ local Events = require("utility/events")
 
 ---@class TunnelUsageEntry
 ---@field tunnelUsageId Id
----@field primaryState PrimaryTrainPartNames
+---@field primaryState PrimaryTrainState
 ---@field enteringTrain LuaTrain
----@field undegroundTrain LuaTrain
 ---@field leavingTrain LuaTrain
 ---@field leftTrain LuaTrain
 ---@field tunnelId Id
@@ -95,7 +94,6 @@ end
 ---@return table<string, string> @Entity names.
 TrainManagerRemote.GetTemporaryCarriageNames = function()
     return {
-        ["railway_tunnel-tunnel_portal_pushing_locomotive"] = "railway_tunnel-tunnel_portal_pushing_locomotive",
         ["railway_tunnel-tunnel_exit_dummy_locomotive"] = "railway_tunnel-tunnel_exit_dummy_locomotive",
         ["railway_tunnel-tunnel_portal_blocking_locomotive"] = "railway_tunnel-tunnel_portal_blocking_locomotive"
     }

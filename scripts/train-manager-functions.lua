@@ -44,6 +44,8 @@ TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
     end
 end
 
+-- Light - Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
+-- OVERHAUL - possible alternative is to add a carraige to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel :S
 ---@param exitPortalEntity LuaEntity
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity

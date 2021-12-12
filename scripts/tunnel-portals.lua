@@ -512,7 +512,7 @@ TunnelPortals.OnDiedEntityTrainBlocker = function(event)
                 if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
                     -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entrance portal track. This is healthy activity.
                     return
-                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain or trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leftTrain then
+                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leftTrain then
                     -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
                     return
                 else

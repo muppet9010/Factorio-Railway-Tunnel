@@ -5,14 +5,12 @@ local TrainManagerFuncs = require("scripts/train-manager-functions")
 --local Logging = require("utility/logging")
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
-local Events = require("utility/events")
 local Common = require("scripts/common")
-local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageAction, PrimaryTrainPartNames, LeavingTrainStates, EnteringTrainStates = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageAction, Common.PrimaryTrainPartNames, Common.LeavingTrainStates, Common.EnteringTrainStates
+local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageAction, PrimaryTrainState = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageAction, Common.PrimaryTrainState
 local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local TrainManagerRemote = require("scripts/train-manager-remote")
 
 TrainManagerStateFuncs.OnLoad = function()
-    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainManager.TrainTracking_OnTrainCreated", TrainManagerStateFuncs.TrainTracking_OnTrainCreated)
     Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManagerStateFuncs.On_TunnelRemoved)
     Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManagerStateFuncs.On_PortalReplaced)
     Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails)
@@ -36,26 +34,6 @@ TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail = function(man
                 train.schedule = schedule
             end
         end
-    end
-end
-
----@param managedTrain ManagedTrain
-TrainManagerStateFuncs.HandleTrainNewlyEntering = function(managedTrain)
-    local enteringTrain = managedTrain.enteringTrain
-
-    -- Schedule has been transferred to dummy train.
-
-    enteringTrain.schedule = {
-        current = 1, ---@type uint
-        ---@type TrainScheduleRecord[]
-        records = {
-            {station = "ENTERING TUNNEL - EDIT LEAVING TRAIN"}
-        }
-    }
-
-    -- Prevent player from messing with all entering carriages.
-    for _, carriage in pairs(enteringTrain.carriages) do
-        carriage.operable = false
     end
 end
 
@@ -89,52 +67,6 @@ TrainManagerStateFuncs.DestroyDummyTrain = function(managedTrain)
     elseif managedTrain.dummyTrainId ~= nil then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
     end
-end
-
----@param event on_train_created
-TrainManagerStateFuncs.TrainTracking_OnTrainCreated = function(event)
-    if event.old_train_id_1 == nil then
-        return
-    end
-
-    local trackedTrainIdObject = global.trainManager.trainIdToManagedTrain[event.old_train_id_1] or global.trainManager.trainIdToManagedTrain[event.old_train_id_2]
-    if trackedTrainIdObject == nil then
-        return
-    end
-
-    -- Get the correct variables for this tunnel usage part.
-    local trainAttributeName, trainIdAttributeName
-    if trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.enteringTrain then
-        trainAttributeName = "enteringTrain"
-        trainIdAttributeName = "enteringTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.dummyTrain then
-        trainAttributeName = "dummyTrain"
-        trainIdAttributeName = "dummyTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.leavingTrain then
-        trainAttributeName = "leavingTrain"
-        trainIdAttributeName = "leavingTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.leftTrain then
-        trainAttributeName = "leftTrain"
-        trainIdAttributeName = "leftTrainId"
-    elseif trackedTrainIdObject.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
-        trainAttributeName = "portalTrackTrain"
-        trainIdAttributeName = "portalTrackTrainId"
-    else
-        error("unrecognised global.trainManager.trainIdToManagedTrain tunnelUsagePart: " .. tostring(trackedTrainIdObject.tunnelUsagePart))
-    end
-
-    -- Update the object and globals for the change of train and train id.
-    local newTrain, newTrainId = event.train, event.train.id
-    trackedTrainIdObject.managedTrain[trainAttributeName] = newTrain
-    trackedTrainIdObject.managedTrain[trainIdAttributeName] = newTrainId
-    trackedTrainIdObject.trainId = newTrainId
-    if event.old_train_id_1 ~= nil then
-        global.trainManager.trainIdToManagedTrain[event.old_train_id_1] = nil
-    end
-    if event.old_train_id_2 ~= nil then
-        global.trainManager.trainIdToManagedTrain[event.old_train_id_2] = nil
-    end
-    global.trainManager.trainIdToManagedTrain[newTrainId] = trackedTrainIdObject
 end
 
 ---@param managedTrain ManagedTrain
@@ -196,7 +128,6 @@ TrainManagerStateFuncs.On_TunnelRemoved = function(tunnelRemoved)
     end
 end
 
--- Light - reviewed.
 ---@param train LuaTrain
 ---@param aboveEntrancePortalEndSignal PortalEndSignal
 ---@param traversingTunnel boolean
@@ -333,33 +264,9 @@ TrainManagerStateFuncs.RemoveManagedTrainEntry = function(managedTrain)
     end
 
     -- Set all states to finished so that the TrainManagerStateFuncs.ProcessManagedTrains() loop won't execute anything further this tick.
-    managedTrain.primaryTrainPartName = PrimaryTrainPartNames.finished
-    managedTrain.enteringTrainState = EnteringTrainStates.finished
-    managedTrain.leavingTrainState = LeavingTrainStates.finished
+    managedTrain.primaryTrainPartName = PrimaryTrainState.finished
 
     global.trainManager.managedTrains[managedTrain.id] = nil
-end
-
----@param managedTrain ManagedTrain
----@param trainAttributeName string
----@param desiredSpeed double
----@return boolean
-TrainManagerStateFuncs.Check0OnlySpeedTrainWithLocoGoingExpectedDirection = function(managedTrain, trainAttributeName, desiredSpeed)
-    -- This requires the train to have a locomotive so that it can be given a path.
-    -- This is the only known way to check which way a train with 0 speed and making no carriage changes is really wanting to go. As the LuaTrain attributes only update when the train has a speed or a carriage is added/removed.
-    local train = managedTrain[trainAttributeName]
-    local scheduleBackup, isManualBackup, targetTrainStop = train.schedule, train.manual_mode, train.path_end_stop
-
-    train.manual_mode = true
-    TrainManagerStateFuncs.SetAbsoluteTrainSpeed(managedTrain, trainAttributeName, desiredSpeed)
-    TrainManagerFuncs.TrainSetSchedule(train, scheduleBackup, isManualBackup, targetTrainStop, true) -- Don't force validation.
-    local trainIsFacingExpectedDirection = train.speed ~= 0
-    train.speed = 0 -- Set speed back, everything else was reset by the setting train schedule.
-    if trainIsFacingExpectedDirection then
-        return true
-    else
-        return false
-    end
 end
 
 ---@param trainId Id

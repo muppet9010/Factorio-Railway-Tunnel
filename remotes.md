@@ -3,6 +3,8 @@ OVERHAOUL: this all needs reviewing and updating.
 Remote Interfaces & Custom Events
 =================
 
+OVERHAUL - This needs redoing after initial code so tests can be set up again.
+
 All remote interfaces are under the interface name "railway_tunnel".
 
 
@@ -14,7 +16,6 @@ The common attributes that are returned giving details about a tunnel usage entr
 - tunnelUsageId = id of the tunnel usage details (INT). Always present.
 - primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
 - enteringTrain = LuaTrain of the train still entering the tunnel if it exists, otherwise nil. Exists from "startApproaching" to the final "enteringCarriageRemoved" and "fullyEntered" action events.
-- undergroundTrain = LuaTrain of the complete train underground if it exists, otherwise nil. Exists from "startApproaching" to the final "leavingCarriageAdded" and "fullyLeft" action events.
 - leavingTrain = LuaTrain of the train leaving the tunnel if it exists, otherwise nil. Exists from the " startedLeaving" and first "leavingCarriageAdded" action events until the tunnel usage is "terminated". So may be a partally leaving train up to the full train until "fullyLeft".
 - tunnelId = id of the tunnel the train is using. Can use this to get tunnel details via remote interface: get_tunnel_details_for_id
 
@@ -39,7 +40,7 @@ Get a custom event id via a remote interface call that can be registered to be n
     - Tunnel Usage Entry Object Attributes for this tunnel usage.
     - action: the action that occured (STRING):
         - onPortalTrack: When the train has initially moved on to the tunnel portals tracks. This may be on route to use the tunnel or may be just moving on to some tracks within the portal. Either way the tunnel and the other portal are now reserved for this train. If the train leaves the portal track without using the tunnel the terminated action will be raised with a "changeReason" of "portalTrackReleased". If the train moves in to use the tunnel then the "startApproaching" or action will be raised when the train reserves the inner end signals.
-        - startApproaching: When the train has first reserved the tunnel by pathing across the inner end of a tunnel portal. The tunnel is reserved and an underground train created to force the approaching train to maintain its speed. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
+        - startApproaching: When the train has first reserved the tunnel by pathing across the inner end of a tunnel portal. The tunnel is reserved. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
         - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
         - reversedDuringUse: Raised if while the train was using the tunnel something happened to cause the train to start to reverse back out. Will be raised for the new tunnel usage and include the "replacedtunnelUsageId" attribute with the old usage id in it. The "changeReason" attribute will include the specific cause.
         - startedEntering: Raised when the train starts to enter and the first carriage of the "enteringTrain" has been removed. Will occur on the same tick as the first instance of "enteringCarriageRemoved".

@@ -3,6 +3,7 @@
 ALPHA MOD - Early release mod and versions won't upgrade. Use for testing/experimenting only.
 ==============================
 
+OVERHAUL - needs rewrite to represent new mod.
 
 Mod Features
 ===========
