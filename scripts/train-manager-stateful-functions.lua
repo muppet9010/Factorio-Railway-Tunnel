@@ -38,26 +38,6 @@ TrainManagerStateFuncs.UpdateScheduleForTargetRailBeingTunnelRail = function(man
 end
 
 ---@param managedTrain ManagedTrain
----@param enteringTrain LuaTrain
----@param enteringTrainForwards boolean
----@return LuaEntity
-TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache = function(managedTrain, enteringTrain, enteringTrainForwards)
-    -- Returns the cached lead carriage and records if needed.
-    if managedTrain.enteringTrainLeadCarriageCache == nil or managedTrain.enteringTrainLeadCarriageCache.trainForwards ~= enteringTrainForwards then
-        -- No cache entry or cache exists, but needs updating.
-        local enteringTrainLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, enteringTrainForwards)
-        managedTrain.enteringTrainLeadCarriageCache = {
-            trainForwards = enteringTrainForwards,
-            carriage = enteringTrainLeadCarriage
-        }
-        return enteringTrainLeadCarriage
-    else
-        -- Use the cache lead carriage.
-        return managedTrain.enteringTrainLeadCarriageCache.carriage
-    end
-end
-
----@param managedTrain ManagedTrain
 TrainManagerStateFuncs.DestroyDummyTrain = function(managedTrain)
     -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
     if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
@@ -66,32 +46,6 @@ TrainManagerStateFuncs.DestroyDummyTrain = function(managedTrain)
         managedTrain.dummyTrain, managedTrain.dummyTrainId = nil, nil
     elseif managedTrain.dummyTrainId ~= nil then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
-    end
-end
-
----@param managedTrain ManagedTrain
----@param trainAttributeName string
----@param absoluteSpeed double
-TrainManagerStateFuncs.SetAbsoluteTrainSpeed = function(managedTrain, trainAttributeName, absoluteSpeed)
-    local train = managedTrain[trainAttributeName] ---@type LuaTrain
-
-    -- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.]
-
-    local trainSpeed = train.speed
-    if trainSpeed > 0 then
-        managedTrain[trainAttributeName .. "Forwards"] = true
-        train.speed = absoluteSpeed
-    elseif trainSpeed < 0 then
-        managedTrain[trainAttributeName .. "Forwards"] = false
-        train.speed = -1 * absoluteSpeed
-    else
-        if managedTrain[trainAttributeName .. "Forwards"] == true then
-            train.speed = absoluteSpeed
-        elseif managedTrain[trainAttributeName .. "Forwards"] == false then
-            train.speed = -1 * absoluteSpeed
-        else
-            error("TrainManagerStateFuncs.SetAbsoluteTrainSpeed() for '" .. trainAttributeName .. "' doesn't support train with current 0 speed and no 'Forwards' cached value.\n" .. trainAttributeName .. " id: " .. managedTrain.id)
-        end
     end
 end
 
@@ -151,7 +105,8 @@ TrainManagerStateFuncs.CreateManagedTrainObject = function(train, aboveEntranceP
         tunnel = aboveEntrancePortalEndSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(aboveEntrancePortalEndSignal.entity.direction + 4),
         leavingTrainExpectedBadState = false,
-        leavingTrainAtEndOfPortalTrack = false
+        leavingTrainAtEndOfPortalTrack = false,
+        tempEnteringSpeed = trainSpeed
     }
     if trainSpeed == 0 then
         error("TrainManagerStateFuncs.CreateManagedTrainObject() doesn't support 0 speed\ntrain id: " .. trainId)
@@ -273,6 +228,50 @@ end
 ---@return ManagedTrain
 TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails = function(trainId)
     return global.trainManager.trainIdToManagedTrain[trainId]
+end
+
+-- TODO: this function is old and needs revamp.
+---@param managedTrain ManagedTrain
+---@return LuaTrain
+TrainManagerStateFuncs.CloneEnteringTrainToExit = function(managedTrain)
+    local firstCarriagePosition = TrainManagerStateFuncs.GetExitFirstWagonPosition(managedTrain)
+    local nextCarriagePosition, refTrain, trainCarriagesForwardOrientation = firstCarriagePosition, managedTrain.enteringTrain, managedTrain.trainTravelOrientation
+    local targetSurface = refTrain.carriages[1].surface
+    if not managedTrain.enteringTrainForwards then
+        trainCarriagesForwardOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
+    end
+
+    -- Places the front carriage of the front end of the portal. So minimal entity tracking required.
+    local minCarriageIndex, maxCarriageIndex, carriageIterator
+    local refTrainSpeed, refTrainCarriages = refTrain.speed, refTrain.carriages
+    if (refTrainSpeed > 0) then
+        minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #refTrainCarriages, 1
+    elseif (refTrainSpeed < 0) then
+        minCarriageIndex, maxCarriageIndex, carriageIterator = #refTrainCarriages, 1, -1
+    else
+        error("TrainManagerStateFuncs.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain.\nrefTrain id: " .. refTrain.id)
+    end
+    local placedCarriage
+    for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
+        local refCarriage = refTrainCarriages[currentSourceTrainCarriageIndex]
+        local carriageOrientation, refCarriageSpeed = trainCarriagesForwardOrientation, refCarriage.speed
+        if refCarriageSpeed ~= refTrainSpeed then
+            carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
+        end
+
+        local safeCarriageFlipPosition
+        if currentSourceTrainCarriageIndex ~= minCarriageIndex then
+            -- The first carriage in the train doesn't need incrementing.
+            nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, placedCarriage, refCarriage.name)
+            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, placedCarriage.name, refCarriage.name, 20))
+        else
+            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
+        end
+
+        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation)
+    end
+
+    return placedCarriage.train
 end
 
 return TrainManagerStateFuncs

@@ -36,7 +36,9 @@ local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test conti
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
 
 -- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
-local TestsToRun = {}
+local TestsToRun = {
+    ShortTunnelSingleLocoEastToWest = {enabled = true, testScript = require("tests/short-tunnel-single-loco-east-to-west")}
+}
 -- OLD TESTS IN NEED OF UPDATING
 --[[
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},

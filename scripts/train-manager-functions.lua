@@ -45,7 +45,7 @@ TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
 end
 
 -- Light - Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
--- OVERHAUL - possible alternative is to add a carraige to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel :S
+-- OVERHAUL - possible alternative is to add a carraige to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
 ---@param exitPortalEntity LuaEntity
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity
@@ -461,6 +461,57 @@ TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
         end
     end
     return returnedSafeTable
+end
+
+-- TODO: this function is old and needs revamp.
+---@param targetSurface LuaSurface
+---@param refCarriage LuaEntity
+---@param newPosition Position
+---@param safeCarriageFlipPosition Position
+---@param requiredOrientation RealOrientation
+---@return LuaEntity
+TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
+    -- Work out if we will need to flip the cloned carriage or not.
+    local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
+    local haveToFlipCarriage = false
+    if orientationDif > 0.25 and orientationDif < 0.75 then
+        -- Will need to flip the carriage.
+        haveToFlipCarriage = true
+    elseif orientationDif == 0.25 or orientationDif == 0.75 then
+        -- May end up the correct way, depending on what rotation we want. Factorio rotates positive orientation when equally close.
+        if Utils.BoundFloatValueWithinRangeMaxExclusive(refCarriage.orientation + 0.25, 0, 1) ~= requiredOrientation then
+            -- After a positive rounding the carriage isn't going to be facing the right way.
+            haveToFlipCarriage = true
+        end
+    end
+
+    -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
+    ---@typelist LuaEntity, LuaEntity
+    local tempCarriage, sourceCarriage
+    if haveToFlipCarriage then
+        tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
+        if tempCarriage.orientation == requiredOrientation then
+            error("underground carriage flipping not needed, but predicted. \nrequiredOrientation: " .. tostring(requiredOrientation) .. "\ntempCarriage.orientation: " .. tostring(tempCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
+        end
+        tempCarriage.rotate()
+        sourceCarriage = tempCarriage
+    else
+        sourceCarriage = refCarriage
+    end
+
+    local placedCarriage = sourceCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
+    if placedCarriage == nil then
+        error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
+    end
+
+    if haveToFlipCarriage then
+        tempCarriage.destroy()
+    end
+    if placedCarriage.orientation ~= requiredOrientation then
+        error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
+    end
+
+    return placedCarriage
 end
 
 return TrainManagerFuncs

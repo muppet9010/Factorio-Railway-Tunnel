@@ -5,7 +5,7 @@ MAJOR:
 	- require a portal area the length of the train for entry and exit. So only when the entering train is fully within this area (signal block) does the train get committed and cloned to outbound portal area with 0 speed. Work out how long the train would take to navigate to the end of the exit portal area and then after that time set the train active and its speed either full or 0.
 	- Any train trying to enter the portal area that is longer than it will be hard blocked at the border, set to manual and a notificaiton to user shown.
 	- Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This are will have some above ground visual blocking graphics so train within it isn't visible.
-    - Initially tunnels (portals and underground) must be built in straight lines.
+    - Initially tunnels (portals and underground) must be built in straight lines. May support curved tunnels in future, but portal area MUST be straight to save UPS.
 
 MINOR:
 	- place the dummy train on each end rather than having to update the portal area signals every tick when no train is there.
@@ -27,7 +27,7 @@ MINOR:
 
 
 FUTURE:
-	- Allows corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Will require the cloning placement to recognise the new orientation of a train and thus do via script and not via "clone". Could offer both based on need and have a note that UPS usage will be lower for tunnels that have a straight through entrance and exit portals. Player Container position will need expanding to handle corners in tunnel.
+	- Allows corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel.
 
 
 

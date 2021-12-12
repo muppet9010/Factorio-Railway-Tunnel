@@ -770,3 +770,51 @@ TrainManagerStateFuncs.Check0OnlySpeedTrainWithLocoGoingExpectedDirection = func
         return false
     end
 end
+
+
+---@param managedTrain ManagedTrain
+---@param trainAttributeName string
+---@param absoluteSpeed double
+TrainManagerStateFuncs.SetAbsoluteTrainSpeed = function(managedTrain, trainAttributeName, absoluteSpeed)
+    local train = managedTrain[trainAttributeName] ---@type LuaTrain
+
+    -- Only update train's global forwards if speed ~= 0. As the last train direction needs to be preserved in global data for if the train stops while using the tunnel.]
+
+    local trainSpeed = train.speed
+    if trainSpeed > 0 then
+        managedTrain[trainAttributeName .. "Forwards"] = true
+        train.speed = absoluteSpeed
+    elseif trainSpeed < 0 then
+        managedTrain[trainAttributeName .. "Forwards"] = false
+        train.speed = -1 * absoluteSpeed
+    else
+        if managedTrain[trainAttributeName .. "Forwards"] == true then
+            train.speed = absoluteSpeed
+        elseif managedTrain[trainAttributeName .. "Forwards"] == false then
+            train.speed = -1 * absoluteSpeed
+        else
+            error("TrainManagerStateFuncs.SetAbsoluteTrainSpeed() for '" .. trainAttributeName .. "' doesn't support train with current 0 speed and no 'Forwards' cached value.\n" .. trainAttributeName .. " id: " .. managedTrain.id)
+        end
+    end
+end
+
+
+---@param managedTrain ManagedTrain
+---@param enteringTrain LuaTrain
+---@param enteringTrainForwards boolean
+---@return LuaEntity
+TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache = function(managedTrain, enteringTrain, enteringTrainForwards)
+    -- Returns the cached lead carriage and records if needed.
+    if managedTrain.enteringTrainLeadCarriageCache == nil or managedTrain.enteringTrainLeadCarriageCache.trainForwards ~= enteringTrainForwards then
+        -- No cache entry or cache exists, but needs updating.
+        local enteringTrainLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, enteringTrainForwards)
+        managedTrain.enteringTrainLeadCarriageCache = {
+            trainForwards = enteringTrainForwards,
+            carriage = enteringTrainLeadCarriage
+        }
+        return enteringTrainLeadCarriage
+    else
+        -- Use the cache lead carriage.
+        return managedTrain.enteringTrainLeadCarriageCache.carriage
+    end
+end
