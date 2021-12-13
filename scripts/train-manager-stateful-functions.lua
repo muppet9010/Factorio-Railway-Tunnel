@@ -230,18 +230,23 @@ TrainManagerStateFuncs.GetTrainIdsManagedTrainDetails = function(trainId)
     return global.trainManager.trainIdToManagedTrain[trainId]
 end
 
--- TODO: this function is old and needs revamp.
+-- Clone the entering train to the front of the end portal. This will minimise any tracking of the train when leaving.
 ---@param managedTrain ManagedTrain
 ---@return LuaTrain
 TrainManagerStateFuncs.CloneEnteringTrainToExit = function(managedTrain)
-    local firstCarriagePosition = TrainManagerStateFuncs.GetExitFirstWagonPosition(managedTrain)
-    local nextCarriagePosition, refTrain, trainCarriagesForwardOrientation = firstCarriagePosition, managedTrain.enteringTrain, managedTrain.trainTravelOrientation
-    local targetSurface = refTrain.carriages[1].surface
+    -- This currently assumes the portals are in a stright line of each other and that the portal areas are straight.
+    local refTrain, trainCarriagesForwardOrientation = managedTrain.enteringTrain, managedTrain.trainTravelOrientation
+    local targetSurface = managedTrain.aboveSurface
     if not managedTrain.enteringTrainForwards then
         trainCarriagesForwardOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
     end
 
-    -- Places the front carriage of the front end of the portal. So minimal entity tracking required.
+    -- Get the position for the front of the lead carriage; 2.5 tiles back from the entry signal. This means the front 3 tiles of the portal area graphics can show the train, with further back needing to be covered to hide the train graphics.
+    local exitPortalEntrySignalOutPosition = managedTrain.aboveExitPortalEntrySignalOut.entity.position
+    local trainFrontOffsetFromSignal = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = -1.5, y = 2.5})
+    local nextCarriagePosition = Utils.ApplyOffsetToPosition(exitPortalEntrySignalOutPosition, trainFrontOffsetFromSignal)
+
+    -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator
     local refTrainSpeed, refTrainCarriages = refTrain.speed, refTrain.carriages
     if (refTrainSpeed > 0) then
@@ -251,27 +256,24 @@ TrainManagerStateFuncs.CloneEnteringTrainToExit = function(managedTrain)
     else
         error("TrainManagerStateFuncs.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain.\nrefTrain id: " .. refTrain.id)
     end
-    local placedCarriage
+
+    --Iterate over the carriages and clone them.
+    local refCarriage, refCarriage_name
+    local lastPlacedCarriage, lastPlacedCarriage_name
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        local refCarriage = refTrainCarriages[currentSourceTrainCarriageIndex]
-        local carriageOrientation, refCarriageSpeed = trainCarriagesForwardOrientation, refCarriage.speed
-        if refCarriageSpeed ~= refTrainSpeed then
+        refCarriage = refTrainCarriages[currentSourceTrainCarriageIndex]
+        refCarriage_name = refCarriage.name
+        local carriageOrientation = trainCarriagesForwardOrientation
+        if refCarriage.speed ~= refTrainSpeed then
             carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
         end
 
-        local safeCarriageFlipPosition
-        if currentSourceTrainCarriageIndex ~= minCarriageIndex then
-            -- The first carriage in the train doesn't need incrementing.
-            nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, placedCarriage, refCarriage.name)
-            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, placedCarriage.name, refCarriage.name, 20))
-        else
-            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
-        end
-
-        placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation)
+        nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, nextCarriagePosition, lastPlacedCarriage_name, refCarriage_name)
+        lastPlacedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, nil, carriageOrientation)
+        lastPlacedCarriage_name = refCarriage_name
     end
 
-    return placedCarriage.train
+    return lastPlacedCarriage.train
 end
 
 return TrainManagerStateFuncs

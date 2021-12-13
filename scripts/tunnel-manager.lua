@@ -79,26 +79,27 @@ end
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     ---@typelist LuaForce, LuaSurface, LuaEntity
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
+    local refTunnelPortalEntity_direction = refTunnelPortalEntity.direction
 
     local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, aboveSurface) ---@type table<int,Portal>
     local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, aboveSurface) ---@type table<int,Segment>
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation
-    if refTunnelPortalEntity.direction == defines.direction.north or refTunnelPortalEntity.direction == defines.direction.south then
+    if refTunnelPortalEntity_direction == defines.direction.north or refTunnelPortalEntity_direction == defines.direction.south then
         alignment = TunnelAlignment.vertical
         alignmentOrientation = TunnelAlignmentOrientation.vertical
-    elseif refTunnelPortalEntity.direction == defines.direction.east or refTunnelPortalEntity.direction == defines.direction.west then
+    elseif refTunnelPortalEntity_direction == defines.direction.east or refTunnelPortalEntity_direction == defines.direction.west then
         alignment = TunnelAlignment.horizontal
         alignmentOrientation = TunnelAlignmentOrientation.horizontal
     else
-        error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity.direction)
+        error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity_direction)
     end
     local tunnel = {
         id = global.tunnels.nextTunnelId,
         alignment = alignment,
         alignmentOrientation = alignmentOrientation,
-        aboveSurface = refTunnelPortalEntity.surface,
+        aboveSurface = aboveSurface,
         portals = tunnelPortals,
         segments = tunnelSegments,
         tunnelRailEntities = {}
@@ -107,18 +108,18 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
     for _, portal in pairs(tunnelPortals) do
         portal.tunnel = tunnel
-        for tunnelRailEntityUnitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
-            tunnel.tunnelRailEntities[tunnelRailEntityUnitNumber] = tunnelRailEntity
+        for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
+            tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
         end
     end
     for _, segment in pairs(tunnelSegments) do
         segment.tunnel = tunnel
-        for tunnelRailEntityUnitNumber, tunnelRailEntity in pairs(segment.tunnelRailEntities) do
-            tunnel.tunnelRailEntities[tunnelRailEntityUnitNumber] = tunnelRailEntity
+        for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(segment.tunnelRailEntities) do
+            tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
         end
     end
 
-    -- TODO: OVERHAUL - both these need calculating based on tunnel as used by runtime code.
+    -- TODO: OVERHAUL - both these need calculating based on tunnel as used by runtime code. harded for initial tests.
     tunnel.railAlignmentAxis = "x"
     tunnel.tunnelAlignmentAxis = "y"
 end
@@ -254,13 +255,15 @@ Tunnel.OnBuiltEntity = function(event)
     -- Check for any train carriages (real or ghost) being built on the portal or tunnel segments. Ghost placing train carriages doesn't raise the on_built_event for some reason.
     -- Known limitation that you can't place a single carriage on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
     local createdEntity = event.created_entity or event.entity
-    if (not createdEntity.valid or (not (createdEntity.type ~= "entity-ghost" and RollingStockTypes[createdEntity.type] ~= nil) and not (createdEntity.type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
+    local createdEntity_type = createdEntity.type
+    if (not createdEntity.valid or (not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
         return
     end
 
-    if createdEntity.type ~= "entity-ghost" then
+    if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
+        local createdEntity_unitNumber = createdEntity.unit_number
 
         if Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) then
             -- Carriage was built on a managed train, so this will be handled by seperate train manipulation tracking logic.
@@ -269,10 +272,10 @@ Tunnel.OnBuiltEntity = function(event)
 
         -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
         local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
-        if train.front_stock.unit_number == createdEntity.unit_number then
+        if train.front_stock.unit_number == createdEntity_unitNumber then
             trainFrontStockIsPlacedEntity = true
         end
-        if train.back_stock.unit_number == createdEntity.unit_number then
+        if train.back_stock.unit_number == createdEntity_unitNumber then
             trainBackStockIsPlacedEntity = true
         end
         if trainFrontStockIsPlacedEntity and trainBackStockIsPlacedEntity then
@@ -301,8 +304,9 @@ Tunnel.OnBuiltEntity = function(event)
         -- Is a ghost so check it approperiately. This isn't perfect, but if it misses an invalid case the real entity being placed will catch it. Nicer to warn the player at the ghost stage however.
 
         -- Have to check what rails are at the approximate ends of the ghost carriage.
+        local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
         local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
-        local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation), Utils.GetPositionForOrientationDistance(createdEntity.position, carriageLengthFromCenter, createdEntity.orientation - 0.5)
+        local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
         for _, railEntity in pairs(frontRailsFound) do
@@ -333,7 +337,7 @@ Tunnel.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    Common.UndoInvalidPlacement(createdEntity, placer, createdEntity.type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
+    Common.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
 end
 
 return Tunnel

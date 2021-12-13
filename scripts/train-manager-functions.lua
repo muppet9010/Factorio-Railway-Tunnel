@@ -463,16 +463,21 @@ TrainManagerFuncs.PrintThingsDetails = function(thing, _tablesLogged)
     return returnedSafeTable
 end
 
--- TODO: this function is old and needs revamp.
 ---@param targetSurface LuaSurface
 ---@param refCarriage LuaEntity
 ---@param newPosition Position
----@param safeCarriageFlipPosition Position
----@param requiredOrientation RealOrientation
+---@param safeCarriageFlipPosition Position @Not used until we need to support corners.
+---@param requiredOrientation RealOrientation @Not used until we need to support corners.
 ---@return LuaEntity
 TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
+    -- OVERHAUL - until we add support for corners or non straight tunnel portal areas we never need to flip a carraige.
+    local sourceCarriage = refCarriage
+    if 1 == 0 then
+        game.print(safeCarriageFlipPosition, requiredOrientation)
+    end
+
     -- Work out if we will need to flip the cloned carriage or not.
-    local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
+    --[[local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
     local haveToFlipCarriage = false
     if orientationDif > 0.25 and orientationDif < 0.75 then
         -- Will need to flip the carriage.
@@ -497,21 +502,34 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
         sourceCarriage = tempCarriage
     else
         sourceCarriage = refCarriage
-    end
-
+    end--]]
     local placedCarriage = sourceCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
     if placedCarriage == nil then
         error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
     end
 
-    if haveToFlipCarriage then
+    --[[if haveToFlipCarriage then
         tempCarriage.destroy()
     end
     if placedCarriage.orientation ~= requiredOrientation then
         error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
-    end
-
+    end]]
     return placedCarriage
+end
+
+---@param trainOrientation RealOrientation
+---@param lastPosition Position
+---@param lastCarriageEntityName string
+---@param nextCarriageEntityName string
+---@return Position
+TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastPosition, lastCarriageEntityName, nextCarriageEntityName)
+    --This assumes the next carriage is in a striaght direction from the previous carriage.
+    local carriagesDistance = Common.GetCarriagePlacementDistance(nextCarriageEntityName)
+    if lastCarriageEntityName ~= nil then
+        carriagesDistance = carriagesDistance + Common.GetCarriagePlacementDistance(lastCarriageEntityName)
+    end
+    local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
+    return Utils.ApplyOffsetToPosition(lastPosition, nextCarriageOffset)
 end
 
 return TrainManagerFuncs

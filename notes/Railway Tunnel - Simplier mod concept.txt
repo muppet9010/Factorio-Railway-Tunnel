@@ -24,6 +24,8 @@ MINOR:
     - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests.
     - global.stringStateHandling is legacy and should be removed as part of overhaul.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
+    - look at when we get position of the tunnel entities and try to cache them as they don't change once the tunnel is complete. Also unit numbers.
+    - change all Above to just be the thing, i.e. aboveSurface = surface
 
 
 FUTURE:

@@ -216,6 +216,7 @@ Common.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, ki
     end
 end
 
+-- Gets the distance from the center of the carriage to the end of it for when placing carriages.
 ---@param carriageEntityName string @The entity name.
 ---@return double
 Common.GetCarriagePlacementDistance = function(carriageEntityName)

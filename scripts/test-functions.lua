@@ -349,9 +349,10 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
     for _, ghost in pairs(ghosts) do
         -- Special cases where the placed entity will be removed by other scripts.
         local tunnelPortalPosition, tunnelSegmentPosition
-        if ghost.ghost_name == "railway_tunnel-tunnel_portal_surface-placed" then
+        local ghostName = ghost.ghost_name
+        if ghostName == "railway_tunnel-tunnel_portal_surface-placed" then
             tunnelPortalPosition = ghost.position
-        elseif ghost.ghost_name == "railway_tunnel-tunnel_segment_surface-placed" then
+        elseif ghostName == "railway_tunnel-tunnel_segment_surface-placed" then
             tunnelSegmentPosition = ghost.position
         end
 

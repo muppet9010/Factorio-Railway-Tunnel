@@ -31,7 +31,7 @@ local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each 
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
 
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
-local TestGameSpeed = 4 -- The game speed to run the tests at. Default is 1.
+local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
 

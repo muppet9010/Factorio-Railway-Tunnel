@@ -297,17 +297,6 @@ end
 
 
 
----@param trainOrientation RealOrientation
----@param lastCarriageEntity LuaEntity
----@param nextCarriageEntityName string
----@return Position
-TrainManagerFuncs.GetNextCarriagePlacementPosition = function(trainOrientation, lastCarriageEntity, nextCarriageEntityName)
-    local carriagesDistance = Common.GetCarriagePlacementDistance(lastCarriageEntity.name) + Common.GetCarriagePlacementDistance(nextCarriageEntityName)
-    local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
-    return Utils.ApplyOffsetToPosition(lastCarriageEntity.position, nextCarriageOffset)
-end
-
-
 
 ---@param train LuaTrain
 ---@param expectedOrientation RealOrientation

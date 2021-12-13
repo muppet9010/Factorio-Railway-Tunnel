@@ -250,7 +250,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     }
 
     -- Handle any players in the train carriages.
-    for _, carriage in pairs(enteringTrain) do
+    for _, carriage in pairs(enteringTrain.carriages) do
         local driver = carriage.get_driver()
         if driver ~= nil then
             TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel(managedTrain, driver, carriage)
@@ -258,7 +258,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     end
 
     -- Destroy entering train's entities as we have finished with them.
-    TrainManagerFuncs.DestroyTrainsCarriages(managedTrain.enteringTrainId)
+    TrainManagerFuncs.DestroyTrainsCarriages(enteringTrain)
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil

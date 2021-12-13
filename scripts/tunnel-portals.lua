@@ -121,6 +121,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     placementEntity.destroy()
     local portalEntity = aboveSurface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
     portalEntity.rotatable = false -- Only stops players from rotating the placed entity, not editor mode. We track for editor use.
+    local portalEntity_position = portalEntity.position
     ---@type Portal
     local portal = {
         id = portalEntity.unit_number,
@@ -128,7 +129,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
         entityDirection = directionValue,
         portalRailEntities = {},
         entranceDistanceFromCenter = math.abs(SetupValues.entranceFromCenter),
-        portalEntrancePosition = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(portalEntity.orientation, {x = 0, y = 0 - math.abs(SetupValues.entranceFromCenter)}))
+        portalEntrancePosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(portalEntity.orientation, {x = 0, y = 0 - math.abs(SetupValues.entranceFromCenter)}))
     }
     global.tunnelPortals.portals[portal.id] = portal
 
@@ -146,7 +147,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local entrySignalInEntity =
         aboveSurface.create_entity {
         name = "railway_tunnel-internal_signal-not_on_map",
-        position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.entrySignalsDistance})),
+        position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.entrySignalsDistance})),
         force = force,
         direction = directionValue
     }
@@ -155,7 +156,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local entrySignalOutEntity =
         aboveSurface.create_entity {
         name = "railway_tunnel-internal_signal-not_on_map",
-        position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.entrySignalsDistance})),
+        position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.entrySignalsDistance})),
         force = force,
         direction = Utils.LoopDirectionValue(directionValue + 4)
     }
@@ -203,7 +204,8 @@ end
 ---@return LuaEntity[] @Tunnel portal entities.
 ---@return LuaEntity[] @Tunnel segment entities.
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntity, placer, portal)
-    local tunnelPortalEntities, tunnelSegmentEntities, directionValue, orientation = {}, {}, startingTunnelPortalEntity.direction, Utils.DirectionToOrientation(startingTunnelPortalEntity.direction)
+    local startingTunnelPortalEntity_direction = startingTunnelPortalEntity.direction
+    local tunnelPortalEntities, tunnelSegmentEntities, directionValue, orientation = {}, {}, startingTunnelPortalEntity_direction, Utils.DirectionToOrientation(startingTunnelPortalEntity_direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entranceDistanceFromCenter}))
     local directionComplete = Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer, tunnelPortalEntities, tunnelSegmentEntities)
     return directionComplete, tunnelPortalEntities, tunnelSegmentEntities
