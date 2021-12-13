@@ -1,4 +1,5 @@
 -- The remote interface functions of the Train Manager.
+-- OVERHAUL - THIS ALL NEEDS UPDATING TO NEW CODE LOGIC
 
 local TrainManagerRemote = {}
 local Utils = require("utility/utils")
@@ -9,7 +10,6 @@ local Events = require("utility/events")
 ---@field primaryState PrimaryTrainState
 ---@field enteringTrain LuaTrain
 ---@field leavingTrain LuaTrain
----@field leftTrain LuaTrain
 ---@field tunnelId Id
 
 TrainManagerRemote.CreateGlobals = function()
@@ -21,11 +21,6 @@ TrainManagerRemote.ProcessTicksEvents = function()
     if #global.trainManager.eventsToRaise ~= 0 then
         for _, eventData in pairs(global.trainManager.eventsToRaise) do
             TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(eventData, eventData.tunnelUsageId)
-            -- Populate the leavingTrain attribute with the leftTrain value when the leavingTrain value isn't valid. Makes handling the events nicer by hiding this internal code oddity.
-            if (eventData.leavingTrain == nil or not eventData.leavingTrain.valid) and (eventData.leftTrain ~= nil and eventData.leftTrain.valid) then
-                eventData.leavingTrain = eventData.leftTrain
-                eventData.leftTrain = nil
-            end
             Events.RaiseEvent(eventData)
         end
         global.trainManager.eventsToRaise = {}
@@ -45,7 +40,6 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
     tableToPopulate.primaryState = managedTrain.primaryTrainPartName
     tableToPopulate.enteringTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.enteringTrain)
     tableToPopulate.leavingTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
-    tableToPopulate.leftTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leftTrain)
     tableToPopulate.tunnelId = managedTrain.tunnel.id
 end
 

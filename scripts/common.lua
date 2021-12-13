@@ -40,45 +40,49 @@ Common.RollingStockTypes = {
 ---@param startingTunnelPartPoint Position
 ---@param checkingDirection defines.direction
 ---@param placer EntityActioner
+---@param tunnelPortalEntities LuaEntity[] @A reference to an existing tunnel portal entity array that will have discovered portal entities added to. Can be an empty array.
+---@param tunnelSegmentEntities LuaEntity[] @A reference to an existing tunnel segment entity array that will have discovered segment entities added to. Can be an empty array.
 ---@return boolean @Direction is completed successfully.
----@return LuaEntity[] @Tunnel portal entities.
----@return LuaEntity[] @Tunnel segment entities.
 Common.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
-    if Common.TunnelSegmentPlacedEntityNames[startingTunnelPart.name] then
+    local startingTunnelPart_name, startingTunnelPart_direction, startingTunnelPart_position = startingTunnelPart.name, startingTunnelPart.direction, startingTunnelPart.position
+
+    if Common.TunnelSegmentPlacedEntityNames[startingTunnelPart_name] then
         -- Only include the starting tunnel segment when we are checking its direction, not when checking from it the other direction. Otherwise we double add it.
-        if checkingDirection == startingTunnelPart.direction then
+        if checkingDirection == startingTunnelPart_direction then
             table.insert(tunnelSegmentEntities, startingTunnelPart)
         end
-    elseif Common.TunnelPortalPlacedEntityNames[startingTunnelPart.name] then
+    elseif Common.TunnelPortalPlacedEntityNames[startingTunnelPart_name] then
         table.insert(tunnelPortalEntities, startingTunnelPart)
     else
-        error("Common.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart.name)
+        error("Common.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart_name)
     end
-    local orientation, continueChecking, nextCheckingPos = Utils.DirectionToOrientation(checkingDirection), true, startingTunnelPartPoint
+    local continueChecking, nextCheckingPos = true, startingTunnelPartPoint
+    local checkingPositionOffset = Utils.RotatePositionAround0(Utils.DirectionToOrientation(checkingDirection), {x = 0, y = 2})
     while continueChecking do
-        nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, Utils.RotatePositionAround0(orientation, {x = 0, y = 2}))
+        nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, checkingPositionOffset)
         local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = Common.TunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
             local connectedTunnelEntity = connectedTunnelEntities[1] ---@type LuaEntity
-            if connectedTunnelEntity.position.x ~= startingTunnelPart.position.x and connectedTunnelEntity.position.y ~= startingTunnelPart.position.y then
-                Common.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity.position)
+            local connectedTunnelEntity_position, connectedTunnelEntity_direction = connectedTunnelEntity.position, connectedTunnelEntity.direction
+            if connectedTunnelEntity_position.x ~= startingTunnelPart_position.x and connectedTunnelEntity_position.y ~= startingTunnelPart_position.y then
+                Common.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity_position)
                 continueChecking = false
             elseif Common.TunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
-                if connectedTunnelEntity.direction == startingTunnelPart.direction or connectedTunnelEntity.direction == Utils.LoopDirectionValue(startingTunnelPart.direction + 4) then
+                if connectedTunnelEntity_direction == startingTunnelPart_direction or connectedTunnelEntity_direction == Utils.LoopDirectionValue(startingTunnelPart_direction + 4) then
                     table.insert(tunnelSegmentEntities, connectedTunnelEntity)
                 else
-                    Common.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity.position)
+                    Common.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity_position)
                     continueChecking = false
                 end
             elseif Common.TunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
                 continueChecking = false
-                if connectedTunnelEntity.direction == Utils.LoopDirectionValue(checkingDirection + 4) then
+                if connectedTunnelEntity_direction == Utils.LoopDirectionValue(checkingDirection + 4) then
                     table.insert(tunnelPortalEntities, connectedTunnelEntity)
                     return true, tunnelPortalEntities, tunnelSegmentEntities
                 else
-                    Common.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity.position)
+                    Common.EntityErrorMessage(placer, "Tunnel portal facing wrong direction", connectedTunnelEntity.surface, connectedTunnelEntity_position)
                 end
             else
                 error("unhandled railway_tunnel entity type")
@@ -258,9 +262,9 @@ Common.PrimaryTrainState = {
 ---@class TunnelUsageParts
 Common.TunnelUsageParts = {
     enteringTrain = "enteringTrain", ---@type TunnelUsageParts
-    dummyTrain = "dummyTrain", ---@type TunnelUsageParts
-    leftTrain = "leftTrain", ---@type TunnelUsageParts
-    portalTrackTrain = "portalTrackTrain" ---@type TunnelUsageParts
+    leavingTrain = "leavingTrain", ---@type TunnelUsageParts
+    portalTrackTrain = "portalTrackTrain", ---@type TunnelUsageParts
+    dummyTrain = "dummyTrain" ---@type TunnelUsageParts
 }
 
 -- The train's state - Used by the train manager remote for state notifications to remote interface calls.
@@ -268,8 +272,8 @@ Common.TunnelUsageParts = {
 Common.TunnelUsageAction = {
     startApproaching = "startApproaching", ---@type TunnelUsageAction
     terminated = "terminated", ---@type TunnelUsageAction
-    fullyEntered = "fullyEntered", ---@type TunnelUsageAction
-    fullyLeft = "fullyLeft", ---@type TunnelUsageAction
+    entered = "entered", ---@type TunnelUsageAction
+    leaving = "leaving", ---@type TunnelUsageAction
     onPortalTrack = "onPortalTrack" ---@type TunnelUsageAction
 }
 

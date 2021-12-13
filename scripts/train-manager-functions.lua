@@ -1,5 +1,7 @@
 -- Only has self contained functions in it. Doesn't require lookup to global trainmanager's managed trains.
 
+-- OVERHAUL - seperate this out in to Utils and train-manager based on if generic functions.
+
 local TrainManagerFuncs = {}
 local Utils = require("utility/utils")
 local Logging = require("utility/logging")
@@ -33,7 +35,7 @@ end
 ---@param targetTrainStop LuaEntity
 TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
     if targetTrainStop ~= nil and targetTrainStop.valid then
-        -- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto.
+        -- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
         local oldLimit = targetTrainStop.trains_limit
         targetTrainStop.trains_limit = targetTrainStop.trains_count + 1
         train.manual_mode = false
@@ -45,7 +47,7 @@ TrainManagerFuncs.SetTrainToAuto = function(train, targetTrainStop)
 end
 
 -- Light - Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
--- OVERHAUL - possible alternative is to add a carraige to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
+-- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
 ---@param exitPortalEntity LuaEntity
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity
@@ -77,9 +79,13 @@ TrainManagerFuncs.CreateDummyTrain = function(exitPortalEntity, trainSchedule, t
 end
 
 ---@param train LuaTrain
-TrainManagerFuncs.DestroyTrainsCarriages = function(train)
+TrainManagerFuncs.DestroyTrainsCarriages = function(train, trainsCarriages)
     if train ~= nil and train.valid then
         for _, carriage in pairs(train.carriages) do
+            carriage.destroy()
+        end
+    elseif trainsCarriages ~= nil then
+        for _, carriage in pairs(trainsCarriages) do
             carriage.destroy()
         end
     end

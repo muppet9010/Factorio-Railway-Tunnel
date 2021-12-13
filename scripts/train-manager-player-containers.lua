@@ -114,7 +114,7 @@ TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalE
 
     if portalEntity == nil then
         local managedTrain = playerContainer.managedTrain
-        if Utils.GetDistanceSingleAxis(managedTrain.aboveEntrancePortal.entity.position, player.position, managedTrain.tunnel.railAlignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.aboveExitPortal.entity.position, player.position, managedTrain.tunnel.railAlignmentAxis) then
+        if Utils.GetDistanceSingleAxis(managedTrain.aboveEntrancePortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.aboveExitPortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) then
             portalObject = managedTrain.aboveEntrancePortal
         else
             portalObject = managedTrain.aboveExitPortal

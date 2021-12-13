@@ -12,13 +12,13 @@ local Utils = require("utility/utils")
 ---@field id Id @unqiue id of the tunnel.
 ---@field alignment TunnelAlignment
 ---@field alignmentOrientation TunnelAlignmentOrientation
----@field railAlignmentAxis Axis @ref to the tunnel's railAlignmentAxis.
----@field tunnelAlignmentAxis Axis @ref to the tunnel's tunnelAlignmentAxis.
+---@field alignmentAxis Axis
 ---@field aboveSurface LuaSurface
 ---@field portals Portal[]
 ---@field segments Segment[]
 ---@field managedTrain ManagedTrain @one is currently using this tunnel.
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the rail entities of the tunnel (invisible rail) on the surface.
+---@field tunnelLength int @the length of the tunnel segments in tiles.
 
 ---@class TunnelDetails
 ---@field tunnelId Id @Id of the tunnel.
@@ -81,17 +81,20 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
     local refTunnelPortalEntity_direction = refTunnelPortalEntity.direction
 
+    -- Call any other modules before the tunnel object is created.
     local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, aboveSurface) ---@type table<int,Portal>
     local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, aboveSurface) ---@type table<int,Segment>
 
     -- Create the tunnel global object.
-    local alignment, alignmentOrientation
+    local alignment, alignmentOrientation, alignmentAxis
     if refTunnelPortalEntity_direction == defines.direction.north or refTunnelPortalEntity_direction == defines.direction.south then
         alignment = TunnelAlignment.vertical
         alignmentOrientation = TunnelAlignmentOrientation.vertical
+        alignmentAxis = "y"
     elseif refTunnelPortalEntity_direction == defines.direction.east or refTunnelPortalEntity_direction == defines.direction.west then
         alignment = TunnelAlignment.horizontal
         alignmentOrientation = TunnelAlignmentOrientation.horizontal
+        alignmentAxis = "x"
     else
         error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity_direction)
     end
@@ -99,10 +102,12 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         id = global.tunnels.nextTunnelId,
         alignment = alignment,
         alignmentOrientation = alignmentOrientation,
+        alignmentAxis = alignmentAxis,
         aboveSurface = aboveSurface,
         portals = tunnelPortals,
         segments = tunnelSegments,
-        tunnelRailEntities = {}
+        tunnelRailEntities = {},
+        tunnelLength = #tunnelSegmentEntities * 2
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
@@ -118,10 +123,6 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
             tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
         end
     end
-
-    -- TODO: OVERHAUL - both these need calculating based on tunnel as used by runtime code. harded for initial tests.
-    tunnel.railAlignmentAxis = "x"
-    tunnel.tunnelAlignmentAxis = "y"
 end
 
 ---@param tunnel Tunnel

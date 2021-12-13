@@ -196,6 +196,7 @@ TunnelSegments.CheckTunnelCompleteFromSegment = function(startingTunnelSegment, 
     return true, tunnelPortalEntities, tunnelSegmentEntities
 end
 
+-- Registers and sets up the tunnel's segments prior to the tunnel object being created and references created.
 ---@param segmentEntities LuaEntity[]
 ---@param force LuaForce
 ---@param aboveSurface LuaSurface
