@@ -42,7 +42,6 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    --[[
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()
     if westTrain ~= nil and not testData.westStationReached then
@@ -66,7 +65,6 @@ Test.EveryTick = function(event)
     if testData.westStationReached and testData.eastStationReached then
         TestFunctions.TestCompleted(testName)
     end
-    ]]
 end
 
 return Test

@@ -26,7 +26,6 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---
 ---@field leavingTrain LuaTrain @The train created leaving the tunnel on the world surface.
 ---@field leavingTrainId Id @The LuaTrain ID of the leaving train.
----@field leavingTrainForwards boolean @If the train is moving forwards or backwards from its viewpoint.
 ---
 ---@field portalTrackTrain LuaTrain @The train thats on the portal track and reserved the tunnel.
 ---@field portalTrackTrainId Id @The LuaTrain ID of the portalTrackTrain.
@@ -108,7 +107,6 @@ end
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
--- Light - Assume it can come back in as shouldn't have any cost on regular running of through trains and would require making the tunnel 1 direction otherwise.
 ---@param enteringTrain LuaTrain
 ---@param entrancePortalEndSignal PortalEndSignal
 TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, entrancePortalEndSignal)
@@ -207,7 +205,7 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     end
 end
 
--- Light - OVERHAUL - may still be needed by the dummy train checking, but I hope we don't need to check anything any more. Now we only have full trains ever I think it will just work naturally. May need the pull forwards mechanic still.
+-- OVERHAUL - may still be needed by the dummy train checking, but I hope we don't need to check anything any more. Now we only have full trains ever I think it will just work naturally. May need the pull forwards mechanic still.
 ---@param trainWithBadStateName LuaTrain
 ---@param managedTrain ManagedTrain
 TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, managedTrain)
@@ -262,7 +260,6 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     }
     managedTrain.leavingTrain = leavingTrain
     managedTrain.leavingTrainId = leavingTrainId
-    -- OVERHAUL: We haven't removed the leaving train's schedule, but it will be in manual mode. Also want to lock it down from being manipulated or damaged.
 
     -- OVERHAUL staying with Dummy train usage for now, notes on the CreateDummyTrain().
     -- Set up DummyTrain to maintain station requests.
@@ -293,6 +290,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
+    --TODO: for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this. It shows on the PathfinderWeightings test. See how this was done before.
 
     -- Complete the state transition.
     Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
@@ -318,7 +316,6 @@ end
 TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Train has arrived and should be activated.
     local leavingTrain = managedTrain.leavingTrain
-    -- OVERHAUL - Should update leavingTrainForwards with the result just incase we need it later?
     -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
     leavingTrain.speed = managedTrain.tempEnteringSpeed
     TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
@@ -349,7 +346,7 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
     end
 end
 
---OVERHAUL - once this is triggered do we want to commit the train to enter the tunnel ? or is the checks here still needed even in this case? Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
+-- OVERHAUL - once this is triggered do we want to commit the train to enter the tunnel ? or is the checks here still needed even in this case? Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
@@ -369,6 +366,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
             local trainForwards = trainSpeed > 0
             if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
                 -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
+                -- OVERHAUL - what does this achieve and do we still need it?
                 local placedDetectionEntity = Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, false)
                 if placedDetectionEntity then
                     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
@@ -726,7 +724,7 @@ TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastP
     return Utils.ApplyOffsetToPosition(lastPosition, nextCarriageOffset)
 end
 
--- Light - Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
+-- Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
 -- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
 ---@param exitPortal Portal
 ---@param trainSchedule TrainSchedule

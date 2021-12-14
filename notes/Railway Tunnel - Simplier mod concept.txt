@@ -20,6 +20,7 @@ MINOR:
     - global.strictStateHandling is legacy and should be removed as part of overhaul when other code superseeds its usage cases.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
     - look at when we get position of the tunnel's various entities and cache them as they don't change once the tunnel is complete. Also unit numbers and directions.
+    - can we change some of our on entity died events to use the specific entity died event instead of the generic type filter ones?
 
 
 FUTURE:

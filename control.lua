@@ -28,6 +28,7 @@ local function OnLoad()
     --Any Remote Interface registration calls can go in here or in root of control.lua
     remote.remove_interface("railway_tunnel")
     local tunnelUsageChangedEventId = Events.RegisterCustomEventName("RailwayTunnel.TunnelUsageChanged")
+    --TODO: emmyLua these so types are returned when called.
     remote.add_interface(
         "railway_tunnel",
         {

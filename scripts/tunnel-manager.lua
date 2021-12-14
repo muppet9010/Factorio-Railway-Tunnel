@@ -1,6 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Tunnel = {}
+local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
 local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
@@ -60,7 +61,7 @@ Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
--- Light - Needed so we detect when a train is targetting the end signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
+-- Needed so we detect when a train is targetting the end signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
 ---@param event on_train_changed_state
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
@@ -338,7 +339,7 @@ Tunnel.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    Common.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
+    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
 end
 
 return Tunnel

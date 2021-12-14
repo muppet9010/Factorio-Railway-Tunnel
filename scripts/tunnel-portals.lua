@@ -1,6 +1,7 @@
 local Events = require("utility/events")
 local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
+local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
 local TunnelPortalPlacedPlacementEntityNames, TunnelSignalDirection, TunnelPortalPlacedEntityNames, TunnelUsageParts = Common.TunnelPortalPlacedPlacementEntityNames, Common.TunnelSignalDirection, Common.TunnelPortalPlacedEntityNames, Common.TunnelUsageParts
 local TunnelPortals = {}
@@ -10,8 +11,8 @@ local EventScheduler = require("utility/event-scheduler")
 local SetupValues = {
     -- Tunnels distances are from the portal position (center).
     trackEntryPointFromCenter = -25, -- the border of the portal on the entry side.
-    enteringTrainUsageDetectorEntityDistance = -24, -- Detector on the entry side of the protal. Its the perfect distance that it isn't triggered if a train stops at the entry signals when approaching the tunnel. --OVERHAUL - this may well be movable to be inline with the signals or even further in to reduce trian leaving detection. Check when the signals trigger in each orientation.
     entrySignalsDistance = -23.5,
+    enteringTrainUsageDetectorEntityDistance = -22.5, -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until just before it triggers the signal, but a leaving train won't touch it either when waiting at the exit signals. This is a judgement call as trains can actually collide when manaully driven over signals without triggering them. Positioned to minimise UPS usage
     entrySignalBlockingLocomotiveDistance = -21.5,
     endUsageDetectorEntityDistance = 9, -- Equivilent to the leading carriage being less than 14 tiles from the end signal (old distance detection logic). 10 tiles from the portal end blocking locomotive.
     dummyLocomotiveDistance = 15.5,
@@ -113,8 +114,8 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     local orientation = Utils.DirectionToOrientation(directionValue)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.trackEntryPointFromCenter}))
 
-    if not Common.IsPlacementOnRailGrid(placementEntity) then
-        Common.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
+    if not TunnelShared.IsPlacementOnRailGrid(placementEntity) then
+        TunnelShared.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
         return
     end
 
@@ -210,7 +211,7 @@ TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntit
     local startingTunnelPortalEntity_direction = startingTunnelPortalEntity.direction
     local tunnelPortalEntities, tunnelSegmentEntities, directionValue, orientation = {}, {}, startingTunnelPortalEntity_direction, Utils.DirectionToOrientation(startingTunnelPortalEntity_direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entryPointDistanceFromCenter}))
-    local directionComplete = Common.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer, tunnelPortalEntities, tunnelSegmentEntities)
+    local directionComplete = TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts(startingTunnelPortalEntity, startingTunnelPartPoint, directionValue, placer, tunnelPortalEntities, tunnelSegmentEntities)
     return directionComplete, tunnelPortalEntities, tunnelSegmentEntities
 end
 
@@ -348,8 +349,8 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
         placer = game.get_player(event.player_index)
     end
 
-    if not Common.IsPlacementOnRailGrid(createdEntity) then
-        Common.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
+    if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
+        TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
         return
     end
 end
@@ -374,7 +375,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
         TunnelPortals.EntityRemoved(portal)
     else
         if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", portal.tunnel) then
-            Common.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity.surface, minedEntity.position)
+            TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity.surface, minedEntity.position)
             TunnelPortals.ReplacePortalEntity(portal)
         else
             Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
@@ -422,7 +423,7 @@ end
 TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
     TunnelPortals.RemoveEnteringTrainUsageDetectionEntityFromPortal(portal)
     TunnelPortals.RemoveEndUsageDetectionEntityFromPortal(portal)
-    Common.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
+    TunnelShared.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
     for _, entrySignal in pairs(portal.entrySignals) do
         if entrySignal.entity.valid then
             entrySignal.entity.destroy()
@@ -442,7 +443,7 @@ end
 ---@param killForce LuaForce
 ---@param killerCauseEntity LuaEntity
 TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
-    Common.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
+    TunnelShared.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
     portal.tunnel = nil
     for _, otherEntity in pairs(portal.tunnelOtherEntities) do
         if otherEntity.valid then
@@ -493,7 +494,7 @@ end
 TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
     local diedEntity, carriageEnteringPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
-        -- Needed due to how died events work. OVERHAUL - can this be changed to use the specific entity died event instead?
+        -- Needed due to how died events work.
         return
     end
 
@@ -640,7 +641,7 @@ end
 TunnelPortals.OnDiedEntityPortalEndTrainDetector = function(event)
     local diedEntity, carriageAtEndOfPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_end_train_detector_1x1" then
-        -- Needed due to how died events work. OVERHAUL - can this be changed to use the specific entity died event instead?
+        -- Needed due to how died events work.
         return
     end
 

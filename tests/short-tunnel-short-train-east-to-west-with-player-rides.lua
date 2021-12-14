@@ -1,4 +1,5 @@
 -- Sends a short train from the east to the west. First loop player watches, second loop player rides the train.
+-- Note the player being in the train after the tunnel traversal isn't checked by the test.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -54,7 +55,7 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    --[[local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()
     if westTrain ~= nil and not testData.westStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
@@ -76,7 +77,7 @@ Test.EveryTick = function(event)
     end
     if testData.westStationReached and testData.eastStationReached then
         TestFunctions.TestCompleted(testName)
-    end--]]
+    end
 end
 
 return Test

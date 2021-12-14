@@ -1,5 +1,4 @@
 -- The remote interface functions of the Train Manager.
--- OVERHAUL - THIS ALL NEEDS UPDATING TO NEW CODE LOGIC
 
 local TrainManagerRemote = {}
 local Utils = require("utility/utils")
