@@ -1,3 +1,6 @@
+--[[
+	Library to allow registering functions as interfaces internally within the mod to support modualr mod design.
+--]]
 local Interfaces = {}
 MOD = MOD or {}
 MOD.interfaces = MOD.interfaces or {} ---@type table<string, function>

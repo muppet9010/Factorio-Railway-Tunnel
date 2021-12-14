@@ -18,7 +18,7 @@ MOD.eventFilters = MOD.eventFilters or {} ---@type table<int, table<string, tabl
 ---@param eventName defines.events|string @Either Factorio event or a custom modded event name.
 ---@param handlerName string @Unique name of this event handler instance. Used to avoid duplicate handler registration and if removal is required.
 ---@param handlerFunction function @The function that is called when the event triggers.
----@param thisFilterData EventFilter[]|nil @List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected). Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
+---@param thisFilterData EventFilter[]|null @List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected). Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
 ---@return uint @Useful for custom event names when you need to store the eventId to return via a remote interface call.
 Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData)
     if eventName == nil or handlerName == nil or handlerFunction == nil then
@@ -145,8 +145,8 @@ end
 
 ---@param eventName string
 ---@param thisFilterName string @The handler name.
----@param thisFilterData table|nil
----@return uint|nil
+---@param thisFilterData table|null
+---@return uint|null
 Events._RegisterEvent = function(eventName, thisFilterName, thisFilterData)
     if eventName == nil then
         error("Events.RegisterEvent called with missing arguments")

@@ -4,7 +4,7 @@ local TrainManager = {}
 local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
-local TrainManagerFuncs = require("scripts/train-manager-functions")
+local Logging = require("utility/logging")
 local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local Common = require("scripts/common")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
@@ -68,19 +68,31 @@ TrainManager.OnLoad = function()
     Interfaces.RegisterInterface(
         "TrainManager.RegisterTrainApproachingPortalSignal",
         function(...)
-            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.RegisterTrainApproachingPortalSignal, ...)
+            if global.debugRelease then
+                Logging.RunFunctionAndCatchErrors(TrainManager.RegisterTrainApproachingPortalSignal, ...)
+            else
+                TrainManager.RegisterTrainApproachingPortalSignal(...)
+            end
         end
     )
     Interfaces.RegisterInterface(
         "TrainManager.RegisterTrainOnPortalTrack",
         function(...)
-            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.RegisterTrainOnPortalTrack, ...)
+            if global.debugRelease then
+                Logging.RunFunctionAndCatchErrors(TrainManager.RegisterTrainOnPortalTrack, ...)
+            else
+                TrainManager.RegisterTrainOnPortalTrack(...)
+            end
         end
     )
     Interfaces.RegisterInterface(
         "TrainManager.TrainEnterTunnel",
         function(...)
-            TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.TrainEnterTunnel, ...)
+            if global.debugRelease then
+                Logging.RunFunctionAndCatchErrors(TrainManager.TrainEnterTunnel, ...)
+            else
+                TrainManager.TrainEnterTunnel(...)
+            end
         end
     )
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
@@ -110,6 +122,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, abov
             -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
             TrainManager.TerminateTunnelTrip(replacedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, false)
         elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
+            -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful.
             -- Train was using the portal track and is now entering the tunnel.
             upgradeManagedTrain = existingTrainIDTrackedObject.managedTrain
             -- Just tidy up the managedTrain's entities its related globals before the new one overwrites it. No tunnel trip to be dealt with.
@@ -145,7 +158,11 @@ TrainManager.ProcessManagedTrains = function(eventData)
     local currentTick = eventData.tick
     -- Loop over each train and process it.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        TrainManagerFuncs.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain, currentTick)
+        if global.debugRelease then
+            Logging.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain, currentTick)
+        else
+            TrainManager.ProcessManagedTrain(managedTrain, currentTick)
+        end
     end
 
     TrainManagerRemote.ProcessTicksEvents()
@@ -164,7 +181,7 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
 
     -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
     -- OVERHAUL staying with Dummy train usage for now, notes on the CreateDummyTrain().
-    if not skipThisTick and managedTrain.dummyTrain ~= nil and not TrainManagerFuncs.IsTrainHealthlyState(managedTrain.dummyTrain) then
+    if not skipThisTick and managedTrain.dummyTrain ~= nil and not TrainManager.IsTrainHealthlyState(managedTrain.dummyTrain) then
         TrainManager.HandleLeavingTrainBadState("dummyTrain", managedTrain)
         skipThisTick = true
     end
@@ -249,8 +266,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     -- Set up DummyTrain to maintain station requests.
     managedTrain.primaryTrainPartName = PrimaryTrainState.underground
     managedTrain.targetTrainStop = enteringTrain.path_end_stop
-    --TODO: put the dummy train behind the end trian detector.
-    managedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(managedTrain.aboveExitPortal.entity, enteringTrain.schedule, managedTrain.targetTrainStop, false)
+    managedTrain.dummyTrain = TrainManager.CreateDummyTrain(managedTrain.aboveExitPortal, enteringTrain.schedule, managedTrain.targetTrainStop, false)
     local dummyTrainId = managedTrain.dummyTrain.id
     managedTrain.dummyTrainId = dummyTrainId
     global.trainManager.trainIdToManagedTrain[dummyTrainId] = {
@@ -264,12 +280,14 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     -- hard coded portal area values for now - Just assume the entering train was at the detector entity. Measured from current setup so good enough for now.
     travelDistance = travelDistance + 71.5
     -- Just assume the speed stays constant at the entering speed for the whole duration for now.
-    managedTrain.traversalTotalTicks = travelDistance / managedTrain.tempEnteringSpeed
+    managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
     managedTrain.traversalStartingTick = game.tick
     managedTrain.traversalArrivalTick = managedTrain.traversalStartingTick + managedTrain.traversalTotalTicks
 
     -- Destroy entering train's entities as we have finished with them.
-    TrainManagerFuncs.DestroyTrainsCarriages(nil, enteringTrain_carriages)
+    for _, carriage in pairs(enteringTrain_carriages) do
+        carriage.destroy()
+    end
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
@@ -282,7 +300,9 @@ end
 ---@param managedTrain ManagedTrain
 ---@param currentTick Tick
 TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
-    -- If the train hasn;t yet reached the exit of the tunnel do required actions and wait.
+    -- If the train hasn't yet reached the exit of the tunnel do required actions and wait.
+    --TODO: only call this function every tick if theres a player in a train. Otherwise can just schedule this function for the arrival tick.
+
     if currentTick < managedTrain.traversalArrivalTick then
         TrainManagerPlayerContainers.MoveATrainsPlayerContainers(managedTrain)
         return
@@ -290,13 +310,18 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
 
     -- Train has arrived and should be activated.
     local leavingTrain = managedTrain.leavingTrain
-    TrainManagerFuncs.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
-    --OVERHAUL: this may not be safe if the train post recreation is viewed to be facing the other way to when it entered. Just short term hard coded.
-    -- should update leavingTrainForwards with the result just incase we need it later.
+    -- OVERHAUL - Should update leavingTrainForwards with the result just incase we need it later?
+    -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
     leavingTrain.speed = managedTrain.tempEnteringSpeed
-    TrainManager.DestroyDummyTrain(managedTrain)
+    TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
+    if leavingTrain.speed == 0 then
+        leavingTrain.speed = -1 * managedTrain.tempEnteringSpeed
+    end
 
     -- TODO: player needs moving from the container back to the real carriage.
+
+    -- Tidy up for the leaving train and propigate state updates.
+    TrainManager.DestroyDummyTrain(managedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.leaving
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
 end
@@ -314,6 +339,7 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
     end
 end
 
+--OVERHAUL - once this is triggered do we want to commit the train to enter the tunnel ? or is the checks here still needed even in this case? Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     local entrancePortalEntrySignalEntity = managedTrain.aboveEntrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
@@ -380,7 +406,9 @@ TrainManager.DestroyDummyTrain = function(managedTrain)
     -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
     if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
-        TrainManagerFuncs.DestroyTrainsCarriages(managedTrain.dummyTrain)
+        for _, carriage in pairs(managedTrain.dummyTrain.carriages) do
+            carriage.destroy()
+        end
         managedTrain.dummyTrain, managedTrain.dummyTrainId = nil, nil
     elseif managedTrain.dummyTrainId ~= nil then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
@@ -514,7 +542,7 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param releaseTunnel boolean|nil @If nil then tunnel is released (true).
+---@param releaseTunnel boolean|null @If nil then tunnel is released (true).
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
     TrainManagerPlayerContainers.On_TerminateTunnelTrip(managedTrain) --OVERHAUL - was conditional on underground train before. May need fixing up.
     TrainManager.RemoveManagedTrainEntry(managedTrain)
@@ -599,8 +627,8 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
             carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
         end
 
-        nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, nextCarriagePosition, lastPlacedCarriage_name, refCarriage_name)
-        lastPlacedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, nil, carriageOrientation)
+        nextCarriagePosition = TrainManager.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, nextCarriagePosition, lastPlacedCarriage_name, refCarriage_name)
+        lastPlacedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, nil, carriageOrientation)
         lastPlacedCarriage_name = refCarriage_name
 
         -- Handle any players in the train carriage.
@@ -611,6 +639,153 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
     end
 
     return lastPlacedCarriage.train
+end
+
+---@param targetSurface LuaSurface
+---@param refCarriage LuaEntity
+---@param newPosition Position
+---@param safeCarriageFlipPosition Position @Not used until we need to support corners.
+---@param requiredOrientation RealOrientation @Not used until we need to support corners.
+---@return LuaEntity
+TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
+    -- OVERHAUL - until we add support for corners or non straight tunnel portal areas we never need to flip a carraige.
+    local sourceCarriage = refCarriage
+    if 1 == 0 then
+        game.print(safeCarriageFlipPosition, requiredOrientation)
+    end
+
+    -- Work out if we will need to flip the cloned carriage or not.
+    --[[local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
+    local haveToFlipCarriage = false
+    if orientationDif > 0.25 and orientationDif < 0.75 then
+        -- Will need to flip the carriage.
+        haveToFlipCarriage = true
+    elseif orientationDif == 0.25 or orientationDif == 0.75 then
+        -- May end up the correct way, depending on what rotation we want. Factorio rotates positive orientation when equally close.
+        if Utils.BoundFloatValueWithinRangeMaxExclusive(refCarriage.orientation + 0.25, 0, 1) ~= requiredOrientation then
+            -- After a positive rounding the carriage isn't going to be facing the right way.
+            haveToFlipCarriage = true
+        end
+    end
+
+    -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
+    ---@typelist LuaEntity, LuaEntity
+    local tempCarriage, sourceCarriage
+    if haveToFlipCarriage then
+        tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
+        if tempCarriage.orientation == requiredOrientation then
+            error("underground carriage flipping not needed, but predicted. \nrequiredOrientation: " .. tostring(requiredOrientation) .. "\ntempCarriage.orientation: " .. tostring(tempCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
+        end
+        tempCarriage.rotate()
+        sourceCarriage = tempCarriage
+    else
+        sourceCarriage = refCarriage
+    end--]]
+    local placedCarriage = sourceCarriage.clone {position = newPosition, surface = targetSurface, create_build_effect_smoke = false}
+    if placedCarriage == nil then
+        error("failed to clone carriage:" .. "\nsurface name: " .. targetSurface.name .. "\nposition: " .. Logging.PositionToString(newPosition) .. "\nsource carriage unit_number: " .. refCarriage.unit_number)
+    end
+
+    --[[if haveToFlipCarriage then
+        tempCarriage.destroy()
+    end
+    if placedCarriage.orientation ~= requiredOrientation then
+        error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
+    end]]
+    return placedCarriage
+end
+
+---@param trainOrientation RealOrientation
+---@param lastPosition Position
+---@param lastCarriageEntityName string
+---@param nextCarriageEntityName string
+---@return Position
+TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastPosition, lastCarriageEntityName, nextCarriageEntityName)
+    --This assumes the next carriage is in a striaght direction from the previous carriage.
+    local carriagesDistance = Common.GetCarriagePlacementDistance(nextCarriageEntityName)
+    if lastCarriageEntityName ~= nil then
+        carriagesDistance = carriagesDistance + Common.GetCarriagePlacementDistance(lastCarriageEntityName)
+    end
+    local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
+    return Utils.ApplyOffsetToPosition(lastPosition, nextCarriageOffset)
+end
+
+-- Light - Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
+-- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
+---@param exitPortal Portal
+---@param trainSchedule TrainSchedule
+---@param targetTrainStop LuaEntity
+---@param skipScheduling boolean
+---@return LuaTrain
+TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainStop, skipScheduling)
+    skipScheduling = skipScheduling or false
+    local exitPortalEntity = exitPortal.entity
+    local locomotive =
+        exitPortalEntity.surface.create_entity {
+        name = "railway_tunnel-tunnel_exit_dummy_locomotive",
+        position = exitPortal.dummyLocomotivePosition,
+        direction = exitPortalEntity.direction,
+        force = exitPortalEntity.force,
+        raise_built = false,
+        create_build_effect_smoke = false
+    }
+    locomotive.destructible = false
+    locomotive.burner.currently_burning = "coal"
+    locomotive.burner.remaining_burning_fuel = 4000000
+    local dummyTrain = locomotive.train
+    if not skipScheduling then
+        TrainManager.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop)
+        if global.debugRelease and dummyTrain.state == defines.train_state.destination_full then
+            -- If the train ends up in one of those states something has gone wrong.
+            error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortalEntity position: " .. Logging.PositionToString(exitPortalEntity.position))
+        end
+    end
+    return dummyTrain
+end
+
+---@param train LuaTrain
+---@param schedule TrainSchedule
+---@param isManual boolean
+---@param targetTrainStop LuaEntity
+---@param skipStateCheck boolean
+TrainManager.TrainSetSchedule = function(train, schedule, isManual, targetTrainStop, skipStateCheck)
+    train.schedule, skipStateCheck = schedule, skipStateCheck or false
+    if not isManual then
+        TrainManager.SetTrainToAuto(train, targetTrainStop)
+        if global.debugRelease and not skipStateCheck and not TrainManager.IsTrainHealthlyState(train) then
+            -- Any issue on the train from the previous tick should be detected by the state check. So this should only trigger after misplaced wagons.
+            error("train doesn't have positive state after setting schedule.\ntrain id: " .. train.id .. "\nstate: " .. train.state)
+        end
+    else
+        train.manual_mode = true
+    end
+end
+
+---@param train LuaTrain
+---@return boolean
+TrainManager.IsTrainHealthlyState = function(train)
+    -- Uses state and not LuaTrain.has_path, as a train waiting at a station doesn't have a path, but is a healthy state.
+    local trainState = train.state
+    if trainState == defines.train_state.no_path or trainState == defines.train_state.path_lost then
+        return false
+    else
+        return true
+    end
+end
+
+-- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
+---@param train LuaTrain
+---@param targetTrainStop LuaEntity
+TrainManager.SetTrainToAuto = function(train, targetTrainStop)
+    if targetTrainStop ~= nil and targetTrainStop.valid then
+        local oldLimit = targetTrainStop.trains_limit
+        targetTrainStop.trains_limit = targetTrainStop.trains_count + 1
+        train.manual_mode = false
+        targetTrainStop.trains_limit = oldLimit
+    else
+        -- There was no target train stop, so no special handling needed.
+        train.manual_mode = false
+    end
 end
 
 return TrainManager

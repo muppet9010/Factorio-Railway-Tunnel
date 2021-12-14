@@ -1,3 +1,6 @@
+--[[
+	Library to register and handle GUI button clicks, allows registering and handling functions in a modular way.
+--]]
 local GuiActionsClick = {}
 local Constants = require("constants")
 MOD = MOD or {}

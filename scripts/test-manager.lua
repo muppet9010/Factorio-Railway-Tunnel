@@ -37,12 +37,11 @@ local KeepRunningTest = false -- If enabled the first test run will not stop whe
 
 -- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
 local TestsToRun = {
-    ShortTunnelSingleLocoEastToWest = {enabled = true, testScript = require("tests/short-tunnel-single-loco-east-to-west")}
+    ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
+    ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}
 }
 -- OLD TESTS IN NEED OF UPDATING
 --[[
-    ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")},
     ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")},
     ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")},
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},

@@ -1,3 +1,6 @@
+--[[
+	A list of standard colors for use across mods.
+--]]
 local Colors = {}
 --https://www.rapidtables.com/web/color/html-color-codes.html
 --Excel conversion string: =CONCATENATE("Colors.", B1, " = {",  SUBSTITUTE(SUBSTITUTE(D1, "(", ""),")",""), ",255}")

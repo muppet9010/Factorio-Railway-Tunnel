@@ -1,3 +1,6 @@
+--[[
+	Library functions to help manage adding and handling Factorio commands.
+--]]
 local Commands = {}
 local Utils = require("utility/utils")
 

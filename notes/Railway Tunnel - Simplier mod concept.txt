@@ -20,11 +20,10 @@ MINOR:
 	- add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
 	- no need to handle a train losing carriages while its using a tunnel. As this won't be possible given its direct teleportation now. Make wagons invunerable until they start to move when leaving.
     - Remove the interfaces concept and just pass a shared object to all modules that they register against. This should remove the need of caching the odd function reference (done at present).
-    - Gate all consistency checks behind a global option. Have a command to toggle it and enable it as part of the test manager. To avoid un-needed checks during live mod usage.
-    - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests.
+    - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests. Gate all consistency checks behind this setting as they use UPS and won't add anything in a released stable mod.
     - global.stringStateHandling is legacy and should be removed as part of overhaul.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
-    - look at when we get position of the tunnel entities and try to cache them as they don't change once the tunnel is complete. Also unit numbers.
+    - look at when we get position of the tunnel's various entities and cache them as they don't change once the tunnel is complete. Also unit numbers and directions.
     - change all Above to just be the thing, i.e. aboveSurface = surface
 
 

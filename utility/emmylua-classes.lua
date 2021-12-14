@@ -27,8 +27,10 @@
 ---@field height uint
 ---@field repeat_count uint
 ---
----@alias EntityActioner LuaPlayer|LuaEntity|nil @The placer of a built entity: either player, construction robot or script(nil).
+---@alias EntityActioner LuaPlayer|LuaEntity|null @The placer of a built entity: either player, construction robot or script (nil).
 ---@class LuaBaseClass @Used as a fake base class, only supports checking defined attributes.
 ---@field valid boolean
 ---
 ---@class StringOrNumber @A string or number (int/double).
+---
+---@class null @Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.

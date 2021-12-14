@@ -1,8 +1,13 @@
+--[[
+    Random utility functions that don't fit in to any other category.
+--]]
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
 Utils.DeepCopy = factorioUtil.table.deepcopy ---@type fun(object:table):table
 Utils.TableMerge = factorioUtil.merge ---@type fun(tables:table[]):table @Takes an array of tables and returns a new table with copies of their contents
 
+---@param entity1 LuaEntity
+---@param entity2 LuaEntity
 Utils.Are2EntitiesTheSame = function(entity1, entity2)
     -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
     if not entity1.valid or not entity2.valid then
@@ -34,6 +39,14 @@ Utils.ArePositionsTheSame = function(pos1, pos2)
     end
 end
 
+---@param surface LuaSurface
+---@param positionedBoundingBox BoundingBox
+---@param collisionBoxOnlyEntities boolean
+---@param onlyForceAffected LuaForce|null
+---@param onlyDestructible boolean
+---@param onlyKillable boolean
+---@param entitiesExcluded LuaEntity[]|null
+---@return table<int, LuaEntity>
 Utils.ReturnAllObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructible, onlyKillable, entitiesExcluded)
     -- Expand force affected to support range of opt in or opt out forces.
     local entitiesFound, filteredEntitiesFound = surface.find_entities(positionedBoundingBox), {}
@@ -64,24 +77,42 @@ Utils.ReturnAllObjectsInArea = function(surface, positionedBoundingBox, collisio
     return filteredEntitiesFound
 end
 
-Utils.KillAllKillableObjectsInArea = function(surface, positionedBoundingBox, killerEntity, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
-    --TODO: these should all support killing force being passed in.
-    for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
+---@param surface LuaSurface
+---@param positionedBoundingBox BoundingBox
+---@param killerEntity LuaEntity|null
+---@param collisionBoxOnlyEntities boolean
+---@param onlyForceAffected boolean
+---@param entitiesExcluded LuaEntity[]|null
+---@param killerForce LuaForce|null
+Utils.KillAllKillableObjectsInArea = function(surface, positionedBoundingBox, killerEntity, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded, killerForce)
+    if killerForce == nil then
+        killerForce = "neutral"
+    end
+    for _, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
         if killerEntity ~= nil then
-            entity.die("neutral", killerEntity)
+            entity.die(killerForce, killerEntity)
         else
-            entity.die("neutral")
+            entity.die(killerForce)
         end
     end
 end
 
-Utils.KillAllObjectsInArea = function(surface, positionedBoundingBox, killerEntity, onlyForceAffected, entitiesExcluded)
+---@param surface LuaSurface
+---@param positionedBoundingBox BoundingBox
+---@param killerEntity LuaEntity|null
+---@param onlyForceAffected boolean
+---@param entitiesExcluded LuaEntity[]|null
+---@param killerForce LuaForce|null
+Utils.KillAllObjectsInArea = function(surface, positionedBoundingBox, killerEntity, onlyForceAffected, entitiesExcluded, killerForce)
+    if killerForce == nil then
+        killerForce = "neutral"
+    end
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, false, onlyForceAffected, false, false, entitiesExcluded)) do
         if entity.destructible then
             if killerEntity ~= nil then
-                entity.die("neutral", killerEntity)
+                entity.die(killerForce, killerEntity)
             else
-                entity.die("neutral")
+                entity.die(killerForce)
             end
         else
             entity.destroy({dp_cliff_correction = true, raise_destroy = true})
@@ -89,12 +120,21 @@ Utils.KillAllObjectsInArea = function(surface, positionedBoundingBox, killerEnti
     end
 end
 
+---@param surface LuaSurface
+---@param positionedBoundingBox BoundingBox
+---@param collisionBoxOnlyEntities boolean
+---@param onlyForceAffected boolean
+---@param entitiesExcluded LuaEntity[]|null
 Utils.DestroyAllKillableObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
         entity.destroy({dp_cliff_correction = true, raise_destroy = true})
     end
 end
 
+---@param surface LuaSurface
+---@param positionedBoundingBox BoundingBox
+---@param onlyForceAffected boolean
+---@param entitiesExcluded LuaEntity[]|null
 Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, false, onlyForceAffected, false, false, entitiesExcluded)) do
         entity.destroy({dp_cliff_correction = true, raise_destroy = true})
@@ -556,7 +596,7 @@ end
 
 ---@param position Position
 ---@param boundingBox BoundingBox
----@param safeTiling boolean|nil @If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
+---@param safeTiling boolean|null @If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
 ---@return boolean
 Utils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
     if safeTiling == nil or not safeTiling then
@@ -622,9 +662,10 @@ Utils.TableValueToCommaString = function(aTable)
     return newString
 end
 
+-- Stringify a table in to a JSON text string. Options to make it pretty printable.
 ---@param targetTable table
----@param name string|nil @If provided will appear as a "name:JSONData" output.
----@param singleLineOutput boolean|nil @If provided and true removes all lines and spacing from the output.
+---@param name string|null @If provided will appear as a "name:JSONData" output.
+---@param singleLineOutput boolean|null @If provided and true removes all lines and spacing from the output.
 ---@return string
 Utils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
     --
@@ -715,8 +756,8 @@ end
 
 ---@param theTable table
 ---@param value StringOrNumber
----@param returnMultipleResults boolean|nil @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList boolean|nil @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|null @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return StringOrNumber[] @table of keys.
 Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
     local keysFound = {}
@@ -743,8 +784,8 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults boolean|nil @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList boolean|nil @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|null @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return StringOrNumber[] @table of keys.
 Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local keysFound = {}
@@ -771,8 +812,8 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults boolean|nil @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList boolean|nil @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|null @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return table[] @table of values, which must be a table to have an inner key/value.
 Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local valuesFound = {}
@@ -1041,7 +1082,7 @@ end
 
 --- Tries to converts a non boolean to a boolean value.
 ---@param text string|int|boolean @The input to check.
----@return boolean|nil @Returns a boolean if successful, or nil if not.
+---@return boolean|null @Returns a boolean if successful, or nil if not.
 Utils.ToBoolean = function(text)
     if text == nil then
         return nil
@@ -1299,7 +1340,7 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     end
 end
 
----@param repeat_count int|nil @Defaults to 1 if not provided
+---@param repeat_count int|null @Defaults to 1 if not provided
 ---@return Sprite
 Utils.EmptyRotatedSprite = function(repeat_count)
     return {
@@ -1322,7 +1363,7 @@ end
 ---@param trackingTable table @reference to an existing table that the function will populate.
 ---@param itemName string
 ---@param itemCount uint
----@return boolean|nil @Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
+---@return boolean|null @Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
 Utils.TrackBestFuelCount = function(trackingTable, itemName, itemCount)
     local itemPrototype = game.item_prototypes[itemName]
     local fuelValue = itemPrototype.fuel_value
@@ -1559,7 +1600,7 @@ end
 
 ---@param entity LuaEntity
 ---@param killerForce LuaForce
----@param killerCauseEntity LuaEntity|nil
+---@param killerCauseEntity LuaEntity|null
 Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     if killerCauseEntity ~= nil then
         entity.die(killerForce, killerCauseEntity)
@@ -1571,12 +1612,23 @@ end
 Utils.MaxTrainStopLimit = 4294967295 ---@type uint
 
 ---@param luaObject LuaBaseClass
----@return LuaBaseClass|nil
+---@return LuaBaseClass|null
 Utils.ReturnValidLuaObjectOrNil = function(luaObject)
     if luaObject == nil or not luaObject.valid then
         return nil
     else
         return luaObject
+    end
+end
+
+---@param train LuaTrain
+---@param isFrontStockLeading boolean @If the trains speed is > 0 then pass in true, if speed < 0 then pass in false.
+---@return LuaEntity
+Utils.GetLeadingCarriageOfTrain = function(train, isFrontStockLeading)
+    if isFrontStockLeading then
+        return train.front_stock
+    else
+        return train.back_stock
     end
 end
 

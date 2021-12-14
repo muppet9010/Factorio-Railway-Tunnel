@@ -28,7 +28,7 @@ end
 ---@param managedTrain ManagedTrain
 ---@return LuaEntity, LuaEntity
 TrainManagerStateFuncs.CreateFirstCarriageForLeavingTrain = function(managedTrain)
-    local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(managedTrain.undergroundTrain, managedTrain.undergroundTrainForwards)
+    local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingCarriageOfTrain(managedTrain.undergroundTrain, managedTrain.undergroundTrainForwards)
     local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, managedTrain.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
     local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = managedTrain.aboveSurface, create_build_effect_smoke = false}
     if placedCarriage == nil then
@@ -207,6 +207,18 @@ TrainManagerStateFuncs.CopyEnteringTrainUnderground = function(managedTrain, fir
     end
 
     return placedCarriage.train
+end
+
+
+---@param trainOrientation RealOrientation
+---@param lastCarriageEntityName LuaEntity
+---@param nextCarriageEntityName LuaEntity
+---@param extraDistance double
+---@return Position
+TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName, extraDistance)
+    extraDistance = extraDistance or 0
+    local carriagesDistance = Common.GetCarriagePlacementDistance(lastCarriageEntityName) + Common.GetCarriagePlacementDistance(nextCarriageEntityName)
+    return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
 end
 
 
@@ -456,7 +468,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(managedTrain,
             managedTrain.undergroundTrainSetsSpeed = true
         elseif managedTrain.undergroundTrainSetsSpeed then
             -- Is the same stopping target as last tick, so check if the leaving train is close to the stopping target and give it speed control if so.
-            local leadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(leavingTrain, managedTrain.leavingTrainForwards)
+            local leadCarriage = TrainManagerFuncs.GetLeadingCarriageOfTrain(leavingTrain, managedTrain.leavingTrainForwards)
             local leadCarriageDistanceFromStoppingEntity = Utils.GetDistance(leadCarriage.position, managedTrainStoppingTargetEntityAttribute.position)
             local leavingTrainCloseToStoppingEntityDistance = Common.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
             if leadCarriageDistanceFromStoppingEntity < leavingTrainCloseToStoppingEntityDistance then
@@ -796,7 +808,7 @@ TrainManagerStateFuncs.GetEnteringTrainLeadCarriageCache = function(managedTrain
     -- Returns the cached lead carriage and records if needed.
     if managedTrain.enteringTrainLeadCarriageCache == nil or managedTrain.enteringTrainLeadCarriageCache.trainForwards ~= enteringTrainForwards then
         -- No cache entry or cache exists, but needs updating.
-        local enteringTrainLeadCarriage = TrainManagerFuncs.GetLeadingWagonOfTrain(enteringTrain, enteringTrainForwards)
+        local enteringTrainLeadCarriage = TrainManagerFuncs.GetLeadingCarriageOfTrain(enteringTrain, enteringTrainForwards)
         managedTrain.enteringTrainLeadCarriageCache = {
             trainForwards = enteringTrainForwards,
             carriage = enteringTrainLeadCarriage

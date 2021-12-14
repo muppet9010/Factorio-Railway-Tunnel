@@ -12,15 +12,16 @@ local EventScheduler = require("utility/event-scheduler")
 local SetupValues = {
     -- Tunnels distances are from the portal position (center).
     entranceFromCenter = -25,
-    entrySignalsDistance = -23.5,
     entranceUsageDetectorEntityDistance = -24, -- Perfect distance that it isn't triggered if the train stops at the signals naturally.
+    entrySignalsDistance = -23.5,
     entrySignalBlockingLocomotiveDistance = -21.5,
-    farInvisibleSignalsDistance = 23.5,
-    endSignalBlockingLocomotiveDistance = 20.5,
-    endSignalsDistance = 19.5,
+    invisibleRailCountFromEntrance = 8,
     endUsageDetectorEntityDistance = 9, -- Equivilent to the leading carriage being less than 14 tiles from the end signal (old distance detection logic). 10 tiles from the portal end blocking locomotive.
+    dummyLocomotiveDistance = 15.5,
     straightRailCountFromEntrance = 17,
-    invisibleRailCountFromEntrance = 8
+    endSignalsDistance = 19.5,
+    endSignalBlockingLocomotiveDistance = 20.5,
+    farInvisibleSignalsDistance = 23.5
 }
 
 ---@class Portal
@@ -37,6 +38,7 @@ local SetupValues = {
 ---@field portalEntrancePosition Position @the position of the entrance to the portal.
 ---@field entranceUsageDetectorEntity LuaEntity @hidden entity on the entrance to the portal that's death signifies a train is coming on to the portal's rails.
 ---@field endUsageDetectorEntity LuaEntity @hidden entity on the end to the portal track that's death signifies a train has reached the inner end of entrance portal track.
+---@field dummyLocomotivePosition Position @the position where the dummy locomotive should be plaed for this portal.
 
 ---@class PortalSignal
 ---@field id uint @unit_number of this signal.
@@ -180,6 +182,9 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
 
     -- We want to stop trains driving on to a portal when there is no tunnel.
     TunnelPortals.AddEntranceUsageDetectionEntityToPortal(portal, false)
+
+    -- Cache the objects details for later use.
+    portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.dummyLocomotiveDistance}))
 
     local tunnelComplete, tunnelPortals, tunnelSegments = TunnelPortals.CheckTunnelCompleteFromPortal(portalEntity, placer, portal)
     if not tunnelComplete then

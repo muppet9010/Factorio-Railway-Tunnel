@@ -1,4 +1,6 @@
 --[[
+    Contains the default style prototypes for GUIs I use in mods. WARNING: adds directly to game prototypes and so is not self contained within each mod instance, version mismatch can cause overwriting in rare scenarios.
+
     "margin" and "padded" are 4 pixels. Margin offsets on the top and left of the outside of the element. Padded keeps inside things away from the bottom and right of the elements. Unlimited things with margin should be stackable inside the padded thing. Margin and Padded combines both for elements that are inside others and have their own contents.
 
     These styles expect to be called by gui-util which will handle the version number in the style name.
