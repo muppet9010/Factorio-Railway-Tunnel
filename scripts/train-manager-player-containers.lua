@@ -114,15 +114,15 @@ TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalE
 
     if portalEntity == nil then
         local managedTrain = playerContainer.managedTrain
-        if Utils.GetDistanceSingleAxis(managedTrain.aboveEntrancePortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.aboveExitPortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) then
-            portalObject = managedTrain.aboveEntrancePortal
+        if Utils.GetDistanceSingleAxis(managedTrain.entrancePortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.exitPortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) then
+            portalObject = managedTrain.entrancePortal
         else
-            portalObject = managedTrain.aboveExitPortal
+            portalObject = managedTrain.exitPortal
         end
     else
         portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
     end
-    local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntrancePosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
+    local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntryPointPosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
     TrainManagerPlayerContainers.CancelPlayerTryLeaveTrain(player)
     vehicle.set_driver(nil)
     player.teleport(playerPosition)
@@ -147,6 +147,7 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
         --OVERHAUL: just skip this Module for now.
         return
     end
+
     local player  ---type LuaPlayer
     if not driver.is_player() then
         -- Is a character body player driving.
@@ -155,7 +156,7 @@ TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel = function(managedTr
         -- Is a god/spectator player dirving (no character body).
         player = driver
     end
-    local playerContainerEntity = managedTrain.aboveSurface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
+    local playerContainerEntity = managedTrain.surface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
     playerContainerEntity.operable = false
     playerContainerEntity.destructible = false -- Stops the container being opened by the player when riding in it from the toolbar area of the GUI.
     playerContainerEntity.set_driver(player)

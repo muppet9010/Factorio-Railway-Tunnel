@@ -72,7 +72,7 @@ end
 ---@param placer EntityActioner
 ---@return boolean
 TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, placer)
-    local centerPos, force, lastUser, directionValue, aboveSurface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
+    local centerPos, force, lastUser, directionValue, surface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
 
     if not Common.IsPlacementOnRailGrid(placementEntity) then
         Common.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
@@ -89,7 +89,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         placeCrossingRails = true
     end
 
-    local surfacePositionString = Utils.FormatSurfacePositionTableToString(aboveSurface.index, centerPos)
+    local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, centerPos)
     local fastReplacedSegmentByPosition, fastReplacedSegment = global.tunnelSegments.surfaceSegmentPositions[surfacePositionString], nil
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
@@ -99,9 +99,9 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
             if not railCrossingTrackEntity.can_be_destroyed() then
                 -- Put the old correct entity back and correct whats been done.
-                Common.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", aboveSurface, centerPos)
+                Common.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", surface, centerPos)
                 local oldId = fastReplacedSegment.id
-                fastReplacedSegment.entity = aboveSurface.create_entity {name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
+                fastReplacedSegment.entity = surface.create_entity {name = "railway_tunnel-tunnel_segment_surface_rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
                 local newId = fastReplacedSegment.entity.unit_number
                 fastReplacedSegment.id = newId
                 global.tunnelSegments.segments[newId] = fastReplacedSegment
@@ -113,17 +113,17 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         end
     end
 
-    local abovePlacedTunnelSegment = aboveSurface.create_entity {name = placedEntityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
+    local placedTunnelSegment = surface.create_entity {name = placedEntityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
 
     local segment = {
-        id = abovePlacedTunnelSegment.unit_number,
-        entity = abovePlacedTunnelSegment,
+        id = placedTunnelSegment.unit_number,
+        entity = placedTunnelSegment,
         surfacePositionString = surfacePositionString
     }
 
     -- Place the train blocker entity on non crossing rail segments.
     if not placeCrossingRails then
-        segment.trainBlockerEntity = aboveSurface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
+        segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
     end
 
     if placeCrossingRails then
@@ -132,12 +132,12 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), Utils.DirectionToOrientation(directionValue)
         for _, nextRailPos in pairs(
             {
-                Utils.ApplyOffsetToPosition(abovePlacedTunnelSegment.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
-                abovePlacedTunnelSegment.position,
-                Utils.ApplyOffsetToPosition(abovePlacedTunnelSegment.position, Utils.RotatePositionAround0(orientation, {x = 2, y = 0}))
+                Utils.ApplyOffsetToPosition(placedTunnelSegment.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
+                placedTunnelSegment.position,
+                Utils.ApplyOffsetToPosition(placedTunnelSegment.position, Utils.RotatePositionAround0(orientation, {x = 2, y = 0}))
             }
         ) do
-            local placedRail = aboveSurface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
+            local placedRail = surface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
             placedRail.destructible = false
             segment.crossingRailEntities[placedRail.unit_number] = placedRail
         end
@@ -171,7 +171,7 @@ TunnelSegments.PlacementTunnelSegmentSurfaceBuilt = function(placementEntity, pl
         end
         global.tunnelSegments.segments[fastReplacedSegment.id] = nil
     else
-        local tunnelComplete, tunnelPortals, tunnelSegments = TunnelSegments.CheckTunnelCompleteFromSegment(abovePlacedTunnelSegment, placer)
+        local tunnelComplete, tunnelPortals, tunnelSegments = TunnelSegments.CheckTunnelCompleteFromSegment(placedTunnelSegment, placer)
         if not tunnelComplete then
             return false
         end
@@ -199,9 +199,9 @@ end
 -- Registers and sets up the tunnel's segments prior to the tunnel object being created and references created.
 ---@param segmentEntities LuaEntity[]
 ---@param force LuaForce
----@param aboveSurface LuaSurface
+---@param surface LuaSurface
 ---@return Segment[]
-TunnelSegments.On_PreTunnelCompleted = function(segmentEntities, force, aboveSurface)
+TunnelSegments.On_PreTunnelCompleted = function(segmentEntities, force, surface)
     local segments = {}
 
     for _, segmentEntity in pairs(segmentEntities) do
@@ -210,7 +210,7 @@ TunnelSegments.On_PreTunnelCompleted = function(segmentEntities, force, aboveSur
         local centerPos, directionValue = segmentEntity.position, segmentEntity.direction
 
         segment.tunnelRailEntities = {}
-        local placedRail = aboveSurface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = centerPos, force = force, direction = directionValue}
+        local placedRail = surface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = centerPos, force = force, direction = directionValue}
         placedRail.destructible = false
         segment.tunnelRailEntities[placedRail.unit_number] = placedRail
 
@@ -219,7 +219,7 @@ TunnelSegments.On_PreTunnelCompleted = function(segmentEntities, force, aboveSur
             local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
             local orientation = Utils.DirectionToOrientation(signalDirection)
             local position = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0}))
-            local placedSignal = aboveSurface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection}
+            local placedSignal = surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection}
             segment.signalEntities[placedSignal.unit_number] = placedSignal
         end
     end
@@ -302,10 +302,10 @@ end
 
 ---@param oldSegment Segment
 TunnelSegments.ReplaceSegmentEntity = function(oldSegment)
-    local centerPos, force, lastUser, directionValue, aboveSurface, entityName = oldSegment.entity.position, oldSegment.entity.force, oldSegment.entity.last_user, oldSegment.entity.direction, oldSegment.entity.surface, oldSegment.entity.name
+    local centerPos, force, lastUser, directionValue, surface, entityName = oldSegment.entity.position, oldSegment.entity.force, oldSegment.entity.last_user, oldSegment.entity.direction, oldSegment.entity.surface, oldSegment.entity.name
     oldSegment.entity.destroy()
 
-    local newSegmentEntity = aboveSurface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser} ---@type LuaEntity
+    local newSegmentEntity = surface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser} ---@type LuaEntity
     ---@type Segment
     local newSegment = {
         id = newSegmentEntity.unit_number, ---@type UnitNumber

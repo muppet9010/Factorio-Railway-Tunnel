@@ -1,0 +1,13 @@
+Terminology
+-----------
+
+A tunnel is the connection between 2 portals and can be used in either direction.
+Each portal has an Entry part where the trains enter, and an End part where the trains are teleported away and the tracks are blocked permentantly.
+A managed train is a train using a tunnel. The manage train has a direction of travel through the tunnel and thus an Entrance portal and Exit portal.
+
+
+
+Variable Naming
+---------------
+
+A variable that references a LuaObject's field is named as: objectName_fieldName   i.e.  enteringTrain_speed

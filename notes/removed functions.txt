@@ -30,9 +30,9 @@ end
 TrainManagerStateFuncs.CreateFirstCarriageForLeavingTrain = function(managedTrain)
     local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingCarriageOfTrain(managedTrain.undergroundTrain, managedTrain.undergroundTrainForwards)
     local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, managedTrain.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
-    local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = managedTrain.aboveSurface, create_build_effect_smoke = false}
+    local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = managedTrain.surface, create_build_effect_smoke = false}
     if placedCarriage == nil then
-        error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.aboveSurface.name .. "\nposition: " .. Logging.PositionToString(placementPosition) .. "\nsource carriage unit_number: " .. undergroundLeadCarriage.unit_number)
+        error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.surface.name .. "\nposition: " .. Logging.PositionToString(placementPosition) .. "\nsource carriage unit_number: " .. undergroundLeadCarriage.unit_number)
     end
     placedCarriage.train.speed = undergroundLeadCarriage.speed -- Set the speed when its a train of 1. Before a pushing locomotive may be added and make working out speed direction harder.
     managedTrain.leavingTrainCarriagesPlaced = 1
@@ -75,9 +75,9 @@ TrainManagerStateFuncs.AddCarriageToLeavingTrain = function(managedTrain, nextSo
 
     local aboveTrainOldCarriageCount = #leavingTrainRearCarriage.train.carriages
     local nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, leavingTrainRearCarriage, nextSourceCarriageEntity.name)
-    local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = managedTrain.aboveSurface, create_build_effect_smoke = false}
+    local placedCarriage = nextSourceCarriageEntity.clone {position = nextCarriagePosition, surface = managedTrain.surface, create_build_effect_smoke = false}
     if placedCarriage == nil then
-        error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.aboveSurface.name .. "\nposition: " .. Logging.PositionToString(nextCarriagePosition) .. "\nsource carriage unit_number: " .. nextSourceCarriageEntity.unit_number)
+        error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.surface.name .. "\nposition: " .. Logging.PositionToString(nextCarriagePosition) .. "\nsource carriage unit_number: " .. nextSourceCarriageEntity.unit_number)
     end
     managedTrain.leavingTrainCarriagesPlaced = managedTrain.leavingTrainCarriagesPlaced + 1
     if #placedCarriage.train.carriages ~= aboveTrainOldCarriageCount + 1 then
@@ -148,18 +148,18 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
         undergroundTrain.speed = -1 * enteringTrainSpeed
     end
 
-    managedTrain.undergroundLeavingPortalEntrancePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveExitPortal.portalEntrancePosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
+    managedTrain.undergroundLeavingportalEntryPointPosition = Utils.ApplyOffsetToPosition(managedTrain.exitPortal.portalEntryPointPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
 end
 
 ---@param managedTrain ManagedTrain
 ---@return Position
 TrainManagerStateFuncs.GetUndergroundFirstWagonPosition = function(managedTrain)
     -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.aboveEntrancePortalEndSignal.entity, managedTrain.enteringTrainForwards)
+    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.entrancePortalEndSignal.entity, managedTrain.enteringTrainForwards)
 
     -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
     local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})
-    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.aboveEntrancePortalEndSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
+    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.entrancePortalEndSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
     local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromEndSignalsRail)
 
     -- Get the underground position for this above ground spot.
@@ -464,7 +464,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(managedTrain,
                 undergroundTrainTargetPosition[managedTrain.tunnel.railAlignmentAxis] = math.floor(undergroundTrainTargetPosition[managedTrain.tunnel.railAlignmentAxis]) + 0.9
             end
 
-            --TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(managedTrain.undergroundTrain, undergroundTrainTargetPosition) OVERHAUL
+            TrainManagerFuncs.SetUndergroundTrainScheduleToTrackAtPosition(managedTrain.undergroundTrain, undergroundTrainTargetPosition)
             managedTrain.undergroundTrainSetsSpeed = true
         elseif managedTrain.undergroundTrainSetsSpeed then
             -- Is the same stopping target as last tick, so check if the leaving train is close to the stopping target and give it speed control if so.
@@ -556,7 +556,6 @@ TrainManagerStateFuncs.DestroyUndergroundTrain = function(managedTrain)
 end
 
 
--- TODO - OVERHAUL - Don't believe most of this logic is needed any more. As a train that's teleported and instantly loses its forwards path would just repath backwards and start a new journey. May need to tidy up some old state data though still.
 ---@param oldManagedTrain ManagedTrain
 TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     -- The managed train is going to reverse and go out of the tunnel the way it came in. Will be lodged as a new managed train so that old managed trains logic can be closed off.
@@ -583,12 +582,12 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.leavingTrainExpectedBadState = false
     newManagedTrain.leavingTrainAtEndOfPortalTrack = false
 
-    newManagedTrain.aboveSurface = oldManagedTrain.aboveSurface
-    newManagedTrain.aboveEntrancePortal = oldManagedTrain.aboveExitPortal
-    newManagedTrain.aboveEntrancePortalEndSignal = oldManagedTrain.aboveExitPortalEndSignal
-    newManagedTrain.aboveExitPortal = oldManagedTrain.aboveEntrancePortal
-    newManagedTrain.aboveExitPortalEndSignal = oldManagedTrain.aboveEntrancePortalEndSignal
-    newManagedTrain.aboveExitPortalEntrySignalOut = oldManagedTrain.aboveEntrancePortal.entrySignals[TunnelSignalDirection.outSignal]
+    newManagedTrain.surface = oldManagedTrain.surface
+    newManagedTrain.entrancePortal = oldManagedTrain.exitPortal
+    newManagedTrain.entrancePortalEndSignal = oldManagedTrain.exitPortalEndSignal
+    newManagedTrain.exitPortal = oldManagedTrain.entrancePortal
+    newManagedTrain.exitPortalEndSignal = oldManagedTrain.entrancePortalEndSignal
+    newManagedTrain.exitPortalEntrySignalOut = oldManagedTrain.entrancePortal.entrySignals[TunnelSignalDirection.outSignal]
     newManagedTrain.tunnel = oldManagedTrain.tunnel
 
     Interfaces.Call("Tunnel.TrainReservedTunnel", newManagedTrain) -- This just updates the tunnel so it knows who its new user is.
@@ -644,7 +643,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         TrainManagerFuncs.TrainSetSchedule(newManagedTrain.leavingTrain, newTrainSchedule, false, newManagedTrain.targetTrainStop, false)
     elseif oldManagedTrain.enteringTrainState == EnteringTrainStates.finished then
         newManagedTrain.leavingTrainState = LeavingTrainStates.pre
-        newManagedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(newManagedTrain.aboveExitPortal.entity, newTrainSchedule, newManagedTrain.targetTrainStop, false)
+        newManagedTrain.dummyTrain = TrainManagerFuncs.CreateDummyTrain(newManagedTrain.exitPortal.entity, newTrainSchedule, newManagedTrain.targetTrainStop, false)
         local dummyTrainId = newManagedTrain.dummyTrain.id ---@type Id
         newManagedTrain.dummyTrainId = dummyTrainId
         global.trainManager.trainIdToManagedTrain[dummyTrainId] = {
@@ -675,7 +674,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
         error("Unexpected reversed old managed train primaryTrainPartName: " .. oldManagedTrain.primaryTrainPartName)
     end
 
-    -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage. OVERHAUL: not sure if this concept exists now.
+    -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage.
     TrainManagerPlayerContainers.On_TrainManagerReversed(oldManagedTrain, newManagedTrain)
 
     TrainManagerRemote.TunnelUsageChanged(newManagedTrain.id, TunnelUsageAction.reversedDuringUse, TunnelUsageChangeReason.forwardPathLost, oldManagedTrain.id)

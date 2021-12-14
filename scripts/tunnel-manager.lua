@@ -13,7 +13,7 @@ local Utils = require("utility/utils")
 ---@field alignment TunnelAlignment
 ---@field alignmentOrientation TunnelAlignmentOrientation
 ---@field alignmentAxis Axis
----@field aboveSurface LuaSurface
+---@field surface LuaSurface
 ---@field portals Portal[]
 ---@field segments Segment[]
 ---@field managedTrain ManagedTrain @one is currently using this tunnel.
@@ -78,12 +78,12 @@ end
 ---@param tunnelSegmentEntities LuaEntity[]
 Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     ---@typelist LuaForce, LuaSurface, LuaEntity
-    local force, aboveSurface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
+    local force, surface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
     local refTunnelPortalEntity_direction = refTunnelPortalEntity.direction
 
     -- Call any other modules before the tunnel object is created.
-    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, aboveSurface) ---@type table<int,Portal>
-    local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, aboveSurface) ---@type table<int,Segment>
+    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, surface) ---@type table<int,Portal>
+    local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int,Segment>
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation, alignmentAxis
@@ -103,7 +103,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         alignment = alignment,
         alignmentOrientation = alignmentOrientation,
         alignmentAxis = alignmentAxis,
-        aboveSurface = aboveSurface,
+        surface = surface,
         portals = tunnelPortals,
         segments = tunnelSegments,
         tunnelRailEntities = {},
@@ -154,13 +154,13 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal, true)
+    Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, true)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveEntrancePortal, true)
-    Interfaces.Call("TunnelPortals.AddEntranceUsageDetectionEntityToPortal", managedTrain.aboveExitPortal, true)
+    Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, true)
+    Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.exitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
         managedTrain.tunnel.managedTrain = nil

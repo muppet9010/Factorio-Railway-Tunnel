@@ -42,7 +42,6 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    -- TODO: Needs updating once the core code is done and the remotes updated for this to be updated as well.
     --[[
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()

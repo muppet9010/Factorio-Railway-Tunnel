@@ -8,23 +8,18 @@ MAJOR:
     - Initially tunnels (portals and underground) must be built in straight lines. May support curved tunnels in future, but portal area MUST be straight to save UPS.
 
 MINOR:
-	- place the dummy train on each end rather than having to update the portal area signals every tick when no train is there.
 	- set the incoming trains speed every x ticks. won't be perfect, but should keep roughly the right speed ?
 	- manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and thne at the far end return it to the players control from 0 speed.
-	- as train will be removed and added in 1 go the code to handle this should be much simplier.
-	- very light monitoring code should be required.
 	- TrainLeftTunnelOngoing will need to stay roughly the same as we still need to know when the tunnels in-use vs free.
-	- Train leaving monitoring shouldn't be needed as we will just check for time & speed when train is ready to leave the tunnel portal area. This will then become TrainLeftTunnelOngoing.
 	- Expect no need for per tick activity and things can be scheduled tick or per event driven.
 	- no need to handle a train being in multiple tunnels at once as this won't be physically possible.
 	- add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
-	- no need to handle a train losing carriages while its using a tunnel. As this won't be possible given its direct teleportation now. Make wagons invunerable until they start to move when leaving.
+	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
     - Remove the interfaces concept and just pass a shared object to all modules that they register against. This should remove the need of caching the odd function reference (done at present).
     - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests. Gate all consistency checks behind this setting as they use UPS and won't add anything in a released stable mod.
-    - global.stringStateHandling is legacy and should be removed as part of overhaul.
+    - global.strictStateHandling is legacy and should be removed as part of overhaul when other code superseeds its usage cases.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
     - look at when we get position of the tunnel's various entities and cache them as they don't change once the tunnel is complete. Also unit numbers and directions.
-    - change all Above to just be the thing, i.e. aboveSurface = surface
 
 
 FUTURE:

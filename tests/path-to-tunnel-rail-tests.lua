@@ -218,7 +218,7 @@ Test.EveryTick = function(event)
                 -- Check its at the expected rail.
                 local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.targetTunnelRailEntity.position, {x = 2, y = 0}))
                 if atrainAtExitTunnelEntryRail ~= nil then
-                    game.print("train reached expected above ground tunnel rail")
+                    game.print("train reached expected ground tunnel rail")
                     testData.tunnelRailReached = true
                 end
             end
