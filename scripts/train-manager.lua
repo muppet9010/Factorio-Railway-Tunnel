@@ -5,6 +5,7 @@ local Utils = require("utility/utils")
 local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Logging = require("utility/logging")
+local EventScheduler = require("utility/event-scheduler")
 local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
 local Common = require("scripts/common")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
@@ -99,6 +100,7 @@ TrainManager.OnLoad = function()
     Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManager.On_TunnelRemoved)
     Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManager.On_PortalReplaced)
     Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManager.GetTrainIdsManagedTrainDetails)
+    EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
 end
 
 -------------------------------------------------------------------------------
@@ -148,7 +150,6 @@ end
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
     -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.endSignals[TunnelSignalDirection.inSignal], false)
-    TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, trainOnPortalTrack)
     managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
 end
@@ -170,69 +171,30 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
-    local skipThisTick = false -- Used to provide a "continue" ability as some actions could leave the trains in a weird state this tick and thus error on later functions in the process.
-
-    -- Handle managed trains that are just using portal track first as this just returns.
+    -- We only need to handle one of these per tick as the transition between these states is either triggered externally or requires no immediate checking of the next state in the same tick as the transition.
+    -- These are ordered on frequency of use to reduce per tick check costs.
     if managedTrain.primaryTrainPartName == PrimaryTrainState.portalTrack then
         -- Keep on running until either the train triggers the END signal or the train leaves the portal tracks.
         TrainManager.TrainOnPortalTrackOngoing(managedTrain)
         return
-    end
-
-    -- Check dummy train state is valid if it exists. Used in a lot of states so sits outside of them.
-    -- OVERHAUL staying with Dummy train usage for now, notes on the CreateDummyTrain().
-    if not skipThisTick and managedTrain.dummyTrain ~= nil and not TrainManager.IsTrainHealthlyState(managedTrain.dummyTrain) then
-        TrainManager.HandleLeavingTrainBadState("dummyTrain", managedTrain)
-        skipThisTick = true
-    end
-
-    if not skipThisTick and managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
         -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
         if managedTrain.enteringTrain.state ~= defines.train_state.arrive_signal or managedTrain.enteringTrain.signal ~= managedTrain.entrancePortalEndSignal.entity then
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
-            skipThisTick = true
+            return
         else
             TrainManager.TrainApproachingOngoing(managedTrain)
         end
-    end
-
-    if not skipThisTick and managedTrain.primaryTrainPartName == PrimaryTrainState.underground then
-        TrainManager.TrainUndergroundOngoing(managedTrain, currentTick)
-    end
-
-    if not skipThisTick and managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
-        TrainManager.TrainLeavingOngoing(managedTrain)
-    end
-end
-
--- OVERHAUL - may still be needed by the dummy train checking, but I hope we don't need to check anything any more. Now we only have full trains ever I think it will just work naturally. May need the pull forwards mechanic still.
----@param trainWithBadStateName LuaTrain
----@param managedTrain ManagedTrain
-TrainManager.HandleLeavingTrainBadState = function(trainWithBadStateName, managedTrain)
-    local trainWithBadState = managedTrain[trainWithBadStateName] ---@type LuaTrain
-
-    -- Check if the train can just path now as trains don't try and repath every tick. So sometimes they can path forwards on their own, they just haven't realised yet.
-    if trainWithBadState.recalculate_path() then
-        if trainWithBadStateName == "dummyTrain" then
-            -- Just return as the dummy train doesn't handle reversing itself.
-            return
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.underground then
+        if managedTrain.undergroundTrainHasPlayersRiding then
+            -- Only reason we have to update per tick while travelling underground currently.
+            TrainManager.TrainUndergroundOngoing(managedTrain, currentTick)
         else
-            error("TrainManager.HandleLeavingTrainBadState() unsupported trainWithBadStateName:" .. tostring(trainWithBadStateName))
+            -- Nothing to do, the arrival is scheduled.
+            return
         end
-    end
-
-    -- Handle train that can't go backwards, so just pull the train forwards to the end of the tunnel (signal segment) and then return to its preivous schedule. Makes the situation more obvious for the player and easier to access the train. The train has already lost any station reservation it had.
-    local newSchedule = trainWithBadState.schedule
-    local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.entity.get_connected_rails()[1] ---@type LuaEntity
-    local endOfTunnelScheduleRecord = {rail = exitPortalEntryRail, temporary = true}
-    table.insert(newSchedule.records, newSchedule.current, endOfTunnelScheduleRecord)
-    trainWithBadState.schedule = newSchedule
-    if not trainWithBadState.has_path then
-        -- Check if the train can reach the end of the tunnel portal track. If it can't then the train is past the target track point. In this case the train should just stop where it is and wait.
-
-        -- Reset the above schedule and the train will go in to no-path or destination full states until it can move off some time in the future.
-        table.remove(newSchedule.records, 1)
-        trainWithBadState.schedule = newSchedule
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
+        TrainManager.TrainLeavingOngoing(managedTrain)
     end
 end
 
@@ -281,7 +243,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     -- Just assume the speed stays constant at the entering speed for the whole duration for now.
     managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
     managedTrain.traversalStartingTick = game.tick
-    managedTrain.traversalArrivalTick = managedTrain.traversalStartingTick + managedTrain.traversalTotalTicks
+    managedTrain.traversalArrivalTick = managedTrain.traversalStartingTick + math.ceil(managedTrain.traversalTotalTicks)
 
     -- Destroy entering train's entities as we have finished with them.
     for _, carriage in pairs(enteringTrain_carriages) do
@@ -290,11 +252,16 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
-    --TODO: for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this. It shows on the PathfinderWeightings test. See how this was done before.
+    --TODO: for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this. It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
 
     -- Complete the state transition.
     Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
+
+    -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
+    if not managedTrain.undergroundTrainHasPlayersRiding then
+        EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain})
+    end
 end
 
 -- Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
@@ -312,6 +279,16 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
     end
 end
 
+---@param event ScheduledEvent
+TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
+    local managedTrain = event.data.managedTrain
+    if managedTrain == nil or managedTrain.primaryTrainPartName ~= PrimaryTrainState.underground then
+        -- Something has happened to the train/tunnel being managed while this has been scheduled, so just give up.
+        return
+    end
+    TrainManager.TrainUndergroundCompleted(managedTrain)
+end
+
 ---@param managedTrain ManagedTrain
 TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Train has arrived and should be activated.
@@ -322,6 +299,9 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     if leavingTrain.speed == 0 then
         leavingTrain.speed = -1 * managedTrain.tempEnteringSpeed
     end
+
+    -- Check the target isn't part of this tunnel once
+    TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, leavingTrain)
 
     if managedTrain.undergroundTrainHasPlayersRiding then
         TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nil, nil)
@@ -346,13 +326,14 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
     end
 end
 
--- OVERHAUL - once this is triggered do we want to commit the train to enter the tunnel ? or is the checks here still needed even in this case? Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
+-- OVERHAUL - Once the entry train detector is triggered do we want to commit the train to enter the tunnel rather than have to track it and use UPS?  Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach. Uses a small fraction of per train tunnel usage UPS cost.
+-- This tracks a train once it triggers the entry train detector if it hasn't reserved the End signal of the Entrance portal. It is to detect and then handle trains that enter the portal track and then turn around and leave. Could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
 
     if not managedTrain.portalTrackTrainBySignal then
-        -- Not tracking by singal yet. Initially we have to track the trains speed (direction) to confirm that its still entering until it triggers the Entry signal.
+        -- Not tracking by singal yet. Initially we have to track the trains speed (direction) to confirm that its still entering until it triggers the Entry signal. Tracking by speed is less UPS effecient than using the entry signal.
         if entrancePortalEntrySignalEntity.signal_state == defines.signal_state.closed then
             -- The signal state is now closed, so we can start tracking by signal in the future. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
             managedTrain.portalTrackTrainBySignal = true
@@ -366,7 +347,6 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
             local trainForwards = trainSpeed > 0
             if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
                 -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
-                -- OVERHAUL - what does this achieve and do we still need it?
                 local placedDetectionEntity = Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, false)
                 if placedDetectionEntity then
                     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
@@ -388,16 +368,18 @@ end
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
---- Update the passed in train schedule if the train is currently heading for an underground tunnel rail. If so change the target rail to be the end of the portal. Avoids the train infinite loop pathing through the tunnel trying to reach a tunnel rail it never can.
+--- Update the passed in train schedule if the train is currently heading for a tunnel or portal rail. If so change the target rail to be the end of the portal. Avoids the train infinite loop pathing through the tunnel trying to reach a tunnel or portal rail it never can.
 ---@param managedTrain ManagedTrain
 ---@param train LuaTrain
 TrainManager.UpdateScheduleForTargetRailBeingTunnelRail = function(managedTrain, train)
     local targetTrainStop, targetRail = train.path_end_stop, train.path_end_rail
     if targetTrainStop == nil and targetRail ~= nil then
-        if targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" or targetRail.name == "railway_tunnel-invisible_rail-on_map_tunnel" then
+        local targetRail_name = targetRail.name
+        if targetRail_name == "railway_tunnel-invisible_rail-on_map_tunnel" or targetRail_name == "railway_tunnel-portal_rail-on_map" then
             -- The target rail is the type used by a portal/segment for underground rail, so check if it belongs to the just used tunnel.
-            if managedTrain.tunnel.tunnelRailEntities[targetRail.unit_number] ~= nil then
-                -- The target rail is part of the tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.
+            local targetRail_unitNumber = targetRail.unit_number
+            if managedTrain.tunnel.tunnelRailEntities[targetRail_unitNumber] ~= nil or managedTrain.tunnel.portalRailEntities[targetRail_unitNumber] ~= nil then
+                -- The target rail is part of the currently used tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.
                 local schedule = train.schedule
                 local currentScheduleRecord = schedule.records[schedule.current]
                 local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.entity.get_connected_rails()[1]
@@ -480,7 +462,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalEndSignal,
         entrancePortal = entrancePortalEndSignal.portal,
         tunnel = entrancePortalEndSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(entrancePortalEndSignal.entity.direction + 4),
-        tempEnteringSpeed = trainSpeed,
+        tempEnteringSpeed = trainSpeed, -- TODO: this is temp and will need calculating at a later point properly.
         undergroundTrainHasPlayersRiding = false
     }
     if trainSpeed == 0 then
@@ -604,7 +586,7 @@ end
 -- Clone the entering train to the front of the end portal. This will minimise any tracking of the train when leaving.
 ---@param managedTrain ManagedTrain
 ---@param enteringTrain_carriages LuaEntity[]
----@return LuaTrain
+---@return LuaTrain @Leaving train
 TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_carriages)
     -- This currently assumes the portals are in a stright line of each other and that the portal areas are straight.
     local enteringTrain, trainCarriagesForwardOrientation = managedTrain.enteringTrain, managedTrain.trainTravelOrientation
@@ -725,7 +707,7 @@ TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastP
 end
 
 -- Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
--- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max friction force and weight. This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
+-- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
 ---@param exitPortal Portal
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity

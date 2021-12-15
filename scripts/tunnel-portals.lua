@@ -30,8 +30,8 @@ local SetupValues = {
 ---@field endSignals table<TunnelSignalDirection, PortalEndSignal> @These are the inner locked red signals that a train paths at to enter the tunnel.
 ---@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire.
 ---@field tunnel Tunnel
----@field portalRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the portal itself.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @table of the rail entities that are part of the connected tunnel for the portal.
+---@field portalRailEntities table<UnitNumber, LuaEntity> @the visible rail entities that are part of the portal.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities that are part of the portal.
 ---@field tunnelOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the connected tunnel for the portal. Will be deleted before the tunnelRailEntities.
 ---@field entryPointDistanceFromCenter uint @the distance in tiles of the entry point from the portal center.
 ---@field portalEntryPointPosition Position @the position of the entry point to the portal.
@@ -84,10 +84,12 @@ TunnelPortals.OnLoad = function()
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
     Interfaces.RegisterInterface("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal)
 
-    local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
     EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
+
+    local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntityPortalEntryTrainDetector", TunnelPortals.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntityPortalEntryTrainDetector", TunnelPortals.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
+
     local portalEndTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_end_train_detector_1x1"}}
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntityPortalEndTrainDetector", TunnelPortals.OnDiedEntityPortalEndTrainDetector, portalEndTrainDetector1x1_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntityPortalEndTrainDetector", TunnelPortals.OnDiedEntityPortalEndTrainDetector, portalEndTrainDetector1x1_Filter)

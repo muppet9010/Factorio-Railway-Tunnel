@@ -18,7 +18,8 @@ local Utils = require("utility/utils")
 ---@field portals Portal[]
 ---@field segments Segment[]
 ---@field managedTrain ManagedTrain @one is currently using this tunnel.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the rail entities of the tunnel (invisible rail) on the surface.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities of the whole tunnel (portal and segments).
+---@field portalRailEntities table<UnitNumber, LuaEntity> @the visible rail entities that are part of the portal (visible rails).
 ---@field tunnelLength int @the length of the tunnel segments in tiles.
 
 ---@class TunnelDetails
@@ -108,6 +109,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         portals = tunnelPortals,
         segments = tunnelSegments,
         tunnelRailEntities = {},
+        portalRailEntities = {},
         tunnelLength = #tunnelSegmentEntities * 2
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
@@ -116,6 +118,9 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         portal.tunnel = tunnel
         for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
             tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
+        end
+        for portalRailEntity_unitNumber, portalRailEntity in pairs(portal.portalRailEntities) do
+            tunnel.portalRailEntities[portalRailEntity_unitNumber] = portalRailEntity
         end
     end
     for _, segment in pairs(tunnelSegments) do

@@ -1,5 +1,11 @@
-MOD AIM:
+VISION:
     Be as light weight UPS wise for running trains through tunnels as possible. Sacrafice everything to achive this and if odd scenarios arise provide a manual fix that doesn't burden UPS.
+    Expected behavour:
+        - When a train is traversing (underground) we initally assume it has a path onwards on the far side when calculating time. At arrival time check if it can path at speed and if not then work out hpow long it would ahve taken to traverse and stop at the exit portal entry signal. Then reschedule its arrival time and speed to this. So a train either leaves a tunnel at full(ish) speed with an onwards path or at a slower speed for the path it can get at that moment. This should only require a few pathing and arrival time delays while keeping the end result pretty much realistic.
+        - When a train is traversing (underground) we want to assume it has a valid path for the trip and not check. At initial arrival time we do 1 valid path check and if theres nothing just tell it to path to the end of the portal area and then return to automatic (vaniall game state).
+        - If 2 trains both try and use the tunnel at once stop the second train at the border, set it to manual and fire a GUI alert. Don't let manaul/coasting trains enter the portal area as this just avoids needing to handle collisions. We want to add cheap issue detection mechanics, but nothing UPS costly.
+    Known non ideal behavour:
+
 
 MAJOR:
 	- require a portal area the length of the train for entry and exit. So only when the entering train is fully within this area (signal block) does the train get committed and cloned to outbound portal area with 0 speed. Work out how long the train would take to navigate to the end of the exit portal area and then after that time set the train active and its speed either full or 0.
@@ -7,28 +13,28 @@ MAJOR:
 	- Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This are will have some above ground visual blocking graphics so train within it isn't visible.
     - Initially tunnels (portals and underground) must be built in straight lines. May support curved tunnels in future, but portal area MUST be straight to save UPS.
 
+
 MINOR:
-	- set the incoming trains speed every x ticks. won't be perfect, but should keep roughly the right speed ?
+	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
 	- manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and thne at the far end return it to the players control from 0 speed.
-	- TrainLeftTunnelOngoing will need to stay roughly the same as we still need to know when the tunnels in-use vs free.
-	- Expect no need for per tick activity and things can be scheduled tick or per event driven.
-	- no need to handle a train being in multiple tunnels at once as this won't be physically possible.
 	- add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
-    - Remove the interfaces concept and just pass a shared object to all modules that they register against. This should remove the need of caching the odd function reference (done at present).
-    - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests. Gate all consistency checks behind this setting as they use UPS and won't add anything in a released stable mod.
+    - Review possibility to remove the internal mod "interfaces" concept and just pass a shared object to all modules that they register against. This should remove the need of caching the odd function reference (done at present). Looking to save UPS and if it will improve EmmyLua's function intelisense.
+    - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests. All UPS using consistency checks have already been gated behind this setting to save UPS in when in a production release.
     - global.strictStateHandling is legacy and should be removed as part of overhaul when other code superseeds its usage cases.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
-    - look at when we get position of the tunnel's various entities and cache them as they don't change once the tunnel is complete. Also unit numbers and directions.
+    - look at when we get position of the tunnel's various entities and cache them as they don't change once the tunnel is complete. Also unit numbers and directions. This will generally require a change from referencing an entity in object field to a table of its cached attributes and the entity.
     - can we change some of our on entity died events to use the specific entity died event instead of the generic type filter ones?
+    - do train arrival check as per mod aim.
+    - make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
+    - go through the process managed train functions and identify API calls in sub functions that can be passed back and cached for use later n the same tick's functions.
 
 
 FUTURE:
 	- Allows corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel.
 
 
-
-PREDICTED UPS SAVINGS
-total old: 460
-new savings: 176, 78, 15 (30/2), 7, 8, 4, 15 (30/2) = 300
-conceptual new total: 160
+PREDICTED UPS SAVINGS:
+    total old: 460
+    new savings: 176, 78, 15 (30/2), 7, 8, 4, 15 (30/2) = 300
+    conceptual new total: 160

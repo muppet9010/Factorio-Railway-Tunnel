@@ -47,10 +47,12 @@ local invisibleRailBase = {
     }
 }
 
+-- Not used currently.
 local invisibleRailNotOnMap = Utils.DeepCopy(invisibleRailBase)
 invisibleRailNotOnMap.name = "railway_tunnel-invisible_rail-not_on_map"
 table.insert(invisibleRailNotOnMap.flags, "not-on-map")
 
+-- Used for the End section of tunnel portals and for underground tunnel tracks.
 local invisibleRailOnMapTunnel = Utils.DeepCopy(invisibleRailBase)
 invisibleRailOnMapTunnel.name = "railway_tunnel-invisible_rail-on_map_tunnel"
 invisibleRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor

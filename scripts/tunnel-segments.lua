@@ -9,7 +9,7 @@ local TunnelSegments = {}
 ---@class Segment
 ---@field id UnitNumber @unit_number of the placed segment entity.
 ---@field entity LuaEntity
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the tunnel (invisible) rail entities within the tunnel segment.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities within the tunnel segment that form part of the larger tunnel.
 ---@field signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
 ---@field tunnel Tunnel
 ---@field crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "tunnel_segment_surface_rail_crossing".
