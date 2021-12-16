@@ -13,7 +13,7 @@ local TunnelShared = {}
 TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
     local startingTunnelPart_name, startingTunnelPart_direction, startingTunnelPart_position = startingTunnelPart.name, startingTunnelPart.direction, startingTunnelPart.position
 
-    if Common.TunnelSegmentPlacedEntityNames[startingTunnelPart_name] then
+    if Common.UndergroundSegmentPlacedEntityNames[startingTunnelPart_name] then
         -- Only include the starting tunnel segment when we are checking its direction, not when checking from it the other direction. Otherwise we double add it.
         if checkingDirection == startingTunnelPart_direction then
             table.insert(tunnelSegmentEntities, startingTunnelPart)
@@ -27,7 +27,7 @@ TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
     local checkingPositionOffset = Utils.RotatePositionAround0(Utils.DirectionToOrientation(checkingDirection), {x = 0, y = 2})
     while continueChecking do
         nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, checkingPositionOffset)
-        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = Common.TunnelSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
+        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = Common.UndergroundSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
@@ -36,7 +36,7 @@ TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
             if connectedTunnelEntity_position.x ~= startingTunnelPart_position.x and connectedTunnelEntity_position.y ~= startingTunnelPart_position.y then
                 TunnelShared.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity_position)
                 continueChecking = false
-            elseif Common.TunnelSegmentPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif Common.UndergroundSegmentPlacedEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity_direction == startingTunnelPart_direction or connectedTunnelEntity_direction == Utils.LoopDirectionValue(startingTunnelPart_direction + 4) then
                     table.insert(tunnelSegmentEntities, connectedTunnelEntity)
                 else

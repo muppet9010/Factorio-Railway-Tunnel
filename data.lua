@@ -19,8 +19,8 @@ require("prototypes/tunnel-portal-surface")
 require("prototypes/tunnel-portal-blocking-locomotive")
 require("prototypes/tunnel-exit-dummy-locomotive")
 
-require("prototypes/tunnel-segment-surface")
-require("prototypes/tunnel-segment-surface-rail-crossing")
+require("prototypes/underground-segment")
+require("prototypes/underground-segment-rail-crossing")
 
 require("prototypes/item-groups")
 require("prototypes/custom-inputs")

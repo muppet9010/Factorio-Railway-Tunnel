@@ -352,7 +352,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         local ghostName = ghost.ghost_name
         if ghostName == "railway_tunnel-tunnel_portal_surface-placed" then
             tunnelPortalPosition = ghost.position
-        elseif ghostName == "railway_tunnel-tunnel_segment_surface-placed" then
+        elseif ghostName == "railway_tunnel-underground_segment-straight-placed" then
             tunnelSegmentPosition = ghost.position
         end
 
@@ -372,7 +372,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
                 table.insert(placedEntities, tunnelEntity)
             elseif tunnelSegmentPosition ~= nil then
                 -- Tunnel Segment was revived.
-                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_segment_surface-placed", tunnelSegmentPosition)
+                local tunnelEntity = testSurface.find_entity("railway_tunnel-underground_segment-straight-placed", tunnelSegmentPosition)
                 table.insert(placedEntities, tunnelEntity)
             end
         end

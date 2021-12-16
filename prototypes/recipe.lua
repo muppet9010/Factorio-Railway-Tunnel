@@ -22,7 +22,7 @@ data:extend(
                 {"steel-plate", 10},
                 {"rail", 1}
             },
-            result = "railway_tunnel-tunnel_segment_surface-placement",
+            result = "railway_tunnel-underground_segment-straight-placement",
             result_count = 1
         },
         {
@@ -32,9 +32,9 @@ data:extend(
             ingredients = {
                 {"concrete", 10},
                 {"rail", 3},
-                {"railway_tunnel-tunnel_segment_surface-placement", 1}
+                {"railway_tunnel-underground_segment-straight-placement", 1}
             },
-            result = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement",
+            result = "railway_tunnel-underground_segment-straight_rail_crossing-placement",
             result_count = 1
         }
     }

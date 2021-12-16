@@ -88,7 +88,7 @@ Test.Start = function(testName)
     end
 
     -- Get the first tunnel segment as we just need 1.
-    local tunnelSegment = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_segment_surface-placed", false, false)
+    local tunnelSegment = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-underground_segment-straight-placed", false, false)
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
     local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train

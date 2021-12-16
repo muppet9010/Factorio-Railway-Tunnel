@@ -187,12 +187,12 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     -- Cache the objects details for later use.
     portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.dummyLocomotiveDistance}))
 
-    local tunnelComplete, tunnelPortals, tunnelSegments = TunnelPortals.CheckTunnelCompleteFromPortal(portalEntity, placer, portal)
+    local tunnelComplete, tunnelPortals, undergroundSegments = TunnelPortals.CheckTunnelCompleteFromPortal(portalEntity, placer, portal)
     if not tunnelComplete then
         return
     end
 
-    Interfaces.Call("Tunnel.CompleteTunnel", tunnelPortals, tunnelSegments)
+    Interfaces.Call("Tunnel.CompleteTunnel", tunnelPortals, undergroundSegments)
 end
 
 ---@param entrySignalInEntity LuaEntity

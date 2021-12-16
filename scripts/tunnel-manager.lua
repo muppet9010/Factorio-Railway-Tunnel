@@ -85,7 +85,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
 
     -- Call any other modules before the tunnel object is created.
     local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, surface) ---@type table<int,Portal>
-    local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int,Segment>
+    local undergroundSegments = Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int,Segment>
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation, alignmentAxis
@@ -107,7 +107,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
         alignmentAxis = alignmentAxis,
         surface = surface,
         portals = tunnelPortals,
-        segments = tunnelSegments,
+        segments = undergroundSegments,
         tunnelRailEntities = {},
         portalRailEntities = {},
         tunnelLength = #tunnelSegmentEntities * 2
@@ -123,7 +123,7 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
             tunnel.portalRailEntities[portalRailEntity_unitNumber] = portalRailEntity
         end
     end
-    for _, segment in pairs(tunnelSegments) do
+    for _, segment in pairs(undergroundSegments) do
         segment.tunnel = tunnel
         for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(segment.tunnelRailEntities) do
             tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
@@ -138,7 +138,7 @@ Tunnel.RemoveTunnel = function(tunnel)
         Interfaces.Call("TunnelPortals.On_TunnelRemoved", portal)
     end
     for _, segment in pairs(tunnel.segments) do
-        Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
+        Interfaces.Call("UndergroundSegments.On_TunnelRemoved", segment)
     end
     global.tunnels.tunnels[tunnel.id] = nil
 end
@@ -216,14 +216,14 @@ end
 ---@param tunnel Tunnel
 ---@return TunnelDetails
 Tunnel.Remote_GetTunnelDetails = function(tunnel)
-    local tunnelSegments = {}
+    local undergroundSegments = {}
     for _, segment in pairs(tunnel.segments) do
-        table.insert(tunnelSegments, segment.entity)
+        table.insert(undergroundSegments, segment.entity)
     end
     local tunnelDetails = {
         tunnelId = tunnel.id,
         portals = {tunnel.portals[1].entity, tunnel.portals[2].entity},
-        segments = tunnelSegments,
+        segments = undergroundSegments,
         tunnelUsageId = tunnel.managedTrain.id
     }
     return tunnelDetails
