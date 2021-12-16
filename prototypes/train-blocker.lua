@@ -33,9 +33,9 @@ local portalEntryTrainDetector1x1 = Utils.DeepCopy(baseBlockerPrototype)
 portalEntryTrainDetector1x1.name = "railway_tunnel-portal_entry_train_detector_1x1"
 portalEntryTrainDetector1x1.collision_box = {{-0.4, -0.4}, {0.4, 0.4}}
 
-local portalEndTrainDetector1x1 = Utils.DeepCopy(baseBlockerPrototype)
-portalEndTrainDetector1x1.name = "railway_tunnel-portal_end_train_detector_1x1"
-portalEndTrainDetector1x1.collision_box = {{-0.4, -0.4}, {0.4, 0.4}}
+local portalTransitionTrainDetector1x1 = Utils.DeepCopy(baseBlockerPrototype)
+portalTransitionTrainDetector1x1.name = "railway_tunnel-portal_transition_train_detector_1x1"
+portalTransitionTrainDetector1x1.collision_box = {{-0.4, -0.4}, {0.4, 0.4}}
 
 local blocker2x2 = Utils.DeepCopy(baseBlockerPrototype)
 blocker2x2.name = "railway_tunnel-train_blocker_2x2"
@@ -44,7 +44,7 @@ blocker2x2.collision_box = {{-0.8, -0.8}, {0.8, 0.8}}
 data:extend(
     {
         portalEntryTrainDetector1x1,
-        portalEndTrainDetector1x1,
+        portalTransitionTrainDetector1x1,
         blocker2x2
     }
 )

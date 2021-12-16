@@ -154,13 +154,13 @@ end
 ---@param managedTrain ManagedTrain
 ---@return Position
 TrainManagerStateFuncs.GetUndergroundFirstWagonPosition = function(managedTrain)
-    -- Work out the distance in rail tracks between the train and the portal's end signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalEndSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.entrancePortalEndSignal.entity, managedTrain.enteringTrainForwards)
+    -- Work out the distance in rail tracks between the train and the portal's transition signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
+    local firstCarriageDistanceFromPortalTransitionSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.entrancePortalTransitionSignal.entity, managedTrain.enteringTrainForwards)
 
-    -- Apply the straight line distance to the above portal's end signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
-    local firstCarriageOffsetFromEndSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalEndSignalsRail})
-    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.entrancePortalEndSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
-    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromEndSignalsRail)
+    -- Apply the straight line distance to the above portal's transition signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
+    local firstCarriageOffsetFromTransitionSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalTransitionSignalsRail})
+    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.entrancePortalTransitionSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
+    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromTransitionSignalsRail)
 
     -- Get the underground position for this above ground spot.
     local firstCarriageUndergroundPosition = Utils.ApplyOffsetToPosition(firstCarriageAbovegroundPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
@@ -584,9 +584,9 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
 
     newManagedTrain.surface = oldManagedTrain.surface
     newManagedTrain.entrancePortal = oldManagedTrain.exitPortal
-    newManagedTrain.entrancePortalEndSignal = oldManagedTrain.exitPortalEndSignal
+    newManagedTrain.entrancePortalTransitionSignal = oldManagedTrain.exitPortalTransitionSignal
     newManagedTrain.exitPortal = oldManagedTrain.entrancePortal
-    newManagedTrain.exitPortalEndSignal = oldManagedTrain.entrancePortalEndSignal
+    newManagedTrain.exitPortalTransitionSignal = oldManagedTrain.entrancePortalTransitionSignal
     newManagedTrain.exitPortalEntrySignalOut = oldManagedTrain.entrancePortal.entrySignals[TunnelSignalDirection.outSignal]
     newManagedTrain.tunnel = oldManagedTrain.tunnel
 

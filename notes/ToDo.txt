@@ -10,7 +10,7 @@ Bugs
 Functionality not currently supported
 -------------------------------------
     - Interlinked abnormal tunnel usage cases:
-        - Move the dummy train to be behind the END signals.
+        - Move the dummy train to be behind the Transition signals.
             - Is so that it dosn't have to worry about if there is a random train on that part of the portal.
             - See if we can shrink this and the blocking loco sizes down, without letting things connect to them still. So they both fit in current space.
         - Things that end up in the exit portals placement areas.
@@ -37,7 +37,7 @@ Functionality not currently supported
             - This first and second trains may each be coasting train, player driven or scheduled trains (not both scheduled).
             - This should be reduced by coasting trains and carriage add/remove logic.
             - Need to check/handle if it prevents the placing of blocking or dummy locos or ends up on the tunnel placement area.
-            - Look at if we can easily detect when the train has fully moved on to the portal track and we can put the usage detection entity back down behind it before it has fully entered. Just lowers the chance of a train "sneaking" on to the portal tracks behind it. Will have to get distance from back carriage to end signal until the train starts entering and then we can use its length to tell when its fully across the threshold. If its a short train and it pulls on to the portal and stops, we can't easily tell where the end carriage away from the END signal is without measuring distance ?
+            - Look at if we can easily detect when the train has fully moved on to the portal track and we can put the usage detection entity back down behind it before it has fully entered. Just lowers the chance of a train "sneaking" on to the portal tracks behind it. Will have to get distance from back carriage to transition signal until the train starts entering and then we can use its length to tell when its fully across the threshold. If its a short train and it pulls on to the portal and stops, we can't easily tell where the end carriage away from the Transition signal is without measuring distance ?
 
     - Handle a train that enters a second tunnel while leaving a first tunnel. Get by global trainID's tracked. Support N tunnels in use at once.
         - Need to use the origional underground train as source for the others.
