@@ -467,6 +467,8 @@ TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
     end
     portal.endSignals = nil
 
+    TunnelPortals.RemoveEndUsageDetectionEntityFromPortal(portal)
+
     -- Close the entry signals for the portals.
     if portal.entrySignals[TunnelSignalDirection.inSignal].entity.valid then
         TunnelPortals.ClosePortalEntrySignalAsNoTunnel(portal.entrySignals[TunnelSignalDirection.inSignal].entity)
