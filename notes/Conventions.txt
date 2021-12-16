@@ -2,7 +2,7 @@ Terminology
 -----------
 
 A tunnel is the connection between 2 portals and can be used in either direction.
-Each portal has an Entry part where the trains enter, and an End part where the trains are teleported away and the tracks are blocked permentantly.
+Each portal has an Entry part where the trains enter, a Transition point where the trains are teleported away and beyond this a Far area where the tracks are permentantly blocked.
 A managed train is a train using a tunnel. The manage train has a direction of travel through the tunnel and thus an Entrance portal and Exit portal.
 
 

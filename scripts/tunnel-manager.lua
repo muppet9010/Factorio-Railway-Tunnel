@@ -32,15 +32,15 @@ Tunnel.CreateGlobals = function()
     global.tunnels = global.tunnels or {}
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId or 1
     global.tunnels.tunnels = global.tunnels.tunnels or {} ---@type table<Id, Tunnel>
-    global.tunnels.endSignals = global.tunnels.endSignals or {} ---@type table<UnitNumber, PortalEndSignal> @the tunnel's portal's "inSignal" endSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
+    global.tunnels.transitionSignals = global.tunnels.transitionSignals or {} ---@type table<UnitNumber, PortalTransitionSignal> @the tunnel's portal's "inSignal" transitionSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
 end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
 
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
-    Interfaces.RegisterInterface("Tunnel.RegisterEndSignal", Tunnel.RegisterEndSignal)
-    Interfaces.RegisterInterface("Tunnel.DeregisterEndSignal", Tunnel.DeregisterEndSignal)
+    Interfaces.RegisterInterface("Tunnel.RegisterTransitionSignal", Tunnel.RegisterTransitionSignal)
+    Interfaces.RegisterInterface("Tunnel.DeregisterTransitionSignal", Tunnel.DeregisterTransitionSignal)
     Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainFinishedEnteringTunnel", Tunnel.TrainFinishedEnteringTunnel)
@@ -62,7 +62,7 @@ Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
--- Needed so we detect when a train is targetting the end signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
+-- Needed so we detect when a train is targetting the transition signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
 ---@param event on_train_changed_state
 Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local train = event.train
@@ -70,10 +70,10 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
         return
     end
     local signal = train.signal
-    if signal == nil or global.tunnels.endSignals[signal.unit_number] == nil then
+    if signal == nil or global.tunnels.transitionSignals[signal.unit_number] == nil then
         return
     end
-    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnels.endSignals[signal.unit_number])
+    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnels.transitionSignals[signal.unit_number])
 end
 
 ---@param tunnelPortalEntities LuaEntity[]
@@ -143,14 +143,14 @@ Tunnel.RemoveTunnel = function(tunnel)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 
----@param endSignal PortalEndSignal
-Tunnel.RegisterEndSignal = function(endSignal)
-    global.tunnels.endSignals[endSignal.entity.unit_number] = endSignal
+---@param transitionSignal PortalTransitionSignal
+Tunnel.RegisterTransitionSignal = function(transitionSignal)
+    global.tunnels.transitionSignals[transitionSignal.entity.unit_number] = transitionSignal
 end
 
----@param endSignal PortalEndSignal
-Tunnel.DeregisterEndSignal = function(endSignal)
-    global.tunnels.endSignals[endSignal.entity.unit_number] = nil
+---@param transitionSignal PortalTransitionSignal
+Tunnel.DeregisterTransitionSignal = function(transitionSignal)
+    global.tunnels.transitionSignals[transitionSignal.entity.unit_number] = nil
 end
 
 ---@param managedTrain ManagedTrain
