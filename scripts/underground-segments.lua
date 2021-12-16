@@ -16,6 +16,7 @@ local UndergroundSegments = {}
 ---@field surfacePositionString SurfacePositionString @used to back match to surfaceSegmentPositions global object.
 ---@field beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
 ---@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
+---@field topLayerEntity LuaEntity @the top layer graphical entity that is showings its picture and hiding the main entities once placed.
 
 ---@class SurfacePositionString @the entities surface and position as a string.
 
@@ -80,15 +81,18 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         return
     end
 
-    local placeCrossingRails
+    local placeCrossingRails, topLayerEntityName
     if builtEntityName == "railway_tunnel-underground_segment-straight" then
+        topLayerEntityName = "railway_tunnel-underground_segment-straight-top_layer"
         placeCrossingRails = false
     elseif builtEntityName == "railway_tunnel-underground_segment-straight-rail_crossing" then
         placeCrossingRails = true
     end
 
     local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, centerPos)
-    local fastReplacedSegmentByPosition, fastReplacedSegment = global.undergroundSegments.surfaceSegmentPositions[surfacePositionString], nil
+    local fastReplacedSegmentByPosition = global.undergroundSegments.surfaceSegmentPositions[surfacePositionString]
+    ---@type Segment
+    local fastReplacedSegment
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
     end
@@ -111,6 +115,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         end
     end
 
+    ---@type Segment
     local segment = {
         id = builtEntity.unit_number,
         entity = builtEntity,
@@ -149,6 +154,16 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
             railCrossingTrackEntity.destroy()
         end
     end
+
+    -- TODO: this topLayer removal isn't quite stable for some reason in mining and destroyng and fast replacing.
+    -- Handle top layer entity (adding/removing as needed)
+    if topLayerEntityName ~= nil then
+        segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
+    end
+    if fastReplacedSegment ~= nil and fastReplacedSegment.topLayerEntity ~= nil then
+        fastReplacedSegment.topLayerEntity.destroy()
+    end
+
     global.undergroundSegments.segments[segment.id] = segment
     global.undergroundSegments.surfaceSegmentPositions[segment.surfacePositionString] = {
         id = segment.surfacePositionString,
@@ -333,6 +348,9 @@ UndergroundSegments.EntityRemoved = function(segment, killForce, killerCauseEnti
     end
     if segment.trainBlockerEntity ~= nil then
         segment.trainBlockerEntity.destroy()
+    end
+    if segment.topLayerEntity ~= nil then
+        segment.topLayerEntity.destroy()
     end
     global.undergroundSegments.surfaceSegmentPositions[segment.surfacePositionString] = nil
     global.undergroundSegments.segments[segment.id] = nil

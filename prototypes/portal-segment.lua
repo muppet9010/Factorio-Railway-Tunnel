@@ -75,7 +75,7 @@ local portalSegmentRemnant = {
         width = 192,
         height = 192,
         frame_count = 1,
-        direction_count = 2
+        direction_count = 4
     }
 }
 

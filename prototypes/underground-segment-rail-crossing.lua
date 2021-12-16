@@ -1,5 +1,3 @@
---TODO: the placement graphics rails and arrows need shrinking to fit under above entities graphics.
-
 local undergroundSegmentRailCrossing = {
     type = "simple-entity-with-owner",
     name = "railway_tunnel-underground_segment-straight-rail_crossing",
@@ -78,7 +76,7 @@ local undergroundSegmentRailCrossingRemnant = {
         width = 192,
         height = 192,
         frame_count = 1,
-        direction_count = 2
+        direction_count = 4
     }
 }
 

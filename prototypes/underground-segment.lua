@@ -1,5 +1,3 @@
---TODO: the placement graphics arrows need an additional graphic placed over them when built. Additional graphic should be render layer "tile-transition" to cover up the arrows.
-
 local undergroundSegmentStraight = {
     type = "simple-entity-with-owner",
     name = "railway_tunnel-underground_segment-straight",
@@ -78,7 +76,7 @@ local undergroundSegmentStraightRemnant = {
         width = 192,
         height = 192,
         frame_count = 1,
-        direction_count = 2
+        direction_count = 4
     }
 }
 
@@ -93,10 +91,46 @@ local undergroundSegmentStraightItem = {
     place_result = "railway_tunnel-underground_segment-straight"
 }
 
+local undergroundSegmentStraightTopLayer = {
+    type = "simple-entity-with-owner",
+    name = "railway_tunnel-underground_segment-straight-top_layer",
+    icon = "__railway_tunnel__/graphics/icon/underground_segment-straight/railway_tunnel-underground_segment-straight.png",
+    icon_size = 32,
+    subgroup = "railway_tunnel-other",
+    collision_box = nil,
+    collision_mask = {},
+    selection_box = nil,
+    flags = {"not-on-map"},
+    picture = {
+        north = {
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-northsouth-top_layer.png",
+            height = 64,
+            width = 192
+        },
+        east = {
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-eastwest-top_layer.png",
+            height = 192,
+            width = 64
+        },
+        south = {
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-northsouth-top_layer.png",
+            height = 64,
+            width = 192
+        },
+        west = {
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-eastwest-top_layer.png",
+            height = 192,
+            width = 64
+        }
+    },
+    render_layer = "tile-transition"
+}
+
 data:extend(
     {
         undergroundSegmentStraight,
         undergroundSegmentStraightRemnant,
-        undergroundSegmentStraightItem
+        undergroundSegmentStraightItem,
+        undergroundSegmentStraightTopLayer
     }
 )
