@@ -11,7 +11,13 @@ MAJOR:
 	- require a portal area the length of the train for entry and exit. So only when the entering train is fully within this area (signal block) does the train get committed and cloned to outbound portal area with 0 speed. Work out how long the train would take to navigate to the end of the exit portal area and then after that time set the train active and its speed either full or 0.
 	- Any train trying to enter the portal area that is longer than it will be hard blocked at the border, set to manual and a notificaiton to user shown.
 	- Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This are will have some above ground visual blocking graphics so train within it isn't visible.
-    - Initially tunnels (portals and underground) must be built in straight lines. May support curved tunnels in future, but portal area MUST be straight to save UPS.
+    - Initially tunnels (portals and underground) must be built in straight lines.
+    - Portal Redesign:
+        - There will be 2 portal parts initially.
+            - Portal End - a 6x6 tile piece that has to be used at both ends of each portal. At the End part it will provide 6 of the 8 tiles needed for the detector entity, end signals, blocker locomotive and far invisible signals. At the Entry part it will provide 6 tiles: 2 tiles needed for the entry signals and detector, 2 tiles for the End part and 2 tiles for a leaving train to pull forward in when leaving.
+            - Portal Segment - a 2x6 piece that is used to build up the portal's straight length. This will make up the full train length, but no padding needed as the entryy part handles this.
+        - Will have the example composition of: E S S E U U U U E S S E
+        - Now we are using an End portal detector entity its death triggers before the train tries to complete moving in to the blocker loco. Meaning no end padding space is needed for fast trains.
 
 
 MINOR:
@@ -31,7 +37,8 @@ MINOR:
 
 
 FUTURE:
-	- Allows corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel.
+	- Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carraiges and flipping them.
+    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
 
 
 PREDICTED UPS SAVINGS:
