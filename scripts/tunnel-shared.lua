@@ -13,12 +13,13 @@ local TunnelShared = {}
 TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
     local startingTunnelPart_name, startingTunnelPart_direction, startingTunnelPart_position = startingTunnelPart.name, startingTunnelPart.direction, startingTunnelPart.position
 
-    if Common.UndergroundSegmentPlacedEntityNames[startingTunnelPart_name] then
+    if Common.UndergroundSegmentEntityNames[startingTunnelPart_name] then
         -- Only include the starting tunnel segment when we are checking its direction, not when checking from it the other direction. Otherwise we double add it.
         if checkingDirection == startingTunnelPart_direction then
             table.insert(tunnelSegmentEntities, startingTunnelPart)
         end
-    elseif Common.TunnelPortalPlacedEntityNames[startingTunnelPart_name] then
+    elseif Common.PortalEndAndSegmentEntityNames[startingTunnelPart_name] then
+        --TODO - checking part is too generic
         table.insert(tunnelPortalEntities, startingTunnelPart)
     else
         error("Common.CheckTunnelPartsInDirectionAndGetAllParts() unsupported startingTunnelPart.name: " .. startingTunnelPart_name)
@@ -27,7 +28,7 @@ TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
     local checkingPositionOffset = Utils.RotatePositionAround0(Utils.DirectionToOrientation(checkingDirection), {x = 0, y = 2})
     while continueChecking do
         nextCheckingPos = Utils.ApplyOffsetToPosition(nextCheckingPos, checkingPositionOffset)
-        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = Common.UndergroundSegmentAndPortalPlacedEntityNames, force = startingTunnelPart.force, limit = 1}
+        local connectedTunnelEntities = startingTunnelPart.surface.find_entities_filtered {position = nextCheckingPos, name = Common.UndergroundSegmentAndAllPortalEntityNames, force = startingTunnelPart.force, limit = 1}
         if #connectedTunnelEntities == 0 then
             continueChecking = false
         else
@@ -36,14 +37,15 @@ TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
             if connectedTunnelEntity_position.x ~= startingTunnelPart_position.x and connectedTunnelEntity_position.y ~= startingTunnelPart_position.y then
                 TunnelShared.EntityErrorMessage(placer, "Tunnel parts must be in a straight line", connectedTunnelEntity.surface, connectedTunnelEntity_position)
                 continueChecking = false
-            elseif Common.UndergroundSegmentPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif Common.UndergroundSegmentEntityNames[connectedTunnelEntity.name] then
                 if connectedTunnelEntity_direction == startingTunnelPart_direction or connectedTunnelEntity_direction == Utils.LoopDirectionValue(startingTunnelPart_direction + 4) then
                     table.insert(tunnelSegmentEntities, connectedTunnelEntity)
                 else
                     TunnelShared.EntityErrorMessage(placer, "Tunnel segments must be in the same direction; horizontal or vertical", connectedTunnelEntity.surface, connectedTunnelEntity_position)
                     continueChecking = false
                 end
-            elseif Common.TunnelPortalPlacedEntityNames[connectedTunnelEntity.name] then
+            elseif Common.PortalEndAndSegmentEntityNames[connectedTunnelEntity.name] then
+                --TODO - checking part is too generic
                 continueChecking = false
                 if connectedTunnelEntity_direction == Utils.LoopDirectionValue(checkingDirection + 4) then
                     table.insert(tunnelPortalEntities, connectedTunnelEntity)
@@ -59,56 +61,56 @@ TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnel
     return false, tunnelPortalEntities, tunnelSegmentEntities
 end
 
----@param placementEntity LuaEntity
+---@param builtEntity LuaEntity
 ---@return boolean
-TunnelShared.IsPlacementOnRailGrid = function(placementEntity)
-    if placementEntity.position.x % 2 == 0 or placementEntity.position.y % 2 == 0 then
+TunnelShared.IsPlacementOnRailGrid = function(builtEntity)
+    if builtEntity.position.x % 2 == 0 or builtEntity.position.y % 2 == 0 then
         return false
     else
         return true
     end
 end
 
----@param placementEntity LuaEntity
+---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
-TunnelShared.UndoInvalidTunnelPartPlacement = function(placementEntity, placer, mine)
-    TunnelShared.UndoInvalidPlacement(placementEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
+TunnelShared.UndoInvalidTunnelPartPlacement = function(builtEntity, placer, mine)
+    TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
 end
 
----@param placementEntity LuaEntity
+---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@param mine boolean @If to mine and return the item to the placer, or just destroy it.
 ---@param highlightValidRailGridPositions boolean @If to show to the placer valid positions on the rail grid.
 ---@param warningMessageText string @Text shown to the placer
 ---@param errorEntityNameText string @Entity name shown if the process errors.
-TunnelShared.UndoInvalidPlacement = function(placementEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
+TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
     if placer ~= nil then
-        local position, surface, entityName, ghostName, direction = placementEntity.position, placementEntity.surface, placementEntity.name, nil, placementEntity.direction
+        local position, surface, entityName, ghostName, direction = builtEntity.position, builtEntity.surface, builtEntity.name, nil, builtEntity.direction
         if entityName == "entity-ghost" then
-            ghostName = placementEntity.ghost_name
+            ghostName = builtEntity.ghost_name
         end
         TunnelShared.EntityErrorMessage(placer, warningMessageText, surface, position)
         if mine then
             local result
             if placer.is_player() then
-                result = placer.mine_entity(placementEntity, true)
+                result = placer.mine_entity(builtEntity, true)
             else
                 -- Is construction bot
-                result = placementEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+                result = builtEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
             end
             if result ~= true then
                 error("couldn't mine invalidly placed " .. errorEntityNameText .. " entity")
             end
         else
-            placementEntity.destroy()
+            builtEntity.destroy()
         end
         if highlightValidRailGridPositions then
             TunnelShared.HighlightValidPlacementPositionsOnRailGrid(placer, position, surface, entityName, ghostName, direction)
         end
     else
-        placementEntity.destroy()
-        game.print("invalid placement of " .. errorEntityNameText .. " by script at {" .. tostring(placementEntity.position.x) .. "," .. tostring(placementEntity.position.y) .. "} removed", Colors.red)
+        builtEntity.destroy()
+        game.print("invalid placement of " .. errorEntityNameText .. " by script at {" .. tostring(builtEntity.position.x) .. "," .. tostring(builtEntity.position.y) .. "} removed", Colors.red)
     end
 end
 

@@ -3,7 +3,7 @@ local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local UndergroundSegmentPlacedPlacementEntityNames = Common.UndergroundSegmentPlacedPlacementEntityNames
+local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
 local UndergroundSegments = {}
 
 ---@class Segment
@@ -31,7 +31,7 @@ end
 
 UndergroundSegments.OnLoad = function()
     local segmentEntityNames_Filter = {}
-    for _, name in pairs(UndergroundSegmentPlacedPlacementEntityNames) do
+    for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "UndergroundSegments.OnBuiltEntity", UndergroundSegments.OnBuiltEntity, segmentEntityNames_Filter)
@@ -45,7 +45,7 @@ UndergroundSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "UndergroundSegments.OnDiedEntity", UndergroundSegments.OnDiedEntity, segmentEntityNames_Filter)
 
     local segmentEntityGhostNames_Filter = {}
-    for _, name in pairs(UndergroundSegmentPlacedPlacementEntityNames) do
+    for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "UndergroundSegments.OnBuiltEntityGhost", UndergroundSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
@@ -59,34 +59,31 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 UndergroundSegments.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or UndergroundSegmentPlacedPlacementEntityNames[createdEntity.name] == nil then
+    if not createdEntity.valid or UndergroundSegmentEntityNames[createdEntity.name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    UndergroundSegments.PlacementUndergroundSegmentBuilt(createdEntity, placer)
+    UndergroundSegments.UndergroundSegmentBuilt(createdEntity, placer)
 end
 
----@param placementEntity LuaEntity
+---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@return boolean
-UndergroundSegments.PlacementUndergroundSegmentBuilt = function(placementEntity, placer)
-    local centerPos, force, lastUser, directionValue, surface, placementEntityName = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface, placementEntity.name
+UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
+    local centerPos, force, lastUser, directionValue, surface, builtEntityName = builtEntity.position, builtEntity.force, builtEntity.last_user, builtEntity.direction, builtEntity.surface, builtEntity.name
 
-    if not TunnelShared.IsPlacementOnRailGrid(placementEntity) then
-        TunnelShared.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
+    if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
+        TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
-    placementEntity.destroy()
 
-    local placedEntityName, placeCrossingRails
-    if placementEntityName == "railway_tunnel-underground_segment-straight-placement" or placementEntityName == "railway_tunnel-underground_segment-straight-placed" then
-        placedEntityName = "railway_tunnel-underground_segment-straight-placed"
+    local placeCrossingRails
+    if builtEntityName == "railway_tunnel-underground_segment-straight" then
         placeCrossingRails = false
-    elseif placementEntityName == "railway_tunnel-underground_segment-straight-rail_crossing-placement" or placementEntityName == "railway_tunnel-underground_segment-straight-rail_crossing-placed" then
-        placedEntityName = "railway_tunnel-underground_segment-straight-rail_crossing-placed"
+    elseif builtEntityName == "railway_tunnel-underground_segment-straight-rail_crossing" then
         placeCrossingRails = true
     end
 
@@ -102,23 +99,21 @@ UndergroundSegments.PlacementUndergroundSegmentBuilt = function(placementEntity,
                 -- Put the old correct entity back and correct whats been done.
                 TunnelShared.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", surface, centerPos)
                 local oldId = fastReplacedSegment.id
-                fastReplacedSegment.entity = surface.create_entity {name = "railway_tunnel-underground_segment-straight-rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
+                fastReplacedSegment.entity = surface.create_entity {name = "railway_tunnel-underground_segment-straight-rail_crossing", position = centerPos, direction = directionValue, force = force, player = lastUser}
                 local newId = fastReplacedSegment.entity.unit_number
                 fastReplacedSegment.id = newId
                 global.undergroundSegments.segments[newId] = fastReplacedSegment
                 global.undergroundSegments.segments[oldId] = nil
-                Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing-placement", count = 1})
-                Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight-placement", count = 1})
+                Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing", count = 1})
+                Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight", count = 1})
                 return
             end
         end
     end
 
-    local placedUndergroundSegment = surface.create_entity {name = placedEntityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
-
     local segment = {
-        id = placedUndergroundSegment.unit_number,
-        entity = placedUndergroundSegment,
+        id = builtEntity.unit_number,
+        entity = builtEntity,
         surfacePositionString = surfacePositionString
     }
 
@@ -127,15 +122,16 @@ UndergroundSegments.PlacementUndergroundSegmentBuilt = function(placementEntity,
         segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
     end
 
+    -- TODO: can try and fast replace entity over itself, but on different rotation. This is odd, but causes crash when crossing is fast replaced over crossing on different rotation (north > east  or north > south)
     if placeCrossingRails then
         -- Crossing rails placed. So handle their specific extras.
         segment.crossingRailEntities = {}
         local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), Utils.DirectionToOrientation(directionValue)
         for _, nextRailPos in pairs(
             {
-                Utils.ApplyOffsetToPosition(placedUndergroundSegment.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
-                placedUndergroundSegment.position,
-                Utils.ApplyOffsetToPosition(placedUndergroundSegment.position, Utils.RotatePositionAround0(orientation, {x = 2, y = 0}))
+                Utils.ApplyOffsetToPosition(builtEntity.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
+                builtEntity.position,
+                Utils.ApplyOffsetToPosition(builtEntity.position, Utils.RotatePositionAround0(orientation, {x = 2, y = 0}))
             }
         ) do
             local placedRail = surface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
@@ -172,7 +168,7 @@ UndergroundSegments.PlacementUndergroundSegmentBuilt = function(placementEntity,
         end
         global.undergroundSegments.segments[fastReplacedSegment.id] = nil
     else
-        local tunnelComplete, tunnelPortals, undergroundSegments = UndergroundSegments.CheckTunnelCompleteFromSegment(placedUndergroundSegment, placer)
+        local tunnelComplete, tunnelPortals, undergroundSegments = UndergroundSegments.CheckTunnelCompleteFromSegment(builtEntity, placer)
         if not tunnelComplete then
             return false
         end
@@ -231,7 +227,7 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 UndergroundSegments.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentPlacedPlacementEntityNames[createdEntity.ghost_name] == nil then
+    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
@@ -248,7 +244,7 @@ end
 UndergroundSegments.OnPreBuild = function(event)
     -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
     local player = game.get_player(event.player_index)
-    if not player.cursor_stack.valid or not player.cursor_stack.valid_for_read or UndergroundSegmentPlacedPlacementEntityNames[player.cursor_stack.name] == nil then
+    if not player.cursor_stack.valid or not player.cursor_stack.valid_for_read or UndergroundSegmentEntityNames[player.cursor_stack.name] == nil then
         return
     end
     local surface = player.surface
@@ -262,7 +258,7 @@ end
 
 UndergroundSegments.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
-    if not minedEntity.valid or UndergroundSegmentPlacedPlacementEntityNames[minedEntity.name] == nil then
+    if not minedEntity.valid or UndergroundSegmentEntityNames[minedEntity.name] == nil then
         return
     end
     local segment = global.undergroundSegments.segments[minedEntity.unit_number]
@@ -361,7 +357,7 @@ end
 
 UndergroundSegments.OnDiedEntity = function(event)
     local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
-    if not diedEntity.valid or UndergroundSegmentPlacedPlacementEntityNames[diedEntity.name] == nil then
+    if not diedEntity.valid or UndergroundSegmentEntityNames[diedEntity.name] == nil then
         return
     end
     local segment = global.undergroundSegments.segments[diedEntity.unit_number]

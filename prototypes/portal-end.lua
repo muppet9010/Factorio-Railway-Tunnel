@@ -1,17 +1,13 @@
-local Utils = require("utility/utils")
-
---[[
-    The entities shouldn't appear twice in any player list. Placements shouldn't appear in decon planner lists. As the placed is always the selected entity by the player.
-]]
-local portalEndPlacement = {
+local portalEnd = {
     type = "simple-entity-with-owner",
-    name = "railway_tunnel-portal_end-placement",
-    icon = "__railway_tunnel__/graphics/icon/portal_end/railway_tunnel-portal_end-placement.png",
+    name = "railway_tunnel-portal_end",
+    icon = "__railway_tunnel__/graphics/icon/portal_end/railway_tunnel-portal_end.png",
     icon_size = 32,
-    localised_name = {"item-name.railway_tunnel-portal_end-placement"},
-    localised_description = {"item-description.railway_tunnel-portal_end-placement"},
+    localised_name = {"item-name.railway_tunnel-portal_end"},
+    localised_description = {"item-description.railway_tunnel-portal_end"},
     collision_box = {{-2.9, -2.9}, {2.9, 2.9}},
     collision_mask = {"item-layer", "object-layer", "player-layer", "water-tile"},
+    selection_box = {{-2.9, -2.9}, {2.9, 2.9}},
     max_health = 1000,
     resistances = {
         {
@@ -23,57 +19,52 @@ local portalEndPlacement = {
             percent = 100
         }
     },
-    flags = {"player-creation", "not-on-map", "not-deconstructable"},
+    flags = {"player-creation", "not-on-map"},
     picture = {
         north = {
-            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-northsouth.png",
             height = 192,
             width = 192
         },
         east = {
-            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-eastwest.png",
             height = 192,
             width = 192
         },
         south = {
-            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-northsouth.png",
             height = 192,
             width = 192
         },
         west = {
-            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_end/portal_end-eastwest.png",
             height = 192,
             width = 192
         }
     },
+    render_layer = "ground-tile",
     minable = {
         mining_time = 0.5,
-        result = "railway_tunnel-portal_end-placement",
+        result = "railway_tunnel-portal_end",
         count = 1
     },
     placeable_by = {
-        item = "railway_tunnel-portal_end-placement",
+        item = "railway_tunnel-portal_end",
         count = 1
-    }
+    },
+    corpse = "railway_tunnel-portal_end-remnant"
 }
-
-local portalEndPlaced = Utils.DeepCopy(portalEndPlacement)
-portalEndPlaced.name = "railway_tunnel-portal_end-placed"
-portalEndPlaced.flags = {"player-creation", "not-on-map"}
-portalEndPlaced.render_layer = "ground-tile"
-portalEndPlaced.selection_box = portalEndPlaced.collision_box
-portalEndPlaced.corpse = "railway_tunnel-portal_end-remnant"
 
 local portalEndRemnant = {
     type = "corpse",
     name = "railway_tunnel-portal_end-remnant",
-    icon = portalEndPlacement.icon,
-    icon_size = portalEndPlacement.icon_size,
-    icon_mipmaps = portalEndPlacement.icon_mipmaps,
+    icon = portalEnd.icon,
+    icon_size = portalEnd.icon_size,
+    icon_mipmaps = portalEnd.icon_mipmaps,
     flags = {"placeable-neutral", "not-on-map"},
     subgroup = "remnants",
     order = "d[remnants]-b[rail]-z[portal]",
-    selection_box = portalEndPlacement.selection_box,
+    selection_box = portalEnd.selection_box,
     selectable_in_game = false,
     time_before_removed = 60 * 60 * 15, -- 15 minutes
     final_render_layer = "remnants",
@@ -88,22 +79,21 @@ local portalEndRemnant = {
     }
 }
 
-local portalEndPlacementItem = {
+local portalEndItem = {
     type = "item",
-    name = "railway_tunnel-portal_end-placement",
-    icon = "__railway_tunnel__/graphics/icon/portal_end/railway_tunnel-portal_end-placement.png",
+    name = "railway_tunnel-portal_end",
+    icon = "__railway_tunnel__/graphics/icon/portal_end/railway_tunnel-portal_end.png",
     icon_size = 32,
     subgroup = "train-transport",
     order = "a[train-system]-a[rail]a",
     stack_size = 10,
-    place_result = "railway_tunnel-portal_end-placement"
+    place_result = "railway_tunnel-portal_end"
 }
 
 data:extend(
     {
-        portalEndPlacement,
-        portalEndPlaced,
+        portalEnd,
         portalEndRemnant,
-        portalEndPlacementItem
+        portalEndItem
     }
 )

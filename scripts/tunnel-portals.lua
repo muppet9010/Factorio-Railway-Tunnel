@@ -3,9 +3,8 @@ local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local TunnelPortalPlacedPlacementEntityNames, TunnelSignalDirection, TunnelPortalPlacedEntityNames, TunnelUsageParts = Common.TunnelPortalPlacedPlacementEntityNames, Common.TunnelSignalDirection, Common.TunnelPortalPlacedEntityNames, Common.TunnelUsageParts
+local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = Common.PortalEndAndSegmentEntityNames, Common.TunnelSignalDirection, Common.TunnelUsageParts
 local TunnelPortals = {}
-local Colors = require("utility/colors")
 local EventScheduler = require("utility/event-scheduler")
 
 local SetupValues = {
@@ -58,7 +57,7 @@ end
 
 TunnelPortals.OnLoad = function()
     local portalEntityNames_Filter = {}
-    for _, name in pairs(TunnelPortalPlacedPlacementEntityNames) do
+    for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityNames_Filter, {filter = "name", name = name})
     end
 
@@ -72,13 +71,12 @@ TunnelPortals.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntity", TunnelPortals.OnDiedEntity, portalEntityNames_Filter)
 
     local portalEntityGhostNames_Filter = {}
-    for _, name in pairs(TunnelPortalPlacedPlacementEntityNames) do
+    for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "TunnelPortals.OnPlayerRotatedEntity", TunnelPortals.OnPlayerRotatedEntity)
 
     Interfaces.RegisterInterface("TunnelPortals.On_PreTunnelCompleted", TunnelPortals.On_PreTunnelCompleted)
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
@@ -98,41 +96,38 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 TunnelPortals.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or TunnelPortalPlacedPlacementEntityNames[createdEntity.name] == nil then
+    if not createdEntity.valid or PortalEndAndSegmentEntityNames[createdEntity.name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    TunnelPortals.PlacementTunnelPortalBuilt(createdEntity, placer)
+    TunnelPortals.TunnelPortalBuilt(createdEntity, placer)
 end
 
----@param placementEntity LuaEntity
+---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@return boolean
-TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
-    local centerPos, force, lastUser, directionValue, surface = placementEntity.position, placementEntity.force, placementEntity.last_user, placementEntity.direction, placementEntity.surface
+TunnelPortals.TunnelPortalBuilt = function(builtEntity, placer)
+    local centerPos, force, directionValue, surface = builtEntity.position, builtEntity.force, builtEntity.direction, builtEntity.surface
     local orientation = Utils.DirectionToOrientation(directionValue)
     local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.trackEntryPointFromCenter}))
 
-    if not TunnelShared.IsPlacementOnRailGrid(placementEntity) then
-        TunnelShared.UndoInvalidTunnelPartPlacement(placementEntity, placer, true)
+    if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
+        TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
 
-    placementEntity.destroy()
-    local portalEntity = surface.create_entity {name = "railway_tunnel-tunnel_portal_surface-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
-    portalEntity.rotatable = false -- Only stops players from rotating the placed entity, not editor mode. We track for editor use.
-    local portalEntity_position = portalEntity.position
+    local portalEntity_position = builtEntity.position
     ---@type Portal
     local portal = {
-        id = portalEntity.unit_number,
-        entity = portalEntity,
+        id = builtEntity.unit_number,
+        entity = builtEntity,
         entityDirection = directionValue,
         portalRailEntities = {},
         entryPointDistanceFromCenter = math.abs(SetupValues.trackEntryPointFromCenter),
-        portalEntryPointPosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(portalEntity.orientation, {x = 0, y = 0 - math.abs(SetupValues.trackEntryPointFromCenter)}))
+        portalEntryPointPosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(builtEntity.orientation, {x = 0, y = 0 - math.abs(SetupValues.trackEntryPointFromCenter)}))
     }
     global.tunnelPortals.portals[portal.id] = portal
 
@@ -187,7 +182,7 @@ TunnelPortals.PlacementTunnelPortalBuilt = function(placementEntity, placer)
     -- Cache the objects details for later use.
     portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.dummyLocomotiveDistance}))
 
-    local tunnelComplete, tunnelPortals, undergroundSegments = TunnelPortals.CheckTunnelCompleteFromPortal(portalEntity, placer, portal)
+    local tunnelComplete, tunnelPortals, undergroundSegments = TunnelPortals.CheckTunnelCompleteFromPortal(builtEntity, placer, portal)
     if not tunnelComplete then
         return
     end
@@ -343,7 +338,7 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 TunnelPortals.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or TunnelPortalPlacedPlacementEntityNames[createdEntity.ghost_name] == nil then
+    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
@@ -360,7 +355,7 @@ end
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 TunnelPortals.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
-    if not minedEntity.valid or TunnelPortalPlacedPlacementEntityNames[minedEntity.name] == nil then
+    if not minedEntity.valid or PortalEndAndSegmentEntityNames[minedEntity.name] == nil then
         return
     end
     local portal = global.tunnelPortals.portals[minedEntity.unit_number]
@@ -478,7 +473,7 @@ end
 ---@param event on_entity_died|script_raised_destroy
 TunnelPortals.OnDiedEntity = function(event)
     local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
-    if not diedEntity.valid or TunnelPortalPlacedPlacementEntityNames[diedEntity.name] == nil then
+    if not diedEntity.valid or PortalEndAndSegmentEntityNames[diedEntity.name] == nil then
         return
     end
 
@@ -751,17 +746,6 @@ TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
         end
         portal.transitionUsageDetectorEntity = nil
     end
-end
-
----@param event on_player_rotated_entity
-TunnelPortals.OnPlayerRotatedEntity = function(event)
-    -- Just check if the player (editor mode) rotated a placed portal entity.
-    if TunnelPortalPlacedEntityNames[event.entity.name] == nil then
-        return
-    end
-    -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
-    event.entity.direction = event.previous_direction
-    game.get_player(event.player_index).print("Don't try and rotate placed rail tunnel portals.", Colors.red)
 end
 
 return TunnelPortals

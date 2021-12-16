@@ -6,9 +6,6 @@ local Common = require("scripts/common")
 local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
 
---[[
-    Notes: We have to handle the "placed" versions being built as this is what blueprints get and when player is in the editor in "entity" mode and pipette's a placed entity. All other player modes select the placement item with pipette.
-]]
 ---@class Tunnel
 ---@field id Id @unqiue id of the tunnel.
 ---@field alignment TunnelAlignment
