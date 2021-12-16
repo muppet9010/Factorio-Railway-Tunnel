@@ -4,11 +4,12 @@ local Common = {}
 -- Make the entity lists.
 ---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
 Common.UndergroundSegmentPlacedEntityNames, Common.UndergroundSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
-for _, coreName in pairs({"railway_tunnel-underground_segment-straight", "railway_tunnel-underground_segment-straight_rail_crossing"}) do
+for _, coreName in pairs({"railway_tunnel-underground_segment-straight", "railway_tunnel-underground_segment-straight-rail_crossing"}) do
     Common.UndergroundSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
     Common.UndergroundSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
 end
 Common.UndergroundSegmentPlacedPlacementEntityNames = Utils.TableMerge({Common.UndergroundSegmentPlacedEntityNames, Common.UndergroundSegmentPlacementEntityNames}) ---@type table<string, string>
+--TODO
 for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
     Common.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
     Common.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"

@@ -15,7 +15,8 @@ require("prototypes/invisible-rails")
 require("prototypes/internal-signal-not-on-map")(tunnelSignalSurfaceCollisionLayer)
 require("prototypes/invisible-signal-not-on-map")(tunnelSignalSurfaceCollisionLayer)
 
-require("prototypes/tunnel-portal-surface")
+require("prototypes/portal-end")
+require("prototypes/portal-segment")
 require("prototypes/tunnel-portal-blocking-locomotive")
 require("prototypes/tunnel-exit-dummy-locomotive")
 

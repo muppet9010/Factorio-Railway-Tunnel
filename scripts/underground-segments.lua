@@ -12,7 +12,7 @@ local UndergroundSegments = {}
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities within the tunnel segment that form part of the larger tunnel.
 ---@field signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
 ---@field tunnel Tunnel
----@field crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "underground_segment_rail_crossing".
+---@field crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "underground_segment-rail_crossing".
 ---@field surfacePositionString SurfacePositionString @used to back match to surfaceSegmentPositions global object.
 ---@field beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
 ---@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
@@ -85,8 +85,8 @@ UndergroundSegments.PlacementUndergroundSegmentBuilt = function(placementEntity,
     if placementEntityName == "railway_tunnel-underground_segment-straight-placement" or placementEntityName == "railway_tunnel-underground_segment-straight-placed" then
         placedEntityName = "railway_tunnel-underground_segment-straight-placed"
         placeCrossingRails = false
-    elseif placementEntityName == "railway_tunnel-underground_segment-straight_rail_crossing-placement" or placementEntityName == "railway_tunnel-underground_segment-straight_rail_crossing-placed" then
-        placedEntityName = "railway_tunnel-underground_segment-straight_rail_crossing-placed"
+    elseif placementEntityName == "railway_tunnel-underground_segment-straight-rail_crossing-placement" or placementEntityName == "railway_tunnel-underground_segment-straight-rail_crossing-placed" then
+        placedEntityName = "railway_tunnel-underground_segment-straight-rail_crossing-placed"
         placeCrossingRails = true
     end
 
@@ -102,12 +102,12 @@ UndergroundSegments.PlacementUndergroundSegmentBuilt = function(placementEntity,
                 -- Put the old correct entity back and correct whats been done.
                 TunnelShared.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", surface, centerPos)
                 local oldId = fastReplacedSegment.id
-                fastReplacedSegment.entity = surface.create_entity {name = "railway_tunnel-underground_segment-straight_rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
+                fastReplacedSegment.entity = surface.create_entity {name = "railway_tunnel-underground_segment-straight-rail_crossing-placed", position = centerPos, direction = directionValue, force = force, player = lastUser}
                 local newId = fastReplacedSegment.entity.unit_number
                 fastReplacedSegment.id = newId
                 global.undergroundSegments.segments[newId] = fastReplacedSegment
                 global.undergroundSegments.segments[oldId] = nil
-                Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight_rail_crossing-placement", count = 1})
+                Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing-placement", count = 1})
                 Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight-placement", count = 1})
                 return
             end

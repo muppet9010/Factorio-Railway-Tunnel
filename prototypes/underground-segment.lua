@@ -1,11 +1,11 @@
 local Utils = require("utility/utils")
 --[[
-    The entities shouldn't appear twice in any player ist. Placements shouldn't appear in decon or upgrade planner lists (primary selected entity in first column). As the placed is always the selected entity by the player.
+    The entities shouldn't appear twice in any player list. Placements shouldn't appear in decon or upgrade planner lists (primary selected entity in first column). As the placed is always the selected entity by the player.
 ]]
 local undergroundSegmentStraightPlacement = {
     type = "simple-entity-with-owner",
     name = "railway_tunnel-underground_segment-straight-placement",
-    icon = "__railway_tunnel__/graphics/icon/underground_segment/railway_tunnel-underground_segment-straight-placement.png",
+    icon = "__railway_tunnel__/graphics/icon/underground_segment-straight/railway_tunnel-underground_segment-straight-placement.png",
     icon_size = 32,
     localised_name = {"item-name.railway_tunnel-underground_segment-straight-placement"},
     localised_description = {"item-description.railway_tunnel-underground_segment-straight-placement"},
@@ -23,25 +23,25 @@ local undergroundSegmentStraightPlacement = {
         }
     },
     flags = {"player-creation", "not-on-map", "not-deconstructable", "not-upgradable"},
-    fast_replaceable_group = "railway_tunnel-underground_segment-straight_from_crossing",
+    fast_replaceable_group = "railway_tunnel-underground_segment-straight-from_crossing",
     picture = {
         north = {
-            filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-placement-northsouth.png",
             height = 64,
             width = 192
         },
         east = {
-            filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-placement-eastwest.png",
             height = 192,
             width = 64
         },
         south = {
-            filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-placement-northsouth.png",
             height = 64,
             width = 192
         },
         west = {
-            filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-placement-eastwest.png",
             height = 192,
             width = 64
         }
@@ -60,25 +60,25 @@ local undergroundSegmentStraightPlacement = {
 local undergroundSegmentStraightPlaced = Utils.DeepCopy(undergroundSegmentStraightPlacement)
 undergroundSegmentStraightPlaced.name = "railway_tunnel-underground_segment-straight-placed"
 undergroundSegmentStraightPlaced.flags = {"player-creation", "not-on-map"}
-undergroundSegmentStraightPlaced.fast_replaceable_group = "railway_tunnel-underground_segment-straight_to_crossing"
+undergroundSegmentStraightPlaced.fast_replaceable_group = "railway_tunnel-underground_segment-straight-to_crossing"
 undergroundSegmentStraightPlaced.picture = {
     north = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-base-northsouth.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-base-northsouth.png",
         height = 64,
         width = 192
     },
     east = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-base-eastwest.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-base-eastwest.png",
         height = 192,
         width = 64
     },
     south = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-base-northsouth.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-base-northsouth.png",
         height = 64,
         width = 192
     },
     west = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-base-eastwest.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-base-eastwest.png",
         height = 192,
         width = 64
     }
@@ -102,7 +102,7 @@ local undergroundSegmentStraightPlacementRemnant = {
     final_render_layer = "remnants",
     remove_on_tile_placement = false,
     animation = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment/underground_segment-remnant.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-straight/underground_segment-straight-remnant.png",
         line_length = 1,
         width = 192,
         height = 192,
@@ -114,7 +114,7 @@ local undergroundSegmentStraightPlacementRemnant = {
 local undergroundSegmentStraightPlacementItem = {
     type = "item",
     name = "railway_tunnel-underground_segment-straight-placement",
-    icon = "__railway_tunnel__/graphics/icon/underground_segment/railway_tunnel-underground_segment-straight-placement.png",
+    icon = "__railway_tunnel__/graphics/icon/underground_segment-straight/railway_tunnel-underground_segment-straight-placement.png",
     icon_size = 32,
     subgroup = "train-transport",
     order = "a[train-system]-a[rail]b",

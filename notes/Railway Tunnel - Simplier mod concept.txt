@@ -34,6 +34,7 @@ MINOR:
     - do train arrival check as per mod aim.
     - make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
     - go through the process managed train functions and identify API calls in sub functions that can be passed back and cached for use later n the same tick's functions.
+    - updated Tests that used "railway_tunnel-tunnel_portal_surface-placed" as this isn't relevent any more.
 
 
 FUTURE:

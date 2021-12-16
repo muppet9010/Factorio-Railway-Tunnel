@@ -3,20 +3,24 @@ data:extend(
         {
             type = "technology",
             name = "railway_tunnel",
-            icon = "__railway_tunnel__/graphics/icon/tunnel_portal_surface/railway_tunnel-tunnel_portal_surface-placement.png",
+            icon = "__railway_tunnel__/graphics/icon/railway_tunnel.png",
             icon_size = 32,
             effects = {
                 {
                     type = "unlock-recipe",
-                    recipe = "railway_tunnel-tunnel_portal"
+                    recipe = "railway_tunnel-portal_end"
                 },
                 {
                     type = "unlock-recipe",
-                    recipe = "railway_tunnel-tunnel_segment"
+                    recipe = "railway_tunnel-portal_segment-straight"
                 },
                 {
                     type = "unlock-recipe",
-                    recipe = "railway_tunnel-tunnel_segment_rail_crossing"
+                    recipe = "railway_tunnel-underground_segment-straight"
+                },
+                {
+                    type = "unlock-recipe",
+                    recipe = "railway_tunnel-underground_segment-straight-rail_crossing"
                 }
             },
             prerequisites = {"rail-signals"},
