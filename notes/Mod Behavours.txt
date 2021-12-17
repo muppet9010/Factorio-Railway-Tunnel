@@ -1,0 +1,19 @@
+Mod Behavours
+=============
+
+Underground segments building, mining and fast replacing
+--------------------------------------------------------
+The difficult variation here is supporting the fast replacing and the variation between player and robot events triggered.
+
+Player
+    Place ghost on empty space: on_pre_build > on_built_entity
+    Place ghost fast replace over entity: on_pre_build
+    Place ghost fast replace over ghost: on_pre_build > on_built_entity
+    Build entity: on_pre_build > on_built_entity
+    Mine entity: on_pre_player_mined_item
+    Fast Replace entity: on_pre_build > on_pre_player_mined_item > on_built_entity
+
+Construction bot:
+    Bot build entity: on_robot_built_entity
+    Bot mine entity: on_robot_pre_mined
+    Bot fast replace entity: on_built_entity

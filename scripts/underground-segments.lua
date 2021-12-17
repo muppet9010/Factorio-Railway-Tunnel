@@ -96,6 +96,8 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
     end
+    -- TODO: player fast replacing with SAME entity type over the top with an opposite rotated (180 degree only). Doing 90 degree rotate is fine.
+    -- TODO: a robot building any rotation (90 and 180 degrees) fast replace can error. Some are with same entity and some are with different entity. Fix player one first, then go through various root combinations. Concern some of these edge cases existed for very long time.
     if not placeCrossingRails and fastReplacedSegment ~= nil then
         -- Is an attempt at a downgrade from crossing rails to non crossing rails, so check crossing rails can be safely removed.
         for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
@@ -127,7 +129,6 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
     end
 
-    -- TODO: can try and fast replace entity over itself, but on different rotation. This is odd, but causes crash when crossing is fast replaced over crossing on different rotation (north > east  or north > south)
     if placeCrossingRails then
         -- Crossing rails placed. So handle their specific extras.
         segment.crossingRailEntities = {}
@@ -155,9 +156,8 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         end
     end
 
-    -- TODO: this topLayer removal isn't quite stable for some reason in mining and destroyng and fast replacing.
-    -- Handle top layer entity (adding/removing as needed)
     if topLayerEntityName ~= nil then
+        -- TODO: this should only be done once the tunnel is completed and removed when it is cancelled. This way when building the tunnel you can easily see where pieces join together.
         segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
     end
     if fastReplacedSegment ~= nil and fastReplacedSegment.topLayerEntity ~= nil then
@@ -256,21 +256,31 @@ UndergroundSegments.OnBuiltEntityGhost = function(event)
     end
 end
 
+-- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
+---@param event on_pre_build
 UndergroundSegments.OnPreBuild = function(event)
-    -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
     local player = game.get_player(event.player_index)
     if not player.cursor_stack.valid or not player.cursor_stack.valid_for_read or UndergroundSegmentEntityNames[player.cursor_stack.name] == nil then
         return
     end
+
     local surface = player.surface
     local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, event.position)
     local segmentPositionObject = global.undergroundSegments.surfaceSegmentPositions[surfacePositionString]
     if segmentPositionObject == nil then
         return
     end
+
+    -- If the direction isn't the same or opposite then this is a rotational fast replace attempt and this isn't a handled fast replace by us.
+    if segmentPositionObject.segment.entity.direction ~= event.direction and segmentPositionObject.segment.entity.direction ~= Utils.LoopDirectionValue(event.direction + 4) then
+        return
+    end
+
+    -- Its a valid fast replace wuithout affecting tunnel and so flag it as such.
     segmentPositionObject.segment.beingFastReplacedTick = event.tick
 end
 
+---@param event on_pre_player_mined_item|on_robot_pre_mined
 UndergroundSegments.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
     if not minedEntity.valid or UndergroundSegmentEntityNames[minedEntity.name] == nil then
@@ -282,7 +292,7 @@ UndergroundSegments.OnPreMinedEntity = function(event)
     end
 
     if segment.beingFastReplacedTick ~= nil and segment.beingFastReplacedTick == event.tick then
-        -- Detected that the player has pre_placed an entity at the same spot in the same tick, so almost certainly the entity is being fast replaced.
+        -- Detected that the player has pre_placed an entity at the same spot in the same tick, so the entity is being fast replaced and thus not really mined.
         return
     end
 
@@ -373,6 +383,7 @@ UndergroundSegments.On_TunnelRemoved = function(segment)
     segment.signalEntities = nil
 end
 
+---@param event on_entity_died|script_raised_destroy
 UndergroundSegments.OnDiedEntity = function(event)
     local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
     if not diedEntity.valid or UndergroundSegmentEntityNames[diedEntity.name] == nil then
