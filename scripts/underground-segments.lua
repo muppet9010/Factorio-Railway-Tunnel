@@ -24,6 +24,8 @@ local UndergroundSegments = {}
 ---@field id SurfacePositionString
 ---@field segment Segment
 
+---@alias FastReplaceChange "'downgrade'"|"'upgrade'"|"'same'"
+
 UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments = global.undergroundSegments or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<Id, Segment>
@@ -74,8 +76,10 @@ end
 ---@param placer EntityActioner
 ---@return boolean
 UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
+    -- TODO: a robot building any rotation (90 and 180 degrees) fast replace can error. Some are with same entity and some are with different entity. Fix player one first, then go through various root combinations. Concern some of these edge cases existed for very long time.
     local centerPos, force, lastUser, directionValue, surface, builtEntityName = builtEntity.position, builtEntity.force, builtEntity.last_user, builtEntity.direction, builtEntity.surface, builtEntity.name
 
+    -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
@@ -89,22 +93,33 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         placeCrossingRails = true
     end
 
+    -- Check if this is a fast replacement or not.
     local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, centerPos)
     local fastReplacedSegmentByPosition = global.undergroundSegments.surfaceSegmentPositions[surfacePositionString]
-    ---@type Segment
-    local fastReplacedSegment
+    ---@typelist Segment, FastReplaceChange
+    local fastReplacedSegment, fastReplaceChange
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
+        if placeCrossingRails and fastReplacedSegment.crossingRailEntities == nil then
+            -- Upgrade from non crossing rails to crossing rails.
+            fastReplaceChange = "upgrade"
+        elseif not placeCrossingRails and fastReplacedSegment.crossingRailEntities ~= nil then
+            -- Downgrade from crossing rails to non crossing rails.
+            fastReplaceChange = "downgrade"
+        else
+            -- Is a fast replace to the same type
+            fastReplaceChange = "same"
+        end
     end
-    -- TODO: player fast replacing with SAME entity type over the top with an opposite rotated (180 degree only). Doing 90 degree rotate is fine.
-    -- TODO: a robot building any rotation (90 and 180 degrees) fast replace can error. Some are with same entity and some are with different entity. Fix player one first, then go through various root combinations. Concern some of these edge cases existed for very long time.
-    if not placeCrossingRails and fastReplacedSegment ~= nil then
-        -- Is an attempt at a downgrade from crossing rails to non crossing rails, so check crossing rails can be safely removed.
+
+    -- If its an attempt to downgrade then check crossing rails can be safely removed. If they can't undo the change and stop.
+    if fastReplaceChange == "downgrade" then
         for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
             if not railCrossingTrackEntity.can_be_destroyed() then
                 -- Put the old correct entity back and correct whats been done.
                 TunnelShared.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on crossing track", surface, centerPos)
                 local oldId = fastReplacedSegment.id
+                builtEntity.destroy()
                 fastReplacedSegment.entity = surface.create_entity {name = "railway_tunnel-underground_segment-straight-rail_crossing", position = centerPos, direction = directionValue, force = force, player = lastUser}
                 local newId = fastReplacedSegment.entity.unit_number
                 fastReplacedSegment.id = newId
@@ -124,52 +139,62 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         surfacePositionString = surfacePositionString
     }
 
-    -- Place the train blocker entity on non crossing rail segments.
-    if not placeCrossingRails then
-        segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
-    end
-
-    if placeCrossingRails then
-        -- Crossing rails placed. So handle their specific extras.
-        segment.crossingRailEntities = {}
-        local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), Utils.DirectionToOrientation(directionValue)
-        for _, nextRailPos in pairs(
-            {
-                Utils.ApplyOffsetToPosition(builtEntity.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
-                builtEntity.position,
-                Utils.ApplyOffsetToPosition(builtEntity.position, Utils.RotatePositionAround0(orientation, {x = 2, y = 0}))
-            }
-        ) do
-            local placedRail = surface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
-            placedRail.destructible = false
-            segment.crossingRailEntities[placedRail.unit_number] = placedRail
-        end
-        if fastReplacedSegment ~= nil then
-            -- As its an upgrade remove the train blocker entity that was present for the regular tunnel segment, but shouldn't be for a crossing rail segment.
-            fastReplacedSegment.trainBlockerEntity.destroy()
-            fastReplacedSegment.trainBlockerEntity = nil
-        end
-    elseif not placeCrossingRails and fastReplacedSegment ~= nil then
-        -- Is a downgrade from crossing rails to non crossing rails, so remove them. The old global segment object referencing them will be removed later in this function.
+    -- If it's a fast replace and there is a type change then remove the old bits first.
+    if fastReplaceChange == "upgrade" then
+        fastReplacedSegment.trainBlockerEntity.destroy()
+        fastReplacedSegment.trainBlockerEntity = nil
+    elseif fastReplaceChange == "downgrade" then
         for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
             railCrossingTrackEntity.destroy()
         end
     end
 
-    if topLayerEntityName ~= nil then
+    -- Handle the type specific bits.
+    if fastReplaceChange ~= "same" then
+        -- Non fast replacements and fast replacements of change type other than "same" will need the new type extras adding.
+        if placeCrossingRails then
+            segment.crossingRailEntities = {}
+            local crossignRailDirection, orientation = Utils.LoopDirectionValue(directionValue + 2), Utils.DirectionToOrientation(directionValue)
+            for _, nextRailPos in pairs(
+                {
+                    Utils.ApplyOffsetToPosition(builtEntity.position, Utils.RotatePositionAround0(orientation, {x = -2, y = 0})),
+                    builtEntity.position,
+                    Utils.ApplyOffsetToPosition(builtEntity.position, Utils.RotatePositionAround0(orientation, {x = 2, y = 0}))
+                }
+            ) do
+                local placedRail = surface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
+                placedRail.destructible = false
+                segment.crossingRailEntities[placedRail.unit_number] = placedRail
+            end
+        else
+            segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = centerPos, force = force}
+        end
+    else
+        -- Fast replacement's of the same type can just claim the old segments extras.
+        if placeCrossingRails then
+            segment.crossingRailEntities = fastReplacedSegment.crossingRailEntities
+        else
+            segment.trainBlockerEntity = fastReplacedSegment.trainBlockerEntity
+        end
+    end
+
+    --[[if topLayerEntityName ~= nil then
         -- TODO: this should only be done once the tunnel is completed and removed when it is cancelled. This way when building the tunnel you can easily see where pieces join together.
         segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
     end
     if fastReplacedSegment ~= nil and fastReplacedSegment.topLayerEntity ~= nil then
         fastReplacedSegment.topLayerEntity.destroy()
-    end
-
+    end]]
+    -- Register the new segment.
     global.undergroundSegments.segments[segment.id] = segment
     global.undergroundSegments.surfaceSegmentPositions[segment.surfacePositionString] = {
         id = segment.surfacePositionString,
         segment = segment
     }
+
+    -- Update other parts of the mod and handle any generic extras.
     if fastReplacedSegment ~= nil then
+        -- If its a fast replacement then claim the generic extras and update any parent tunnel.
         segment.tunnelRailEntities = fastReplacedSegment.tunnelRailEntities
         segment.signalEntities = fastReplacedSegment.signalEntities
         segment.tunnel = fastReplacedSegment.tunnel
@@ -183,6 +208,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         end
         global.undergroundSegments.segments[fastReplacedSegment.id] = nil
     else
+        -- New segments just check if they complete the tunnel and handle approperiately.
         local tunnelComplete, tunnelPortals, undergroundSegments = UndergroundSegments.CheckTunnelCompleteFromSegment(builtEntity, placer)
         if not tunnelComplete then
             return false

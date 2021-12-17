@@ -35,6 +35,6 @@
 ---@class LuaBaseClass @Used as a fake base class, only supports checking defined attributes.
 ---@field valid boolean
 ---
----@class StringOrNumber @A string or number (int/double).
+---@class StringOrNumber string|int|double
 ---
 ---@class null @Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.
