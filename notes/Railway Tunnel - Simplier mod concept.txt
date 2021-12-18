@@ -33,7 +33,7 @@ MINOR:
     - can we change some of our on entity died events to use the specific entity died event instead of the generic type filter ones?
     - do train arrival check as per mod aim.
     - make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
-    - go through the process managed train functions and identify API calls in sub functions that can be passed back and cached for use later n the same tick's functions.
+    - go through the process managed train functions and identify API calls in sub functions that can be passed back and cached for use later in the same tick's functions.
     - updated Tests that used any portal or segment of placed or placement and the various entity types.
     - make all tunnel entities non rotatable once built to avoid weirdness with 4 direciton rotatable entities. Editor can still do it, but we have simple code in old portal logic to undo this and it is very low UPS.
 

@@ -84,7 +84,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed", true, false)) do
+    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface", true, false)) do
         if portalEntity.position.x > entrancePortalXPos then
             entrancePortal = portalEntity
             entrancePortalXPos = portalEntity.position.x
