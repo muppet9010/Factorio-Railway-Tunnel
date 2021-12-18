@@ -3,20 +3,11 @@ local Common = {}
 
 -- Make the entity lists.
 ---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
-Common.UndergroundSegmentPlacedEntityNames, Common.UndergroundSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
-for _, coreName in pairs({"railway_tunnel-underground_segment-straight", "railway_tunnel-underground_segment-straight-rail_crossing"}) do
-    Common.UndergroundSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    Common.UndergroundSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
-end
-Common.UndergroundSegmentPlacedPlacementEntityNames = Utils.TableMerge({Common.UndergroundSegmentPlacedEntityNames, Common.UndergroundSegmentPlacementEntityNames}) ---@type table<string, string>
---TODO
-for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
-    Common.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    Common.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
-end
-Common.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames}) ---@type table<string, string>
-Common.UndergroundSegmentAndPortalPlacedEntityNames = Utils.TableMerge({Common.UndergroundSegmentPlacedEntityNames, Common.TunnelPortalPlacedEntityNames}) ---@type table<string, string>
-Common.UndergroundSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.UndergroundSegmentPlacedEntityNames, Common.UndergroundSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames}) ---@type table<string, string>
+Common.PortalEndEntityNames = {["railway_tunnel-portal_end"] = "railway_tunnel-portal_end"}
+Common.PortalSegmentEntityNames = {["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight"}
+Common.UndergroundSegmentEntityNames = {["railway_tunnel-underground_segment-straight"] = "railway_tunnel-underground_segment-straight", ["railway_tunnel-underground_segment-straight-rail_crossing"] = "railway_tunnel-underground_segment-straight-rail_crossing"}
+Common.PortalEndAndSegmentEntityNames = Utils.TableMerge({Common.PortalEndEntityNames, Common.PortalSegmentEntityNames}) ---@type table<string, string>
+Common.UndergroundSegmentAndAllPortalEntityNames = Utils.TableMerge({Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames}) ---@type table<string, string>
 
 ---@class TunnelSurfaceRailEntityNames
 Common.TunnelSurfaceRailEntityNames = {

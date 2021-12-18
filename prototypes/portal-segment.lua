@@ -1,17 +1,13 @@
-local Utils = require("utility/utils")
-
---[[
-    The entities shouldn't appear twice in any player list. Placements shouldn't appear in decon planner lists. As the placed is always the selected entity by the player.
-]]
-local portalSegmentStraightPlacement = {
+local portalSegmentStraight = {
     type = "simple-entity-with-owner",
-    name = "railway_tunnel-portal_segment-straight-placement",
-    icon = "__railway_tunnel__/graphics/icon/portal_segment-straight/railway_tunnel-portal_segment-straight-placement.png",
+    name = "railway_tunnel-portal_segment-straight",
+    icon = "__railway_tunnel__/graphics/icon/portal_segment-straight/railway_tunnel-portal_segment-straight.png",
     icon_size = 32,
-    localised_name = {"item-name.railway_tunnel-portal_segment-straight-placement"},
-    localised_description = {"item-description.railway_tunnel-portal_segment-straight-placement"},
+    localised_name = {"item-name.railway_tunnel-portal_segment-straight"},
+    localised_description = {"item-description.railway_tunnel-portal_segment-straight"},
     collision_box = {{-2.9, -0.9}, {2.9, 0.9}},
     collision_mask = {"item-layer", "object-layer", "player-layer", "water-tile"},
+    selection_box = {{-2.9, -0.9}, {2.9, 0.9}},
     max_health = 1000,
     resistances = {
         {
@@ -23,57 +19,52 @@ local portalSegmentStraightPlacement = {
             percent = 100
         }
     },
-    flags = {"player-creation", "not-on-map", "not-deconstructable"},
+    flags = {"player-creation", "not-on-map"},
     picture = {
         north = {
-            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-northsouth.png",
             height = 64,
             width = 192
         },
         east = {
-            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-eastwest.png",
             height = 192,
             width = 64
         },
         south = {
-            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-placement-northsouth.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-northsouth.png",
             height = 64,
             width = 192
         },
         west = {
-            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-placement-eastwest.png",
+            filename = "__railway_tunnel__/graphics/entity/portal_segment-straight/portal_segment-straight-eastwest.png",
             height = 192,
             width = 64
         }
     },
+    render_layer = "ground-tile",
     minable = {
         mining_time = 0.5,
-        result = "railway_tunnel-portal_segment-straight-placement",
+        result = "railway_tunnel-portal_segment-straight",
         count = 1
     },
     placeable_by = {
-        item = "railway_tunnel-portal_segment-straight-placement",
+        item = "railway_tunnel-portal_segment-straight",
         count = 1
-    }
+    },
+    corpse = "railway_tunnel-portal_segment-straight-remnant"
 }
-
-local portalSegmentPlaced = Utils.DeepCopy(portalSegmentStraightPlacement)
-portalSegmentPlaced.name = "railway_tunnel-portal_segment-straight-placed"
-portalSegmentPlaced.flags = {"player-creation", "not-on-map"}
-portalSegmentPlaced.render_layer = "ground-tile"
-portalSegmentPlaced.selection_box = portalSegmentPlaced.collision_box
-portalSegmentPlaced.corpse = "railway_tunnel-portal_segment-straight-remnant"
 
 local portalSegmentRemnant = {
     type = "corpse",
     name = "railway_tunnel-portal_segment-straight-remnant",
-    icon = portalSegmentStraightPlacement.icon,
-    icon_size = portalSegmentStraightPlacement.icon_size,
-    icon_mipmaps = portalSegmentStraightPlacement.icon_mipmaps,
+    icon = portalSegmentStraight.icon,
+    icon_size = portalSegmentStraight.icon_size,
+    icon_mipmaps = portalSegmentStraight.icon_mipmaps,
     flags = {"placeable-neutral", "not-on-map"},
     subgroup = "remnants",
     order = "d[remnants]-b[rail]-z[portal]",
-    selection_box = portalSegmentStraightPlacement.selection_box,
+    selection_box = portalSegmentStraight.selection_box,
     selectable_in_game = false,
     time_before_removed = 60 * 60 * 15, -- 15 minutes
     final_render_layer = "remnants",
@@ -84,26 +75,25 @@ local portalSegmentRemnant = {
         width = 192,
         height = 192,
         frame_count = 1,
-        direction_count = 2
+        direction_count = 4
     }
 }
 
-local portalSegmentStraightPlacementItem = {
+local portalSegmentStraightItem = {
     type = "item",
-    name = "railway_tunnel-portal_segment-straight-placement",
-    icon = "__railway_tunnel__/graphics/icon/portal_segment-straight/railway_tunnel-portal_segment-straight-placement.png",
+    name = "railway_tunnel-portal_segment-straight",
+    icon = "__railway_tunnel__/graphics/icon/portal_segment-straight/railway_tunnel-portal_segment-straight.png",
     icon_size = 32,
     subgroup = "train-transport",
     order = "a[train-system]-a[rail]a",
     stack_size = 10,
-    place_result = "railway_tunnel-portal_segment-straight-placement"
+    place_result = "railway_tunnel-portal_segment-straight"
 }
 
 data:extend(
     {
-        portalSegmentStraightPlacement,
-        portalSegmentPlaced,
+        portalSegmentStraight,
         portalSegmentRemnant,
-        portalSegmentStraightPlacementItem
+        portalSegmentStraightItem
     }
 )

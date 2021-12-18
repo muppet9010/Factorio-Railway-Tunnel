@@ -92,7 +92,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface-placed", true, false)) do
+    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface", true, false)) do
         if portalEntity.position.x > entrancePortalXPos then
             entrancePortal = portalEntity
             entrancePortalXPos = portalEntity.position.x
@@ -105,7 +105,7 @@ Test.Start = function(testName)
 
     -- Get the eastern most segment. Its touching a portal and has the othe segments to its west.
     local tunnelSegmentToRemove, tunnelSegmentXPos = nil, -1000000
-    for _, semmentEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-underground_segment-straight-placed", true, false)) do
+    for _, semmentEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-underground_segment-straight", true, false)) do
         if semmentEntity.position.x > tunnelSegmentXPos then
             tunnelSegmentToRemove = semmentEntity
             tunnelSegmentXPos = semmentEntity.position.x

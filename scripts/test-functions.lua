@@ -350,10 +350,9 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         -- Special cases where the placed entity will be removed by other scripts.
         local tunnelPortalPosition, tunnelSegmentPosition
         local ghostName = ghost.ghost_name
-        --TODO
-        if ghostName == "railway_tunnel-tunnel_portal_surface-placed" then
+        if ghostName == "railway_tunnel-tunnel_portal_surface" then
             tunnelPortalPosition = ghost.position
-        elseif ghostName == "railway_tunnel-underground_segment-straight-placed" then
+        elseif ghostName == "railway_tunnel-underground_segment-straight" then
             tunnelSegmentPosition = ghost.position
         end
 
@@ -369,12 +368,11 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
             -- Entity was revived and instantly removed by a script event.
             if tunnelPortalPosition ~= nil then
                 -- Tunnel Portal was revived.
-                --TODO
-                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_portal_surface-placed", tunnelPortalPosition)
+                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_portal_surface", tunnelPortalPosition)
                 table.insert(placedEntities, tunnelEntity)
             elseif tunnelSegmentPosition ~= nil then
                 -- Tunnel Segment was revived.
-                local tunnelEntity = testSurface.find_entity("railway_tunnel-underground_segment-straight-placed", tunnelSegmentPosition)
+                local tunnelEntity = testSurface.find_entity("railway_tunnel-underground_segment-straight", tunnelSegmentPosition)
                 table.insert(placedEntities, tunnelEntity)
             end
         end

@@ -93,8 +93,7 @@ TrainManagerPlayerContainers.OnToggleDrivingInputAfterChangedState = function(ev
         TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle(player, nil, oldVehicle)
     elseif player.vehicle ~= nil then
         -- Was in a train carriage before trying to get out and still is, so check if its on a portal entity (blocks player getting out).
-        --TODO
-        local portalEntitiesFound = player.vehicle.surface.find_entities_filtered {position = player.vehicle.position, name = "railway_tunnel-tunnel_portal_surface-placed", limit = 1}
+        local portalEntitiesFound = player.vehicle.surface.find_entities_filtered {position = player.vehicle.position, name = "railway_tunnel-tunnel_portal_surface", limit = 1}
         if #portalEntitiesFound == 1 then
             TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle(player, portalEntitiesFound[1], nil)
         end
