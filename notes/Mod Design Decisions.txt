@@ -1,11 +1,12 @@
 Mod Behavours
 =============
 
+
 Underground segments building, mining and fast replacing
 --------------------------------------------------------
 The difficult variation here is supporting the fast replacing and the variation between player and robot events triggered.
 
-Player
+Player:
     Place ghost on empty space: on_pre_build > on_built_entity
     Place ghost fast replace over entity: on_pre_build
     Place ghost fast replace over ghost: on_pre_build > on_built_entity
@@ -17,3 +18,9 @@ Construction bot:
     Bot build entity: on_robot_built_entity
     Bot mine entity: on_robot_pre_mined
     Bot fast replace entity: on_built_entity
+
+
+Ghost placement of fast replacement and rotations
+-------------------------------------------------
+
+A player can fast replace an entity over itself with a different rotation if it supports fast replacement; But a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.

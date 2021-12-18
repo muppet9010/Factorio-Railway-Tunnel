@@ -436,37 +436,39 @@ TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
     global.tunnelPortals.portals[portal.id] = nil
 end
 
----@param portal Portal
+---@param portals Portal[]
 ---@param killForce LuaForce
 ---@param killerCauseEntity LuaEntity
-TunnelPortals.On_TunnelRemoved = function(portal, killForce, killerCauseEntity)
-    TunnelShared.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
-    portal.tunnel = nil
-    for _, otherEntity in pairs(portal.tunnelOtherEntities) do
-        if otherEntity.valid then
-            otherEntity.destroy()
+TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
+    for _, portal in pairs(portals) do
+        TunnelShared.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
+        portal.tunnel = nil
+        for _, otherEntity in pairs(portal.tunnelOtherEntities) do
+            if otherEntity.valid then
+                otherEntity.destroy()
+            end
         end
-    end
-    portal.tunnelOtherEntities = nil
-    for _, railEntity in pairs(portal.tunnelRailEntities) do
-        if railEntity.valid then
-            railEntity.destroy()
+        portal.tunnelOtherEntities = nil
+        for _, railEntity in pairs(portal.tunnelRailEntities) do
+            if railEntity.valid then
+                railEntity.destroy()
+            end
         end
-    end
-    portal.tunnelRailEntities = nil
-    for _, transitionSignal in pairs(portal.transitionSignals) do
-        if transitionSignal.entity.valid then
-            Interfaces.Call("Tunnel.DeregisterTransitionSignal", transitionSignal)
-            transitionSignal.entity.destroy()
+        portal.tunnelRailEntities = nil
+        for _, transitionSignal in pairs(portal.transitionSignals) do
+            if transitionSignal.entity.valid then
+                Interfaces.Call("Tunnel.DeregisterTransitionSignal", transitionSignal)
+                transitionSignal.entity.destroy()
+            end
         end
-    end
-    portal.transitionSignals = nil
+        portal.transitionSignals = nil
 
-    TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal(portal)
+        TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal(portal)
 
-    -- Close the entry signals for the portals.
-    if portal.entrySignals[TunnelSignalDirection.inSignal].entity.valid then
-        TunnelPortals.ClosePortalEntrySignalAsNoTunnel(portal.entrySignals[TunnelSignalDirection.inSignal].entity)
+        -- Close the entry signals for the portals.
+        if portal.entrySignals[TunnelSignalDirection.inSignal].entity.valid then
+            TunnelPortals.ClosePortalEntrySignalAsNoTunnel(portal.entrySignals[TunnelSignalDirection.inSignal].entity)
+        end
     end
 end
 

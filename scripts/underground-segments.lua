@@ -26,6 +26,21 @@ local UndergroundSegments = {}
 
 ---@alias FastReplaceChange "'downgrade'"|"'upgrade'"|"'same'"
 
+local UndergroundSegmentTypeData = {
+    ["railway_tunnel-underground_segment-straight"] = {
+        entityName = "railway_tunnel-underground_segment-straight",
+        baseType = "railway_tunnel-underground_segment-straight",
+        topLayerEntityName = "railway_tunnel-underground_segment-straight-top_layer",
+        placeCrossingRails = false
+    },
+    ["railway_tunnel-underground_segment-straight-rail_crossing"] = {
+        entityName = "railway_tunnel-underground_segment-straight-rail_crossing",
+        baseType = "railway_tunnel-underground_segment-straight",
+        topLayerEntityName = nil,
+        placeCrossingRails = true
+    }
+}
+
 UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments = global.undergroundSegments or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<Id, Segment>
@@ -76,7 +91,6 @@ end
 ---@param placer EntityActioner
 ---@return boolean
 UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
-    -- TODO: a robot building any rotation (90 and 180 degrees) fast replace can error. Some are with same entity and some are with different entity. Fix player one first, then go through various root combinations. Concern some of these edge cases existed for very long time.
     local centerPos, force, lastUser, directionValue, surface, builtEntityName = builtEntity.position, builtEntity.force, builtEntity.last_user, builtEntity.direction, builtEntity.surface, builtEntity.name
 
     -- Check the placement is on rail grid, if not then undo the placement and stop.
@@ -85,13 +99,8 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         return
     end
 
-    local placeCrossingRails, topLayerEntityName
-    if builtEntityName == "railway_tunnel-underground_segment-straight" then
-        topLayerEntityName = "railway_tunnel-underground_segment-straight-top_layer"
-        placeCrossingRails = false
-    elseif builtEntityName == "railway_tunnel-underground_segment-straight-rail_crossing" then
-        placeCrossingRails = true
-    end
+    local builtSegmentTypeData = UndergroundSegmentTypeData[builtEntityName]
+    local placeCrossingRails = builtSegmentTypeData.placeCrossingRails
 
     -- Check if this is a fast replacement or not.
     local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, centerPos)
@@ -178,13 +187,6 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         end
     end
 
-    --[[if topLayerEntityName ~= nil then
-        -- TODO: this should only be done once the tunnel is completed and removed when it is cancelled. This way when building the tunnel you can easily see where pieces join together.
-        segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
-    end
-    if fastReplacedSegment ~= nil and fastReplacedSegment.topLayerEntity ~= nil then
-        fastReplacedSegment.topLayerEntity.destroy()
-    end]]
     -- Register the new segment.
     global.undergroundSegments.segments[segment.id] = segment
     global.undergroundSegments.surfaceSegmentPositions[segment.surfacePositionString] = {
@@ -194,15 +196,34 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
 
     -- Update other parts of the mod and handle any generic extras.
     if fastReplacedSegment ~= nil then
-        -- If its a fast replacement then claim the generic extras and update any parent tunnel.
+        -- Its a fast replacement,
+
+        -- Claim the generic extras of the old segment,
         segment.tunnelRailEntities = fastReplacedSegment.tunnelRailEntities
         segment.signalEntities = fastReplacedSegment.signalEntities
         segment.tunnel = fastReplacedSegment.tunnel
+
+        -- Handle anything that is only present if there is a parent tunnel.
         if segment.tunnel ~= nil then
+            -- Update the tunnel's reference to the fast replaced segment.
             for i, checkSegment in pairs(segment.tunnel.segments) do
                 if checkSegment.id == fastReplacedSegment.id then
                     segment.tunnel.segments[i] = segment
                     break
+                end
+            end
+
+            -- Update the top layer entity if it needs changing due to change of entity type.
+            if fastReplaceChange ~= "same" then
+                -- Remove the old top layer.
+                if fastReplacedSegment.topLayerEntity ~= nil and fastReplacedSegment.topLayerEntity.valid then
+                    fastReplacedSegment.topLayerEntity.destroy()
+                end
+
+                -- Create the top layer entity that has the desired graphics on it.
+                local topLayerEntityName = builtSegmentTypeData.topLayerEntityName
+                if topLayerEntityName ~= nil then
+                    segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
                 end
             end
         end
@@ -247,11 +268,13 @@ UndergroundSegments.On_PreTunnelCompleted = function(segmentEntities, force, sur
         table.insert(segments, segment)
         local centerPos, directionValue = segmentEntity.position, segmentEntity.direction
 
+        -- Create the underground tunnel rail.
         segment.tunnelRailEntities = {}
         local placedRail = surface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = centerPos, force = force, direction = directionValue}
         placedRail.destructible = false
         segment.tunnelRailEntities[placedRail.unit_number] = placedRail
 
+        -- Add the singals to the underground tunnel rail.
         segment.signalEntities = {}
         for _, orientationModifier in pairs({0, 4}) do
             local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
@@ -259,6 +282,13 @@ UndergroundSegments.On_PreTunnelCompleted = function(segmentEntities, force, sur
             local position = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0}))
             local placedSignal = surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection}
             segment.signalEntities[placedSignal.unit_number] = placedSignal
+        end
+
+        -- Create the top layer entity that has the desired graphics on it.
+        local builtSegmentTypeData = UndergroundSegmentTypeData[segmentEntity.name]
+        local topLayerEntityName = builtSegmentTypeData.topLayerEntityName
+        if topLayerEntityName ~= nil then
+            segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
         end
     end
 
@@ -385,28 +415,37 @@ UndergroundSegments.EntityRemoved = function(segment, killForce, killerCauseEnti
     if segment.trainBlockerEntity ~= nil then
         segment.trainBlockerEntity.destroy()
     end
-    if segment.topLayerEntity ~= nil then
+    if segment.topLayerEntity ~= nil and segment.topLayerEntity.valid then
         segment.topLayerEntity.destroy()
     end
     global.undergroundSegments.surfaceSegmentPositions[segment.surfacePositionString] = nil
     global.undergroundSegments.segments[segment.id] = nil
 end
 
----@param segment Segment
-UndergroundSegments.On_TunnelRemoved = function(segment)
-    segment.tunnel = nil
-    for _, railEntity in pairs(segment.tunnelRailEntities) do
-        if railEntity.valid then
-            railEntity.destroy()
+---@param segments Segment[]
+UndergroundSegments.On_TunnelRemoved = function(segments)
+    for _, segment in pairs(segments) do
+        segment.tunnel = nil
+
+        for _, railEntity in pairs(segment.tunnelRailEntities) do
+            if railEntity.valid then
+                railEntity.destroy()
+            end
         end
-    end
-    segment.tunnelRailEntities = nil
-    for _, signalEntity in pairs(segment.signalEntities) do
-        if signalEntity.valid then
-            signalEntity.destroy()
+        segment.tunnelRailEntities = nil
+
+        for _, signalEntity in pairs(segment.signalEntities) do
+            if signalEntity.valid then
+                signalEntity.destroy()
+            end
         end
+        segment.signalEntities = nil
+
+        if segment.topLayerEntity ~= nil and segment.topLayerEntity.valid then
+            segment.topLayerEntity.destroy()
+        end
+        segment.topLayerEntity = nil
     end
-    segment.signalEntities = nil
 end
 
 ---@param event on_entity_died|script_raised_destroy

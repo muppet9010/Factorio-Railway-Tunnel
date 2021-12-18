@@ -131,12 +131,8 @@ end
 ---@param tunnel Tunnel
 Tunnel.RemoveTunnel = function(tunnel)
     Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
-    for _, portal in pairs(tunnel.portals) do
-        Interfaces.Call("TunnelPortals.On_TunnelRemoved", portal)
-    end
-    for _, segment in pairs(tunnel.segments) do
-        Interfaces.Call("UndergroundSegments.On_TunnelRemoved", segment)
-    end
+    Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals)
+    Interfaces.Call("UndergroundSegments.On_TunnelRemoved", tunnel.segments)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 
