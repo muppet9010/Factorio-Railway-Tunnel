@@ -7,6 +7,9 @@ local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = 
 local TunnelPortals = {}
 local EventScheduler = require("utility/event-scheduler")
 
+-- TODO: a portal will be connected segments and up 2 connected Ends. A portal will be incomplete until it has both Ends.
+--
+-- TODO: these setup values will need updating to be from the Entry and Blocked ends. They can then be applied to the portal ends as these will always be straight.
 local SetupValues = {
     -- Tunnels distances are from the portal position (center).
     trackEntryPointFromCenter = -25, -- the border of the portal on the entry side.
@@ -17,7 +20,7 @@ local SetupValues = {
     transitionUsageDetectorEntityDistance = 17.5, -- Equivilent to the leading carriage being less than 14 tiles from the transition signal (old distance detection logic). 10 tiles from the portal transition blocking locomotive.
     transitionSignalsDistance = 19.5,
     transitionSignalBlockingLocomotiveDistance = 20.5,
-    farInvisibleSignalsDistance = 23.5,
+    blockedInvisibleSignalsDistance = 23.5,
     straightRailCountFromEntryPoint = 17, -- Number of visible rails from the entry point towards the Transition point.
     invisibleRailCountFromEntryPoint = 8 -- Number of invisible rails after the visible rails to reach the Transition point.
 }
@@ -274,18 +277,18 @@ TunnelPortals.On_PreTunnelCompleted = function(portalEntities, force, surface)
 
         -- Add blocking loco and extra signals after where the Transition signals are at the very end of the portal. These make the Transition signals go red and stop paths being reservable across the underground track, thus leading trains to target the transitional signal.
         ---@type LuaEntity
-        local farInvisibleSignalInEntity =
+        local blockedInvisibleSignalInEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.farInvisibleSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.blockedInvisibleSignalsDistance})),
             force = force,
             direction = directionValue
         }
         ---@type LuaEntity
-        local farInvisibleSignalOutEntity =
+        local blockedInvisibleSignalOutEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.farInvisibleSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.blockedInvisibleSignalsDistance})),
             force = force,
             direction = Utils.LoopDirectionValue(directionValue + 4)
         }
@@ -308,8 +311,8 @@ TunnelPortals.On_PreTunnelCompleted = function(portalEntities, force, surface)
         transitionSignalBlockingLocomotiveEntity.train.manual_mode = false
         transitionSignalBlockingLocomotiveEntity.destructible = false
         portal.tunnelOtherEntities = {
-            [farInvisibleSignalInEntity.unit_number] = farInvisibleSignalInEntity,
-            [farInvisibleSignalOutEntity.unit_number] = farInvisibleSignalOutEntity,
+            [blockedInvisibleSignalInEntity.unit_number] = blockedInvisibleSignalInEntity,
+            [blockedInvisibleSignalOutEntity.unit_number] = blockedInvisibleSignalOutEntity,
             [transitionSignalBlockingLocomotiveEntity.unit_number] = transitionSignalBlockingLocomotiveEntity
         }
 

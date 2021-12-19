@@ -230,6 +230,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         global.undergroundSegments.segments[fastReplacedSegment.id] = nil
     else
         -- New segments just check if they complete the tunnel and handle approperiately.
+        -- TODO: find and cache the connected underground segments as they are built. Otherwise we keep on iteraitng over them every time we place a new segment on the end. Call these underground areas and they can be referenced by a tunnel.
         local tunnelComplete, tunnelPortals, undergroundSegments = UndergroundSegments.CheckTunnelCompleteFromSegment(builtEntity, placer)
         if not tunnelComplete then
             return false

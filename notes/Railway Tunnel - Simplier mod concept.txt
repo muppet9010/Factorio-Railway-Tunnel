@@ -14,7 +14,7 @@ MAJOR:
     - Initially tunnels (portals and underground) must be built in straight lines.
     - Portal Redesign:
         - There will be 2 portal parts initially.
-            - Portal End - a 6x6 tile piece that has to be used at both ends of each portal. At the End part it will provide 6 of the 8 tiles needed for the detector entity, end signals, blocker locomotive and far invisible signals. At the Entry part it will provide 6 tiles: 2 tiles needed for the entry signals and detector, 2 tiles for the End part and 2 tiles for a leaving train to pull forward in when leaving.
+            - Portal End - a 6x6 tile piece that has to be used at both ends of each portal. At the End part it will provide 6 of the 8 tiles needed for the detector entity, end signals, blocker locomotive and Blocked end invisible signals. At the Entry part it will provide 6 tiles: 2 tiles needed for the entry signals and detector, 2 tiles for the End part and 2 tiles for a leaving train to pull forward in when leaving.
             - Portal Segment - a 2x6 piece that is used to build up the portal's straight length. This will make up the full train length, but no padding needed as the entryy part handles this.
         - Will have the example composition of: E S S E U U U U E S S E
         - Now we are using an End portal detector entity its death triggers before the train tries to complete moving in to the blocker loco. Meaning no end padding space is needed for fast trains.
@@ -22,7 +22,7 @@ MAJOR:
 
 MINOR:
 	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
-	- manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and thne at the far end return it to the players control from 0 speed.
+	- manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and then at the far end return it to the players control from 0 speed.
 	- add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
     - Review possibility to remove the internal mod "interfaces" concept and just pass a shared object to all modules that they register against. This should remove the need of caching the odd function reference (done at present). Looking to save UPS and if it will improve EmmyLua's function intelisense.
