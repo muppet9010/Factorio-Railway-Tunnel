@@ -6,6 +6,8 @@ local Common = require("scripts/common")
 local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
 
+-- TODO: tunnel not updated at all for new portal or underground.
+
 ---@class Tunnel
 ---@field id Id @unqiue id of the tunnel.
 ---@field alignment TunnelAlignment
@@ -13,7 +15,7 @@ local Utils = require("utility/utils")
 ---@field alignmentAxis Axis
 ---@field surface LuaSurface
 ---@field portals Portal[]
----@field segments Segment[]
+---@field segments UndergroundSegment[]
 ---@field managedTrain ManagedTrain @one is currently using this tunnel.
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities of the whole tunnel (portal and segments).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @the visible rail entities that are part of the portal (visible rails).
@@ -81,8 +83,8 @@ Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
     local refTunnelPortalEntity_direction = refTunnelPortalEntity.direction
 
     -- Call any other modules before the tunnel object is created.
-    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, surface) ---@type table<int,Portal>
-    local undergroundSegments = Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int,Segment>
+    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, surface) ---@type table<int, Portal>
+    local undergroundSegments = Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int, UndergroundSegment>
 
     -- Create the tunnel global object.
     local alignment, alignmentOrientation, alignmentAxis
@@ -184,8 +186,8 @@ Tunnel.On_PortalReplaced = function(tunnel, oldPortal, newPortal)
 end
 
 ---@param tunnel Tunnel
----@param oldSegment Segment
----@param newSegment Segment
+---@param oldSegment UndergroundSegment
+---@param newSegment UndergroundSegment
 Tunnel.On_SegmentReplaced = function(tunnel, oldSegment, newSegment)
     if tunnel == nil then
         return
