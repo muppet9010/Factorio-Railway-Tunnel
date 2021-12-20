@@ -592,7 +592,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
     local enteringTrain, trainCarriagesForwardOrientation = managedTrain.enteringTrain, managedTrain.trainTravelOrientation
     local targetSurface = managedTrain.surface
     if not managedTrain.enteringTrainForwards then
-        trainCarriagesForwardOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
+        trainCarriagesForwardOrientation = Utils.LoopOrientationValue(trainCarriagesForwardOrientation + 0.5)
     end
 
     -- Get the position for the front of the lead carriage; 2.5 tiles back from the entry signal. This means the front 3 tiles of the portal area graphics can show the train, with further back needing to be covered to hide the train graphics.
@@ -619,7 +619,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
         refCarriage_name = refCarriage.name
         local carriageOrientation = trainCarriagesForwardOrientation
         if refCarriage.speed ~= enteringTrainSpeed then
-            carriageOrientation = Utils.BoundFloatValueWithinRangeMaxExclusive(carriageOrientation + 0.5, 0, 1)
+            carriageOrientation = Utils.LoopOrientationValue(carriageOrientation + 0.5)
         end
 
         nextCarriagePosition = TrainManager.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, nextCarriagePosition, lastPlacedCarriage_name, refCarriage_name)
@@ -658,7 +658,7 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, sa
         haveToFlipCarriage = true
     elseif orientationDif == 0.25 or orientationDif == 0.75 then
         -- May end up the correct way, depending on what rotation we want. Factorio rotates positive orientation when equally close.
-        if Utils.BoundFloatValueWithinRangeMaxExclusive(refCarriage.orientation + 0.25, 0, 1) ~= requiredOrientation then
+        if Utils.LoopOrientationValue(refCarriage.orientation + 0.25) ~= requiredOrientation then
             -- After a positive rounding the carriage isn't going to be facing the right way.
             haveToFlipCarriage = true
         end

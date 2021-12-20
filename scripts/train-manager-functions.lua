@@ -44,7 +44,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
     elseif lastCarriageSpeed < 0 then
-        leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+        leadCarriageForwardOrientation = Utils.LoopOrientationValue(leadCarriage.orientation + 0.5)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end
@@ -78,7 +78,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation = function(train,
     if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
     elseif lastCarriageSpeed < 0 then
-        leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+        leadCarriageForwardOrientation = Utils.LoopOrientationValue(leadCarriage.orientation + 0.5)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end

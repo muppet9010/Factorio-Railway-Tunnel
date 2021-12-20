@@ -3,6 +3,7 @@ local Colors = require("utility/colors")
 local Common = require("scripts/common")
 local TunnelShared = {}
 
+--TODO: this needs major update for new portal object logic.
 ---@param startingTunnelPart LuaEntity
 ---@param startingTunnelPartPoint Position
 ---@param checkingDirection defines.direction

@@ -36,6 +36,7 @@ MINOR:
     - go through the process managed train functions and identify API calls in sub functions that can be passed back and cached for use later in the same tick's functions.
     - updated Tests that used any portal or segment of placed or placement and the various entity types.
     - make all tunnel entities non rotatable once built to avoid weirdness with 4 direciton rotatable entities. Editor can still do it, but we have simple code in old portal logic to undo this and it is very low UPS.
+    - replace all ".type" to something unique so EmmyLua gives only the correct auto complete / hints.
 
 
 FUTURE:

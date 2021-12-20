@@ -18,9 +18,7 @@ local UndergroundSegments = {}
 ---@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
 ---@field topLayerEntity LuaEntity @the top layer graphical entity that is showings its picture and hiding the main entities once placed.
 
----@class SurfacePositionString @the entities surface and position as a string.
-
----@class SurfaceSegmentPosition
+---@class SegmentSurfacePosition
 ---@field id SurfacePositionString
 ---@field segment Segment
 
@@ -44,7 +42,7 @@ local UndergroundSegmentTypeData = {
 UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments = global.undergroundSegments or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<Id, Segment>
-    global.undergroundSegments.surfaceSegmentPositions = global.undergroundSegments.surfaceSegmentPositions or {} ---@type table<Id, SurfaceSegmentPosition>
+    global.undergroundSegments.surfaceSegmentPositions = global.undergroundSegments.surfaceSegmentPositions or {} ---@type table<Id, SegmentSurfacePosition> @a lookup for underground segments by a position string. Saves searching for entities on the map via API.
 end
 
 UndergroundSegments.OnLoad = function()
@@ -77,27 +75,29 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 UndergroundSegments.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or UndergroundSegmentEntityNames[createdEntity.name] == nil then
+    local createdEntity_name = createdEntity.name
+    if not createdEntity.valid or UndergroundSegmentEntityNames[createdEntity_name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    UndergroundSegments.UndergroundSegmentBuilt(createdEntity, placer)
+    UndergroundSegments.UndergroundSegmentBuilt(createdEntity, placer, createdEntity_name)
 end
 
 ---@param builtEntity LuaEntity
 ---@param placer EntityActioner
+---@param builtEntityName string
 ---@return boolean
-UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
-    local centerPos, force, lastUser, directionValue, surface, builtEntityName = builtEntity.position, builtEntity.force, builtEntity.last_user, builtEntity.direction, builtEntity.surface, builtEntity.name
-
+UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntityName)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
+
+    local centerPos, force, lastUser, directionValue, surface = builtEntity.position, builtEntity.force, builtEntity.last_user, builtEntity.direction, builtEntity.surface
 
     local builtSegmentTypeData = UndergroundSegmentTypeData[builtEntityName]
     local placeCrossingRails = builtSegmentTypeData.placeCrossingRails
@@ -230,7 +230,6 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
         global.undergroundSegments.segments[fastReplacedSegment.id] = nil
     else
         -- New segments just check if they complete the tunnel and handle approperiately.
-        -- TODO: find and cache the connected underground segments as they are built. Otherwise we keep on iteraitng over them every time we place a new segment on the end. Call these underground areas and they can be referenced by a tunnel.
         local tunnelComplete, tunnelPortals, undergroundSegments = UndergroundSegments.CheckTunnelCompleteFromSegment(builtEntity, placer)
         if not tunnelComplete then
             return false
@@ -239,6 +238,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer)
     end
 end
 
+-- TODO: find and cache the connected underground segments as they are built. Otherwise we keep on iteraitng over them every time we place a new segment on the end. Make an underground object and it can be referenced by a tunnel, like the portal object.
 ---@param startingUndergroundSegment LuaEntity
 ---@param placer EntityActioner
 ---@return boolean @Direction is completed successfully.

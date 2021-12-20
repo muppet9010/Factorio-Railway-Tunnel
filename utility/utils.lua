@@ -6,10 +6,10 @@ local factorioUtil = require("__core__/lualib/util")
 Utils.DeepCopy = factorioUtil.table.deepcopy ---@type fun(object:table):table
 Utils.TableMerge = factorioUtil.merge ---@type fun(tables:table[]):table @Takes an array of tables and returns a new table with copies of their contents
 
+-- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
 ---@param entity1 LuaEntity
 ---@param entity2 LuaEntity
 Utils.Are2EntitiesTheSame = function(entity1, entity2)
-    -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
     if not entity1.valid or not entity2.valid then
         return false
     end
@@ -48,7 +48,6 @@ end
 ---@param entitiesExcluded LuaEntity[]|null
 ---@return table<int, LuaEntity>
 Utils.ReturnAllObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructible, onlyKillable, entitiesExcluded)
-    -- Expand force affected to support range of opt in or opt out forces.
     local entitiesFound, filteredEntitiesFound = surface.find_entities(positionedBoundingBox), {}
     for k, entity in pairs(entitiesFound) do
         if entity.valid then
@@ -215,7 +214,7 @@ end
 
 ---@param centrePos Position
 ---@param boundingBox BoundingBox
----@param orientation double
+---@param orientation RealOrientation
 ---@return BoundingBox
 Utils.ApplyBoundingBoxToPosition = function(centrePos, boundingBox, orientation)
     centrePos = Utils.TableToProperPosition(centrePos)
@@ -267,7 +266,7 @@ Utils.GetLeftTopTilePositionForChunkPosition = function(chunkPos)
     return {x = chunkPos.x * 32, y = chunkPos.y * 32}
 end
 
----@param orientation double
+---@param orientation RealOrientation
 ---@param position Position
 ---@return Position
 Utils.RotatePositionAround0 = function(orientation, position)
@@ -391,12 +390,12 @@ Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
     return result
 end
 
+-- This steps through the ints with min and max being seperatee steps.
 ---@param value int
 ---@param min int
 ---@param max int
 ---@return int
 Utils.LoopIntValueWithinRange = function(value, min, max)
-    -- This steps through the ints with min and max being seperatee steps.
     if value > max then
         return min - (max - value) - 1
     elseif value < min then
@@ -406,12 +405,12 @@ Utils.LoopIntValueWithinRange = function(value, min, max)
     end
 end
 
----@param value double
----@param min double
----@param max double
----@return double
-Utils.BoundFloatValueWithinRange = function(value, min, max)
-    -- This treats the min and max values as equal when bounding: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
+-- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
+---@param value number
+---@param min number
+---@param max number
+---@return number
+Utils.LoopFloatValueWithinRange = function(value, min, max)
     if value > max then
         return min + (value - max)
     elseif value < min then
@@ -421,12 +420,12 @@ Utils.BoundFloatValueWithinRange = function(value, min, max)
     end
 end
 
----@param value double
----@param minInclusive double
----@param maxExclusive double
----@return double
-Utils.BoundFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxExclusive)
-    -- maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
+-- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. But maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
+---@param value number
+---@param minInclusive number
+---@param maxExclusive number
+---@return number
+Utils.LoopFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxExclusive)
     if value >= maxExclusive then
         return minInclusive + (value - maxExclusive)
     elseif value < minInclusive then
@@ -434,6 +433,15 @@ Utils.BoundFloatValueWithinRangeMaxExclusive = function(value, minInclusive, max
     else
         return value
     end
+end
+
+-- return the passed in number clamped to within the max and min limits.
+---@param value number
+---@param min number
+---@param max number
+---@return number
+Utils.clampNumber = function(value, min, max)
+    return math.min(math.max(value, min), max)
 end
 
 Utils.HandleFloatNumberAsChancedValue = function(value)
@@ -449,8 +457,8 @@ Utils.HandleFloatNumberAsChancedValue = function(value)
     return chancedValue
 end
 
+-- This doesn't guarentee correct on some of the edge cases, but is as close as possible assuming that 1/256 is the variance for the same number (Bilka, Dev on Discord)
 Utils.FuzzyCompareDoubles = function(num1, logic, num2)
-    -- This doesn't guarentee correct on some of the edge cases, but is as close as possible assuming that 1/256 is the variance for the same number (Bilka, Dev on Discord)
     local numDif = num1 - num2
     local variance = 1 / 256
     if logic == "=" then
@@ -586,11 +594,11 @@ Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
     return math.abs(pos1[axis] - pos2[axis])
 end
 
+-- Returns the offset for the first position in relation to the second position.
 ---@param newPosition Position
 ---@param basePosition Position
 ---@return Position
 Utils.GetOffsetForPositionFromPosition = function(newPosition, basePosition)
-    -- Returns the offset for the first position in relation to the second position.
     return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
 end
 
@@ -630,8 +638,8 @@ Utils.TableKeyToArray = function(aTable)
     return newArray
 end
 
+---@param aTable table @doesn't support commas in values or nested tables. Really for logging.
 Utils.TableKeyToCommaString = function(aTable)
-    -- Doesn't support commas in values or nested tables. Really for logging.
     local newString = ""
     if Utils.IsTableEmpty(aTable) then
         return newString
@@ -646,8 +654,8 @@ Utils.TableKeyToCommaString = function(aTable)
     return newString
 end
 
+---@param aTable table @doesn't support commas in values or nested tables. Really for logging.
 Utils.TableValueToCommaString = function(aTable)
-    -- Doesn't support commas in values or nested tables. Really for logging.
     local newString = ""
     if Utils.IsTableEmpty(aTable) then
         return newString
@@ -668,7 +676,6 @@ end
 ---@param singleLineOutput boolean|null @If provided and true removes all lines and spacing from the output.
 ---@return string
 Utils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
-    --
     singleLineOutput = singleLineOutput or false
     local tablesLogged = {}
     return Utils._TableContentsToJSON(targetTable, name, singleLineOutput, tablesLogged)
@@ -874,12 +881,12 @@ Utils.WasCreativeModeInstantDeconstructionUsed = function(event)
 end
 
 --- Updates the 'chancePropertyName' named attribute of each entry in the referenced `dataSet` table to be proportional of a combined dataSet value of 1.
+-- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
 ---@param dataSet table[] @The dataSet to be reviewed and updated.
 ---@param chancePropertyName string @The attribute name that has the chance value per dataSet entry.
 ---@param skipFillingEmptyChance boolean @If TRUE then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
 ---@return table[] @Same object passed in by reference as dataSet, so technically no return is needed, legacy.
 Utils.NormaliseChanceList = function(dataSet, chancePropertyName, skipFillingEmptyChance)
-    -- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
     local totalChance = 0
     for _, v in pairs(dataSet) do
         totalChance = totalChance + v[chancePropertyName]
@@ -908,16 +915,16 @@ Utils.GetRandomEntryFromNormalisedDataSet = function(dataSet, chancePropertyName
     return nil
 end
 
+-- called from OnInit
 Utils.DisableWinOnRocket = function()
-    -- OnInit
     if remote.interfaces["silo_script"] == nil then
         return
     end
     remote.call("silo_script", "set_no_victory", true)
 end
 
+-- called from OnInit
 Utils.ClearSpawnRespawnItems = function()
-    -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
     end
@@ -925,17 +932,17 @@ Utils.ClearSpawnRespawnItems = function()
     remote.call("freeplay", "set_respawn_items", {})
 end
 
+-- called from OnInit
 ---@param distanceTiles uint
 Utils.SetStartingMapReveal = function(distanceTiles)
-    -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
     end
     remote.call("freeplay", "set_chart_distance", distanceTiles)
 end
 
+-- called from OnInit
 Utils.DisableIntroMessage = function()
-    -- OnInit
     if remote.interfaces["freeplay"] == nil then
         return
     end
@@ -965,8 +972,8 @@ Utils.DisplayNumberPretty = function(number)
     return formatted
 end
 
+-- display time units: hour, minute, second
 Utils.DisplayTimeOfTicks = function(inputTicks, displayLargestTimeUnit, displaySmallestTimeUnit)
-    -- display time units: hour, minute, second
     if inputTicks == nil then
         return ""
     end
@@ -1029,13 +1036,13 @@ Utils.DisplayTimeOfTicks = function(inputTicks, displayLargestTimeUnit, displayS
     end
 end
 
+-- Doesn't handle mipmaps at all presently. Also ignores any of the extra data in an icons table of "Types/IconData". Think this should just duplicate the target icons table entry.
 ---@param entityToClone table @Any entity prototype.
 ---@param newEntityName string
 ---@param subgroup string
 ---@param collisionMask CollisionMask
 ---@return table @A simple entity prototype.
 Utils.CreatePlacementTestEntityPrototype = function(entityToClone, newEntityName, subgroup, collisionMask)
-    -- Doesn't handle mipmaps at all presently. Also ignores any of the extra data in an icons table of "Types/IconData". Think this should just duplicate the target icons table entry.
     local clonedIcon = entityToClone.icon
     local clonedIconSize = entityToClone.icon_size
     if clonedIcon == nil then
@@ -1082,7 +1089,7 @@ end
 
 --- Tries to converts a non boolean to a boolean value.
 ---@param text string|int|boolean @The input to check.
----@return boolean|null @Returns a boolean if successful, or nil if not.
+---@return boolean|null @if successful converted then the boolean of the value, or nil if not a convertable input.
 Utils.ToBoolean = function(text)
     if text == nil then
         return nil
@@ -1134,7 +1141,7 @@ end
 
 ---@param startingPos Position
 ---@param distance number
----@param orientation double
+---@param orientation RealOrientation
 ---@return Position
 Utils.GetPositionForOrientationDistance = function(startingPos, distance, orientation)
     return Utils.GetPositionForAngledDistance(startingPos, distance, orientation * 360)
@@ -1188,9 +1195,9 @@ Utils.GetValueAndUnitFromString = function(text)
     return string.match(text, "%d+%.?%d*"), string.match(text, "%a+")
 end
 
+-- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
+---@return boolean @if all items were moved successfully or not.
 Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventory, dropUnmovedOnGround, ratioToMove)
-    -- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
-    -- Returns true/false if all items were moved successfully.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
@@ -1225,9 +1232,9 @@ Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventor
     return itemAllMoved
 end
 
+-- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
+---@return boolean @if all items were moved successfully or not.
 Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGround)
-    -- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
-    -- Returns true/false if all items were moved successfully.
     if sourceGrid == nil then
         return
     end
@@ -1251,9 +1258,9 @@ Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGro
     return itemAllMoved
 end
 
+-- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
+---@return boolean @if all items were moved successfully or not.
 Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
-    -- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
-    -- Returns true/false if all items were moved successfully.
     if Utils.IsTableEmpty(contents) then
         return
     end
@@ -1282,9 +1289,9 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
     return itemAllMoved
 end
 
+-- Takes a table of SimpleItemStack and inserts them in to an inventory. Updates the passed in contents object.
+---@return boolean @if all items were moved successfully or not.
 Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
-    -- Takes a table of SimpleItemStack and inserts them in to an inventory. Updates the passed in contents object.
-    -- Returns true/false if all items were moved successfully.
     if contents == nil or #contents == 0 then
         return
     end
@@ -1383,12 +1390,12 @@ Utils.TrackBestFuelCount = function(trackingTable, itemName, itemCount)
     return false
 end
 
+--[[
+    Takes tables of the various recipe types (normal, expensive and ingredients) and makes the required recipe prototypes from them. Only makes the version if the ingredientsList includes the type. So supplying just energyLists types doesn't make new versions.
+    ingredientLists is a table with optional tables for "normal", "expensive" and "ingredients" tables within them. Often generatered by Utils.GetRecipeIngredientsAddedTogeather().
+    energyLists is a table with optional keys for "normal", "expensive" and "ingredients". The value of the keys is the energy_required value.
+]]
 Utils.MakeRecipePrototype = function(recipeName, resultItemName, enabled, ingredientLists, energyLists)
-    --[[
-        Takes tables of the various recipe types (normal, expensive and ingredients) and makes the required recipe prototypes from them. Only makes the version if the ingredientsList includes the type. So supplying just energyLists types doesn't make new versions.
-        ingredientLists is a table with optional tables for "normal", "expensive" and "ingredients" tables within them. Often generatered by Utils.GetRecipeIngredientsAddedTogeather().
-        energyLists is a table with optional keys for "normal", "expensive" and "ingredients". The value of the keys is the energy_required value.
-    ]]
     local recipePrototype = {
         type = "recipe",
         name = recipeName
@@ -1418,17 +1425,17 @@ Utils.MakeRecipePrototype = function(recipeName, resultItemName, enabled, ingred
     return recipePrototype
 end
 
+--[[
+    Is for handling a mix of recipes and ingredient list. Supports recipe ingredients, normal and expensive.
+    Returns the widest range of types fed in as a table of result tables (nil for non required returns): {ingredients, normal, expensive}
+    Takes a table (list) of entries. Each entry is a table (list) of recipe/ingredients, handling type and ratioMultiplier (optional), i.e. {{ingredients1, "add"}, {recipe1, "add", 0.5}, {ingredients2, "highest", 2}}
+    handling types:
+        - add: adds the ingredients from a list to the total
+        - subtract: removes the ingredients in this list from the total
+        - highest: just takes the highest counts of each ingredients across the 2 lists.
+    ratioMultiplier item counts for recipes are rounded up. Defaults to ration of 1 if not provided.
+]]
 Utils.GetRecipeIngredientsAddedTogeather = function(recipeIngredientHandlingTables)
-    --[[
-        Is for handling a mix of recipes and ingredient list. Supports recipe ingredients, normal and expensive.
-        Returns the widest range of types fed in as a table of result tables (nil for non required returns): {ingredients, normal, expensive}
-        Takes a table (list) of entries. Each entry is a table (list) of recipe/ingredients, handling type and ratioMultiplier (optional), i.e. {{ingredients1, "add"}, {recipe1, "add", 0.5}, {ingredients2, "highest", 2}}
-        handling types:
-            - add: adds the ingredients from a list to the total
-            - subtract: removes the ingredients in this list from the total
-            - highest: just takes the highest counts of each ingredients across the 2 lists.
-        ratioMultiplier item counts for recipes are rounded up. Defaults to ration of 1 if not provided.
-    ]]
     local ingredientsTable, ingredientTypes = {}, {}
     for _, recipeIngredientHandlingTable in pairs(recipeIngredientHandlingTables) do
         if recipeIngredientHandlingTable[1].normal ~= nil then
@@ -1486,11 +1493,11 @@ Utils.GetRecipeIngredientsAddedTogeather = function(recipeIngredientHandlingTabl
     return ingredientsTable
 end
 
+--[[
+    Returns the attributeName for the recipeCostType if available, otherwise the inline ingredients version.
+    recipeType defaults to the no cost type if not supplied. Values are: "ingredients", "normal" and "expensive".
+--]]
 Utils.GetRecipeAttribute = function(recipe, attributeName, recipeCostType, defaultValue)
-    --[[
-        Returns the attributeName for the recipeCostType if available, otherwise the inline ingredients version.
-        recipeType defaults to the no cost type if not supplied. Values are: "ingredients", "normal" and "expensive".
-    --]]
     recipeCostType = recipeCostType or "ingredients"
     if recipeCostType == "ingredients" and recipe[attributeName] ~= nil then
         return recipe[attributeName]
@@ -1522,11 +1529,11 @@ Utils.DoesRecipeResultsIncludeItemName = function(recipePrototype, itemName)
     return false
 end
 
+--[[
+    From the provided technology list remove all provided recipes from being unlocked that create an item that can place a given entity prototype.
+    Returns a table of the technologies affected or a blank table if no technologies are affected.
+]]
 Utils.RemoveEntitiesRecipesFromTechnologies = function(entityPrototype, recipes, technolgies)
-    --[[
-        From the provided technology list remove all provided recipes from being unlocked that create an item that can place a given entity prototype.
-        Returns a table of the technologies affected or a blank table if no technologies are affected.
-    ]]
     local technologiesChanged = {}
     local placedByItemName
     if entityPrototype.minable ~= nil and entityPrototype.minable.result ~= nil then
@@ -1568,19 +1575,21 @@ Utils.SplitStringOnCharacters = function(text, splitCharacters, returnAskey)
     return list
 end
 
+-- trim6 from http://lua-users.org/wiki/StringTrim
 Utils.StringTrim = function(text)
-    -- trim6 from http://lua-users.org/wiki/StringTrim
     return string.match(text, "^()%s*$") and "" or string.match(text, "^%s*(.*%S)")
 end
 
----@param orientation double @Will be rounded to the nearest cardinal or intercardinal direction.
+-- Takes a orientation (0-1) and returns a direction (int 0-7).
+---@param orientation RealOrientation @Will be rounded to the nearest cardinal or intercardinal direction.
 ---@return defines.direction
 Utils.OrientationToDirection = function(orientation)
     return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
 end
 
+-- Takes a direction (int 0-7) and returns an orientation (0-1).
 ---@param directionValue defines.direction
----@return double
+---@return RealOrientation
 Utils.DirectionToOrientation = function(directionValue)
     return directionValue / 8
 end
@@ -1593,9 +1602,15 @@ Utils.DirectionValueToName = function(directionValue)
 end
 
 ---@param directionValue defines.direction
----@return int
+---@return defines.direction
 Utils.LoopDirectionValue = function(directionValue)
     return Utils.LoopIntValueWithinRange(directionValue, 0, 7)
+end
+
+---@param orientationValue RealOrientation
+---@return RealOrientation
+Utils.LoopOrientationValue = function(orientationValue)
+    return Utils.LoopFloatValueWithinRangeMaxExclusive(orientationValue, 0, 1)
 end
 
 ---@param entity LuaEntity
