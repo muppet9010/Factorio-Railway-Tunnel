@@ -7,39 +7,44 @@ local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = 
 local TunnelPortals = {}
 local EventScheduler = require("utility/event-scheduler")
 
--- TODO: a portal will be connected segments and up 2 connected Ends. A portal will be incomplete until it has both Ends.
-local SetupValues = {
-    -- Tunnels distances are from the portal position (center).
-    trackEntryPointFromCenter = -25, -- the border of the portal on the entry side.
-    entrySignalsDistance = -23.5,
-    enteringTrainUsageDetectorEntityDistance = -22.5, -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until just before it triggers the signal, but a leaving train won't touch it either when waiting at the exit signals. This is a judgement call as trains can actually collide when manaully driven over signals without triggering them. Positioned to minimise UPS usage
-    entrySignalBlockingLocomotiveDistance = -21.5,
-    dummyLocomotiveDistance = 14.5,
-    transitionUsageDetectorEntityDistance = 17.5, -- Equivilent to the leading carriage being less than 14 tiles from the transition signal (old distance detection logic). 10 tiles from the portal transition blocking locomotive.
-    transitionSignalsDistance = 19.5,
-    transitionSignalBlockingLocomotiveDistance = 20.5,
-    blockedInvisibleSignalsDistance = 23.5,
-    straightRailCountFromEntryPoint = 17, -- Number of visible rails from the entry point towards the Transition point.
-    invisibleRailCountFromEntryPoint = 8 -- Number of invisible rails after the visible rails to reach the Transition point.
+-- Distances are from entry end portal position in the Portal.entryDirection direction.
+local EntryEndPortalSetup = {
+    trackEntryPointFromCenter = 3, -- the border of the portal on the entry side.
+    entrySignalsDistance = 1.5,
+    enteringTrainUsageDetectorEntityDistance = 0.5, -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until just before it triggers the signal, but a leaving train won't touch it either when waiting at the exit signals. This is a judgement call as trains can actually collide when manaully driven over signals without triggering them. Positioned to minimise UPS usage
+    entrySignalBlockingLocomotiveDistance = -0.5
 }
 
+-- Distances are from blocking end portal position in the Portal.entryDirection direction.
+local BlockingEndPortalSetup = {
+    dummyLocomotiveDistance = 7.5, -- OVERHAUL - this is in te train placement area, it needs to go somewhere else!
+    transitionUsageDetectorEntityDistance = 4.5,
+    transitionSignalsDistance = 2.5,
+    transitionSignalBlockingLocomotiveDistance = 1.5,
+    blockedInvisibleSignalsDistance = -1.5
+}
+
+-- TODO: not sure we need to track surface or force through this file at all? check the other entity attributes as well.
 ---@class Portal
 ---@field id uint @unique id of the portal object.
 ---@field isComplete boolean @if the portal has 2 connected portal end objects or not.
 ---@field portalEnds table<UnitNumber, PortalEnd> @the portal end objects of this portal. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
----@field entryPortal PortalEnd @the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
----@field blockedPortal PortalEnd @the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
+---@field entryPortalEnd PortalEnd @the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
+---@field blockedPortalEnd PortalEnd @the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field portalSegments table<UnitNumber, PortalSegment> @the portal segment objects of this portal. Key'd by the portal segment entity unit_number (id).
 ---@field transitionSignals table<TunnelSignalDirection, PortalTransitionSignal> @These are the inner locked red signals that a train paths at to enter the tunnel. Only established once this portal is part of a valid tunnel.
 ---@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. Only established once this portal is part of a valid tunnel.
 ---@field tunnel Tunnel @ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
----@field portalRailEntities table<UnitNumber, LuaEntity> @the visible rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
----@field tunnelOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the connected tunnel for the portal. Will be deleted before the tunnelRailEntities. Only established once this portal is part of a valid tunnel.
+---@field portalRailEntities table<UnitNumber, LuaEntity> @the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
+---@field portalOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
 ---@field portalEntryPointPosition Position @the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorEntity LuaEntity @hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorEntity LuaEntity @hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
 ---@field dummyLocomotivePosition Position @the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
+---@field trainWaitingAreaTilesLength int @how many tiles this portal has for trains to wait in it when using the tunnel.
+---@field force LuaForce @the force this portal object belongs to.
+---@field surface LuaSurface @the surface this portal part object is on.
+---@field entryDirection defines.direction @the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
 
 ---@class PortalPart @a generic part (entity) object making up part of a potral.
 ---@field id UnitNumber @unit_number of the portal part entity.
@@ -51,15 +56,20 @@ local SetupValues = {
 ---@field frontPosition Position @used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 1 tile in from its connecting center. This is to handle various shapes.
 ---@field rearPosition Position @used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 1 tile in from its connecting center. This is to handle various shapes.
 ---@field portal Portal @ref to the parent portal object.
----@field partType PortalPartType
+---@field typeData PortalPartTypeData @ref to generic data about this type of portal part.
 ---@field surface LuaSurface @the surface this portal part object is on.
 ---@field surface_index uint @cached index of the surface this portal part is on.
 ---@field force LuaForce @the force this portal part object belongs to.
 
 ---@class PortalEnd : PortalPart @the end part of a portal.
 ---@field endPortalType EndPortalType @the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direciotn is known.
+---@field connectedToUnderground boolean @if theres an underground segment connected to this portal on one side as part of the completed tunnel. Only populated when its part of a full tunnel.
 
----@alias EndPortalType "'entry'"|"'blocker'"
+---@class EndPortalType
+local EndPortalType = {
+    entry = "entry",
+    blocker = "blocker"
+}
 
 ---@class PortalSegment : PortalPart @a middle segment of a portal.
 ---@field segmentShape PortalSegmentShape
@@ -95,24 +105,57 @@ local SegmentShape = {
 ---@class PortalPartTypeData
 ---@field name string
 ---@field partType PortalPartType
+---@field trainWaitingAreaTilesLength int @how many tiles this part has for trains to wait in it when using the tunnel.
+---@field tracksPositionOffset TrackPositionOffset[] @the type of track and its position offset from the center of the part when in a 0 orientation.
 
 ---@class EndPortalTypeData:PortalPartTypeData
 
 ---@class SegmentPortalTypeData:PortalPartTypeData
 ---@field segmentShape PortalSegmentShape
 
+---@class TrackPositionOffset @type of track and its position offset from the center of the part when in a 0 orientation.
+---@field trackEntityName string
+---@field positionOffset Position
+---@field baseDirection defines.direction
+
 ---@type PortalPartTypeData[]
 local PortalTypeData = {
     ---@type EndPortalTypeData
     ["railway_tunnel-portal_end"] = {
         name = "railway_tunnel-portal_end",
-        partType = PortalPartType.portalEnd
+        partType = PortalPartType.portalEnd,
+        trainWaitingAreaTilesLength = 0,
+        tracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                positionOffset = {x = 0, y = -2},
+                baseDirection = defines.direction.north
+            },
+            {
+                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                positionOffset = {x = 0, y = 0},
+                baseDirection = defines.direction.north
+            },
+            {
+                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                positionOffset = {x = 0, y = 2},
+                baseDirection = defines.direction.north
+            }
+        }
     },
     ---@type SegmentPortalTypeData
     ["railway_tunnel-portal_segment-straight"] = {
         name = "railway_tunnel-portal_segment-straight",
         partType = PortalPartType.portalSegment,
-        segmentShape = SegmentShape.straight
+        segmentShape = SegmentShape.straight,
+        trainWaitingAreaTilesLength = 2,
+        tracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                positionOffset = {x = 0, y = 0},
+                baseDirection = defines.direction.north
+            }
+        }
     }
 }
 
@@ -204,10 +247,10 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         entity_position = builtEntity_position,
         entity_direction = builtEntity_direction,
         entity_orientation = builtEntity_orientation,
-        partType = portalTypeData.partType,
         surface = surface,
         surface_index = surface_index,
-        force = builtEntity.force
+        force = builtEntity.force,
+        typeData = portalTypeData
     }
 
     -- Handle the caching of specific portal part type information and to their globals.
@@ -218,6 +261,7 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         -- Has 2 positions that other portal parts can check it for as a connection. 2 tiles from centre in both connecting directions (1 tile in from its edge).
         endPortal.frontPosition = Utils.ApplyOffsetToPosition(builtEntity_position, Utils.RotatePositionAround0(builtEntity_orientation, {x = 0, y = 2}))
         endPortal.rearPosition = Utils.ApplyOffsetToPosition(builtEntity_position, Utils.RotatePositionAround0(Utils.LoopOrientationValue(builtEntity_orientation + 0.5), {x = 0, y = 2}))
+        endPortal.connectedToUnderground = false
         global.tunnelPortals.portalEnds[portalPartObject.id] = endPortal
     elseif portalTypeData.partType == PortalPartType.portalSegment then
         -- Placed entity is a segment.
@@ -283,10 +327,10 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 -- Valid portal to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
                 if portalPartObject.portal and connectedPortalPart.portal == nil then
                     -- We have a portal and they don't, so add them to our portal.
-                    TunnelPortals.AddPartToPortalParts(portalPartObject.portal, connectedPortalPart)
+                    TunnelPortals.AddPartToPortal(portalPartObject.portal, connectedPortalPart)
                 elseif portalPartObject.portal == nil and connectedPortalPart.portal then
                     -- We don't have a portal and they do, so add us to their portal.
-                    TunnelPortals.AddPartToPortalParts(connectedPortalPart.portal, portalPartObject)
+                    TunnelPortals.AddPartToPortal(connectedPortalPart.portal, portalPartObject)
                 else
                     -- Either we both have portals or neither have portals. Just flag this and review after checking both directions.
                     if firstComplictedConnectedPart == nil then
@@ -310,13 +354,18 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 id = portalId,
                 isComplete = false,
                 portalEnds = {},
-                portalSegments = {}
+                portalSegments = {},
+                trainWaitingAreaTilesLength = 0,
+                force = portalPartObject.force,
+                surface = portalPartObject.surface,
+                portalRailEntities = {}
+                --portalEntryPointPosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(builtEntity.orientation, {x = 0, y = 0 - math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)})) -- OVERHAUL - not sure what this is really, fix later.
             }
             global.tunnelPortals.portals[portalId] = portal
-            TunnelPortals.AddPartToPortalParts(portal, portalPartObject)
-            TunnelPortals.AddPartToPortalParts(portal, firstComplictedConnectedPart)
+            TunnelPortals.AddPartToPortal(portal, portalPartObject)
+            TunnelPortals.AddPartToPortal(portal, firstComplictedConnectedPart)
             if secondComplictedConnectedPart ~= nil then
-                TunnelPortals.AddPartToPortalParts(portal, secondComplictedConnectedPart)
+                TunnelPortals.AddPartToPortal(portal, secondComplictedConnectedPart)
             end
         else
             -- Us and the one complicated part both have a portal, so merge them. Use whichever has more segments as new master as this is generally the best one.
@@ -339,12 +388,13 @@ end
 ---@param portalPart PortalPart
 TunnelPortals.AddPartToPortalParts = function(portal, portalPart)
     portalPart.portal = portal
-    if portalPart.partType == PortalPartType.portalEnd then
+    if portalPart.typeData.partType == PortalPartType.portalEnd then
         portal.portalEnds[portalPart.id] = portalPart
-    elseif portalPart.partType == PortalPartType.portalSegment then
+    elseif portalPart.typeData.partType == PortalPartType.portalSegment then
         portal.portalSegments[portalPart.id] = portalPart
+        portal.trainWaitingAreaTilesLength = portal.trainWaitingAreaTilesLength + portalPart.typeData.trainWaitingAreaTilesLength
     else
-        error("invalid portal type: " .. portalPart.partType)
+        error("invalid portal type: " .. portalPart.typeData.partType)
     end
 end
 
@@ -360,6 +410,7 @@ TunnelPortals.MergePortalInToOtherPortal = function(oldPortal, newPortal)
         newPortal.portalSegments[id] = part
         part.portal = newPortal
     end
+    newPortal.trainWaitingAreaTilesLength = newPortal.trainWaitingAreaTilesLength + oldPortal.trainWaitingAreaTilesLength
     global.tunnelPortals.portals[oldPortal.id] = nil
 end
 
@@ -376,8 +427,7 @@ end
 ---@return LuaEntity[] @Tunnel portal entities.
 ---@return LuaEntity[] @Tunnel segment entities.
 TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntity, placer, portal)
-    -- TODO: update this given new portal object.
-    -- UP TO HERE
+    -- TODO: NEED TO UPDATE THIS AS SKIPPED
     local startingTunnelPortalEntity_direction = startingTunnelPortalEntity.direction
     local tunnelPortalEntities, tunnelSegmentEntities, directionValue, orientation = {}, {}, startingTunnelPortalEntity_direction, Utils.DirectionToOrientation(startingTunnelPortalEntity_direction)
     local startingTunnelPartPoint = Utils.ApplyOffsetToPosition(startingTunnelPortalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = -1 + portal.entryPointDistanceFromCenter}))
@@ -385,130 +435,85 @@ TunnelPortals.CheckTunnelCompleteFromPortal = function(startingTunnelPortalEntit
     return directionComplete, tunnelPortalEntities, tunnelSegmentEntities
 end
 
---TODO: this is legacy code to be moved out to new locations - probably tunnel completion?
-OldOnBuiltEntityCode = function()
-    local centerPos, builtEntity, directionValue = nil, nil, nil
-
-    local force, surface = builtEntity.force, builtEntity.surface
-    local orientation = Utils.DirectionToOrientation(directionValue)
-
-    local entracePos = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.trackEntryPointFromCenter}))
-
-    local portalEntity_position = builtEntity.position
-    ---@type Portal
-    local portal = {
-        id = builtEntity.unit_number,
-        entity = builtEntity,
-        entityDirection = directionValue,
-        portalRailEntities = {},
-        entryPointDistanceFromCenter = math.abs(SetupValues.trackEntryPointFromCenter),
-        portalEntryPointPosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(builtEntity.orientation, {x = 0, y = 0 - math.abs(SetupValues.trackEntryPointFromCenter)}))
-    }
-    global.tunnelPortals.portals[portal.id] = portal
-
-    local nextRailPos = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1}))
-    local railOffsetFromEntryPointPos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entry point position by rail placement
-    for _ = 1, SetupValues.straightRailCountFromEntryPoint do
-        local placedRail = surface.create_entity {name = "railway_tunnel-portal_rail-on_map", position = nextRailPos, force = force, direction = directionValue}
-        placedRail.destructible = false
-        portal.portalRailEntities[placedRail.unit_number] = placedRail
-        nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntryPointPos)
-    end
-
-    -- Add the signals at the entry part to the tunnel.
-    ---@type LuaEntity
-    local entrySignalInEntity =
-        surface.create_entity {
-        name = "railway_tunnel-internal_signal-not_on_map",
-        position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.entrySignalsDistance})),
-        force = force,
-        direction = directionValue
-    }
-    entrySignalInEntity.destructible = false
-    ---@type LuaEntity
-    local entrySignalOutEntity =
-        surface.create_entity {
-        name = "railway_tunnel-internal_signal-not_on_map",
-        position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.entrySignalsDistance})),
-        force = force,
-        direction = Utils.LoopDirectionValue(directionValue + 4)
-    }
-    portal.entrySignals = {
-        [TunnelSignalDirection.inSignal] = {
-            id = entrySignalInEntity.unit_number,
-            entity = entrySignalInEntity,
-            portal = portal,
-            direction = TunnelSignalDirection.inSignal
-        },
-        [TunnelSignalDirection.outSignal] = {
-            id = entrySignalOutEntity.unit_number,
-            entity = entrySignalOutEntity,
-            portal = portal,
-            direction = TunnelSignalDirection.outSignal
-        }
-    }
-    -- Set the portal to be closed signals initially.
-    entrySignalInEntity.connect_neighbour {wire = defines.wire_type.green, target_entity = entrySignalOutEntity}
-    TunnelPortals.ClosePortalEntrySignalAsNoTunnel(entrySignalInEntity)
-
-    -- We want to stop trains driving on to a portal when there is no tunnel.
-    TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(portal, false)
-
-    -- Cache the objects details for later use.
-    portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.dummyLocomotiveDistance}))
-end
-
----@param entrySignalInEntity LuaEntity
-TunnelPortals.ClosePortalEntrySignalAsNoTunnel = function(entrySignalInEntity)
-    local controlBehavior = entrySignalInEntity.get_or_create_control_behavior() ---@type LuaRailSignalControlBehavior
-    controlBehavior.read_signal = false
-    controlBehavior.close_signal = true
-    controlBehavior.circuit_condition = {condition = {first_signal = {type = "virtual", name = "signal-0"}, comparator = "=", constant = 0}, fulfilled = true}
-end
-
 -- Registers and sets up the tunnel's portals prior to the tunnel object being created and references created.
----@param portalEntities LuaEntity[]
----@param force LuaForce
----@param surface LuaSurface
----@return Portal[]
-TunnelPortals.On_PreTunnelCompleted = function(portalEntities, force, surface)
-    local portals = {}
-
-    for _, portalEntity in pairs(portalEntities) do
-        local portal = global.tunnelPortals.portals[portalEntity.unit_number]
-        table.insert(portals, portal)
-        local directionValue = portalEntity.direction
-        local orientation = Utils.DirectionToOrientation(directionValue)
-        local portalEntity_position = portalEntity.position
-
-        -- Add the invisble rails to connect the tunnel portal's normal rails to the adjoining tunnel segment.
-        local entracePos = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.trackEntryPointFromCenter}))
-        local nextRailPos = Utils.ApplyOffsetToPosition(entracePos, Utils.RotatePositionAround0(orientation, {x = 0, y = 1 + (SetupValues.straightRailCountFromEntryPoint * 2)}))
-        local railOffsetFromEntryPointPos = Utils.RotatePositionAround0(orientation, {x = 0, y = 2}) -- Steps away from the entry point position by rail placement.
-        portal.tunnelRailEntities = {}
-        for _ = 1, SetupValues.invisibleRailCountFromEntryPoint do
-            local placedRail = surface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = nextRailPos, force = force, direction = directionValue} ---@type LuaEntity
-            placedRail.destructible = false
-            portal.tunnelRailEntities[placedRail.unit_number] = placedRail
-            nextRailPos = Utils.ApplyOffsetToPosition(nextRailPos, railOffsetFromEntryPointPos)
+---@param portals Portal[]
+TunnelPortals.On_PreTunnelCompleted = function(portals)
+    -- Add all the bits to each portal that only appear when the portal is part of a completed tunnel.
+    for _, portal in pairs(portals) do
+        -- Work out which portal end is the blocked end.
+        local entryPortalEnd, blockedPortalEnd
+        for _, endPortalPart in pairs(portal.portalEnds) do
+            if endPortalPart.connectedToUnderground then
+                blockedPortalEnd = endPortalPart
+                endPortalPart.endPortalType = EndPortalType.blocker
+                portal.blockedPortalEnd = blockedPortalEnd
+            else
+                entryPortalEnd = endPortalPart
+                endPortalPart.endPortalType = EndPortalType.entry
+                portal.entryPortalEnd = entryPortalEnd
+            end
         end
+
+        -- Work out which direction an entering train would be heading in to this portal.
+        local entryDirection = Utils.GetCardinalDirectionHeadingToPosition(entryPortalEnd, blockedPortalEnd)
+        local reverseEntryDirection = Utils.LoopDirectionValue(entryDirection + 4)
+        local entryOrientation = Utils.DirectionToOrientation(entryDirection)
+        local surface, force, refPosition = portal.surface, portal.force, blockedPortalEnd.entity_position
+
+        TunnelPortals.BuildRailForPortalsParts(portal)
+
+        -- Add the signals at the entry part to the tunnel.
+        ---@type LuaEntity
+        local entrySignalInEntity =
+            surface.create_entity {
+            name = "railway_tunnel-internal_signal-not_on_map",
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = EntryEndPortalSetup.entrySignalsDistance})),
+            force = force,
+            direction = entryDirection
+        }
+        ---@type LuaEntity
+        local entrySignalOutEntity =
+            surface.create_entity {
+            name = "railway_tunnel-internal_signal-not_on_map",
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = EntryEndPortalSetup.entrySignalsDistance})),
+            force = force,
+            direction = reverseEntryDirection
+        }
+        portal.entrySignals = {
+            [TunnelSignalDirection.inSignal] = {
+                id = entrySignalInEntity.unit_number,
+                entity = entrySignalInEntity,
+                portal = portal,
+                direction = TunnelSignalDirection.inSignal
+            },
+            [TunnelSignalDirection.outSignal] = {
+                id = entrySignalOutEntity.unit_number,
+                entity = entrySignalOutEntity,
+                portal = portal,
+                direction = TunnelSignalDirection.outSignal
+            }
+        }
+        entrySignalInEntity.connect_neighbour {wire = defines.wire_type.green, target_entity = entrySignalOutEntity}
+
+        -- Cache the objects details for later use.
+        portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}))
 
         -- Add the signals that mark the Tranisition point of the portal.
         ---@type LuaEntity
         local transitionSignalInEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.transitionSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = BlockingEndPortalSetup.transitionSignalsDistance})),
             force = force,
-            direction = directionValue
+            direction = entryDirection
         }
         ---@type LuaEntity
         local transitionSignalOutEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.transitionSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = BlockingEndPortalSetup.transitionSignalsDistance})),
             force = force,
-            direction = Utils.LoopDirectionValue(directionValue + 4)
+            direction = reverseEntryDirection
         }
         portal.transitionSignals = {
             [TunnelSignalDirection.inSignal] = {
@@ -531,37 +536,37 @@ TunnelPortals.On_PreTunnelCompleted = function(portalEntities, force, surface)
         local blockedInvisibleSignalInEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = -1.5, y = SetupValues.blockedInvisibleSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = BlockingEndPortalSetup.blockedInvisibleSignalsDistance})),
             force = force,
-            direction = directionValue
+            direction = entryDirection
         }
         ---@type LuaEntity
         local blockedInvisibleSignalOutEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 1.5, y = SetupValues.blockedInvisibleSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = BlockingEndPortalSetup.blockedInvisibleSignalsDistance})),
             force = force,
-            direction = Utils.LoopDirectionValue(directionValue + 4)
+            direction = reverseEntryDirection
         }
         ---@type LuaEntity
         local transitionSignalBlockingLocomotiveEntity =
             surface.create_entity {
             name = "railway_tunnel-tunnel_portal_blocking_locomotive",
-            position = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.transitionSignalBlockingLocomotiveDistance})),
+            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance})),
             force = global.force.tunnelForce,
-            direction = Utils.LoopDirectionValue(directionValue + 2)
+            direction = entryDirection
         }
         transitionSignalBlockingLocomotiveEntity.train.schedule = {
             current = 1,
             records = {
                 {
-                    rail = surface.find_entity("railway_tunnel-invisible_rail-on_map_tunnel", Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.transitionSignalBlockingLocomotiveDistance + 1.5})))
+                    rail = surface.find_entity("railway_tunnel-invisible_rail-on_map_tunnel", Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance + 1.5})))
                 }
             }
         }
         transitionSignalBlockingLocomotiveEntity.train.manual_mode = false
         transitionSignalBlockingLocomotiveEntity.destructible = false
-        portal.tunnelOtherEntities = {
+        portal.portalOtherEntities = {
             [blockedInvisibleSignalInEntity.unit_number] = blockedInvisibleSignalInEntity,
             [blockedInvisibleSignalOutEntity.unit_number] = blockedInvisibleSignalOutEntity,
             [transitionSignalBlockingLocomotiveEntity.unit_number] = transitionSignalBlockingLocomotiveEntity
@@ -573,8 +578,30 @@ TunnelPortals.On_PreTunnelCompleted = function(portalEntities, force, surface)
     portals[1].entrySignals[TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelSignalDirection.inSignal].entity}
     TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[1].entrySignals[TunnelSignalDirection.inSignal].entity, "signal-1", "signal-2")
     TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[2].entrySignals[TunnelSignalDirection.inSignal].entity, "signal-2", "signal-1")
+end
 
-    return portals
+-- TODO: GOT UP TO HERE IN THIS FILE
+-- Add the rails to the tunnel portal's parts.
+---@param portal Portal
+TunnelPortals.BuildRailForPortalsParts = function(portal)
+    ---@param portalPart PortalPart
+    ---@param tracksPositionOffset TrackPositionOffset
+    local PlaceRail = function(portalPart, tracksPositionOffset)
+        local railPos = Utils.ApplyOffsetToPosition(portalPart.entity_position, Utils.RotatePositionAround0(portalPart.entity_orientation, tracksPositionOffset.positionOffset))
+        local placedRail = portal.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = portal.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, portalPart.entity_direction)}
+        placedRail.destructible = false
+        portal.portalRailEntities[placedRail.unit_number] = placedRail
+    end
+    for _, portalPart in pairs(portal.portalEnds) do
+        for _, tracksPositionOffset in pairs(portalPart.typeData.tracksPositionOffset) do
+            PlaceRail(portalPart, tracksPositionOffset)
+        end
+    end
+    for _, portalPart in pairs(portal.portalSegments) do
+        for _, tracksPositionOffset in pairs(portalPart.typeData.tracksPositionOffset) do
+            PlaceRail(portalPart, tracksPositionOffset)
+        end
+    end
 end
 
 ---@param railSignalEntity LuaEntity
@@ -649,8 +676,7 @@ TunnelPortals.ReplacePortalEntity = function(oldPortal)
         entrySignals = oldPortal.entrySignals,
         tunnel = oldPortal.tunnel,
         portalRailEntities = oldPortal.portalRailEntities,
-        tunnelRailEntities = oldPortal.tunnelRailEntities,
-        tunnelOtherEntities = oldPortal.tunnelOtherEntities,
+        portalOtherEntities = oldPortal.portalOtherEntities,
         enteringTrainUsageDetectorEntity = oldPortal.enteringTrainUsageDetectorEntity,
         entryPointDistanceFromCenter = oldPortal.entryPointDistanceFromCenter,
         portalEntryPointPosition = oldPortal.portalEntryPointPosition
@@ -696,20 +722,20 @@ end
 ---@param killerCauseEntity LuaEntity
 TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
     for _, portal in pairs(portals) do
-        TunnelShared.DestroyCarriagesOnRailEntityList(portal.tunnelRailEntities, killForce, killerCauseEntity)
+        TunnelShared.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
         portal.tunnel = nil
-        for _, otherEntity in pairs(portal.tunnelOtherEntities) do
+        for _, otherEntity in pairs(portal.portalOtherEntities) do
             if otherEntity.valid then
                 otherEntity.destroy()
             end
         end
-        portal.tunnelOtherEntities = nil
-        for _, railEntity in pairs(portal.tunnelRailEntities) do
+        portal.portalOtherEntities = nil
+        for _, railEntity in pairs(portal.portalRailEntities) do
             if railEntity.valid then
                 railEntity.destroy()
             end
         end
-        portal.tunnelRailEntities = nil
+        portal.portalRailEntities = nil
         for _, transitionSignal in pairs(portal.transitionSignals) do
             if transitionSignal.entity.valid then
                 Interfaces.Call("Tunnel.DeregisterTransitionSignal", transitionSignal)
@@ -842,7 +868,7 @@ TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, re
     end
     local surface, directionValue = portal.entity.surface, portalEntity.direction
     local orientation = Utils.DirectionToOrientation(directionValue)
-    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.enteringTrainUsageDetectorEntityDistance}))
+    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = EntryEndPortalSetup.enteringTrainUsageDetectorEntityDistance}))
     return TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, surface, position, retry)
 end
 
@@ -984,7 +1010,7 @@ TunnelPortals.AddTransitionUsageDetectionEntityToPortal = function(portal)
     end
     local surface, directionValue = portal.entity.surface, portalEntity.direction
     local orientation = Utils.DirectionToOrientation(directionValue)
-    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = SetupValues.transitionUsageDetectorEntityDistance}))
+    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = BlockingEndPortalSetup.transitionUsageDetectorEntityDistance}))
 
     local transitionUsageDetectorEntity = surface.create_entity {name = "railway_tunnel-portal_transition_train_detector_1x1", force = global.force.tunnelForce, position = position}
     if transitionUsageDetectorEntity == nil then

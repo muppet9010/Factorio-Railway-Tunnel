@@ -237,8 +237,9 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     }
 
     -- Work out how long it will take to reach the far end at current speed from leading carriages current forward tip.
-    local travelDistance = managedTrain.tunnel.tunnelLength
+    local travelDistance = managedTrain.tunnel.underground.tilesLength
     -- hard coded portal area values for now - Just assume the entering train was at the detector entity. Measured from current setup so good enough for now.
+    -- TODO: need to work out distances properly now with modular portals.
     travelDistance = travelDistance + 71.5
     -- Just assume the speed stays constant at the entering speed for the whole duration for now.
     managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
@@ -510,6 +511,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     return managedTrain
 end
 
+-- TODO: don;t think this is needed any more?
 ---@param tunnel Tunnel
 ---@param newPortal Portal
 TrainManager.On_PortalReplaced = function(tunnel, newPortal)
@@ -588,7 +590,7 @@ end
 ---@param enteringTrain_carriages LuaEntity[]
 ---@return LuaTrain @Leaving train
 TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_carriages)
-    -- This currently assumes the portals are in a stright line of each other and that the portal areas are straight.
+    -- This currently assumes the portals are in a straight line of each other and that the portal areas are straight.
     local enteringTrain, trainCarriagesForwardOrientation = managedTrain.enteringTrain, managedTrain.trainTravelOrientation
     local targetSurface = managedTrain.surface
     if not managedTrain.enteringTrainForwards then

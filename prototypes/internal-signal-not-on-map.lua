@@ -13,7 +13,7 @@ return function(tunnelSignalSurfaceCollisionLayer)
                 icon_mipmaps = 4,
                 subgroup = "railway_tunnel-hidden_rail_signals",
                 animation = refSignal.animation,
-                collision_mask = {tunnelSignalSurfaceCollisionLayer}, -- Just collide with other signals, doesn't let the rails be daged by weapons.
+                collision_mask = {tunnelSignalSurfaceCollisionLayer}, -- Just collide with other signals, doesn't let the rails be damaged by weapons.
                 collision_box = {{-0.2, -0.2}, {0.2, 0.2}},
                 draw_circuit_wires = false,
                 circuit_wire_max_distance = 1000000,

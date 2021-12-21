@@ -1,10 +1,17 @@
+-- TODO: break these out in to seperate files.
 --[[
     Random utility functions that don't fit in to any other category.
 --]]
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
-Utils.DeepCopy = factorioUtil.table.deepcopy ---@type fun(object:table):table
-Utils.TableMerge = factorioUtil.merge ---@type fun(tables:table[]):table @Takes an array of tables and returns a new table with copies of their contents
+
+-- Copies a table and all of its children all the way down.
+---@type fun(object:table):table
+Utils.DeepCopy = factorioUtil.table.deepcopy
+
+-- Takes an array of tables and returns a new table with copies of their contents. Merges children when they are tables togeather, but non table data types will have the latest value as the result.
+---@type fun(tables:table[]):table
+Utils.TableMerge = factorioUtil.merge
 
 -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
 ---@param entity1 LuaEntity
@@ -277,6 +284,15 @@ Utils.RotatePositionAround0 = function(orientation, position)
     local rotatedX = (position.x * cosValue) - (position.y * sinValue)
     local rotatedY = (position.x * sinValue) + (position.y * cosValue)
     return {x = rotatedX, y = rotatedY}
+end
+
+--- Rotates the directionToRotate by a direction difference from the referenceDirection to the appliedDirection. Useful for rotating entities direction in proportion to a parent's direction change from known direction.
+---@param directionToRotate defines.direction
+---@param referenceDirection defines.direction
+---@param appliedDirection defines.direction
+Utils.RotateDirectionByDirection = function(directionToRotate, referenceDirection, appliedDirection)
+    local directionDif = appliedDirection - referenceDirection
+    return Utils.LoopIntValueWithinRange(directionToRotate + directionDif, 0, 7)
 end
 
 ---@param point1 Position
@@ -600,6 +616,32 @@ end
 ---@return Position
 Utils.GetOffsetForPositionFromPosition = function(newPosition, basePosition)
     return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
+end
+
+--- Get a direction heading from a start point to an end point that is a on a cardinal direction.
+---@param startPos Position
+---@param endPos Position
+---@return defines.direction|int @Returns -1 if the startPos and endPos are the same. Returns -2 if the positions not on a cardinal direction difference.
+Utils.GetCardinalDirectionHeadingToPosition = function(startPos, endPos)
+    if startPos.x == endPos.x then
+        if startPos.y > endPos.y then
+            return 0
+        elseif startPos.y > endPos.y then
+            return 4
+        else
+            return -1
+        end
+    elseif startPos.y == endPos.y then
+        if startPos.x > endPos.x then
+            return 6
+        elseif startPos.x > endPos.x then
+            return 2
+        else
+            return -1
+        end
+    else
+        return -2
+    end
 end
 
 ---@param position Position

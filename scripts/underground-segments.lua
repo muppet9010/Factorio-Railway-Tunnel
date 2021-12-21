@@ -6,22 +6,27 @@ local Common = require("scripts/common")
 local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
 local UndergroundSegments = {}
 
+-- TODO: not sure we need to track surface or force through this file at all? check the other entity attributes as well.
 ---@class Underground
 ---@field id uint @unique id of the underground object.
 ---@field segments table<UnitNumber, UndergroundSegment> @segments in the underground. Key'd by the portal end entity unit_number (id).
 ---@field tunnel Tunnel @ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
+---@field tilesLength int @how many tiles this underground is long.
+---@field force LuaForce @the force this underground object belongs to.
+---@field surface LuaSurface @the surface this underground object is on.
 
 ---@class UndergroundSegment
 ---@field id UnitNumber @unit_number of the placed segment entity.
 ---@field entity LuaEntity
----@field entity_name string @cache of the portal part's entity's name.
+---@field entity_name string @cache of the segment's entity's name.
 ---@field entity_position Position @cache of the entity's position.
 ---@field entity_direction defines.direction @cache of the entity's direction.
 ---@field entity_orientation RealOrientation @cache of the entity's orientation.
 ---@field frontPosition Position @used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 1 tile in from its connecting center. This is to handle various shapes.
 ---@field rearPosition Position @used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 1 tile in from its connecting center. This is to handle various shapes.
----@field surface LuaSurface @the surface this portal part object is on.
----@field surface_index uint @cached index of the surface this portal part is on.
+---@field surface LuaSurface @the surface this segment object is on.
+---@field surface_index uint @cached index of the surface this segment is on.
+---@field force LuaForce @the force this segment object belongs to.
 ---@field underground Underground @ref to the parent underground object.
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities within the tunnel segment that form part of the larger tunnel.
 ---@field signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
@@ -31,6 +36,7 @@ local UndergroundSegments = {}
 ---@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
 ---@field topLayerEntity LuaEntity @the top layer graphical entity that is showings its picture and hiding the main entities once placed.
 ---@field segmentShape UndergroundSegmentShape @cache of the shape type of this segment.
+---@field tilesLength int @how many tiles this segment is long.
 
 ---@class SegmentSurfacePosition
 ---@field id SurfacePositionString
@@ -43,6 +49,7 @@ local UndergroundSegments = {}
 ---@field segmentShape UndergroundSegmentShape
 ---@field topLayerEntityName string @the entity to place when the tunnel is complete to show the desired completed graphics layer.
 ---@field placeCrossingRails boolean @if this segment type has above ground crossing rails or not.
+---@field tilesLength int @how many tiles this underground is long.
 
 ---@class UndergroundSegmentShape @the shape of the segment part.
 local SegmentShape = {
@@ -58,13 +65,15 @@ local SegmentTypeData = {
         name = "railway_tunnel-underground_segment-straight",
         segmentShape = SegmentShape.straight,
         topLayerEntityName = "railway_tunnel-underground_segment-straight-top_layer",
-        placeCrossingRails = false
+        placeCrossingRails = false,
+        tilesLength = 2
     },
     ["railway_tunnel-underground_segment-straight-rail_crossing"] = {
         name = "railway_tunnel-underground_segment-straight-rail_crossing",
         segmentShape = SegmentShape.straight,
         topLayerEntityName = nil,
-        placeCrossingRails = true
+        placeCrossingRails = true,
+        tilesLength = 2
     }
 }
 
@@ -200,7 +209,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     end
 
     -- If it's a fast replace and there is a type change then remove the old bits first.
-    -- TODO: the trainBlockerEntity doens't need to be placed until the rails are added when the tunnel is complete. The crossing rails are needed before hand however.
+    -- TODO: the trainBlockerEntity doesn't need to be placed until the rails are added when the tunnel is complete. The crossing rails are needed before hand however.
     if fastReplaceChange == "upgrade" then
         fastReplacedSegment.trainBlockerEntity.destroy()
         fastReplacedSegment.trainBlockerEntity = nil
@@ -253,7 +262,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         -- Claim the generic extras of the old segment,
         segment.tunnelRailEntities = fastReplacedSegment.tunnelRailEntities
         segment.signalEntities = fastReplacedSegment.signalEntities
-        segment.tunnel = fastReplacedSegment.tunnel
+        segment.underground = fastReplacedSegment.underground
 
         -- Handle the Underground object.
         local underground = fastReplacedSegment.underground
@@ -263,7 +272,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         end
 
         -- Handle anything that is only present if there is a parent tunnel.
-        if segment.tunnel ~= nil then
+        if segment.underground.tunnel ~= nil then
             -- Update the top layer entity if it needs changing due to change of entity type.
             if fastReplaceChange ~= "same" then
                 -- Remove the old top layer.
@@ -310,10 +319,10 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
             -- Valid underground to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
             if segment.underground and connectedSegment.underground == nil then
                 -- We have a underground and they don't, so add them to our underground.
-                UndergroundSegments.AddSegmentToPortalsSegments(segment.underground, connectedSegment)
+                UndergroundSegments.AddSegmentToUnderground(segment.underground, connectedSegment)
             elseif segment.underground == nil and connectedSegment.underground then
                 -- We don't have a underground and they do, so add us to their underground.
-                UndergroundSegments.AddSegmentToPortalsSegments(connectedSegment.underground, segment)
+                UndergroundSegments.AddSegmentToUnderground(connectedSegment.underground, segment)
             else
                 -- Either we both have undergrounds or neither have undergrounds. Just flag this and review after checking both directions.
                 if firstComplictedConnectedSegment == nil then
@@ -334,13 +343,16 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
             ---@type Underground
             local underground = {
                 id = undergroundId,
-                segments = {}
+                segments = {},
+                tilesLength = 0,
+                force = segment.force,
+                surface = segment.surface
             }
             global.undergroundSegments.undergrounds[undergroundId] = underground
-            UndergroundSegments.AddSegmentToPortalsSegments(underground, segment)
-            UndergroundSegments.AddSegmentToPortalsSegments(underground, firstComplictedConnectedSegment)
+            UndergroundSegments.AddSegmentToUnderground(underground, segment)
+            UndergroundSegments.AddSegmentToUnderground(underground, firstComplictedConnectedSegment)
             if secondComplictedConnectedSegment ~= nil then
-                UndergroundSegments.AddSegmentToPortalsSegments(underground, secondComplictedConnectedSegment)
+                UndergroundSegments.AddSegmentToUnderground(underground, secondComplictedConnectedSegment)
             end
         else
             -- Us and the one complicated part both have an underground, so merge them. Use whichever has more segments as new master as this is generally the best one.
@@ -356,8 +368,9 @@ end
 --- Add the segment to the underground based on its type.
 ---@param underground Underground
 ---@param segment UndergroundSegment
-UndergroundSegments.AddSegmentToPortalsSegments = function(underground, segment)
+UndergroundSegments.AddSegmentToUnderground = function(underground, segment)
     segment.underground = underground
+    underground.tilesLength = underground.tilesLength + segment.tilesLength
     underground.segments[segment.id] = segment
 end
 
@@ -369,6 +382,7 @@ UndergroundSegments.MergeUndergroundInToOtherUnderground = function(oldUndergrou
         newUnderground.segments[id] = segment
         segment.underground = newUnderground
     end
+    newUnderground.tilesLength = newUnderground.tilesLength + oldUnderground.tilesLength
     global.undergroundSegments.undergrounds[oldUnderground.id] = nil
 end
 
@@ -379,7 +393,6 @@ end
 ---@return LuaEntity[] @Tunnel segment entities.
 UndergroundSegments.CheckTunnelCompleteFromSegment = function(startingUndergroundSegment, placer)
     -- TODO: update this given new portal object.
-    -- UP TO HERE
     local tunnelPortalEntities, tunnelSegmentEntities, directionValue = {}, {}, startingUndergroundSegment.direction
     for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
         -- Check "forwards" and then "backwards".
@@ -391,15 +404,11 @@ UndergroundSegments.CheckTunnelCompleteFromSegment = function(startingUndergroun
     return true, tunnelPortalEntities, tunnelSegmentEntities
 end
 
--- Registers and sets up the tunnel's segments prior to the tunnel object being created and references created.
----@param segmentEntities LuaEntity[]
----@param force LuaForce
----@param surface LuaSurface
----@return UndergroundSegment[]
-UndergroundSegments.On_PreTunnelCompleted = function(segmentEntities, force, surface)
-    local segments = {}
-
-    for _, segmentEntity in pairs(segmentEntities) do
+-- Registers and sets up the underground prior to the tunnel object being created and references created.
+---@param underground Underground
+UndergroundSegments.On_PreTunnelCompleted = function(underground)
+    CONTINUE HERE FIRST
+    for _, segmentEntity in pairs(underground.segments.entity) do
         local segment = global.undergroundSegments.segments[segmentEntity.unit_number]
         table.insert(segments, segment)
         local centerPos, directionValue = segmentEntity.position, segmentEntity.direction
@@ -427,10 +436,9 @@ UndergroundSegments.On_PreTunnelCompleted = function(segmentEntities, force, sur
             segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
         end
     end
-
-    return segments
 end
 
+-- TODO - checked up to here
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 UndergroundSegments.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity

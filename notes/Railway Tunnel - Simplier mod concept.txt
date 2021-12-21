@@ -37,6 +37,8 @@ MINOR:
     - updated Tests that used any portal or segment of placed or placement and the various entity types.
     - make all tunnel entities non rotatable once built to avoid weirdness with 4 direciton rotatable entities. Editor can still do it, but we have simple code in old portal logic to undo this and it is very low UPS.
     - replace all ".type" to something unique so EmmyLua gives only the correct auto complete / hints.
+    - rename scripts UndergroundSegments and its lua file to just underground as thats the name of the top object.
+    - rename scripts tunnel-portals and its lua file to just portal as thats the name of the top object.
 
 
 FUTURE:

@@ -3,28 +3,28 @@ local Interfaces = require("utility/interfaces")
 local Tunnel = {}
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.TunnelAlignmentOrientation
+local RollingStockTypes, TunnelSurfaceRailEntityNames = Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames
+--local TunnelAlignment, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
 
--- TODO: tunnel not updated at all for new portal or underground.
-
----@class Tunnel
+---@class Tunnel @the tunnel object that managed trains can pass through.
 ---@field id Id @unqiue id of the tunnel.
----@field alignment TunnelAlignment
----@field alignmentOrientation TunnelAlignmentOrientation
----@field alignmentAxis Axis
+--@field alignment TunnelAlignment
+--@field alignmentOrientation TunnelAlignmentOrientation
+--@field alignmentAxis Axis
 ---@field surface LuaSurface
+---@field force LuaForce
 ---@field portals Portal[]
----@field segments UndergroundSegment[]
+---@field underground Underground
 ---@field managedTrain ManagedTrain @one is currently using this tunnel.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities of the whole tunnel (portal and segments).
----@field portalRailEntities table<UnitNumber, LuaEntity> @the visible rail entities that are part of the portal (visible rails).
----@field tunnelLength int @the length of the tunnel segments in tiles.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the underground rail entities (doesn't include above ground crossing rails).
+---@field portalRailEntities table<UnitNumber, LuaEntity> @the rail entities that are part of the portals.
 
----@class TunnelDetails
+-- TODO: not updated yet, not sure if really needed.
+---@class TunnelDetails @used by remote interface calls only.
 ---@field tunnelId Id @Id of the tunnel.
----@field portals LuaEntity[] @Not in any special order.
----@field segments LuaEntity[] @Not in any special order.
+---@field portalEntities LuaEntity[] @Not in any special order.
+---@field undergroundEntities LuaEntity[] @Not in any special order.
 ---@field tunnelUsageId Id
 
 Tunnel.CreateGlobals = function()
@@ -75,61 +75,43 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnels.transitionSignals[signal.unit_number])
 end
 
----@param tunnelPortalEntities LuaEntity[]
----@param tunnelSegmentEntities LuaEntity[]
-Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
-    ---@typelist LuaForce, LuaSurface, LuaEntity
-    local force, surface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
-    local refTunnelPortalEntity_direction = refTunnelPortalEntity.direction
-
+---@param portals Portal[]
+---@param underground Underground
+Tunnel.CompleteTunnel = function(portals, underground)
     -- Call any other modules before the tunnel object is created.
-    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, surface) ---@type table<int, Portal>
-    local undergroundSegments = Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int, UndergroundSegment>
+    Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", portals)
+    Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", underground)
 
     -- Create the tunnel global object.
-    local alignment, alignmentOrientation, alignmentAxis
-    if refTunnelPortalEntity_direction == defines.direction.north or refTunnelPortalEntity_direction == defines.direction.south then
-        alignment = TunnelAlignment.vertical
-        alignmentOrientation = TunnelAlignmentOrientation.vertical
-        alignmentAxis = "y"
-    elseif refTunnelPortalEntity_direction == defines.direction.east or refTunnelPortalEntity_direction == defines.direction.west then
-        alignment = TunnelAlignment.horizontal
-        alignmentOrientation = TunnelAlignmentOrientation.horizontal
-        alignmentAxis = "x"
-    else
-        error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity_direction)
-    end
+    local refPortal = portals[1]
     local tunnel = {
         id = global.tunnels.nextTunnelId,
-        alignment = alignment,
-        alignmentOrientation = alignmentOrientation,
-        alignmentAxis = alignmentAxis,
-        surface = surface,
-        portals = tunnelPortals,
-        segments = undergroundSegments,
+        surface = refPortal.surface,
+        portals = portals,
+        force = refPortal.force,
+        underground = underground,
         tunnelRailEntities = {},
-        portalRailEntities = {},
-        tunnelLength = #tunnelSegmentEntities * 2
+        portalRailEntities = {}
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
-    for _, portal in pairs(tunnelPortals) do
+
+    -- Update the parts of the tunnel.
+    for _, portal in pairs(portals) do
         portal.tunnel = tunnel
-        for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
-            tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
-        end
         for portalRailEntity_unitNumber, portalRailEntity in pairs(portal.portalRailEntities) do
             tunnel.portalRailEntities[portalRailEntity_unitNumber] = portalRailEntity
         end
     end
-    for _, segment in pairs(undergroundSegments) do
-        segment.tunnel = tunnel
+    underground.tunnel = tunnel
+    for _, segment in pairs(underground.segments) do
         for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(segment.tunnelRailEntities) do
             tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
         end
     end
 end
 
+--TODO: not checked below here.
 ---@param tunnel Tunnel
 Tunnel.RemoveTunnel = function(tunnel)
     Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
