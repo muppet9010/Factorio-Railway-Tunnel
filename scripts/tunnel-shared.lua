@@ -3,8 +3,6 @@ local Colors = require("utility/colors")
 local Common = require("scripts/common")
 local TunnelShared = {}
 
--- TODO: this needs major update for new portal object logic.
--- TODO: needs to update the portal end part connected to an underground with: connectedToUnderground = true
 ---@param startingTunnelPart LuaEntity
 ---@param startingTunnelPartPoint Position
 ---@param checkingDirection defines.direction
@@ -13,6 +11,7 @@ local TunnelShared = {}
 ---@param tunnelSegmentEntities LuaEntity[] @A reference to an existing tunnel segment entity array that will have discovered segment entities added to. Can be an empty array.
 ---@return boolean @Direction is completed successfully.
 TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts = function(startingTunnelPart, startingTunnelPartPoint, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
+    -- TODO: needs to update the portal end part connected to an underground with: connectedToUnderground = true
     local startingTunnelPart_name, startingTunnelPart_direction, startingTunnelPart_position = startingTunnelPart.name, startingTunnelPart.direction, startingTunnelPart.position
 
     if Common.UndergroundSegmentEntityNames[startingTunnelPart_name] then

@@ -3,6 +3,8 @@
     It supports defines.events and custom events. Also offers a raise event method.
     Intended for use with a modular script design to avoid having to link to each modulars functions in a centralised event handler.
 ]]
+--
+
 local Utils = require("utility/utils")
 
 local Events = {}

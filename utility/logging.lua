@@ -1,6 +1,5 @@
---[[
-	Logging functions.
---]]
+-- Logging functions.
+
 local Logging = {}
 local Constants = require("constants")
 local Utils = require("utility/utils")

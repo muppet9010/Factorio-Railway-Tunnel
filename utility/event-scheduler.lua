@@ -1,6 +1,8 @@
 --[[
     This event scheduler is used by calling the RegisterScheduler() function once in root of control.lua. You then call RegisterScheduledEventType() from the OnLoad stage for each function you want to register for future triggering. The triggering is then done by using the Once or Each Tick functions to add and remove registrations of functions and data against Factorio events. Each Tick events are optional for use when the function will be called for multiple ticks in a row with the same reference data.
-]]
+--]]
+--
+
 local Utils = require("utility/utils")
 local Events = require("utility/events")
 local EventScheduler = {}

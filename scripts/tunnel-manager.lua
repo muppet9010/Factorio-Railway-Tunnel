@@ -78,6 +78,7 @@ end
 ---@param portals Portal[]
 ---@param underground Underground
 Tunnel.CompleteTunnel = function(portals, underground)
+    game.print("DEBUG: tunnel complete")
     -- Call any other modules before the tunnel object is created.
     Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", portals)
     Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", underground)

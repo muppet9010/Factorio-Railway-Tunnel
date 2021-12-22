@@ -1,0 +1,26 @@
+{
+    "Lua.diagnostics.globals": [
+        "game",
+        "script",
+        "remote",
+        "commands",
+        "settings",
+        "rcon",
+        "rendering",
+        "global",
+        "log",
+        "defines",
+        "data",
+        "mods",
+        "serpent",
+        "table_size",
+        "bit32",
+        "util",
+        "localised_print",
+        "circuit_connector_definitions",
+        "universal_connector_template",
+        "__DebugAdapter",
+        "__Profiler",
+        "ourConnectionPoint"
+    ]
+}

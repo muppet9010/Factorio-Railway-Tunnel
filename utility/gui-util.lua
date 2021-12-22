@@ -1,6 +1,5 @@
---[[
-	Library to support making, storing and accessing GUI elements.
---]]
+-- Library to support making, storing and accessing GUI elements.
+
 local GuiUtil = {}
 local Utils = require("utility/utils")
 local GuiActionsClick = require("utility/gui-actions-click")

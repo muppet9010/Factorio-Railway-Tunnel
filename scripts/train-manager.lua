@@ -717,6 +717,7 @@ end
 ---@return LuaTrain
 TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
+    --TODO: update this 'exitPortalEntity'
     local exitPortalEntity = exitPortal.entity
     local locomotive =
         exitPortalEntity.surface.create_entity {

@@ -10,10 +10,11 @@ local UndergroundSegments = {}
 ---@class Underground
 ---@field id uint @unique id of the underground object.
 ---@field segments table<UnitNumber, UndergroundSegment> @segments in the underground. Key'd by the portal end entity unit_number (id).
----@field tunnel Tunnel @ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
 ---@field tilesLength int @how many tiles this underground is long.
 ---@field force LuaForce @the force this underground object belongs to.
 ---@field surface LuaSurface @the surface this underground object is on.
+---@field undergroundEndSegments UndergroundEndSegment[] @objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
+---@field tunnel Tunnel @ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
 
 ---@class UndergroundSegment
 ---@field id UnitNumber @unit_number of the placed segment entity.
@@ -22,8 +23,8 @@ local UndergroundSegments = {}
 ---@field entity_position Position @cache of the entity's position.
 ---@field entity_direction defines.direction @cache of the entity's direction.
 ---@field entity_orientation RealOrientation @cache of the entity's orientation.
----@field frontPosition Position @used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 1 tile in from its connecting center. This is to handle various shapes.
----@field rearPosition Position @used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 1 tile in from its connecting center. This is to handle various shapes.
+---@field frontPosition Position @used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field rearPosition Position  @used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
 ---@field surface LuaSurface @the surface this segment object is on.
 ---@field surface_index uint @cached index of the surface this segment is on.
 ---@field force LuaForce @the force this segment object belongs to.
@@ -35,8 +36,13 @@ local UndergroundSegments = {}
 ---@field beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
 ---@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
 ---@field topLayerEntity LuaEntity @the top layer graphical entity that is showings its picture and hiding the main entities once placed.
----@field segmentShape UndergroundSegmentShape @cache of the shape type of this segment.
 ---@field tilesLength int @how many tiles this segment is long.
+---@field typeData UndergroundSegmentTypeData @ref to generic data about this type of segment.
+---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @a table of this segments non connected points.
+
+---@class UndergroundEndSegment @details of a segment at the end of an underground.
+---@field segment UndergroundSegment
+---@field connectableSurfacePosition SurfacePositionString @where a portal could connect to this segment.
 
 ---@class SegmentSurfacePosition
 ---@field id SurfacePositionString
@@ -50,6 +56,7 @@ local UndergroundSegments = {}
 ---@field topLayerEntityName string @the entity to place when the tunnel is complete to show the desired completed graphics layer.
 ---@field placeCrossingRails boolean @if this segment type has above ground crossing rails or not.
 ---@field tilesLength int @how many tiles this underground is long.
+---@field undergroundTracksPositionOffset PortalPartTrackPositionOffset[] @the type of underground track and its position offset from the center of the part when in a 0 orientation.
 
 ---@class UndergroundSegmentShape @the shape of the segment part.
 local SegmentShape = {
@@ -59,6 +66,11 @@ local SegmentShape = {
     curveInner = "curveInner" -- The inner part of a curve that connects 2 curveStart's togeather to make a 90 degree corner.
 }
 
+---@class UndergroundSegmentTrackPositionOffset @type of track and its position offset from the center of the part when in a 0 orientation.
+---@field trackEntityName string
+---@field positionOffset Position
+---@field baseDirection defines.direction
+
 ---@type UndergroundSegmentTypeData[]
 local SegmentTypeData = {
     ["railway_tunnel-underground_segment-straight"] = {
@@ -66,14 +78,28 @@ local SegmentTypeData = {
         segmentShape = SegmentShape.straight,
         topLayerEntityName = "railway_tunnel-underground_segment-straight-top_layer",
         placeCrossingRails = false,
-        tilesLength = 2
+        tilesLength = 2,
+        undergroundTracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                positionOffset = {x = 0, y = 0},
+                baseDirection = defines.direction.north
+            }
+        }
     },
     ["railway_tunnel-underground_segment-straight-rail_crossing"] = {
         name = "railway_tunnel-underground_segment-straight-rail_crossing",
         segmentShape = SegmentShape.straight,
         topLayerEntityName = nil,
         placeCrossingRails = true,
-        tilesLength = 2
+        tilesLength = 2,
+        undergroundTracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                positionOffset = {x = 0, y = 0},
+                baseDirection = defines.direction.north
+            }
+        }
     }
 }
 
@@ -82,7 +108,8 @@ UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments.nextUndergroundId = global.tunnelPortals.nextUndergroundId or 1
     global.undergroundSegments.undergrounds = global.undergroundSegments.undergrounds or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<UnitNumber, UndergroundSegment>
-    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @a lookup for underground segments by a position string. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @a lookup for underground segments by their position string. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentConnectionSurfacePositions = global.undergroundSegments.segmentConnectionSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @a lookup for positions that underground segment parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
 end
 
 UndergroundSegments.OnLoad = function()
@@ -110,6 +137,8 @@ UndergroundSegments.OnLoad = function()
 
     Interfaces.RegisterInterface("UndergroundSegments.On_PreTunnelCompleted", UndergroundSegments.On_PreTunnelCompleted)
     Interfaces.RegisterInterface("UndergroundSegments.On_TunnelRemoved", UndergroundSegments.On_TunnelRemoved)
+    Interfaces.RegisterInterface("UndergroundSegments.CanAnUndergroundConnectAtPosition", UndergroundSegments.CanAnUndergroundConnectAtPosition)
+    Interfaces.RegisterInterface("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", UndergroundSegments.DoesUndergroundSegmentConnectToAPortal)
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
@@ -191,19 +220,18 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         entity_position = builtEntity_position,
         entity_direction = builtEntity_direction,
         entity_orientation = builtEntity_orientation,
-        segmentShape = segmentTypeData.segmentShape,
+        typeData = segmentTypeData,
         surface = surface,
         surface_index = surface_index,
         force = builtEntity.force,
-        surfacePositionString = surfacePositionString
+        surfacePositionString = surfacePositionString,
+        nonConnectedSurfacePositions = {}
     }
 
     -- Handle the caching of specific segment part type information and to their globals.
     if segmentTypeData.segmentShape == SegmentShape.straight then
-        segment.segmentShape = segment.segmentShape
-        -- Only has its centre position other segments can check it for as a connection. As its centre is 1 tile in from its edge.
-        segment.frontPosition = builtEntity_position
-        segment.rearPosition = builtEntity_position
+        segment.frontPosition = Utils.ApplyOffsetToPosition(builtEntity_position, Utils.RotatePositionAround0(builtEntity_orientation, {x = 0, y = -0.5}))
+        segment.rearPosition = Utils.ApplyOffsetToPosition(builtEntity_position, Utils.RotatePositionAround0(builtEntity_orientation, {x = 0, y = 0.5}))
     else
         error("unrecognised segmentTypeData.segmentShape: " .. segmentTypeData.segmentShape)
     end
@@ -223,6 +251,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     if fastReplaceChange ~= "same" then
         -- Non fast replacements and fast replacements of change type other than "same" will need the new type extras adding.
         if placeCrossingRails then
+            -- OVERHAUL - move this to be type data driven and not hard coded.
             segment.crossingRailEntities = {}
             local crossignRailDirection, orientation = Utils.LoopDirectionValue(builtEntity_direction + 2), Utils.DirectionToOrientation(builtEntity_direction)
             for _, nextRailPos in pairs(
@@ -248,10 +277,22 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         end
     end
 
-    -- Register the new segment.
+    -- Register the new segment and its position for fast replace.
     global.undergroundSegments.segments[segment.id] = segment
     global.undergroundSegments.segmentSurfacePositions[segment.surfacePositionString] = {
         id = segment.surfacePositionString,
+        segment = segment
+    }
+
+    -- Register the segments surfacePositionStrings for connection reverse lookup.
+    local frontSurfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, segment.frontPosition)
+    global.undergroundSegments.segmentConnectionSurfacePositions[frontSurfacePositionString] = {
+        id = frontSurfacePositionString,
+        segment = segment
+    }
+    local rearSurfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, segment.rearPosition)
+    global.undergroundSegments.segmentConnectionSurfacePositions[rearSurfacePositionString] = {
+        id = rearSurfacePositionString,
         segment = segment
     }
 
@@ -290,32 +331,36 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         global.undergroundSegments.segments[fastReplacedSegment.id] = nil
     else
         -- New segments just check if they complete the tunnel and handle approperiately.
-        -- TODO: don't run until we've updated other files for the fact a portal is made up of multiple parts and may be incomplete.
-        --[[local tunnelComplete, tunnelPortals, undergroundSegments = UndergroundSegments.CheckTunnelCompleteFromSegment(builtEntity, placer)
-        if not tunnelComplete then
-            return false
-        end
-        Interfaces.Call("Tunnel.CompleteTunnel", tunnelPortals, undergroundSegments)]]
         UndergroundSegments.UpdateUndergroundsForNewSegment(segment)
+        UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground(segment)
     end
 end
 
---- Check if this segment is next to another segment on either/both sides. If it is create/add to an underground object for them. A single segment doesn't get an underground object.
+--- Check if this segment is next to another segment on either/both sides. If it is create/add to an underground object for them.
 ---@param segment UndergroundSegment
 UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
     local firstComplictedConnectedSegment, secondComplictedConnectedSegment = nil, nil
 
     -- Check for a connected viable segment in both directions from our segment.
-    for _, checkPos in pairs(
+    for _, checkDetails in pairs(
         {
-            Utils.FormatSurfacePositionTableToString(segment.surface_index, Utils.ApplyOffsetToPosition(segment.frontPosition, Utils.RotatePositionAround0(segment.entity_orientation, {x = 0, y = 2}))), -- The position 2 tiles in front of our front position.
-            Utils.FormatSurfacePositionTableToString(segment.surface_index, Utils.ApplyOffsetToPosition(segment.rearPosition, Utils.RotatePositionAround0(Utils.LoopOrientationValue(segment.entity_orientation + 0.5), {x = 0, y = 2}))) -- The position 2 tiles in behind our rear position.
+            {
+                refPos = segment.frontPosition,
+                refOrientation = segment.entity_orientation
+            },
+            {
+                refPos = segment.rearPosition,
+                refOrientation = Utils.LoopOrientationValue(segment.entity_orientation + 0.5)
+            }
         }
     ) do
-        local foundPortalPartPositionObject = global.undergroundSegments.segmentSurfacePositions[checkPos]
+        local checkPos = Utils.ApplyOffsetToPosition(checkDetails.refPos, Utils.RotatePositionAround0(checkDetails.refOrientation, {x = 0, y = -1})) -- The position 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
+        local checkSurfacePositionString = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkPos)
+        local foundPortalPartPositionObject = global.undergroundSegments.segmentConnectionSurfacePositions[checkSurfacePositionString]
         -- If a underground reference at this position is found next to this one add this part to its/new underground.
         if foundPortalPartPositionObject ~= nil then
             local connectedSegment = foundPortalPartPositionObject.segment
+            local connectedSegmentsPositionNowConnected = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkDetails.refPos)
             -- Valid underground to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
             if segment.underground and connectedSegment.underground == nil then
                 -- We have a underground and they don't, so add them to our underground.
@@ -331,46 +376,70 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
                     secondComplictedConnectedSegment = connectedSegment
                 end
             end
+            -- Update our and their nonConnectedSurfacePositions as we are both now connected on this.
+            segment.nonConnectedSurfacePositions[checkSurfacePositionString] = nil
+            connectedSegment.nonConnectedSurfacePositions[connectedSegmentsPositionNowConnected] = nil
+        else
+            segment.nonConnectedSurfacePositions[checkSurfacePositionString] = checkSurfacePositionString
         end
     end
 
-    -- Handle any weird situations where theres lots of undergrounds or none. Note that the scenarios handled are limited based on the logic outcomes of the direciton checking logic.
-    if firstComplictedConnectedSegment ~= nil then
-        if segment.underground == nil then
-            -- none has a underground, so create one for all.
-            local undergroundId = global.undergroundSegments.nextUndergroundId
-            global.undergroundSegments.nextUndergroundId = global.undergroundSegments.nextUndergroundId + 1
-            ---@type Underground
-            local underground = {
-                id = undergroundId,
-                segments = {},
-                tilesLength = 0,
-                force = segment.force,
-                surface = segment.surface
-            }
-            global.undergroundSegments.undergrounds[undergroundId] = underground
-            UndergroundSegments.AddSegmentToUnderground(underground, segment)
+    -- Handle any weird situations where theres lots of undergrounds or none. Note that the scenarios handled are limited based on the logic outcomes of the direction checking logic.
+    if segment.underground == nil then
+        -- none has a underground, so create one for all.
+        local undergroundId = global.undergroundSegments.nextUndergroundId
+        global.undergroundSegments.nextUndergroundId = global.undergroundSegments.nextUndergroundId + 1
+        ---@type Underground
+        local underground = {
+            id = undergroundId,
+            segments = {},
+            tilesLength = 0,
+            force = segment.force,
+            surface = segment.surface
+        }
+        global.undergroundSegments.undergrounds[undergroundId] = underground
+        UndergroundSegments.AddSegmentToUnderground(underground, segment)
+        if firstComplictedConnectedSegment ~= nil then
             UndergroundSegments.AddSegmentToUnderground(underground, firstComplictedConnectedSegment)
-            if secondComplictedConnectedSegment ~= nil then
-                UndergroundSegments.AddSegmentToUnderground(underground, secondComplictedConnectedSegment)
-            end
+        end
+        if secondComplictedConnectedSegment ~= nil then
+            UndergroundSegments.AddSegmentToUnderground(underground, secondComplictedConnectedSegment)
+        end
+    end
+    if firstComplictedConnectedSegment ~= nil then
+        -- Us and the one complicated part both have an underground, so merge them. Use whichever has more segments as new master as this is generally the best one. We may have merged with an existing portal already, so its not possible for there to be 2 complicated connections needing portals merged.
+        if Utils.GetTableNonNilLength(segment.underground.segments) >= Utils.GetTableNonNilLength(firstComplictedConnectedSegment.underground.segments) then
+            UndergroundSegments.MergeUndergroundInToOtherUnderground(firstComplictedConnectedSegment.underground, segment.underground)
         else
-            -- Us and the one complicated part both have an underground, so merge them. Use whichever has more segments as new master as this is generally the best one.
-            if Utils.GetTableNonNilLength(segment.underground.segments) >= Utils.GetTableNonNilLength(firstComplictedConnectedSegment.underground.segments) then
-                UndergroundSegments.MergeUndergroundInToOtherUnderground(firstComplictedConnectedSegment.underground, segment.underground)
-            else
-                UndergroundSegments.MergeUndergroundInToOtherUnderground(segment.underground, firstComplictedConnectedSegment.underground)
+            UndergroundSegments.MergeUndergroundInToOtherUnderground(segment.underground, firstComplictedConnectedSegment.underground)
+        end
+    end
+
+    -- Just loop over the underground segments and find the ones with spare connection points. These are the ends.
+    -- OVERHAUL - there is a more effecient but more complicated way to do this; ignore this until it shows as a noticable UPS waste.
+    local underground = segment.underground
+    underground.undergroundEndSegments = {}
+    for _, thisSegment in pairs(underground.segments) do
+        for _, surfacePositionString in pairs(thisSegment.nonConnectedSurfacePositions) do
+            ---@type UndergroundEndSegment
+            local undergroundEndSegment = {
+                connectableSurfacePosition = surfacePositionString,
+                segment = thisSegment
+            }
+            table.insert(underground.undergroundEndSegments, undergroundEndSegment)
+            if #underground.undergroundEndSegments == 2 then
+                break
             end
         end
     end
 end
 
---- Add the segment to the underground based on its type.
+--- Add the new segment to the existing underground.
 ---@param underground Underground
 ---@param segment UndergroundSegment
 UndergroundSegments.AddSegmentToUnderground = function(underground, segment)
     segment.underground = underground
-    underground.tilesLength = underground.tilesLength + segment.tilesLength
+    underground.tilesLength = underground.tilesLength + segment.typeData.tilesLength
     underground.segments[segment.id] = segment
 end
 
@@ -386,55 +455,79 @@ UndergroundSegments.MergeUndergroundInToOtherUnderground = function(oldUndergrou
     global.undergroundSegments.undergrounds[oldUnderground.id] = nil
 end
 
----@param startingUndergroundSegment LuaEntity
----@param placer EntityActioner
----@return boolean @Direction is completed successfully.
----@return LuaEntity[] @Tunnel portal entities.
----@return LuaEntity[] @Tunnel segment entities.
-UndergroundSegments.CheckTunnelCompleteFromSegment = function(startingUndergroundSegment, placer)
-    -- TODO: update this given new portal object.
-    local tunnelPortalEntities, tunnelSegmentEntities, directionValue = {}, {}, startingUndergroundSegment.direction
-    for _, checkingDirection in pairs({directionValue, Utils.LoopDirectionValue(directionValue + 4)}) do
-        -- Check "forwards" and then "backwards".
-        local directionComplete = TunnelShared.CheckTunnelPartsInDirectionAndGetAllParts(startingUndergroundSegment, startingUndergroundSegment.position, checkingDirection, placer, tunnelPortalEntities, tunnelSegmentEntities)
-        if not directionComplete then
-            return false, tunnelPortalEntities, tunnelSegmentEntities
+---@param segment UndergroundSegment
+UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(segment)
+    -- TODO: write this.
+end
+
+--- Checks if an underground has a connection at a set point. If it does returns the objects, otherwise nil for all.
+---@param surfacePositionString SurfacePositionString
+---@return Underground|null underground
+---@return UndergroundSegment|null segmentAtOtherEndOfUnderground
+UndergroundSegments.CanAnUndergroundConnectAtPosition = function(surfacePositionString)
+    local segmentSurfacePositionObject = global.undergroundSegments.segmentConnectionSurfacePositions[surfacePositionString]
+    if segmentSurfacePositionObject ~= nil then
+        local underground = segmentSurfacePositionObject.segment.underground
+        local otherEndSegment  ---@type UndergroundSegment
+        if underground.undergroundEndSegments[1].connectableSurfacePosition == surfacePositionString then
+            otherEndSegment = underground.undergroundEndSegments[2].segment
+        else
+            otherEndSegment = underground.undergroundEndSegments[1].segment
+        end
+        return underground, otherEndSegment
+    end
+end
+
+-- Checks if an underground segment connects to a portal. Can provide a known portal to ignore, as single entity undergrounds will connect to 2 portals.
+---@param segment UndergroundSegment
+---@param portalToIgnore Portal
+---@return Portal[] portalsFound
+UndergroundSegments.DoesUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
+    local portalsFound = {}
+    for _, checkPosString in pairs(segment.nonConnectedSurfacePositions) do
+        local portal = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", checkPosString)
+        if portal ~= nil and portal.id ~= portalToIgnore.id then
+            table.insert(portalsFound, portal)
         end
     end
-    return true, tunnelPortalEntities, tunnelSegmentEntities
+    return portalsFound
 end
 
 -- Registers and sets up the underground prior to the tunnel object being created and references created.
 ---@param underground Underground
 UndergroundSegments.On_PreTunnelCompleted = function(underground)
-    CONTINUE HERE FIRST
-    for _, segmentEntity in pairs(underground.segments.entity) do
-        local segment = global.undergroundSegments.segments[segmentEntity.unit_number]
-        table.insert(segments, segment)
-        local centerPos, directionValue = segmentEntity.position, segmentEntity.direction
+    for _, segment in pairs(underground.segments) do
+        local refPos, force, surface, directionValue = segment.entity_position, underground.force, underground.surface, segment.entity_direction
 
-        -- Create the underground tunnel rail.
-        segment.tunnelRailEntities = {}
-        local placedRail = surface.create_entity {name = "railway_tunnel-invisible_rail-on_map_tunnel", position = centerPos, force = force, direction = directionValue}
-        placedRail.destructible = false
-        segment.tunnelRailEntities[placedRail.unit_number] = placedRail
+        UndergroundSegments.BuildRailForSegment(segment)
 
         -- Add the singals to the underground tunnel rail.
         segment.signalEntities = {}
         for _, orientationModifier in pairs({0, 4}) do
             local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
             local orientation = Utils.DirectionToOrientation(signalDirection)
-            local position = Utils.ApplyOffsetToPosition(centerPos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0}))
+            local position = Utils.ApplyOffsetToPosition(refPos, Utils.RotatePositionAround0(orientation, {x = -1.5, y = 0}))
             local placedSignal = surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection}
             segment.signalEntities[placedSignal.unit_number] = placedSignal
         end
 
         -- Create the top layer entity that has the desired graphics on it.
-        local segmentTypeData = SegmentTypeData[segmentEntity.name]
-        local topLayerEntityName = segmentTypeData.topLayerEntityName
+        local topLayerEntityName = segment.typeData.topLayerEntityName
         if topLayerEntityName ~= nil then
-            segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = centerPos, force = force, direction = directionValue}
+            segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = refPos, force = force, direction = directionValue}
         end
+    end
+end
+
+-- Add the rails to the an underground segment.
+---@param segment UndergroundSegment
+UndergroundSegments.BuildRailForSegment = function(segment)
+    segment.tunnelRailEntities = {}
+    for _, tracksPositionOffset in pairs(segment.typeData.undergroundTracksPositionOffset) do
+        local railPos = Utils.ApplyOffsetToPosition(segment.entity_position, Utils.RotatePositionAround0(segment.entity_orientation, tracksPositionOffset.positionOffset))
+        local placedRail = segment.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, segment.entity_direction)}
+        placedRail.destructible = false
+        segment.tunnelRailEntities[placedRail.unit_number] = placedRail
     end
 end
 

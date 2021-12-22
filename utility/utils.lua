@@ -1,7 +1,6 @@
 -- TODO: break these out in to seperate files.
---[[
-    Random utility functions that don't fit in to any other category.
---]]
+-- Random utility functions that don't fit in to any other category.
+
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
 

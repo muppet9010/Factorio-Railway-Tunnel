@@ -1,6 +1,5 @@
---[[
-    Library to register and handle base game GUI types being closed, allows registering and handling functions in a modular way.
---]]
+-- Library to register and handle base game GUI types being closed, allows registering and handling functions in a modular way.
+
 local GuiActionsClosed = {}
 MOD = MOD or {}
 MOD.guiClosedActions = MOD.guiClosedActions or {}
