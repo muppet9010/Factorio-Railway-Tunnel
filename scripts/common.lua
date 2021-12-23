@@ -37,18 +37,6 @@ Common.GetCarriagePlacementDistance = function(carriageEntityName)
     end
 end
 
----@class TunnelAlignment
-Common.TunnelAlignment = {
-    vertical = "vertical",
-    horizontal = "horizontal"
-}
-
----@class TunnelAlignmentOrientation
-Common.TunnelAlignmentOrientation = {
-    vertical = 0,
-    horizontal = 0.25
-}
-
 ---@class TunnelSignalDirection
 Common.TunnelSignalDirection = {
     inSignal = "inSignal",

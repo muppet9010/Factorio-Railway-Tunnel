@@ -4,14 +4,10 @@ local Tunnel = {}
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
 local RollingStockTypes, TunnelSurfaceRailEntityNames = Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames
---local TunnelAlignment, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.TunnelAlignmentOrientation
 local Utils = require("utility/utils")
 
 ---@class Tunnel @the tunnel object that managed trains can pass through.
 ---@field id Id @unqiue id of the tunnel.
---@field alignment TunnelAlignment
---@field alignmentOrientation TunnelAlignmentOrientation
---@field alignmentAxis Axis
 ---@field surface LuaSurface
 ---@field force LuaForce
 ---@field portals Portal[]
@@ -20,7 +16,6 @@ local Utils = require("utility/utils")
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @the rail entities that are part of the portals.
 
--- TODO: not updated yet, not sure if really needed.
 ---@class TunnelDetails @used by remote interface calls only.
 ---@field tunnelId Id @Id of the tunnel.
 ---@field portalEntities LuaEntity[] @Not in any special order.

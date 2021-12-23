@@ -17,10 +17,10 @@ local EntryEndPortalSetup = {
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
 local BlockingEndPortalSetup = {
-    dummyLocomotiveDistance = 7.5, -- OVERHAUL - this is in te train placement area, it needs to go somewhere else!
+    dummyLocomotiveDistance = 3.2, -- as far back in to the end portal without touching the blocking locomotive -- OVERHAUL - this is in the train placement area technically, so it may need to go somewhere else for full length trains?
     transitionUsageDetectorEntityDistance = 4.5,
     transitionSignalsDistance = 2.5,
-    transitionSignalBlockingLocomotiveDistance = 1.5,
+    transitionSignalBlockingLocomotiveDistance = -0.9, -- As far away from entry end as possible, but can't stick outbeyond the portals collision box.
     blockedInvisibleSignalsDistance = -1.5
 }
 
@@ -60,7 +60,7 @@ local BlockingEndPortalSetup = {
 ---@field surface LuaSurface @the surface this portal part object is on.
 ---@field surface_index uint @cached index of the surface this portal part is on.
 ---@field force LuaForce @the force this portal part object belongs to.
----@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @a table of this end part's non connected positions to check outside of the entity.
+---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @a table of this end part's non connected external positions to check outside of the entity.
 
 ---@class PortalEnd : PortalPart @the end part of a portal.
 ---@field endPortalType EndPortalType @the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direciotn is known.
@@ -92,6 +92,7 @@ local EndPortalType = {
 ---@class PortalTunnelConnectionSurfacePositionObject
 ---@field id SurfacePositionString
 ---@field portal Portal
+---@field endPortalPart PortalEnd
 
 ---@class PortalPartType @if the portal part is an End or Segment.
 local PortalPartType = {
@@ -173,7 +174,7 @@ TunnelPortals.CreateGlobals = function()
     global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @Used to be able to identify the portal when the entering train detection entity is killed.
     global.tunnelPortals.transitionUsageDetectorEntityIdToPortal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @Used to be able to identify the portal when the transition train detection entity is killed.
     global.tunnelPortals.portalPartConnectionSurfacePositions = global.tunnelPortals.portalPartConnectionSurfacePositions or {} ---@type table<Id, PortalPartSurfacePositionObject> @a lookup for positions that portal parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
-    global.tunnelPortals.portalTunnelConnectionSurfacePositions = global.tunnelPortals.portalTunnelConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @a lookup for portal by a position string for connecting to a tunnel. It is 0.5 tiles outside the end portal entity border, where the underground segments connection point is. Saves searching for entities on the map via API.
+    global.tunnelPortals.portalTunnelConnectionSurfacePositions = global.tunnelPortals.portalTunnelConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @a lookup for portal by an external position string for truing to connect to an underground. It is 0.5 tiles outside the end portal entity border, where the underground segments connection point is. Saves searching for entities on the map via API.
 end
 
 TunnelPortals.OnLoad = function()
@@ -203,6 +204,7 @@ TunnelPortals.OnLoad = function()
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
     Interfaces.RegisterInterface("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal)
     Interfaces.RegisterInterface("TunnelPortals.CanAPortalConnectAtPosition", TunnelPortals.CanAPortalConnectAtPosition)
+    Interfaces.RegisterInterface("TunnelPortals.PortalPartsAboutToBeInNewTunnel", TunnelPortals.PortalPartsAboutToBeInNewTunnel)
 
     EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
 
@@ -435,33 +437,32 @@ end
 ---@param portal Portal
 TunnelPortals.PortalComplete = function(portal)
     portal.isComplete = true
-    game.print("DEBUG: portal complete")
+    game.print("DEBUG: portal complete: " .. portal.id)
     -- OVERHAUL - will create the stats on the portal length and make the clickable bit here. As these should be inspectable before the whole tunnel is made. Also add some sort of visual confirmation the portal is complete, maybe the concrete top graphic. No track until its a full tunnel to avoid complications.
     -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portals.
     for _, endPortalPart in pairs(portal.portalEnds) do
         local undergroundConnectionSurfacePositionString = next(endPortalPart.nonConnectedSurfacePositions)
         local portalTunnelConnectionSurfacePositionObject = {
             id = undergroundConnectionSurfacePositionString,
-            portal = portal
+            portal = portal,
+            endPortalPart = endPortalPart
         }
         global.tunnelPortals.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
         portal.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
-
-        local _, position = Utils.SurfacePositionStringToSurfaceAndPosition(undergroundConnectionSurfacePositionString)
-        rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.1, filled = true, target = position, surface = portal.surface}
     end
 end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param portal Portal
 TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
-    for surfacePositionString, _ in pairs(portal.portalTunnelConnectionSurfacePositions) do
+    for surfacePositionString, portalTunnelConnectionSurfacePositionObject in pairs(portal.portalTunnelConnectionSurfacePositions) do
         ---@typelist Underground, UndergroundSegment, UndergroundSegment
         local underground, otherEndSegment = Interfaces.Call("UndergroundSegments.CanAnUndergroundConnectAtPosition", surfacePositionString)
         if underground ~= nil then
-            local foundPortals = Interfaces.Call("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", otherEndSegment, portal)
-            if #foundPortals == 1 then
-                Interfaces.Call("Tunnel.CompleteTunnel", {portal, foundPortals[1]}, underground)
+            local foundPortal, foundEndPortalPart = Interfaces.Call("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", otherEndSegment, portal)
+            if foundPortal ~= nil then
+                TunnelPortals.PortalPartsAboutToBeInNewTunnel({portalTunnelConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
+                Interfaces.Call("Tunnel.CompleteTunnel", {portal, foundPortal}, underground)
             end
         end
     end
@@ -469,12 +470,20 @@ end
 
 --- Checks if a complete Portal has a connection at a set point. If it does returns the objects, otherwise nil for all.
 ---@param surfacePositionString SurfacePositionString
----@return Portal|null
+---@return Portal|null portal
+---@return PortalEnd|null portalEnd
 TunnelPortals.CanAPortalConnectAtPosition = function(surfacePositionString)
     local portalTunnelConnectionSurfacePositionObject = global.tunnelPortals.portalTunnelConnectionSurfacePositions[surfacePositionString]
     if portalTunnelConnectionSurfacePositionObject ~= nil and portalTunnelConnectionSurfacePositionObject.portal.isComplete then
-        return portalTunnelConnectionSurfacePositionObject.portal
+        return portalTunnelConnectionSurfacePositionObject.portal, portalTunnelConnectionSurfacePositionObject.endPortalPart
     end
+end
+
+--- Called when a tunnel is about to be created and the 2 end portal parts that connect to the underground are known.
+---@param endPortalParts PortalEnd[]
+TunnelPortals.PortalPartsAboutToBeInNewTunnel = function(endPortalParts)
+    endPortalParts[1].connectedToUnderground = true
+    endPortalParts[2].connectedToUnderground = true
 end
 
 -- Registers and sets up the tunnel's portals prior to the tunnel object being created and references created.
@@ -496,11 +505,14 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
             end
         end
 
-        -- Work out which direction an entering train would be heading in to this portal.
-        local entryDirection = Utils.GetCardinalDirectionHeadingToPosition(entryPortalEnd, blockedPortalEnd)
+        -- Work out which direction an entering train would be heading in to this portal. Assumes portal is built in a straight line.
+        local entryDirection = Utils.GetCardinalDirectionHeadingToPosition(entryPortalEnd.entity_position, blockedPortalEnd.entity_position)
+        if entryDirection < 0 then
+            error("failed to calculate valid entryDirection")
+        end
         local reverseEntryDirection = Utils.LoopDirectionValue(entryDirection + 4)
         local entryOrientation = Utils.DirectionToOrientation(entryDirection)
-        local surface, force, refPosition = portal.surface, portal.force, blockedPortalEnd.entity_position
+        local surface, force = portal.surface, portal.force
 
         TunnelPortals.BuildRailForPortalsParts(portal)
 
@@ -509,7 +521,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local entrySignalInEntity =
             surface.create_entity {
             name = "railway_tunnel-internal_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = EntryEndPortalSetup.entrySignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(entryPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = EntryEndPortalSetup.entrySignalsDistance})),
             force = force,
             direction = entryDirection
         }
@@ -517,7 +529,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local entrySignalOutEntity =
             surface.create_entity {
             name = "railway_tunnel-internal_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = EntryEndPortalSetup.entrySignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(entryPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = EntryEndPortalSetup.entrySignalsDistance})),
             force = force,
             direction = reverseEntryDirection
         }
@@ -538,14 +550,14 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         entrySignalInEntity.connect_neighbour {wire = defines.wire_type.green, target_entity = entrySignalOutEntity}
 
         -- Cache the objects details for later use.
-        portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}))
+        portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}))
 
         -- Add the signals that mark the Tranisition point of the portal.
         ---@type LuaEntity
         local transitionSignalInEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = BlockingEndPortalSetup.transitionSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = BlockingEndPortalSetup.transitionSignalsDistance})),
             force = force,
             direction = entryDirection
         }
@@ -553,7 +565,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local transitionSignalOutEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = BlockingEndPortalSetup.transitionSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = BlockingEndPortalSetup.transitionSignalsDistance})),
             force = force,
             direction = reverseEntryDirection
         }
@@ -578,7 +590,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local blockedInvisibleSignalInEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = BlockingEndPortalSetup.blockedInvisibleSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = -1.5, y = BlockingEndPortalSetup.blockedInvisibleSignalsDistance})),
             force = force,
             direction = entryDirection
         }
@@ -586,7 +598,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local blockedInvisibleSignalOutEntity =
             surface.create_entity {
             name = "railway_tunnel-invisible_signal-not_on_map",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = BlockingEndPortalSetup.blockedInvisibleSignalsDistance})),
+            position = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 1.5, y = BlockingEndPortalSetup.blockedInvisibleSignalsDistance})),
             force = force,
             direction = reverseEntryDirection
         }
@@ -594,15 +606,19 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local transitionSignalBlockingLocomotiveEntity =
             surface.create_entity {
             name = "railway_tunnel-tunnel_portal_blocking_locomotive",
-            position = Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance})),
+            position = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance})),
             force = global.force.tunnelForce,
-            direction = entryDirection
+            direction = reverseEntryDirection
         }
         transitionSignalBlockingLocomotiveEntity.train.schedule = {
             current = 1,
             records = {
                 {
-                    rail = surface.find_entity("railway_tunnel-invisible_rail-on_map_tunnel", Utils.ApplyOffsetToPosition(refPosition, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance + 1.5})))
+                    rail = surface.find_entities_filtered {
+                        name = Common.TunnelSurfaceRailEntityNames,
+                        position = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance + 3})),
+                        limit = 1
+                    }[1]
                 }
             }
         }

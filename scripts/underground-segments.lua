@@ -458,14 +458,16 @@ end
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param underground Underground
 UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
-    local portals = {}
+    local portals, endPortalParts = {}, {}
     for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
-        local portal = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", UndergroundEndSegmentObject.connectableSurfacePosition)
+        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", UndergroundEndSegmentObject.connectableSurfacePosition)
         if portal then
             table.insert(portals, portal)
+            table.insert(endPortalParts, endPortalPart)
         end
     end
     if #portals == 2 then
+        Interfaces.Call("TunnelPortals.PortalPartsAboutToBeInNewTunnel", endPortalParts)
         Interfaces.Call("Tunnel.CompleteTunnel", portals, underground)
     end
 end
@@ -491,16 +493,15 @@ end
 -- Checks if an underground segment connects to a portal. Can provide a known portal to ignore, as single entity undergrounds will connect to 2 portals.
 ---@param segment UndergroundSegment
 ---@param portalToIgnore Portal
----@return Portal[] portalsFound
+---@return Portal|null portal
+---@return PortalEnd|null endPortalPart
 UndergroundSegments.DoesUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
-    local portalsFound = {}
     for _, checkPosString in pairs(segment.nonConnectedSurfacePositions) do
-        local portal = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", checkPosString)
+        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", checkPosString)
         if portal ~= nil and portal.id ~= portalToIgnore.id then
-            table.insert(portalsFound, portal)
+            return portal, endPortalPart
         end
     end
-    return portalsFound
 end
 
 -- Registers and sets up the underground prior to the tunnel object being created and references created.

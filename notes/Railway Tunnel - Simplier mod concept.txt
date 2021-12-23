@@ -39,6 +39,7 @@ MINOR:
     - replace all ".type" to something unique so EmmyLua gives only the correct auto complete / hints.
     - rename scripts UndergroundSegments and its lua file to just underground as thats the name of the top object.
     - rename scripts tunnel-portals and its lua file to just portal as thats the name of the top object.
+    - Utils class - break out in to seperate files.
 
 
 FUTURE:

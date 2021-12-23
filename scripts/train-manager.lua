@@ -511,7 +511,6 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     return managedTrain
 end
 
--- TODO: don;t think this is needed any more?
 ---@param tunnel Tunnel
 ---@param newPortal Portal
 TrainManager.On_PortalReplaced = function(tunnel, newPortal)

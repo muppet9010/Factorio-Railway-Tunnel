@@ -1,4 +1,3 @@
--- TODO: break these out in to seperate files.
 -- Random utility functions that don't fit in to any other category.
 
 local Utils = {}
@@ -617,7 +616,7 @@ Utils.GetOffsetForPositionFromPosition = function(newPosition, basePosition)
     return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
 end
 
---- Get a direction heading from a start point to an end point that is a on a cardinal direction.
+--- Get a direction heading from a start point to an end point that is a on an exact cardinal direction.
 ---@param startPos Position
 ---@param endPos Position
 ---@return defines.direction|int @Returns -1 if the startPos and endPos are the same. Returns -2 if the positions not on a cardinal direction difference.
@@ -625,7 +624,7 @@ Utils.GetCardinalDirectionHeadingToPosition = function(startPos, endPos)
     if startPos.x == endPos.x then
         if startPos.y > endPos.y then
             return 0
-        elseif startPos.y > endPos.y then
+        elseif startPos.y < endPos.y then
             return 4
         else
             return -1
@@ -633,7 +632,7 @@ Utils.GetCardinalDirectionHeadingToPosition = function(startPos, endPos)
     elseif startPos.y == endPos.y then
         if startPos.x > endPos.x then
             return 6
-        elseif startPos.x > endPos.x then
+        elseif startPos.x < endPos.x then
             return 2
         else
             return -1
