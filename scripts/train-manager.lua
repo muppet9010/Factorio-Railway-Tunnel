@@ -237,10 +237,8 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     }
 
     -- Work out how long it will take to reach the far end at current speed from leading carriages current forward tip.
-    local travelDistance = managedTrain.tunnel.underground.tilesLength
-    -- hard coded portal area values for now - Just assume the entering train was at the detector entity. Measured from current setup so good enough for now.
-    -- TODO: need to work out distances properly now with modular portals.
-    travelDistance = travelDistance + 71.5
+    -- TODO: written but not checked the trainWaitingAreaTilesLength comes through correctly.
+    local travelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength
     -- Just assume the speed stays constant at the entering speed for the whole duration for now.
     managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
     managedTrain.traversalStartingTick = game.tick
@@ -716,14 +714,12 @@ end
 ---@return LuaTrain
 TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
-    --TODO: update this 'exitPortalEntity'
-    local exitPortalEntity = exitPortal.entity
     local locomotive =
-        exitPortalEntity.surface.create_entity {
+        exitPortal.surface.create_entity {
         name = "railway_tunnel-tunnel_exit_dummy_locomotive",
         position = exitPortal.dummyLocomotivePosition,
-        direction = exitPortalEntity.direction,
-        force = exitPortalEntity.force,
+        direction = exitPortal.leavingDirection,
+        force = exitPortal.force,
         raise_built = false,
         create_build_effect_smoke = false
     }
@@ -735,7 +731,7 @@ TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainS
         TrainManager.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop)
         if global.debugRelease and dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
-            error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortalEntity position: " .. Logging.PositionToString(exitPortalEntity.position))
+            error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortal position: " .. Logging.PositionToString(exitPortal.blockedPortalEnd.entity_position))
         end
     end
     return dummyTrain

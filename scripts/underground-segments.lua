@@ -542,9 +542,10 @@ UndergroundSegments.BuildRailForSegment = function(segment)
     end
 end
 
--- TODO - checked up to here
+-- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 UndergroundSegments.OnBuiltEntityGhost = function(event)
+    --TODO: move this to somewhere central and merge with underground check as identical code. Save UPS in event functions triggered within mod.
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -560,6 +561,7 @@ UndergroundSegments.OnBuiltEntityGhost = function(event)
     end
 end
 
+-- TODO - checked up to here
 -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
 ---@param event on_pre_build
 UndergroundSegments.OnPreBuild = function(event)

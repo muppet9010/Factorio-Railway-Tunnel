@@ -105,6 +105,9 @@ Tunnel.CompleteTunnel = function(portals, underground)
             tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
         end
     end
+
+    -- Call any other modules after the tunnel object is created.
+    Interfaces.Call("TunnelPortals.On_PostTunnelCompleted", portals)
 end
 
 --TODO: not checked below here.

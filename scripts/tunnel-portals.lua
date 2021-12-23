@@ -42,9 +42,12 @@ local BlockingEndPortalSetup = {
 ---@field portalOtherEntities table<UnitNumber, LuaEntity> @table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
 ---@field portalEntryPointPosition Position @the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorEntity LuaEntity @hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
+---@field enteringTrainUsageDetectorPosition Position @the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorEntity LuaEntity @hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
+---@field transitionUsageDetectorPosition Position @the position of this portals transitionUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
 ---@field dummyLocomotivePosition Position @the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
 ---@field entryDirection defines.direction @the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
+---@field leavingDirection defines.direction @the direction a train would be heading if leaving the tunnel via this portal. Only established once this portal is part of a valid tunnel.
 
 ---@class PortalPart @a generic part (entity) object making up part of a potral.
 ---@field id UnitNumber @unit_number of the portal part entity.
@@ -205,6 +208,7 @@ TunnelPortals.OnLoad = function()
     Interfaces.RegisterInterface("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal)
     Interfaces.RegisterInterface("TunnelPortals.CanAPortalConnectAtPosition", TunnelPortals.CanAPortalConnectAtPosition)
     Interfaces.RegisterInterface("TunnelPortals.PortalPartsAboutToBeInNewTunnel", TunnelPortals.PortalPartsAboutToBeInNewTunnel)
+    Interfaces.RegisterInterface("TunnelPortals.On_PostTunnelCompleted", TunnelPortals.On_PostTunnelCompleted)
 
     EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
 
@@ -492,6 +496,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
     -- Add all the bits to each portal that only appear when the portal is part of a completed tunnel.
     for _, portal in pairs(portals) do
         -- Work out which portal end is the blocked end.
+        ---@typelist PortalEnd, PortalEnd
         local entryPortalEnd, blockedPortalEnd
         for _, endPortalPart in pairs(portal.portalEnds) do
             if endPortalPart.connectedToUnderground then
@@ -511,6 +516,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
             error("failed to calculate valid entryDirection")
         end
         local reverseEntryDirection = Utils.LoopDirectionValue(entryDirection + 4)
+        portal.entryDirection, portal.leavingDirection = entryDirection, reverseEntryDirection
         local entryOrientation = Utils.DirectionToOrientation(entryDirection)
         local surface, force = portal.surface, portal.force
 
@@ -551,6 +557,8 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
 
         -- Cache the objects details for later use.
         portal.dummyLocomotivePosition = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}))
+        portal.enteringTrainUsageDetectorPosition = Utils.ApplyOffsetToPosition(entryPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = EntryEndPortalSetup.enteringTrainUsageDetectorEntityDistance}))
+        portal.transitionUsageDetectorPosition = Utils.ApplyOffsetToPosition(blockedPortalEnd.entity_position, Utils.RotatePositionAround0(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionUsageDetectorEntityDistance}))
 
         -- Add the signals that mark the Tranisition point of the portal.
         ---@type LuaEntity
@@ -629,8 +637,6 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
             [blockedInvisibleSignalOutEntity.unit_number] = blockedInvisibleSignalOutEntity,
             [transitionSignalBlockingLocomotiveEntity.unit_number] = transitionSignalBlockingLocomotiveEntity
         }
-
-        TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
     end
 
     portals[1].entrySignals[TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelSignalDirection.inSignal].entity}
@@ -661,6 +667,7 @@ TunnelPortals.BuildRailForPortalsParts = function(portal)
     end
 end
 
+-- Sets a rail signal with circuit condition to output nonGreenSignalOutputName named signal when not open and to close when recieveing closeOnSignalName named signal. Used as part of cross linking 2 signals to close when the other isn't open.
 ---@param railSignalEntity LuaEntity
 ---@param nonGreenSignalOutputName string @Virtual signal name to be output to the cirtuit network when the signal state isn't green.
 ---@param closeOnSignalName string @Virtual signal name that triggers the singal state to be closed when its greater than 0 on the circuit network.
@@ -673,9 +680,20 @@ TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen = function(railSignalEntit
     controlBehavior.circuit_condition = {condition = {first_signal = {type = "virtual", name = closeOnSignalName}, comparator = ">", constant = 0}, fulfilled = true}
 end
 
--- TODO: GOT UP TO HERE IN THIS FILE
+-- Registers and sets up the portal elements after the tunnel has been created.
+---@param portals Portal[]
+TunnelPortals.On_PostTunnelCompleted = function(portals)
+    for _, portal in pairs(portals) do
+        -- Both of these functions require the tunnel to be present in the portal object as they are called throughout the portals lifetime.
+        TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(portal, false)
+        TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
+    end
+end
+
+-- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 TunnelPortals.OnBuiltEntityGhost = function(event)
+    --TODO: move this to somewhere central and merge with underground check as identical code. Save UPS in event functions triggered within mod.
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -691,6 +709,7 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
     end
 end
 
+-- TODO: GOT UP TO HERE IN THIS FILE
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 TunnelPortals.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
@@ -772,6 +791,7 @@ TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
         end
     end
     portal.portalRailEntities = nil
+    portal.isComplete = false
     global.tunnelPortals.portals[portal.id] = nil
 end
 
@@ -832,6 +852,7 @@ end
 -- Occurs when a train tries to pass through the border of a portal, when entering and exiting.
 ---@param event on_entity_died|script_raised_destroy
 TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
+    --TODO: needs checking for test tunnel run.
     local diedEntity, carriageEnteringPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
         -- Needed due to how died events work.
@@ -920,37 +941,42 @@ end
 ---@param retry boolean @If to retry next tick should it not be placable.
 ---@return LuaEntity @The enteringTrainUsageDetectorEntity if successfully placed.
 TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
-    local portalEntity = portal.entity
-    if portalEntity == nil or not portalEntity.valid or portal.enteringTrainUsageDetectorEntity ~= nil then
+    if portal.tunnel == nil or not portal.isComplete or portal.enteringTrainUsageDetectorEntity ~= nil then
+        -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
-    local surface, directionValue = portal.entity.surface, portalEntity.direction
-    local orientation = Utils.DirectionToOrientation(directionValue)
-    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = EntryEndPortalSetup.enteringTrainUsageDetectorEntityDistance}))
-    return TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, surface, position, retry)
+    return TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, retry)
 end
 
 ---@param event ScheduledEvent
 ---@param portal Portal
----@param surface LuaSurface
----@param position Position
 ---@param retry boolean @If to retry next tick should it not be placable.
 ---@return LuaEntity @The enteringTrainUsageDetectorEntity if successfully placed.
-TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(event, portal, surface, position, retry)
+TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(event, portal, retry)
     local eventData
     if event ~= nil then
         eventData = event.data
-        portal, surface, position, retry = eventData.portal, eventData.surface, eventData.position, eventData.retry
+        portal, retry = eventData.portal, eventData.retry
     end
-    local portalEntity = portal.entity
-    if portalEntity == nil or not portalEntity.valid or portal.enteringTrainUsageDetectorEntity ~= nil then
+    if portal.tunnel == nil or not portal.isComplete or portal.enteringTrainUsageDetectorEntity ~= nil then
         -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
 
     -- The left train will initially be within the collision box of where we want to place this. So check if it can be placed. For odd reasons the entity will "create" on top of a train and instantly be killed, so have to explicitly check.
-    if surface.can_place_entity {name = "railway_tunnel-portal_entry_train_detector_1x1", force = global.force.tunnelForce, position = position} then
-        portal.enteringTrainUsageDetectorEntity = surface.create_entity {name = "railway_tunnel-portal_entry_train_detector_1x1", force = global.force.tunnelForce, position = position}
+    if
+        portal.surface.can_place_entity {
+            name = "railway_tunnel-portal_entry_train_detector_1x1",
+            force = global.force.tunnelForce,
+            position = portal.enteringTrainUsageDetectorPosition
+        }
+     then
+        portal.enteringTrainUsageDetectorEntity =
+            portal.surface.create_entity {
+            name = "railway_tunnel-portal_entry_train_detector_1x1",
+            force = global.force.tunnelForce,
+            position = portal.enteringTrainUsageDetectorPosition
+        }
         global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = portal
         return portal.enteringTrainUsageDetectorEntity
     elseif retry then
@@ -959,7 +985,7 @@ TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(ev
         if eventData ~= nil then
             postbackData = eventData
         else
-            postbackData = {portal = portal, surface = surface, position = position, retry = retry}
+            postbackData = {portal = portal, retry = retry}
         end
         EventScheduler.ScheduleEventOnce(nil, "TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", portal.id, postbackData)
     end
@@ -979,6 +1005,7 @@ end
 -- Occurs when a train passes through the transition point of a portal when fully entering the tunnel.
 ---@param event on_entity_died|script_raised_destroy
 TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
+    --TODO: needs checking for tunnel test run.
     local diedEntity, carriageAtTransitionOfPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_transition_train_detector_1x1" then
         -- Needed due to how died events work.
@@ -1062,15 +1089,17 @@ end
 --- Will place the transition detection entity and should only be called when the train has been cloned and removed.
 ---@param portal Portal
 TunnelPortals.AddTransitionUsageDetectionEntityToPortal = function(portal)
-    local portalEntity = portal.entity
-    if portalEntity == nil or not portalEntity.valid or portal.transitionUsageDetectorEntity ~= nil then
+    if portal.tunnel == nil or not portal.isComplete or portal.transitionUsageDetectorEntity ~= nil then
+        -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
-    local surface, directionValue = portal.entity.surface, portalEntity.direction
-    local orientation = Utils.DirectionToOrientation(directionValue)
-    local position = Utils.ApplyOffsetToPosition(portalEntity.position, Utils.RotatePositionAround0(orientation, {x = 0, y = BlockingEndPortalSetup.transitionUsageDetectorEntityDistance}))
 
-    local transitionUsageDetectorEntity = surface.create_entity {name = "railway_tunnel-portal_transition_train_detector_1x1", force = global.force.tunnelForce, position = position}
+    local transitionUsageDetectorEntity =
+        portal.surface.create_entity {
+        name = "railway_tunnel-portal_transition_train_detector_1x1",
+        force = global.force.tunnelForce,
+        position = portal.transitionUsageDetectorPosition
+    }
     if transitionUsageDetectorEntity == nil then
         error("Failed to create Portal's transition usage train detection entity")
     end

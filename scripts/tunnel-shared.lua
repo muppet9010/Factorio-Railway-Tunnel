@@ -1,6 +1,5 @@
 local Utils = require("utility/utils")
 local Colors = require("utility/colors")
-local Common = require("scripts/common")
 local TunnelShared = {}
 
 ---@param builtEntity LuaEntity
