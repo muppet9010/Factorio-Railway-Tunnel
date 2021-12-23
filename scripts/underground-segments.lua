@@ -6,14 +6,13 @@ local Common = require("scripts/common")
 local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
 local UndergroundSegments = {}
 
--- TODO: not sure we need to track surface or force through this file at all? check the other entity attributes as well.
 ---@class Underground
 ---@field id uint @unique id of the underground object.
 ---@field segments table<UnitNumber, UndergroundSegment> @segments in the underground. Key'd by the portal end entity unit_number (id).
 ---@field tilesLength int @how many tiles this underground is long.
 ---@field force LuaForce @the force this underground object belongs to.
 ---@field surface LuaSurface @the surface this underground object is on.
----@field undergroundEndSegments UndergroundEndSegment[] @objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
+---@field undergroundEndSegments UndergroundEndSegmentObject[] @objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
 ---@field tunnel Tunnel @ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
 
 ---@class UndergroundSegment
@@ -40,9 +39,9 @@ local UndergroundSegments = {}
 ---@field typeData UndergroundSegmentTypeData @ref to generic data about this type of segment.
 ---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @a table of this segments non connected points.
 
----@class UndergroundEndSegment @details of a segment at the end of an underground.
+---@class UndergroundEndSegmentObject @details of a segment at the end of an underground.
 ---@field segment UndergroundSegment
----@field connectableSurfacePosition SurfacePositionString @where a portal could connect to this segment.
+---@field connectableSurfacePosition SurfacePositionString @where a portal could have its connection position and join to this segment's external entity border connection points.
 
 ---@class SegmentSurfacePosition
 ---@field id SurfacePositionString
@@ -332,7 +331,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     else
         -- New segments just check if they complete the tunnel and handle approperiately.
         UndergroundSegments.UpdateUndergroundsForNewSegment(segment)
-        UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground(segment)
+        UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground(segment.underground)
     end
 end
 
@@ -360,7 +359,7 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
         -- If a underground reference at this position is found next to this one add this part to its/new underground.
         if foundPortalPartPositionObject ~= nil then
             local connectedSegment = foundPortalPartPositionObject.segment
-            local connectedSegmentsPositionNowConnected = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkDetails.refPos)
+            local connectedSegmentsPositionNowConnected = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkDetails.refPos) -- This is the connected segment's external checking position.
             -- Valid underground to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
             if segment.underground and connectedSegment.underground == nil then
                 -- We have a underground and they don't, so add them to our underground.
@@ -380,7 +379,8 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
             segment.nonConnectedSurfacePositions[checkSurfacePositionString] = nil
             connectedSegment.nonConnectedSurfacePositions[connectedSegmentsPositionNowConnected] = nil
         else
-            segment.nonConnectedSurfacePositions[checkSurfacePositionString] = checkSurfacePositionString
+            local segmentsPositionNotConnected = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkDetails.refPos)
+            segment.nonConnectedSurfacePositions[checkSurfacePositionString] = segmentsPositionNotConnected
         end
     end
 
@@ -421,12 +421,12 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
     underground.undergroundEndSegments = {}
     for _, thisSegment in pairs(underground.segments) do
         for _, surfacePositionString in pairs(thisSegment.nonConnectedSurfacePositions) do
-            ---@type UndergroundEndSegment
-            local undergroundEndSegment = {
+            ---@type UndergroundEndSegmentObject
+            local UndergroundEndSegmentObject = {
                 connectableSurfacePosition = surfacePositionString,
                 segment = thisSegment
             }
-            table.insert(underground.undergroundEndSegments, undergroundEndSegment)
+            table.insert(underground.undergroundEndSegments, UndergroundEndSegmentObject)
             if #underground.undergroundEndSegments == 2 then
                 break
             end
@@ -455,9 +455,19 @@ UndergroundSegments.MergeUndergroundInToOtherUnderground = function(oldUndergrou
     global.undergroundSegments.undergrounds[oldUnderground.id] = nil
 end
 
----@param segment UndergroundSegment
-UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(segment)
-    -- TODO: write this.
+-- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
+---@param underground Underground
+UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
+    local portals = {}
+    for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
+        local portal = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", UndergroundEndSegmentObject.connectableSurfacePosition)
+        if portal then
+            table.insert(portals, portal)
+        end
+    end
+    if #portals == 2 then
+        Interfaces.Call("Tunnel.CompleteTunnel", portals, underground)
+    end
 end
 
 --- Checks if an underground has a connection at a set point. If it does returns the objects, otherwise nil for all.
@@ -469,7 +479,7 @@ UndergroundSegments.CanAnUndergroundConnectAtPosition = function(surfacePosition
     if segmentSurfacePositionObject ~= nil then
         local underground = segmentSurfacePositionObject.segment.underground
         local otherEndSegment  ---@type UndergroundSegment
-        if underground.undergroundEndSegments[1].connectableSurfacePosition == surfacePositionString then
+        if underground.undergroundEndSegments[1].segment.id == segmentSurfacePositionObject.segment.id then
             otherEndSegment = underground.undergroundEndSegments[2].segment
         else
             otherEndSegment = underground.undergroundEndSegments[1].segment

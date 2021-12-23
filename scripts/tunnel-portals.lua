@@ -24,7 +24,6 @@ local BlockingEndPortalSetup = {
     blockedInvisibleSignalsDistance = -1.5
 }
 
--- TODO: not sure we need to track surface or force through this file at all? check the other entity attributes as well.
 ---@class Portal
 ---@field id uint @unique id of the portal object.
 ---@field isComplete boolean @if the portal has 2 connected portal end objects or not.
@@ -33,7 +32,7 @@ local BlockingEndPortalSetup = {
 ---@field trainWaitingAreaTilesLength int @how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @the force this portal object belongs to.
 ---@field surface LuaSurface @the surface this portal part object is on.
----@field portalTunnelConnectionSurfacePositions table<Id, PortalTunnelConnectionSurfacePositionObject> @the 2 entries in global.tunnelPortals.portalTunnelConnectionSurfacePositions. Populated on a complete portal.
+---@field portalTunnelConnectionSurfacePositions table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @the 2 entries in global.tunnelPortals.portalTunnelConnectionSurfacePositions for this portal. Populated on a complete portal.
 ---@field entryPortalEnd PortalEnd @the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field blockedPortalEnd PortalEnd @the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field transitionSignals table<TunnelSignalDirection, PortalTransitionSignal> @These are the inner locked red signals that a train paths at to enter the tunnel. Only established once this portal is part of a valid tunnel.
@@ -61,11 +60,11 @@ local BlockingEndPortalSetup = {
 ---@field surface LuaSurface @the surface this portal part object is on.
 ---@field surface_index uint @cached index of the surface this portal part is on.
 ---@field force LuaForce @the force this portal part object belongs to.
+---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @a table of this end part's non connected positions to check outside of the entity.
 
 ---@class PortalEnd : PortalPart @the end part of a portal.
 ---@field endPortalType EndPortalType @the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direciotn is known.
 ---@field connectedToUnderground boolean @if theres an underground segment connected to this portal on one side as part of the completed tunnel. Only populated when its part of a full tunnel.
----@field orientationNotConnectedToPortal RealOrientation @the orientation that isn't connected to another portal part. Used to identify tunnel connection points when this end part becomes part of a complete portal. This value will be erronous for non complete tunnels.
 
 ---@class EndPortalType
 local EndPortalType = {
@@ -92,9 +91,7 @@ local EndPortalType = {
 
 ---@class PortalTunnelConnectionSurfacePositionObject
 ---@field id SurfacePositionString
----@field position Position
 ---@field portal Portal
----@field endPortalPart PortalEnd
 
 ---@class PortalPartType @if the portal part is an End or Segment.
 local PortalPartType = {
@@ -176,7 +173,7 @@ TunnelPortals.CreateGlobals = function()
     global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @Used to be able to identify the portal when the entering train detection entity is killed.
     global.tunnelPortals.transitionUsageDetectorEntityIdToPortal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @Used to be able to identify the portal when the transition train detection entity is killed.
     global.tunnelPortals.portalPartConnectionSurfacePositions = global.tunnelPortals.portalPartConnectionSurfacePositions or {} ---@type table<Id, PortalPartSurfacePositionObject> @a lookup for positions that portal parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
-    global.tunnelPortals.portalTunnelConnectionSurfacePositions = global.tunnelPortals.portalTunnelConnectionSurfacePositions or {} ---@type table<Id, PortalTunnelConnectionSurfacePositionObject> @a lookup for portal by a position string for connecting to a tunnel. It is 0.5 tiles beyond the end portal entity border where the underground segment would try to connect to other underground segments. Saves searching for entities on the map via API.
+    global.tunnelPortals.portalTunnelConnectionSurfacePositions = global.tunnelPortals.portalTunnelConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @a lookup for portal by a position string for connecting to a tunnel. It is 0.5 tiles outside the end portal entity border, where the underground segments connection point is. Saves searching for entities on the map via API.
 end
 
 TunnelPortals.OnLoad = function()
@@ -260,7 +257,8 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         surface = surface,
         surface_index = surface_index,
         force = builtEntity.force,
-        typeData = portalTypeData
+        typeData = portalTypeData,
+        nonConnectedSurfacePositions = {}
     }
 
     -- Handle the caching of specific portal part type information and to their globals.
@@ -315,20 +313,26 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
 
     --TODO: this doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S
 
-    --TODO: PANIC - THIS DOESN't HANDLE PORTALS FACING SOUTH, DEFAULT OF NORTH WORKS.
-
     -- Check for a connected viable portal part in both directions from our portal part.
-    local reverseOrientation = Utils.LoopOrientationValue(portalPartObject.entity_orientation + 0.5)
-    for checkOrientation, checkPos in pairs(
+    for _, checkDetails in pairs(
         {
-            [portalPartObject.entity_orientation] = Utils.FormatSurfacePositionTableToString(portalPartObject.surface_index, Utils.ApplyOffsetToPosition(portalPartObject.frontPosition, Utils.RotatePositionAround0(portalPartObject.entity_orientation, {x = 0, y = -1}))), -- The position 1 tile in front of our front position.
-            [reverseOrientation] = Utils.FormatSurfacePositionTableToString(portalPartObject.surface_index, Utils.ApplyOffsetToPosition(portalPartObject.rearPosition, Utils.RotatePositionAround0(reverseOrientation, {x = 0, y = 1}))) -- The position 1 tile in behind our rear position.
+            {
+                refPos = portalPartObject.frontPosition,
+                refOrientation = portalPartObject.entity_orientation
+            },
+            {
+                refPos = portalPartObject.rearPosition,
+                refOrientation = Utils.LoopOrientationValue(portalPartObject.entity_orientation + 0.5)
+            }
         }
     ) do
-        local foundPortalPartPositionObject = global.tunnelPortals.portalPartConnectionSurfacePositions[checkPos]
+        local checkPos = Utils.ApplyOffsetToPosition(checkDetails.refPos, Utils.RotatePositionAround0(checkDetails.refOrientation, {x = 0, y = -1})) -- The position 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
+        local checkSurfacePositionString = Utils.FormatSurfacePositionTableToString(portalPartObject.surface_index, checkPos)
+        local foundPortalPartPositionObject = global.tunnelPortals.portalPartConnectionSurfacePositions[checkSurfacePositionString]
         -- If a portal reference at this position is found next to this one add this part to its/new portal.
         if foundPortalPartPositionObject ~= nil then
             local connectedPortalPart = foundPortalPartPositionObject.portalPart
+            local connectedPortalPartPositionNowConnected = Utils.FormatSurfacePositionTableToString(portalPartObject.surface_index, checkDetails.refPos) -- This is the connected portal part's external checking position.
             -- If the connected part has a completed portal we can't join to it.
             if connectedPortalPart.portal == nil or (connectedPortalPart.portal and not connectedPortalPart.portal.isComplete) then
                 -- Valid portal to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
@@ -346,15 +350,13 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                         secondComplictedConnectedPart = connectedPortalPart
                     end
                 end
+                portalPartObject.nonConnectedSurfacePositions[checkSurfacePositionString] = nil
+                connectedPortalPart.nonConnectedSurfacePositions[connectedPortalPartPositionNowConnected] = nil
             else
-                if portalPartObject.typeData.partType == PortalPartType.portalEnd then
-                    portalPartObject.orientationNotConnectedToPortal = checkOrientation
-                end
+                portalPartObject.nonConnectedSurfacePositions[checkSurfacePositionString] = checkSurfacePositionString
             end
         else
-            if portalPartObject.typeData.partType == PortalPartType.portalEnd then
-                portalPartObject.orientationNotConnectedToPortal = checkOrientation
-            end
+            portalPartObject.nonConnectedSurfacePositions[checkSurfacePositionString] = checkSurfacePositionString
         end
     end
 
@@ -437,45 +439,41 @@ TunnelPortals.PortalComplete = function(portal)
     -- OVERHAUL - will create the stats on the portal length and make the clickable bit here. As these should be inspectable before the whole tunnel is made. Also add some sort of visual confirmation the portal is complete, maybe the concrete top graphic. No track until its a full tunnel to avoid complications.
     -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portals.
     for _, endPortalPart in pairs(portal.portalEnds) do
-        -- Connection point is 0.5 tile inside the end of the end portal border as this is equivilent to the underground segment's checking 0.5 tiles outside of border for their connection points during their internal underground connecting logic.
-        local undergroundConnectionSurfacePosition = Utils.ApplyOffsetToPosition(endPortalPart.entity_position, Utils.RotatePositionAround0(endPortalPart.orientationNotConnectedToPortal, {x = 0, y = -2.5}))
-        local undergroundConnectionSurfacePositionString = Utils.FormatSurfacePositionTableToString(endPortalPart.surface_index, undergroundConnectionSurfacePosition)
-        local portalTunnelConnectionSurfacePosition = {
+        local undergroundConnectionSurfacePositionString = next(endPortalPart.nonConnectedSurfacePositions)
+        local portalTunnelConnectionSurfacePositionObject = {
             id = undergroundConnectionSurfacePositionString,
-            position = undergroundConnectionSurfacePosition,
-            portal = portal,
-            endPortalPart = endPortalPart
+            portal = portal
         }
-        global.tunnelPortals.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePosition
-        portal.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePosition
+        global.tunnelPortals.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
+        portal.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
+
+        local _, position = Utils.SurfacePositionStringToSurfaceAndPosition(undergroundConnectionSurfacePositionString)
+        rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.1, filled = true, target = position, surface = portal.surface}
     end
 end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param portal Portal
 TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
-    -- Requires an underground to be between 2 portals. As otherwise seperating the portal parts from each other is a pain and why would you every want a 0 length tunnel.
-    --TODO: PANIC - THE CONNECTION POINTS ARE BEING RECORDED WRONG AND THUS NEVER FINDING AN UNDERGROUND SEGMENT - CHECK THEY ARE BEING RECORDED AS EXPECTED AS WELL.
-    for _, portalTunnelConnectionSurfacePosition in pairs(portal.portalTunnelConnectionSurfacePositions) do
+    for surfacePositionString, _ in pairs(portal.portalTunnelConnectionSurfacePositions) do
         ---@typelist Underground, UndergroundSegment, UndergroundSegment
-        local underground, otherEndSegment = Interfaces.Call("UndergroundSegments.CanAnUndergroundConnectAtPosition", portalTunnelConnectionSurfacePosition)
+        local underground, otherEndSegment = Interfaces.Call("UndergroundSegments.CanAnUndergroundConnectAtPosition", surfacePositionString)
         if underground ~= nil then
             local foundPortals = Interfaces.Call("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", otherEndSegment, portal)
             if #foundPortals == 1 then
-                Interfaces.Call("Tunnel.CompleteTunnel", {portal}, underground)
+                Interfaces.Call("Tunnel.CompleteTunnel", {portal, foundPortals[1]}, underground)
             end
         end
     end
 end
 
---- Checks if a Portal has a connection at a set point. If it does returns the objects, otherwise nil for all.
+--- Checks if a complete Portal has a connection at a set point. If it does returns the objects, otherwise nil for all.
 ---@param surfacePositionString SurfacePositionString
 ---@return Portal|null
----@return PortalEnd|null
 TunnelPortals.CanAPortalConnectAtPosition = function(surfacePositionString)
     local portalTunnelConnectionSurfacePositionObject = global.tunnelPortals.portalTunnelConnectionSurfacePositions[surfacePositionString]
-    if portalTunnelConnectionSurfacePositionObject ~= nil then
-        return portalTunnelConnectionSurfacePositionObject.portal, portalTunnelConnectionSurfacePositionObject.endPortalPart
+    if portalTunnelConnectionSurfacePositionObject ~= nil and portalTunnelConnectionSurfacePositionObject.portal.isComplete then
+        return portalTunnelConnectionSurfacePositionObject.portal
     end
 end
 

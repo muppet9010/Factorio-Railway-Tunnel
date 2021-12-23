@@ -24,3 +24,10 @@ Ghost placement of fast replacement and rotations
 -------------------------------------------------
 
 A player can fast replace an entity over itself with a different rotation if it supports fast replacement; But a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
+
+
+Tunnel Part Connections
+-----------------------
+
+Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. These connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look 1 tile infront of its own connection points to see if there is another part to connect to. As all parts have alteast 1 tile padding to the sides of the connection points its impossible to place a part at a side angle to another part.
+For a tunnel there must be an underground between 2 complete portals. As otherwise seperating the portal parts from each other is a pain and why would you ever want a 0 length tunnel.

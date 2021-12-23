@@ -94,6 +94,4 @@ Common.TunnelUsageChangeReason = {
     portalTrackReleased = "portalTrackReleased" ---@type TunnelUsageChangeReason
 }
 
----@class SurfacePositionString @the entities surface and position as a string: "surfaceId_x,y"
-
 return Common

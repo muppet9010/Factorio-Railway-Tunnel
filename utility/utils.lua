@@ -802,6 +802,19 @@ Utils.FormatSurfacePositionTableToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
 end
 
+--- Backwards converts a SurfacePositionString to usable data. This is ineffecient and should only be used for debugging.
+---@param surfacePositionString SurfacePositionString
+---@return uint surfaceIndex
+---@return Position position
+Utils.SurfacePositionStringToSurfaceAndPosition = function(surfacePositionString)
+    local underscoreIndex = string.find(surfacePositionString, "_")
+    local surfaceId = string.sub(surfacePositionString, 1, underscoreIndex - 1)
+    local commaIndex = string.find(surfacePositionString, ",")
+    local positionX = string.sub(surfacePositionString, underscoreIndex + 1, commaIndex - 1)
+    local positionY = string.sub(surfacePositionString, commaIndex + 1, string.len(surfacePositionString))
+    return surfaceId, {x = positionX, y = positionY}
+end
+
 ---@param theTable table
 ---@param value StringOrNumber
 ---@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
