@@ -619,7 +619,7 @@ end
 --- Get a direction heading from a start point to an end point that is a on an exact cardinal direction.
 ---@param startPos Position
 ---@param endPos Position
----@return defines.direction|int @Returns -1 if the startPos and endPos are the same. Returns -2 if the positions not on a cardinal direction difference.
+---@return defines.direction|int @ Returns -1 if the startPos and endPos are the same. Returns -2 if the positions not on a cardinal direction difference.
 Utils.GetCardinalDirectionHeadingToPosition = function(startPos, endPos)
     if startPos.x == endPos.x then
         if startPos.y > endPos.y then
@@ -644,7 +644,7 @@ end
 
 ---@param position Position
 ---@param boundingBox BoundingBox
----@param safeTiling boolean|null @If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
+---@param safeTiling boolean|null @ If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
 ---@return boolean
 Utils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
     if safeTiling == nil or not safeTiling then
@@ -678,7 +678,7 @@ Utils.TableKeyToArray = function(aTable)
     return newArray
 end
 
----@param aTable table @doesn't support commas in values or nested tables. Really for logging.
+---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.
 Utils.TableKeyToCommaString = function(aTable)
     local newString = ""
     if Utils.IsTableEmpty(aTable) then
@@ -694,7 +694,7 @@ Utils.TableKeyToCommaString = function(aTable)
     return newString
 end
 
----@param aTable table @doesn't support commas in values or nested tables. Really for logging.
+---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.
 Utils.TableValueToCommaString = function(aTable)
     local newString = ""
     if Utils.IsTableEmpty(aTable) then
@@ -712,8 +712,8 @@ end
 
 -- Stringify a table in to a JSON text string. Options to make it pretty printable.
 ---@param targetTable table
----@param name string|null @If provided will appear as a "name:JSONData" output.
----@param singleLineOutput boolean|null @If provided and true removes all lines and spacing from the output.
+---@param name string|null @ If provided will appear as a "name:JSONData" output.
+---@param singleLineOutput boolean|null @ If provided and true removes all lines and spacing from the output.
 ---@return string
 Utils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
     singleLineOutput = singleLineOutput or false
@@ -816,9 +816,9 @@ end
 
 ---@param theTable table
 ---@param value StringOrNumber
----@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList boolean|null @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
----@return StringOrNumber[] @table of keys.
+---@param returnMultipleResults boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@return StringOrNumber[] @ table of keys.
 Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
     local keysFound = {}
     for k, v in pairs(theTable) do
@@ -844,9 +844,9 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList boolean|null @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
----@return StringOrNumber[] @table of keys.
+---@param returnMultipleResults boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@return StringOrNumber[] @ table of keys.
 Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local keysFound = {}
     for k, innerTable in pairs(theTable) do
@@ -872,9 +872,9 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults boolean|null @Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList boolean|null @Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
----@return table[] @table of values, which must be a table to have an inner key/value.
+---@param returnMultipleResults boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@return table[] @ table of values, which must be a table to have an inner key/value.
 Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local valuesFound = {}
     for _, innerTable in pairs(theTable) do
@@ -935,10 +935,10 @@ end
 
 --- Updates the 'chancePropertyName' named attribute of each entry in the referenced `dataSet` table to be proportional of a combined dataSet value of 1.
 -- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
----@param dataSet table[] @The dataSet to be reviewed and updated.
----@param chancePropertyName string @The attribute name that has the chance value per dataSet entry.
----@param skipFillingEmptyChance boolean @If TRUE then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
----@return table[] @Same object passed in by reference as dataSet, so technically no return is needed, legacy.
+---@param dataSet table[] @ The dataSet to be reviewed and updated.
+---@param chancePropertyName string @ The attribute name that has the chance value per dataSet entry.
+---@param skipFillingEmptyChance boolean @ If TRUE then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
+---@return table[] @ Same object passed in by reference as dataSet, so technically no return is needed, legacy.
 Utils.NormaliseChanceList = function(dataSet, chancePropertyName, skipFillingEmptyChance)
     local totalChance = 0
     for _, v in pairs(dataSet) do
@@ -1090,11 +1090,11 @@ Utils.DisplayTimeOfTicks = function(inputTicks, displayLargestTimeUnit, displayS
 end
 
 -- Doesn't handle mipmaps at all presently. Also ignores any of the extra data in an icons table of "Types/IconData". Think this should just duplicate the target icons table entry.
----@param entityToClone table @Any entity prototype.
+---@param entityToClone table @ Any entity prototype.
 ---@param newEntityName string
 ---@param subgroup string
 ---@param collisionMask CollisionMask
----@return table @A simple entity prototype.
+---@return table @ A simple entity prototype.
 Utils.CreatePlacementTestEntityPrototype = function(entityToClone, newEntityName, subgroup, collisionMask)
     local clonedIcon = entityToClone.icon
     local clonedIconSize = entityToClone.icon_size
@@ -1141,8 +1141,8 @@ Utils.CreateWaterPlacementTestEntityPrototype = function(entityToClone, newEntit
 end
 
 --- Tries to converts a non boolean to a boolean value.
----@param text string|int|boolean @The input to check.
----@return boolean|null @if successful converted then the boolean of the value, or nil if not a convertable input.
+---@param text string|int|boolean @ The input to check.
+---@return boolean|null @ If successful converted then the boolean of the value, or nil if not a convertable input.
 Utils.ToBoolean = function(text)
     if text == nil then
         return nil
@@ -1249,7 +1249,7 @@ Utils.GetValueAndUnitFromString = function(text)
 end
 
 -- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
----@return boolean @if all items were moved successfully or not.
+---@return boolean @ if all items were moved successfully or not.
 Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventory, dropUnmovedOnGround, ratioToMove)
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
@@ -1286,7 +1286,7 @@ Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventor
 end
 
 -- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
----@return boolean @if all items were moved successfully or not.
+---@return boolean @ if all items were moved successfully or not.
 Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGround)
     if sourceGrid == nil then
         return
@@ -1312,7 +1312,7 @@ Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGro
 end
 
 -- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
----@return boolean @if all items were moved successfully or not.
+---@return boolean @ if all items were moved successfully or not.
 Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
     if Utils.IsTableEmpty(contents) then
         return
@@ -1343,7 +1343,7 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
 end
 
 -- Takes a table of SimpleItemStack and inserts them in to an inventory. Updates the passed in contents object.
----@return boolean @if all items were moved successfully or not.
+---@return boolean @ if all items were moved successfully or not.
 Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
     if contents == nil or #contents == 0 then
         return
@@ -1385,8 +1385,8 @@ Utils.GetBuilderInventory = function(builder)
 end
 
 ---@param actioner EntityActioner
----@return LuaPlayer[] @Table of players or nil.
----@return LuaForce[] @Table of forces or nil.
+---@return LuaPlayer[] @ Table of players or nil.
+---@return LuaForce[] @ Table of forces or nil.
 Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     if actioner == nil then
         -- Is a script.
@@ -1400,7 +1400,7 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     end
 end
 
----@param repeat_count int|null @Defaults to 1 if not provided
+---@param repeat_count int|null @ Defaults to 1 if not provided
 ---@return Sprite
 Utils.EmptyRotatedSprite = function(repeat_count)
     return {
@@ -1420,10 +1420,10 @@ end
             fuelValue = INT,
         }
 --]]
----@param trackingTable table @reference to an existing table that the function will populate.
+---@param trackingTable table @ Reference to an existing table that the function will populate.
 ---@param itemName string
 ---@param itemCount uint
----@return boolean|null @Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
+---@return boolean|null @ Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
 Utils.TrackBestFuelCount = function(trackingTable, itemName, itemCount)
     local itemPrototype = game.item_prototypes[itemName]
     local fuelValue = itemPrototype.fuel_value
@@ -1634,7 +1634,7 @@ Utils.StringTrim = function(text)
 end
 
 -- Takes a orientation (0-1) and returns a direction (int 0-7).
----@param orientation RealOrientation @Will be rounded to the nearest cardinal or intercardinal direction.
+---@param orientation RealOrientation @ Will be rounded to the nearest cardinal or intercardinal direction.
 ---@return defines.direction
 Utils.OrientationToDirection = function(orientation)
     return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
@@ -1690,7 +1690,7 @@ Utils.ReturnValidLuaObjectOrNil = function(luaObject)
 end
 
 ---@param train LuaTrain
----@param isFrontStockLeading boolean @If the trains speed is > 0 then pass in true, if speed < 0 then pass in false.
+---@param isFrontStockLeading boolean @ If the trains speed is > 0 then pass in true, if speed < 0 then pass in false.
 ---@return LuaEntity
 Utils.GetLeadingCarriageOfTrain = function(train, isFrontStockLeading)
     if isFrontStockLeading then

@@ -83,8 +83,8 @@ end
 
 --- Register a unique name and function for future event scheduling. Must be called from a test's OnLoad() and is a pre-requisite for any events to be scheduled during a test Start().
 ---@param testName TestName
----@param eventName string @Name of the event, used when triggering it.
----@param testFunction function @Function thats called when the event is triggered.
+---@param eventName string @ Name of the event, used when triggering it.
+---@param testFunction function @ Function thats called when the event is triggered.
 TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, testFunction)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RegisterScheduledEventType(completeName, testFunction)
@@ -93,9 +93,9 @@ end
 --- Schedule an event named function once at a given tick. To be called from Start().
 ---@param tick Tick
 ---@param testName TestName
----@param eventName string @Name of the event to trigger.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @OPTIONAL - data table passed back in to the handler function when triggered.
+---@param eventName string @ Name of the event to trigger.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, instanceId, eventData)
     -- instanceId and eventData are optional.
     local completeName = "Test." .. testName .. "." .. eventName
@@ -107,9 +107,9 @@ end
 
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
 ---@param testName TestName
----@param eventName string @Name of the event to trigger.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @OPTIONAL - data table passed back in to the handler function when triggered.
+---@param eventName string @ Name of the event to trigger.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instanceId, eventData)
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
@@ -120,8 +120,8 @@ end
 
 --- Remove any instances of future scheduled once events. To be called from Stop().
 ---@param testName TestName
----@param eventName string @Name of the event to remove the schedule of.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventName string @ Name of the event to remove the schedule of.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledOnceEvents(completeName, instanceId)
@@ -129,8 +129,8 @@ end
 
 --- Remove any instances of future scheduled every tick events. To be called from Stop().
 ---@param testName TestName
----@param eventName string @Name of the event to remove the schedule of.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventName string @ Name of the event to remove the schedule of.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledEventFromEachTick(completeName, instanceId)
@@ -138,10 +138,10 @@ end
 
 --- Register a unique name and function to react to a named event. Will only trigger when this test is active. Must be called from OnLoad() and Start().
 ---@param testName TestName
----@param eventName defines.events @The Factorio event to react to.
----@param testFunctionName string @Unique name of this event function handler.
----@param testFunction function @Function to be triggered when the event occurs.
----@param filterData EventFilter @OPTIONAL - Factorio event filter to be used.
+---@param eventName defines.events @ The Factorio event to react to.
+---@param testFunctionName string @ Unique name of this event function handler.
+---@param testFunction function @ Function to be triggered when the event occurs.
+---@param filterData EventFilter @ OPTIONAL - Factorio event filter to be used.
 TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterData)
     -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
@@ -177,15 +177,15 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
 end
 
 ---@class TrainSnapshot
----@field carriageCount uint @how many carriages are in this train.
+---@field carriageCount uint @ how many carriages are in this train.
 ---@field carriages CarriageSnapshot[]
 
 ---@class CarriageSnapshot
----@field name string @Entity prototype name
----@field health float @How much health the carriage has.
----@field facingForwards boolean @If the carriage is facing forwards relative to the train's front.
----@field cargoInventory string @The cargo of non-locomotives as a JSON string.
----@field color string @Color attribute as a JSON string.
+---@field name string @ Entity prototype name
+---@field health float @ How much health the carriage has.
+---@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front.
+---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
+---@field color string @ Color attribute as a JSON string.
 
 --- Returns an abstract meta data of a train to be compared later.
 ---@param train LuaTrain

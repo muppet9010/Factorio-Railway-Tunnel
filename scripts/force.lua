@@ -2,7 +2,7 @@ local Force = {}
 
 Force.CreateGlobals = function()
     global.force = global.force or {}
-    global.force.tunnelForce = global.force.tunnelForce or nil ---@type LuaForce @The LuaForce for tunnel no player force entities.
+    global.force.tunnelForce = global.force.tunnelForce or nil ---@type LuaForce @ The LuaForce for tunnel no player force entities.
 end
 
 Force.OnStartup = function()

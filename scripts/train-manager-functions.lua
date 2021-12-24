@@ -181,7 +181,7 @@ TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientati
     return railFarEndPosition
 end
 
----@param railEntityType string @Prototype name.
+---@param railEntityType string @ Prototype name.
 ---@return double
 TrainManagerFuncs.GetRailEntityLength = function(railEntityType)
     if railEntityType == "straight-rail" then

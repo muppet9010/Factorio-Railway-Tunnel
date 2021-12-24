@@ -7,41 +7,41 @@ local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
 local UndergroundSegments = {}
 
 ---@class Underground
----@field id uint @unique id of the underground object.
----@field segments table<UnitNumber, UndergroundSegment> @segments in the underground. Key'd by the portal end entity unit_number (id).
----@field tilesLength int @how many tiles this underground is long.
----@field force LuaForce @the force this underground object belongs to.
----@field surface LuaSurface @the surface this underground object is on.
----@field undergroundEndSegments UndergroundEndSegmentObject[] @objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
----@field tunnel Tunnel @ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
+---@field id uint @ unique id of the underground object.
+---@field segments table<UnitNumber, UndergroundSegment> @ segments in the underground. Key'd by the portal end entity unit_number (id).
+---@field tilesLength int @ how many tiles this underground is long.
+---@field force LuaForce @ the force this underground object belongs to.
+---@field surface LuaSurface @ the surface this underground object is on.
+---@field undergroundEndSegments UndergroundEndSegmentObject[] @ objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
+---@field tunnel Tunnel @ ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
 
 ---@class UndergroundSegment
----@field id UnitNumber @unit_number of the placed segment entity.
+---@field id UnitNumber @ unit_number of the placed segment entity.
 ---@field entity LuaEntity
----@field entity_name string @cache of the segment's entity's name.
----@field entity_position Position @cache of the entity's position.
----@field entity_direction defines.direction @cache of the entity's direction.
----@field entity_orientation RealOrientation @cache of the entity's orientation.
----@field frontPosition Position @used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
----@field rearPosition Position  @used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
----@field surface LuaSurface @the surface this segment object is on.
----@field surface_index uint @cached index of the surface this segment is on.
----@field force LuaForce @the force this segment object belongs to.
----@field underground Underground @ref to the parent underground object.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities within the tunnel segment that form part of the larger tunnel.
----@field signalEntities table<UnitNumber, LuaEntity> @the hidden signal entities within the tunnel segment.
----@field crossingRailEntities table<UnitNumber, LuaEntity> @the rail entities that cross the tunnel segment. Table only exists for entity type of "underground_segment-rail_crossing".
----@field surfacePositionString SurfacePositionString @used for Fast Replacement to back match to segmentSurfacePositions global object.
----@field beingFastReplacedTick uint @the tick the segment was marked as being fast replaced or nil.
----@field trainBlockerEntity LuaEntity @the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
----@field topLayerEntity LuaEntity @the top layer graphical entity that is showings its picture and hiding the main entities once placed.
----@field tilesLength int @how many tiles this segment is long.
----@field typeData UndergroundSegmentTypeData @ref to generic data about this type of segment.
----@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @a table of this segments non connected points.
+---@field entity_name string @ cache of the segment's entity's name.
+---@field entity_position Position @ cache of the entity's position.
+---@field entity_direction defines.direction @ cache of the entity's direction.
+---@field entity_orientation RealOrientation @ cache of the entity's orientation.
+---@field frontPosition Position @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field rearPosition Position  @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field surface LuaSurface @ the surface this segment object is on.
+---@field surface_index uint @ cached index of the surface this segment is on.
+---@field force LuaForce @ the force this segment object belongs to.
+---@field underground Underground @ ref to the parent underground object.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the invisible rail entities within the tunnel segment that form part of the larger tunnel.
+---@field signalEntities table<UnitNumber, LuaEntity> @ the hidden signal entities within the tunnel segment.
+---@field crossingRailEntities table<UnitNumber, LuaEntity> @ the rail entities that cross the tunnel segment. Table only exists for entity type of "underground_segment-rail_crossing".
+---@field surfacePositionString SurfacePositionString @ used for Fast Replacement to back match to segmentSurfacePositions global object.
+---@field beingFastReplacedTick uint @ the tick the segment was marked as being fast replaced or nil.
+---@field trainBlockerEntity LuaEntity @ the "railway_tunnel-train_blocker_2x2" entity of this tunnel segment if it has one currently.
+---@field topLayerEntity LuaEntity @ the top layer graphical entity that is showings its picture and hiding the main entities once placed.
+---@field tilesLength int @ how many tiles this segment is long.
+---@field typeData UndergroundSegmentTypeData @ ref to generic data about this type of segment.
+---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this segments non connected points.
 
----@class UndergroundEndSegmentObject @details of a segment at the end of an underground.
+---@class UndergroundEndSegmentObject @ details of a segment at the end of an underground.
 ---@field segment UndergroundSegment
----@field connectableSurfacePosition SurfacePositionString @where a portal could have its connection position and join to this segment's external entity border connection points.
+---@field connectableSurfacePosition SurfacePositionString @ where a portal could have its connection position and join to this segment's external entity border connection points.
 
 ---@class SegmentSurfacePosition
 ---@field id SurfacePositionString
@@ -52,12 +52,12 @@ local UndergroundSegments = {}
 ---@class UndergroundSegmentTypeData
 ---@field name string
 ---@field segmentShape UndergroundSegmentShape
----@field topLayerEntityName string @the entity to place when the tunnel is complete to show the desired completed graphics layer.
----@field placeCrossingRails boolean @if this segment type has above ground crossing rails or not.
----@field tilesLength int @how many tiles this underground is long.
----@field undergroundTracksPositionOffset PortalPartTrackPositionOffset[] @the type of underground track and its position offset from the center of the part when in a 0 orientation.
+---@field topLayerEntityName string @ the entity to place when the tunnel is complete to show the desired completed graphics layer.
+---@field placeCrossingRails boolean @ if this segment type has above ground crossing rails or not.
+---@field tilesLength int @ how many tiles this underground is long.
+---@field undergroundTracksPositionOffset PortalPartTrackPositionOffset[] @ the type of underground track and its position offset from the center of the part when in a 0 orientation.
 
----@class UndergroundSegmentShape @the shape of the segment part.
+---@class UndergroundSegmentShape @ the shape of the segment part.
 local SegmentShape = {
     straight = "straight", -- Short straight piece for horizontal and vertical.
     diagonal = "diagonal", -- Short diagonal piece.
@@ -65,7 +65,7 @@ local SegmentShape = {
     curveInner = "curveInner" -- The inner part of a curve that connects 2 curveStart's togeather to make a 90 degree corner.
 }
 
----@class UndergroundSegmentTrackPositionOffset @type of track and its position offset from the center of the part when in a 0 orientation.
+---@class UndergroundSegmentTrackPositionOffset @ type of track and its position offset from the center of the part when in a 0 orientation.
 ---@field trackEntityName string
 ---@field positionOffset Position
 ---@field baseDirection defines.direction
@@ -107,8 +107,8 @@ UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments.nextUndergroundId = global.tunnelPortals.nextUndergroundId or 1
     global.undergroundSegments.undergrounds = global.undergroundSegments.undergrounds or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<UnitNumber, UndergroundSegment>
-    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @a lookup for underground segments by their position string. Saves searching for entities on the map via API.
-    global.undergroundSegments.segmentConnectionSurfacePositions = global.undergroundSegments.segmentConnectionSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @a lookup for positions that underground segment parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @ a lookup for underground segments by their position string. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentConnectionSurfacePositions = global.undergroundSegments.segmentConnectionSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @ a lookup for positions that underground segment parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
 end
 
 UndergroundSegments.OnLoad = function()
@@ -545,7 +545,7 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 UndergroundSegments.OnBuiltEntityGhost = function(event)
-    --TODO: move this to somewhere central and merge with underground check as identical code. Save UPS in event functions triggered within mod.
+    -- TODO: move this to somewhere central and merge with underground check as identical code. Save UPS in event functions triggered within mod.
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -561,7 +561,7 @@ UndergroundSegments.OnBuiltEntityGhost = function(event)
     end
 end
 
--- TODO - checked up to here
+-- TODO: checked up to here
 -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
 ---@param event on_pre_build
 UndergroundSegments.OnPreBuild = function(event)

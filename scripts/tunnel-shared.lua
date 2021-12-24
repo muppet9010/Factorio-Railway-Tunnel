@@ -14,17 +14,17 @@ end
 
 ---@param builtEntity LuaEntity
 ---@param placer EntityActioner
----@param mine boolean @If to mine and return the item to the placer, or just destroy it.
+---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
 TunnelShared.UndoInvalidTunnelPartPlacement = function(builtEntity, placer, mine)
     TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
 end
 
 ---@param builtEntity LuaEntity
 ---@param placer EntityActioner
----@param mine boolean @If to mine and return the item to the placer, or just destroy it.
----@param highlightValidRailGridPositions boolean @If to show to the placer valid positions on the rail grid.
----@param warningMessageText string @Text shown to the placer
----@param errorEntityNameText string @Entity name shown if the process errors.
+---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
+---@param highlightValidRailGridPositions boolean @ If to show to the placer valid positions on the rail grid.
+---@param warningMessageText string @ Text shown to the placer
+---@param errorEntityNameText string @ Entity name shown if the process errors.
 TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
     if placer ~= nil then
         local position, surface, entityName, ghostName, direction = builtEntity.position, builtEntity.surface, builtEntity.name, nil, builtEntity.direction
@@ -61,7 +61,7 @@ end
 ---@param surface LuaSurface
 ---@param entityName string
 ---@param ghostName string
----@param direction defines.direction @Direction of the entity trying to be placed.
+---@param direction defines.direction @ Direction of the entity trying to be placed.
 TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
     local highlightAudiencePlayers, highlightAudienceForces = Utils.GetRenderPlayersForcesFromActioner(placer)
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
@@ -101,7 +101,7 @@ end
 
 --- Shows warning/error text on the map to either the player (character) or the force (construction robots) doign the interaction.
 ---@param entityDoingInteraction EntityActioner
----@param text string @Text shown.
+---@param text string @ Text shown.
 ---@param surface LuaSurface
 ---@param position Position
 TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)

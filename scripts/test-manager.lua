@@ -91,11 +91,11 @@ local TestsToRun = {
 
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
-    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @Used to flag when a save was started with tests already.
+    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @ Used to flag when a save was started with tests already.
     global.testManager.testSurface = global.testManager.testSurface or nil ---@type LuaSurface
     global.testManager.playerForce = global.testManager.playerForce or nil ---@type LuaForce
-    global.testManager.testData = global.testManager.testData or {} ---@type table<TestName, TestData> @Used by tests to store their local data.
-    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
+    global.testManager.testData = global.testManager.testData or {} ---@type table<TestName, TestData> @ Used by tests to store their local data.
+    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @ Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests ---@type boolean
     global.testManager.keepRunningTest = KeepRunningTest ---@type boolean
     global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60 ---@type Tick
@@ -292,7 +292,7 @@ end
 
 --- Called when the test script needs to be referenced as it can't be stored in global data.
 ---@param testName TestName
----@return table @The script lua file of this test.
+---@return table @ The script lua file of this test.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
 end

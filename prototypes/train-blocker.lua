@@ -2,7 +2,7 @@
     Simple entity that only collides with the train layer to block trains placement and passing (if indestructible). Doesn't trigger signals.
 ]]
 local Utils = require("utility/utils")
---TODO: this blocks players and vehicles as they ahve the train layer in current Factorio. Use a new collision mask for this wail wagon only purpose.
+-- TODO: this blocks players and vehicles as they ahve the train layer in current Factorio. Use a new collision mask for this wail wagon only purpose.
 local baseBlockerPrototype = {
     type = "simple-entity-with-owner",
     icons = {

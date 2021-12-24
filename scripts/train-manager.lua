@@ -12,49 +12,49 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 local TrainManagerRemote = require("scripts/train-manager-remote")
 
 ---@class ManagedTrain
----@field id Id @uniqiue id of this managed train passing through the tunnel.
+---@field id Id @ uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainState
 ---
 ---@field enteringTrain LuaTrain
----@field enteringTrainId Id @The enteringTrain LuaTrain id.
----@field enteringTrainForwards boolean @If the train is moving forwards or backwards from its viewpoint.
+---@field enteringTrainId Id @ The enteringTrain LuaTrain id.
+---@field enteringTrainForwards boolean @ If the train is moving forwards or backwards from its viewpoint.
 ---
----@field undergroundTrainHasPlayersRiding boolean @if there are players riding in the underground train.
----@field tempEnteringSpeed double @the speed the train was going when entering and we maintain at for whole tunnel approach and transversal in intiial code version.
----@field traversalTotalTicks int @the time in ticks it will take for the train to have travelled from the tunnel entering point to when we set it as leaving.
----@field traversalStartingTick int @the tick the train entered the tunnel.
----@field traversalArrivalTick int @the tick the train reaches the far end of the tunnel and is restarted.
+---@field undergroundTrainHasPlayersRiding boolean @ if there are players riding in the underground train.
+---@field tempEnteringSpeed double @ the speed the train was going when entering and we maintain at for whole tunnel approach and transversal in intiial code version.
+---@field traversalTotalTicks int @ the time in ticks it will take for the train to have travelled from the tunnel entering point to when we set it as leaving.
+---@field traversalStartingTick int @ the tick the train entered the tunnel.
+---@field traversalArrivalTick int @ the tick the train reaches the far end of the tunnel and is restarted.
 ---
----@field leavingTrain LuaTrain @The train created leaving the tunnel on the world surface.
----@field leavingTrainId Id @The LuaTrain ID of the leaving train.
+---@field leavingTrain LuaTrain @ The train created leaving the tunnel on the world surface.
+---@field leavingTrainId Id @ The LuaTrain ID of the leaving train.
 ---
----@field portalTrackTrain LuaTrain @The train thats on the portal track and reserved the tunnel.
----@field portalTrackTrainId Id @The LuaTrain ID of the portalTrackTrain.
----@field portalTrackTrainInitiallyForwards boolean @If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection.
----@field portalTrackTrainBySignal boolean @If we are tracking the train by the entrance entry signal or if we haven't got to that point yet.
+---@field portalTrackTrain LuaTrain @ The train thats on the portal track and reserved the tunnel.
+---@field portalTrackTrainId Id @ The LuaTrain ID of the portalTrackTrain.
+---@field portalTrackTrainInitiallyForwards boolean @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection.
+---@field portalTrackTrainBySignal boolean @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet.
 ---
----@field dummyTrain LuaTrain @The dummy train used to keep the train stop reservation alive
----@field dummyTrainId Id @The LuaTrain ID of the dummy train.
----@field trainTravelDirection defines.direction @The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes.
----@field trainTravelOrientation TrainTravelOrientation @The orientation of the trainTravelDirection.
----@field targetTrainStop LuaEntity @The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
+---@field dummyTrain LuaTrain @ The dummy train used to keep the train stop reservation alive
+---@field dummyTrainId Id @ The LuaTrain ID of the dummy train.
+---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes.
+---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
+---@field targetTrainStop LuaEntity @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 ---
----@field surface LuaSurface @The main world surface that this managed train is on.
----@field entrancePortal Portal @The portal global object of the entrance portal for this tunnel usage instance.
----@field entrancePortalTransitionSignal PortalTransitionSignal @The transitionSignal global object of the rail signal at the transition point of the entrance portal track (forced closed signal).
----@field exitPortal Portal @Ref to the portal global object of the exit portal for this tunnel usage instance.
----@field exitPortalTransitionSignal PortalTransitionSignal @Ref to the transitionSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
----@field exitPortalEntrySignalOut PortalEntrySignal @Ref to the transitionSignal global object on the rail signal at the entrance of the exit portal for leaving trains.
----@field tunnel Tunnel @Ref to the global tunnel object.
+---@field surface LuaSurface @ The main world surface that this managed train is on.
+---@field entrancePortal Portal @ The portal global object of the entrance portal for this tunnel usage instance.
+---@field entrancePortalTransitionSignal PortalTransitionSignal @ The transitionSignal global object of the rail signal at the transition point of the entrance portal track (forced closed signal).
+---@field exitPortal Portal @ Ref to the portal global object of the exit portal for this tunnel usage instance.
+---@field exitPortalTransitionSignal PortalTransitionSignal @ Ref to the transitionSignal global object of the rail signal at the end of the exit portal track (forced closed signal).
+---@field exitPortalEntrySignalOut PortalEntrySignal @ Ref to the transitionSignal global object on the rail signal at the entrance of the exit portal for leaving trains.
+---@field tunnel Tunnel @ Ref to the global tunnel object.
 
 ---@class TrainLeadCarriageCache
----@field trainForwards boolean @If the train was forwards when the cache was last updated.
----@field carriage LuaEntity @Cached ref to the lead carriage entity.
+---@field trainForwards boolean @ If the train was forwards when the cache was last updated.
+---@field carriage LuaEntity @ Cached ref to the lead carriage entity.
 
 ---@alias TrainTravelOrientation "0"|"0.25"|"0.5"|"0.75"
 
 ---@class TrainIdToManagedTrain
----@field trainId Id @the LuaTrain id, used as Id.
+---@field trainId Id @ the LuaTrain id, used as Id.
 ---@field managedTrain ManagedTrain
 ---@field tunnelUsagePart TunnelUsageParts
 
@@ -62,7 +62,7 @@ TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1 ---@type Id
     global.trainManager.managedTrains = global.trainManager.managedTrains or {} ---@type table<Id, ManagedTrain>
-    global.trainManager.trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain or {} ---@type table<Id, TrainIdToManagedTrain> @Used to track trainIds to managedTrainEntries. When the trainId is detected as changing via event the global object is updated to stay up to date.
+    global.trainManager.trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain or {} ---@type table<Id, TrainIdToManagedTrain> @ Used to track trainIds to managedTrainEntries. When the trainId is detected as changing via event the global object is updated to stay up to date.
 end
 
 TrainManager.OnLoad = function()
@@ -251,7 +251,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
-    --TODO: for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this. It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
+    -- TODO: for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this. It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
 
     -- Complete the state transition.
     Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
@@ -442,7 +442,7 @@ end
 ---@param train LuaTrain
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
 ---@param traversingTunnel boolean
----@param upgradeManagedTrain ManagedTrain @An existing ManagedTrain object that is being updated/overwritten with fresh data.
+---@param upgradeManagedTrain ManagedTrain @ An existing ManagedTrain object that is being updated/overwritten with fresh data.
 ---@return ManagedTrain
 TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransitionSignal, traversingTunnel, upgradeManagedTrain)
     ---@typelist Id, double
@@ -534,7 +534,7 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param releaseTunnel boolean|null @If nil then tunnel is released (true).
+---@param releaseTunnel boolean|null @ If nil then tunnel is released (true).
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
         TrainManagerPlayerContainers.On_TerminateTunnelTrip(managedTrain)
@@ -585,7 +585,7 @@ end
 -- Clone the entering train to the front of the exit portal. This will minimise any tracking of the train when leaving.
 ---@param managedTrain ManagedTrain
 ---@param enteringTrain_carriages LuaEntity[]
----@return LuaTrain @Leaving train
+---@return LuaTrain @ Leaving train
 TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_carriages)
     -- This currently assumes the portals are in a straight line of each other and that the portal areas are straight.
     local enteringTrain, trainCarriagesForwardOrientation = managedTrain.enteringTrain, managedTrain.trainTravelOrientation
@@ -639,8 +639,8 @@ end
 ---@param targetSurface LuaSurface
 ---@param refCarriage LuaEntity
 ---@param newPosition Position
----@param safeCarriageFlipPosition Position @Not used until we need to support corners.
----@param requiredOrientation RealOrientation @Not used until we need to support corners.
+---@param safeCarriageFlipPosition Position @ Not used until we need to support corners.
+---@param requiredOrientation RealOrientation @ Not used until we need to support corners.
 ---@return LuaEntity
 TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
     -- OVERHAUL - until we add support for corners or non straight tunnel portal areas we never need to flip a carraige.

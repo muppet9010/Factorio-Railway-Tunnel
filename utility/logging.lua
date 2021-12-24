@@ -118,8 +118,8 @@ Logging.RunFunctionAndCatchErrors = function(functionRef, ...)
 end
 
 -- Used to make a text object of something's attributes that can be stringified. Supports LuaObjects with handling for specific ones.
----@param thing any @can be a simple data type, table, or LuaObject.
----@param _tablesLogged table @don't pass in, only used internally when slef referencing the function for looping.
+---@param thing any @ can be a simple data type, table, or LuaObject.
+---@param _tablesLogged table @ don't pass in, only used internally when slef referencing the function for looping.
 ---@return table
 Logging.PrintThingsDetails = function(thing, _tablesLogged)
     _tablesLogged = _tablesLogged or {} -- Internal variable passed when self referencing to avoid loops.

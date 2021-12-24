@@ -6,27 +6,27 @@ local Common = require("scripts/common")
 local RollingStockTypes, TunnelSurfaceRailEntityNames = Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames
 local Utils = require("utility/utils")
 
----@class Tunnel @the tunnel object that managed trains can pass through.
----@field id Id @unqiue id of the tunnel.
+---@class Tunnel @ the tunnel object that managed trains can pass through.
+---@field id Id @ unqiue id of the tunnel.
 ---@field surface LuaSurface
 ---@field force LuaForce
 ---@field portals Portal[]
 ---@field underground Underground
----@field managedTrain ManagedTrain @one is currently using this tunnel.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the underground rail entities (doesn't include above ground crossing rails).
----@field portalRailEntities table<UnitNumber, LuaEntity> @the rail entities that are part of the portals.
+---@field managedTrain ManagedTrain @ one is currently using this tunnel.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
+---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 
----@class TunnelDetails @used by remote interface calls only.
----@field tunnelId Id @Id of the tunnel.
----@field portalEntities LuaEntity[] @Not in any special order.
----@field undergroundEntities LuaEntity[] @Not in any special order.
+---@class TunnelDetails @ used by remote interface calls only.
+---@field tunnelId Id @ Id of the tunnel.
+---@field portalEntities LuaEntity[] @ Not in any special order.
+---@field undergroundEntities LuaEntity[] @ Not in any special order.
 ---@field tunnelUsageId Id
 
 Tunnel.CreateGlobals = function()
     global.tunnels = global.tunnels or {}
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId or 1
     global.tunnels.tunnels = global.tunnels.tunnels or {} ---@type table<Id, Tunnel>
-    global.tunnels.transitionSignals = global.tunnels.transitionSignals or {} ---@type table<UnitNumber, PortalTransitionSignal> @the tunnel's portal's "inSignal" transitionSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
+    global.tunnels.transitionSignals = global.tunnels.transitionSignals or {} ---@type table<UnitNumber, PortalTransitionSignal> @ the tunnel's portal's "inSignal" transitionSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
 end
 
 Tunnel.OnLoad = function()
@@ -110,9 +110,9 @@ Tunnel.CompleteTunnel = function(portals, underground)
     Interfaces.Call("TunnelPortals.On_PostTunnelCompleted", portals)
 end
 
---TODO: not checked below here.
 ---@param tunnel Tunnel
 Tunnel.RemoveTunnel = function(tunnel)
+    -- TODO: not checked
     Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
     Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals)
     Interfaces.Call("UndergroundSegments.On_TunnelRemoved", tunnel.segments)
@@ -121,12 +121,12 @@ end
 
 ---@param transitionSignal PortalTransitionSignal
 Tunnel.RegisterTransitionSignal = function(transitionSignal)
-    global.tunnels.transitionSignals[transitionSignal.entity.unit_number] = transitionSignal
+    global.tunnels.transitionSignals[transitionSignal.id] = transitionSignal
 end
 
 ---@param transitionSignal PortalTransitionSignal
 Tunnel.DeregisterTransitionSignal = function(transitionSignal)
-    global.tunnels.transitionSignals[transitionSignal.entity.unit_number] = nil
+    global.tunnels.transitionSignals[transitionSignal.id] = nil
 end
 
 ---@param managedTrain ManagedTrain
@@ -145,10 +145,13 @@ Tunnel.TrainReleasedTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.exitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
+        -- OVERHAUL - not sure if this can occur any more ?
+        error("unexpected edge case reached")
         managedTrain.tunnel.managedTrain = nil
     end
 end
 
+-- TODO: not checked from here down
 ---@param tunnel Tunnel
 ---@param oldPortal Portal
 ---@param newPortal Portal

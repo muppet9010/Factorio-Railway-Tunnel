@@ -9,20 +9,20 @@ local RollingStockTypes = Common.RollingStockTypes
 -- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the managedTrain object passed in, rather than being abstracted.
 
 ---@class PlayerContainer
----@field id UnitNumber @Unit_number of the player container entity.
----@field entity LuaEntity @The player container entity the player is sitting in.
----@field player LuaPlayer @The player the container is for.
----@field undergroundCarriageEntity LuaEntity @The underground carriage entity this container is related to.
----@field undergroundCarriageId UnitNumber @The unit_number of the underground carriage entity this container is related to.
----@field managedTrain ManagedTrain @The global.trainManager.managedTrain object this is owned by.
+---@field id UnitNumber @ Unit_number of the player container entity.
+---@field entity LuaEntity @ The player container entity the player is sitting in.
+---@field player LuaPlayer @ The player the container is for.
+---@field undergroundCarriageEntity LuaEntity @ The underground carriage entity this container is related to.
+---@field undergroundCarriageId UnitNumber @ The unit_number of the underground carriage entity this container is related to.
+---@field managedTrain ManagedTrain @ The global.trainManager.managedTrain object this is owned by.
 
 TrainManagerPlayerContainers.CreateGlobals = function()
     global.playerContainers = global.playerContainers or {}
     global.playerContainers.containers = global.playerContainers.playerContainers or {} ---@type table<Id, PlayerContainer>
-    global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the player index.
-    global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
-    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the underground carriage unit_number. Value is the player playerContainer related to it.
-    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<Id, PlayerContainer>> @Table of ManagedTrain.Id to table of player containers by their id.
+    global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @ Key is the player index.
+    global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@ Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
+    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @ Key is the underground carriage unit_number. Value is the player playerContainer related to it.
+    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<Id, PlayerContainer>> @ Table of ManagedTrain.Id to table of player containers by their id.
 end
 
 TrainManagerPlayerContainers.OnLoad = function()
