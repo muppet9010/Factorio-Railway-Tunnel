@@ -31,3 +31,10 @@ Tunnel Part Connections
 
 Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. These connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look 1 tile infront of its own connection points to see if there is another part to connect to. As all parts have alteast 1 tile padding to the sides of the connection points its impossible to place a part at a side angle to another part.
 For a tunnel there must be an underground between 2 complete portals. As otherwise seperating the portal parts from each other is a pain and why would you ever want a 0 length tunnel.
+
+
+Portal has tracks only with tunnel
+----------------------------------
+
+The new design is that a portal without a tunnel has no tracks or other elements. This reduces entitiy creation during building and makes things simplier. This does mean that when a tunnel is destroyed all tracks for the underground and portal are removed, killing any trains on either (rare case in real game). Also that to mine part of a tunnel (portal or underground) the entire tunnel tracks must be clear, otherwise the mine should fail.
+In the past there was a seperation between portals and undergrounds in terms of tracks, but this made things more complicated for no real world value.

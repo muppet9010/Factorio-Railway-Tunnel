@@ -15,7 +15,7 @@ MAJOR:
     - Portal Redesign:
         - There will be 2 portal parts initially.
             - Portal End - a 6x6 tile piece that has to be used at both ends of each portal. At the End part it will provide 6 of the 8 tiles needed for the detector entity, end signals, blocker locomotive and Blocked end invisible signals. At the Entry part it will provide 6 tiles: 2 tiles needed for the entry signals and detector, 2 tiles for the End part and 2 tiles for a leaving train to pull forward in when leaving.
-            - Portal Segment - a 2x6 piece that is used to build up the portal's straight length. This will make up the full train length, but no padding needed as the entryy part handles this.
+            - Portal Segment - a 2x6 piece that is used to build up the portal's straight length. This will make up the full train length, but no padding needed as the entry part handles this.
         - Will have the example composition of: E S S E U U U U E S S E
         - Now we are using an End portal detector entity its death triggers before the train tries to complete moving in to the blocker loco. Meaning no end padding space is needed for fast trains.
 
@@ -40,6 +40,7 @@ MINOR:
     - rename scripts UndergroundSegments and its lua file to just underground as thats the name of the top object.
     - rename scripts tunnel-portals and its lua file to just portal as thats the name of the top object.
     - Utils class - break out in to seperate files.
+    - Check over EmyyLua class definitions for use of Id and see if something more accurate should be used in places.
 
 
 FUTURE:

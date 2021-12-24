@@ -996,7 +996,7 @@ Test.GenerateTestScenarios = function(testName)
                                     }
                                     scenario.afterTrackRemovedResult, scenario.afterTrackReturnedResult, scenario.duplicateOutcomeTest = Test.CalculateExpectedResults(scenario, positiveTestsByTrainTextLookup)
 
-                                    -- Don;t record test if we are excluding duplicate outcome and this test is a duplicate outcome.
+                                    -- Don't record test if we are excluding duplicate outcome and this test is a duplicate outcome.
                                     if not ExcludeDuplicateOutcomeTests or (ExcludeDuplicateOutcomeTests and scenario.duplicateOutcomeTest) then
                                         Test.RunLoopsMax = Test.RunLoopsMax + 1
                                         table.insert(Test.TestScenarios, scenario)

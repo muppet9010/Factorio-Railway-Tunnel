@@ -594,9 +594,9 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
         trainCarriagesForwardOrientation = Utils.LoopOrientationValue(trainCarriagesForwardOrientation + 0.5)
     end
 
-    -- Get the position for the front of the lead carriage; 2.5 tiles back from the entry signal. This means the front 3 tiles of the portal area graphics can show the train, with further back needing to be covered to hide the train graphics.
+    -- Get the position for the front of the lead carriage; 1.5 tiles back from the entry signal. This means the front 2.5 tiles of the portal area graphics can show the train, with further back needing to be covered to hide the train graphics while the train is underground. Also this allows the train to just fit in without hitting the transition usage detector entity at the back of the exit portal.
     local exitPortalEntrySignalOutPosition = managedTrain.exitPortalEntrySignalOut.entity.position
-    local trainFrontOffsetFromSignal = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = -1.5, y = 2.5})
+    local trainFrontOffsetFromSignal = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = -1.5, y = 1.5})
     local nextCarriagePosition = Utils.ApplyOffsetToPosition(exitPortalEntrySignalOutPosition, trainFrontOffsetFromSignal)
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
@@ -707,6 +707,7 @@ end
 
 -- Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
 -- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
+-- TODO: there isn't room in the current design for either option. Simpliest is to make the portal end's 2 tiles longer to give me the extar room needed. Currrently needs the potral segments to be 1 carriage or 4 tiles longer than the train entering so theres room at the back for the dummy train.
 ---@param exitPortal Portal
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity

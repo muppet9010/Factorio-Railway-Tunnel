@@ -11,7 +11,7 @@ local Events = require("utility/events")
 
 local function CreateGlobals()
     global.debugRelease = true -- If TRUE it runs key code in a try/catch and it does UPS intensive state check so makes code run slower.
-    global.strictStateHandling = true -- If TRUE unexpected edge cases will raise an error, otherwise they just print to the screen and are handled in some rought manner.
+    global.strictStateHandling = true -- If TRUE unexpected edge cases will raise an error, otherwise they just print to the screen and are handled in some rought manner. -- OVERHAUL - these scenarios should be removed and made to behave in a standard supported manner.
 
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
