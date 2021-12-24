@@ -16,10 +16,10 @@ local EntryEndPortalSetup = {
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
 local BlockingEndPortalSetup = {
-    dummyLocomotiveDistance = 7.2, -- as far back in to the end portal without touching the blocking locomotive -- OVERHAUL - this is in the train placement area technically, so it may need to go somewhere else for full length trains?
+    dummyLocomotiveDistance = 1.8, -- as far back in to the end portal without touching the blocking locomotive.
     transitionUsageDetectorEntityDistance = 4.1, -- can't go further back as otherwise the entering train will release the signal and thus the tunnel.
     transitionSignalsDistance = 2.5,
-    transitionSignalBlockingLocomotiveDistance = -0.8, -- As far away from entry end as possible, but can't stick out beyond the portal's collision box.
+    transitionSignalBlockingLocomotiveDistance = -1.3, -- As far away from entry end as possible, but can't stick out beyond the portal's collision box.
     blockedInvisibleSignalsDistance = -1.5
 }
 
@@ -658,6 +658,7 @@ TunnelPortals.BuildRailForPortalsParts = function(portal)
     ---@param tracksPositionOffset PortalPartTrackPositionOffset
     local PlaceRail = function(portalPart, tracksPositionOffset)
         local railPos = Utils.ApplyOffsetToPosition(portalPart.entity_position, Utils.RotatePositionAround0(portalPart.entity_orientation, tracksPositionOffset.positionOffset))
+        -- OVERHAUL - possibly building via blueprint might be lower UPS usage for this - test and see.
         local placedRail = portal.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = portal.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, portalPart.entity_direction)}
         placedRail.destructible = false
         portal.portalRailEntities[placedRail.unit_number] = placedRail
@@ -984,6 +985,7 @@ TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(ev
     end
 
     -- The left train will initially be within the collision box of where we want to place this. So check if it can be placed. For odd reasons the entity will "create" on top of a train and instantly be killed, so have to explicitly check.
+    -- OVERHAUL - in tests 2/3 of the time we can create the entity and the cost of the can_place check is only slightly less than just doing it. So just try it and if it fails loop around for a retry.
     if
         portal.surface.can_place_entity {
             name = "railway_tunnel-portal_entry_train_detector_1x1",

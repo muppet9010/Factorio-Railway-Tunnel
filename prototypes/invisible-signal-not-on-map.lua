@@ -17,7 +17,6 @@ return function(tunnelSignalSurfaceCollisionLayer)
                 circuit_wire_max_distance = 10,
                 circuit_wire_connection_points = CommonPrototypeFunctions.GetBlankCircuitWireConnectionPoints(1),
                 circuit_connector_sprites = CommonPrototypeFunctions.GetBlankCircuitConnectorSprites(1)
-                --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
             }
         }
     )

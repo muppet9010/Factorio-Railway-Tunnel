@@ -148,10 +148,6 @@ Tunnel.TrainReleasedTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, true)
     Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.exitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
-        -- TODO: NEXT - this is hit when the train leaves the exit portal after finishing using the tunnel. Suspect issue is in on entity died logic.
-        -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
-        -- OVERHAUL - not sure if this can occur any more ?
-        error("unexpected edge case reached")
         managedTrain.tunnel.managedTrain = nil
     end
 end

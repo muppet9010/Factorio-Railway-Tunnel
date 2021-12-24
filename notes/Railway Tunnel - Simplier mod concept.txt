@@ -48,6 +48,10 @@ FUTURE:
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
 
 
+CONCEPTS:
+    - possible alternative is to not create and manage a dummy train,. but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK
+
+
 PREDICTED UPS SAVINGS:
     total old: 460
     new savings: 176, 78, 15 (30/2), 7, 8, 4, 15 (30/2) = 300

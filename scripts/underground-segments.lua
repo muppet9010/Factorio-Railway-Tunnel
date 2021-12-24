@@ -536,6 +536,7 @@ UndergroundSegments.BuildRailForSegment = function(segment)
     segment.tunnelRailEntities = {}
     for _, tracksPositionOffset in pairs(segment.typeData.undergroundTracksPositionOffset) do
         local railPos = Utils.ApplyOffsetToPosition(segment.entity_position, Utils.RotatePositionAround0(segment.entity_orientation, tracksPositionOffset.positionOffset))
+        -- OVERHAUL - this may be lower UPS via blueprint - same as portal's tracks.
         local placedRail = segment.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, segment.entity_direction)}
         placedRail.destructible = false
         segment.tunnelRailEntities[placedRail.unit_number] = placedRail

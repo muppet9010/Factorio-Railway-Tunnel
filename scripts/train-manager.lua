@@ -223,7 +223,6 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     managedTrain.leavingTrain = leavingTrain
     managedTrain.leavingTrainId = leavingTrainId
 
-    -- OVERHAUL staying with Dummy train usage for now, notes on the CreateDummyTrain().
     -- Set up DummyTrain to maintain station requests.
     managedTrain.primaryTrainPartName = PrimaryTrainState.underground
     managedTrain.targetTrainStop = enteringTrain.path_end_stop
@@ -534,7 +533,7 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param releaseTunnel boolean|null @ If nil then tunnel is released (true).
+---@param releaseTunnel boolean|null @ If nil then tunnel is released (defaults to true).
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
         TrainManagerPlayerContainers.On_TerminateTunnelTrip(managedTrain)
@@ -706,8 +705,6 @@ TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastP
 end
 
 -- Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
--- OVERHAUL - REMOVAL OF DUMMY TRAIN MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK - possible alternative is to add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case. If dummy train gets an unhealthy state not sure what we should do. I think nothing and we just let the train appear at the end of the tunnel and it can then try to path natually.
--- TODO: there isn't room in the current design for either option. Simpliest is to make the portal end's 2 tiles longer to give me the extar room needed. Currrently needs the potral segments to be 1 carriage or 4 tiles longer than the train entering so theres room at the back for the dummy train.
 ---@param exitPortal Portal
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity
@@ -715,6 +712,7 @@ end
 ---@return LuaTrain
 TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
+    -- OVERHAUL - create the carriage on another surface in each rotation once and then clone it in for each tunnel usage. Should have lower UPS usage than creating the entity. Also save adding the fuel each time.
     local locomotive =
         exitPortal.surface.create_entity {
         name = "railway_tunnel-tunnel_exit_dummy_locomotive",
