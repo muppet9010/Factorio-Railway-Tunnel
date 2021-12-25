@@ -107,8 +107,8 @@ UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments.nextUndergroundId = global.tunnelPortals.nextUndergroundId or 1
     global.undergroundSegments.undergrounds = global.undergroundSegments.undergrounds or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<UnitNumber, UndergroundSegment>
-    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @ a lookup for underground segments by their position string. Saves searching for entities on the map via API.
-    global.undergroundSegments.segmentConnectionSurfacePositions = global.undergroundSegments.segmentConnectionSurfacePositions or {} ---@type table<Id, SegmentSurfacePosition> @ a lookup for positions that underground segment parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for underground segments by their position string. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentConnectionSurfacePositions = global.undergroundSegments.segmentConnectionSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for positions that underground segment parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
 end
 
 UndergroundSegments.OnLoad = function()
@@ -168,10 +168,12 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         return
     end
 
+    builtEntity.rotatable = false
+
     local builtEntity_position, force, lastUser, builtEntity_direction, surface, builtEntity_orientation = builtEntity.position, builtEntity.force, builtEntity.last_user, builtEntity.direction, builtEntity.surface, builtEntity.orientation
     local segmentTypeData, surface_index = SegmentTypeData[builtEntity_name], surface.index
     local placeCrossingRails = segmentTypeData.placeCrossingRails
-    local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, builtEntity_position)
+    local surfacePositionString = Utils.FormatSurfacePositionToString(surface_index, builtEntity_position)
 
     -- Check if this is a fast replacement or not.
     local fastReplacedSegmentByPosition = global.undergroundSegments.segmentSurfacePositions[surfacePositionString]
@@ -284,12 +286,12 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     }
 
     -- Register the segments surfacePositionStrings for connection reverse lookup.
-    local frontSurfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, segment.frontPosition)
+    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.frontPosition)
     global.undergroundSegments.segmentConnectionSurfacePositions[frontSurfacePositionString] = {
         id = frontSurfacePositionString,
         segment = segment
     }
-    local rearSurfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, segment.rearPosition)
+    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.rearPosition)
     global.undergroundSegments.segmentConnectionSurfacePositions[rearSurfacePositionString] = {
         id = rearSurfacePositionString,
         segment = segment
@@ -354,12 +356,12 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
         }
     ) do
         local checkPos = Utils.ApplyOffsetToPosition(checkDetails.refPos, Utils.RotatePositionAround0(checkDetails.refOrientation, {x = 0, y = -1})) -- The position 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
-        local checkSurfacePositionString = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkPos)
+        local checkSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, checkPos)
         local foundPortalPartPositionObject = global.undergroundSegments.segmentConnectionSurfacePositions[checkSurfacePositionString]
         -- If a underground reference at this position is found next to this one add this part to its/new underground.
         if foundPortalPartPositionObject ~= nil then
             local connectedSegment = foundPortalPartPositionObject.segment
-            local connectedSegmentsPositionNowConnected = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkDetails.refPos) -- This is the connected segment's external checking position.
+            local connectedSegmentsPositionNowConnected = Utils.FormatSurfacePositionToString(segment.surface_index, checkDetails.refPos) -- This is the connected segment's external checking position.
             -- Valid underground to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
             if segment.underground and connectedSegment.underground == nil then
                 -- We have a underground and they don't, so add them to our underground.
@@ -379,7 +381,7 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
             segment.nonConnectedSurfacePositions[checkSurfacePositionString] = nil
             connectedSegment.nonConnectedSurfacePositions[connectedSegmentsPositionNowConnected] = nil
         else
-            local segmentsPositionNotConnected = Utils.FormatSurfacePositionTableToString(segment.surface_index, checkDetails.refPos)
+            local segmentsPositionNotConnected = Utils.FormatSurfacePositionToString(segment.surface_index, checkDetails.refPos)
             segment.nonConnectedSurfacePositions[checkSurfacePositionString] = segmentsPositionNotConnected
         end
     end
@@ -546,7 +548,6 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 UndergroundSegments.OnBuiltEntityGhost = function(event)
-    -- TODO: move this to somewhere central and merge with underground check as identical code. Save UPS in event functions triggered within mod.
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -572,7 +573,7 @@ UndergroundSegments.OnPreBuild = function(event)
     end
 
     local surface = player.surface
-    local surfacePositionString = Utils.FormatSurfacePositionTableToString(surface.index, event.position)
+    local surfacePositionString = Utils.FormatSurfacePositionToString(surface.index, event.position)
     local segmentPositionObject = global.undergroundSegments.segmentSurfacePositions[surfacePositionString]
     if segmentPositionObject == nil then
         return
@@ -643,7 +644,7 @@ UndergroundSegments.ReplaceSegmentEntity = function(oldSegment)
         signalEntities = oldSegment.signalEntities,
         tunnel = oldSegment.tunnel,
         crossingRailEntities = oldSegment.crossingRailEntities,
-        surfacePositionString = Utils.FormatSurfacePositionTableToString(newSegmentEntity.surface.index, newSegmentEntity.position)
+        surfacePositionString = Utils.FormatSurfacePositionToString(newSegmentEntity.surface.index, newSegmentEntity.position)
     }
     global.undergroundSegments.segments[newSegment.id] = newSegment
     global.undergroundSegments.segmentSurfacePositions[newSegment.surfacePositionString].segment = newSegment

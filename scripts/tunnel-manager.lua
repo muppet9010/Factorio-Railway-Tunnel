@@ -3,7 +3,7 @@ local Interfaces = require("utility/interfaces")
 local Tunnel = {}
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local RollingStockTypes, TunnelSurfaceRailEntityNames = Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames
+local RollingStockTypes, TunnelSurfaceRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
 local Utils = require("utility/utils")
 
 ---@class Tunnel @ the tunnel object that managed trains can pass through.
@@ -31,6 +31,7 @@ end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
+    Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "Tunnel.OnPlayerRotatedEntity", Tunnel.OnPlayerRotatedEntity)
 
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
     Interfaces.RegisterInterface("Tunnel.RegisterTransitionSignal", Tunnel.RegisterTransitionSignal)
@@ -77,7 +78,6 @@ end
 ---@param portals Portal[]
 ---@param underground Underground
 Tunnel.CompleteTunnel = function(portals, underground)
-    game.print("DEBUG: tunnel complete")
     -- Call any other modules before the tunnel object is created.
     Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", portals)
     Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", underground)
@@ -325,6 +325,18 @@ Tunnel.OnBuiltEntity = function(event)
         placer = game.get_player(event.player_index)
     end
     TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
+end
+
+---@param event on_player_rotated_entity
+Tunnel.OnPlayerRotatedEntity = function(event)
+    local rotatedEntity = event.entity
+    -- Just check if the player (editor mode) rotated a portal or underground entity.
+    if UndergroundSegmentAndAllPortalEntityNames[rotatedEntity.name] == nil then
+        return
+    end
+    -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
+    rotatedEntity.direction = event.previous_direction
+    TunnelShared.EntityErrorMessage(game.get_player(event.player_index), "Don't try and rotate parts of tunnel portals.", rotatedEntity.surface, rotatedEntity.position)
 end
 
 return Tunnel

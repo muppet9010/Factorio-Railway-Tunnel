@@ -793,11 +793,18 @@ Utils._TableContentsToJSON = function(targetTable, name, singleLineOutput, table
     end
 end
 
-Utils.FormatPositionTableToString = function(positionTable)
-    return positionTable.x .. "," .. positionTable.y
+--- Makes a string of a position.
+---@param position Position
+---@return string
+Utils.FormatPositionToString = function(position)
+    return position.x .. "," .. position.y
 end
 
-Utils.FormatSurfacePositionTableToString = function(surfaceId, positionTable)
+--- Makes a string of the surface Id and position to allow easy table lookup.
+---@param surfaceId uint
+---@param positionTable Position
+---@return SurfacePositionString
+Utils.FormatSurfacePositionToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
 end
 

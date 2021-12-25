@@ -18,11 +18,11 @@ local RollingStockTypes = Common.RollingStockTypes
 
 TrainManagerPlayerContainers.CreateGlobals = function()
     global.playerContainers = global.playerContainers or {}
-    global.playerContainers.containers = global.playerContainers.playerContainers or {} ---@type table<Id, PlayerContainer>
+    global.playerContainers.containers = global.playerContainers.playerContainers or {} ---@type table<UnitNumber, PlayerContainer>
     global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @ Key is the player index.
     global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@ Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
     global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @ Key is the underground carriage unit_number. Value is the player playerContainer related to it.
-    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<Id, PlayerContainer>> @ Table of ManagedTrain.Id to table of player containers by their id.
+    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<UnitNumber, PlayerContainer>> @ Table of ManagedTrain.Id to table of player containers by their UnitNumbers.
 end
 
 TrainManagerPlayerContainers.OnLoad = function()

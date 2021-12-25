@@ -236,8 +236,8 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     }
 
     -- Work out how long it will take to reach the far end at current speed from leading carriages current forward tip.
-    -- TODO: written but not checked the trainWaitingAreaTilesLength comes through correctly.
-    local travelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength
+    -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
+    local travelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
     -- Just assume the speed stays constant at the entering speed for the whole duration for now.
     managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
     managedTrain.traversalStartingTick = game.tick
@@ -250,7 +250,6 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
-    -- TODO: for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this. It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
 
     -- Complete the state transition.
     Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
@@ -324,7 +323,6 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
     end
 end
 
--- OVERHAUL - Once the entry train detector is triggered do we want to commit the train to enter the tunnel rather than have to track it and use UPS?  Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach. Uses a small fraction of per train tunnel usage UPS cost.
 -- This tracks a train once it triggers the entry train detector if it hasn't reserved the Transition signal of the Entrance portal. It is to detect and then handle trains that enter the portal track and then turn around and leave. Could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)

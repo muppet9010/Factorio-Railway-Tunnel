@@ -176,7 +176,7 @@ TunnelPortals.CreateGlobals = function()
     global.tunnelPortals.portalSegments = global.tunnelPortals.portalSegments or {} ---@type table<UnitNumber, PortalSegment>
     global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the entering train detection entity is killed.
     global.tunnelPortals.transitionUsageDetectorEntityIdToPortal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the transition train detection entity is killed.
-    global.tunnelPortals.portalPartConnectionSurfacePositions = global.tunnelPortals.portalPartConnectionSurfacePositions or {} ---@type table<Id, PortalPartSurfacePositionObject> @ a lookup for positions that portal parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
+    global.tunnelPortals.portalPartConnectionSurfacePositions = global.tunnelPortals.portalPartConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for positions that portal parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
     global.tunnelPortals.portalTunnelConnectionSurfacePositions = global.tunnelPortals.portalTunnelConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by an external position string for truing to connect to an underground. It is 0.5 tiles outside the end portal entity border, where the underground segments connection point is. Saves searching for entities on the map via API.
 end
 
@@ -249,6 +249,8 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         return
     end
 
+    builtEntity.rotatable = false
+
     -- Get the generic attributes of the built entity needed for the object.
     local builtEntity_position, builtEntity_direction, surface, builtEntity_orientation = builtEntity.position, builtEntity.direction, builtEntity.surface, builtEntity.orientation
     local portalTypeData, surface_index = PortalTypeData[builtEntity_name], surface.index
@@ -293,12 +295,12 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
     end
 
     -- Register the parts surfacePositionStrings for reverse lookup.
-    local frontSurfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, portalPartObject.frontPosition)
+    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.frontPosition)
     global.tunnelPortals.portalPartConnectionSurfacePositions[frontSurfacePositionString] = {
         id = frontSurfacePositionString,
         portalPart = portalPartObject
     }
-    local rearSurfacePositionString = Utils.FormatSurfacePositionTableToString(surface_index, portalPartObject.rearPosition)
+    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.rearPosition)
     global.tunnelPortals.portalPartConnectionSurfacePositions[rearSurfacePositionString] = {
         id = rearSurfacePositionString,
         portalPart = portalPartObject
@@ -316,8 +318,6 @@ end
 TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
     local firstComplictedConnectedPart, secondComplictedConnectedPart = nil, nil
 
-    -- TODO: this doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S
-
     -- Check for a connected viable portal part in both directions from our portal part.
     for _, checkDetails in pairs(
         {
@@ -332,12 +332,12 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
         }
     ) do
         local checkPos = Utils.ApplyOffsetToPosition(checkDetails.refPos, Utils.RotatePositionAround0(checkDetails.refOrientation, {x = 0, y = -1})) -- The position 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
-        local checkSurfacePositionString = Utils.FormatSurfacePositionTableToString(portalPartObject.surface_index, checkPos)
+        local checkSurfacePositionString = Utils.FormatSurfacePositionToString(portalPartObject.surface_index, checkPos)
         local foundPortalPartPositionObject = global.tunnelPortals.portalPartConnectionSurfacePositions[checkSurfacePositionString]
         -- If a portal reference at this position is found next to this one add this part to its/new portal.
         if foundPortalPartPositionObject ~= nil then
             local connectedPortalPart = foundPortalPartPositionObject.portalPart
-            local connectedPortalPartPositionNowConnected = Utils.FormatSurfacePositionTableToString(portalPartObject.surface_index, checkDetails.refPos) -- This is the connected portal part's external checking position.
+            local connectedPortalPartPositionNowConnected = Utils.FormatSurfacePositionToString(portalPartObject.surface_index, checkDetails.refPos) -- This is the connected portal part's external checking position.
             -- If the connected part has a completed portal we can't join to it.
             if connectedPortalPart.portal == nil or (connectedPortalPart.portal and not connectedPortalPart.portal.isComplete) then
                 -- Valid portal to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
@@ -440,7 +440,6 @@ end
 ---@param portal Portal
 TunnelPortals.PortalComplete = function(portal)
     portal.isComplete = true
-    game.print("DEBUG: portal complete: " .. portal.id)
     -- OVERHAUL - will create the stats on the portal length and make the clickable bit here. As these should be inspectable before the whole tunnel is made. Also add some sort of visual confirmation the portal is complete, maybe the concrete top graphic. No track until its a full tunnel to avoid complications.
     -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portals.
     for _, endPortalPart in pairs(portal.portalEnds) do
@@ -701,7 +700,6 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 TunnelPortals.OnBuiltEntityGhost = function(event)
-    -- TODO: move this to somewhere central and merge with underground check as identical code. Save UPS in event functions triggered within mod.
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -984,21 +982,15 @@ TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(ev
         return
     end
 
-    -- The left train will initially be within the collision box of where we want to place this. So check if it can be placed. For odd reasons the entity will "create" on top of a train and instantly be killed, so have to explicitly check.
-    -- OVERHAUL - in tests 2/3 of the time we can create the entity and the cost of the can_place check is only slightly less than just doing it. So just try it and if it fails loop around for a retry.
-    if
-        portal.surface.can_place_entity {
-            name = "railway_tunnel-portal_entry_train_detector_1x1",
-            force = global.force.tunnelForce,
-            position = portal.enteringTrainUsageDetectorPosition
-        }
-     then
-        portal.enteringTrainUsageDetectorEntity =
-            portal.surface.create_entity {
-            name = "railway_tunnel-portal_entry_train_detector_1x1",
-            force = global.force.tunnelForce,
-            position = portal.enteringTrainUsageDetectorPosition
-        }
+    -- The left train will initially be within the collision box of where we want to place this. So try to place it and if it fails retry a moment later. In tests 2/3 of the time it was created successfully.
+    local enteringTrainUsageDetectorEntity =
+        portal.surface.create_entity {
+        name = "railway_tunnel-portal_entry_train_detector_1x1",
+        force = global.force.tunnelForce,
+        position = portal.enteringTrainUsageDetectorPosition
+    }
+    if enteringTrainUsageDetectorEntity ~= nil then
+        portal.enteringTrainUsageDetectorEntity = enteringTrainUsageDetectorEntity
         global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = portal
         return portal.enteringTrainUsageDetectorEntity
     elseif retry then
