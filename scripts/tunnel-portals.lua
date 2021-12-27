@@ -66,7 +66,7 @@ local BlockingEndPortalSetup = {
 
 ---@class PortalEnd : PortalPart @ the end part of a portal.
 ---@field endPortalType EndPortalType|null @ the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direction within the portal is known.
----@field connectedToUnderground boolean @ if theres an underground segment connected to this portal on one side as part of the completed tunnel.
+---@field connectedToUnderground boolean @ if theres an underground segment connected to this portal on one side as part of the completed tunnel. Defautls to false on non portal connected parts.
 
 ---@class EndPortalType
 local EndPortalType = {
@@ -206,7 +206,7 @@ TunnelPortals.OnLoad = function()
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
     Interfaces.RegisterInterface("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal)
     Interfaces.RegisterInterface("TunnelPortals.CanAPortalConnectAtPosition", TunnelPortals.CanAPortalConnectAtPosition)
-    Interfaces.RegisterInterface("TunnelPortals.PortalPartsAboutToBeInNewTunnel", TunnelPortals.PortalPartsAboutToBeInNewTunnel)
+    Interfaces.RegisterInterface("TunnelPortals.PortalPartsAboutToConnectionsBeInNewTunnel", TunnelPortals.PortalPartsAboutToConnectionsBeInNewTunnel)
     Interfaces.RegisterInterface("TunnelPortals.On_PostTunnelCompleted", TunnelPortals.On_PostTunnelCompleted)
 
     EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
@@ -366,9 +366,10 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
     end
 
     -- Handle any weird situations where theres lots of portals or none. Note that the scenarios handled are limited based on the logic outcomes of the direciton checking logic.
+    -- The logging of complicated parts was based on our state at the time of the comparison. So the second connected part may have changed our state since we compared to the first connected part.
     if firstComplictedConnectedPart ~= nil then
         if portalPartObject.portal == nil then
-            -- none has a portal, so create one for all.
+            -- none has a portal, so create one for all. As if either connected part had a portal we would have one now.
             local portalId = global.tunnelPortals.nextPortalId
             global.tunnelPortals.nextPortalId = global.tunnelPortals.nextPortalId + 1
             ---@type Portal
@@ -388,13 +389,20 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
             if secondComplictedConnectedPart ~= nil then
                 TunnelPortals.AddPartToPortal(portal, secondComplictedConnectedPart)
             end
-        else
-            -- Us and the one complicated part both have a portal, so merge them. Use whichever has more segments as new master as this is generally the best one.
-            if Utils.GetTableNonNilLength(portalPartObject.portal.portalSegments) >= Utils.GetTableNonNilLength(firstComplictedConnectedPart.portal.portalSegments) then
-                TunnelPortals.MergePortalInToOtherPortal(firstComplictedConnectedPart.portal, portalPartObject.portal)
-            else
-                TunnelPortals.MergePortalInToOtherPortal(portalPartObject.portal, firstComplictedConnectedPart.portal)
+        elseif portalPartObject.portal ~= nil and firstComplictedConnectedPart.portal ~= nil then
+            -- Us and the one complicated part both have a portal.
+
+            -- If the 2 portals are different then merge them. Use whichever has more segments as new master as this is generally the best one. It can end up that both have the same portal during the connection process and in this case do nothing to the shared portal.
+            if portalPartObject.portal.id ~= firstComplictedConnectedPart.portal.id then
+                if Utils.GetTableNonNilLength(portalPartObject.portal.portalSegments) >= Utils.GetTableNonNilLength(firstComplictedConnectedPart.portal.portalSegments) then
+                    TunnelPortals.MergePortalInToOtherPortal(firstComplictedConnectedPart.portal, portalPartObject.portal)
+                else
+                    TunnelPortals.MergePortalInToOtherPortal(portalPartObject.portal, firstComplictedConnectedPart.portal)
+                end
             end
+        elseif portalPartObject.portal ~= nil and firstComplictedConnectedPart.portal == nil then
+            -- We have a portal now and the other complciatred connnected part doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
+            TunnelPortals.AddPartToPortal(portalPartObject.portal, firstComplictedConnectedPart)
         end
     end
 
@@ -462,7 +470,7 @@ TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
         if underground ~= nil then
             local foundPortal, foundEndPortalPart = Interfaces.Call("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", otherEndSegment, portal)
             if foundPortal ~= nil then
-                TunnelPortals.PortalPartsAboutToBeInNewTunnel({portalTunnelConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
+                TunnelPortals.PortalPartsAboutToConnectionsBeInNewTunnel({portalTunnelConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
                 Interfaces.Call("Tunnel.CompleteTunnel", {portal, foundPortal}, underground)
             end
         end
@@ -482,7 +490,7 @@ end
 
 --- Called when a tunnel is about to be created and the 2 end portal parts that connect to the underground are known.
 ---@param endPortalParts PortalEnd[]
-TunnelPortals.PortalPartsAboutToBeInNewTunnel = function(endPortalParts)
+TunnelPortals.PortalPartsAboutToConnectionsBeInNewTunnel = function(endPortalParts)
     endPortalParts[1].connectedToUnderground = true
     endPortalParts[2].connectedToUnderground = true
 end
@@ -787,11 +795,18 @@ TunnelPortals.ReplacePortalPartEntity = function(minedPortalPart)
     end
 end
 
--- Called by other functions when a portal part entity is removed and thus we need to update the portal for this change.
+-- Called by other functions when a portal part entity is removed and thus we need to remove the portal as part of this.
 ---@param removedPortalPart PortalPart
 ---@param killForce LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
 ---@param killerCauseEntity LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
 TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
+    -- Handle the portal part object itself so that the surfacePositions are removed before we re-create the remaining portal part's portals.
+    global.tunnelPortals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
+    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(removedPortalPart.surface_index, removedPortalPart.frontPosition)
+    global.tunnelPortals.portalPartConnectionSurfacePositions[frontSurfacePositionString] = nil
+    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(removedPortalPart.surface_index, removedPortalPart.rearPosition)
+    global.tunnelPortals.portalPartConnectionSurfacePositions[rearSurfacePositionString] = nil
+
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal
     if portal ~= nil then
@@ -816,6 +831,7 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
                 if loopingGenericPortalPart.typeData.partType == PortalPartType.portalEnd then
                     local loopingEndPortalPart = loopingGenericPortalPart ---@type PortalEnd
                     loopingEndPortalPart.connectedToUnderground = false
+                    loopingEndPortalPart.endPortalType = nil
                 end
             end
         end
@@ -827,13 +843,6 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
             end
         end
     end
-
-    -- Handle the portal part object itself last.
-    global.tunnelPortals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
-    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(removedPortalPart.surface_index, removedPortalPart.frontPosition)
-    global.tunnelPortals.portalPartConnectionSurfacePositions[frontSurfacePositionString] = nil
-    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(removedPortalPart.surface_index, removedPortalPart.rearPosition)
-    global.tunnelPortals.portalPartConnectionSurfacePositions[rearSurfacePositionString] = nil
 end
 
 -- Called from the Tunnel Manager when a tunnel that the portal was part of has been removed.
@@ -878,8 +887,11 @@ TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal(portal)
         portal.transitionUsageDetectorPosition = nil
 
+        portal.entryPortalEnd.endPortalType = nil
         portal.entryPortalEnd = nil
+        portal.blockedPortalEnd.endPortalType = nil
         portal.blockedPortalEnd = nil
+
         portal.portalEntryPointPosition = nil
         portal.dummyLocomotivePosition = nil
         portal.entryDirection = nil
