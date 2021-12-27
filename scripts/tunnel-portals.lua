@@ -61,7 +61,7 @@ local BlockingEndPortalSetup = {
 ---@field surface LuaSurface @ the surface this portal part object is on.
 ---@field surface_index uint @ cached index of the surface this portal part is on.
 ---@field force LuaForce @ the force this portal part object belongs to.
----@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always populated, even if not part of a portal.
+---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field portal Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 
 ---@class PortalEnd : PortalPart @ the end part of a portal.
@@ -733,15 +733,10 @@ TunnelPortals.OnPreMinedEntity = function(event)
         return
     end
 
-    -- Check there's a portal for this portal part. If not then we never want to block its removal.
-    local minedPortal = minedPortalPart.portal
-    if minedPortal == nil then
-        return
-    end
-
     -- The entity is part of a registered object so we need to check and handle its removal carefully.
-    if minedPortal.tunnel == nil then
-        -- Theres no tunnel then the entity can always be removed.
+    local minedPortal = minedPortalPart.portal
+    if minedPortal == nil or minedPortal.tunnel == nil then
+        -- Part isn't in a portal so the entity can always be removed.
         TunnelPortals.EntityRemoved(minedPortalPart)
     else
         if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", minedPortal.tunnel) then
@@ -753,18 +748,19 @@ TunnelPortals.OnPreMinedEntity = function(event)
             TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel portal part while a train is using the tunnel", minedEntity.surface, minedEntity.position)
             TunnelPortals.ReplacePortalPartEntity(minedPortalPart)
         else
+            -- Safe to mine the part.
             TunnelPortals.EntityRemoved(minedPortalPart)
         end
     end
 end
 
--- Places the replacement portal part entity and destroys the old entity (so it can't be mined and get the item). Then relinks the portal part's entity back in to its object.
+-- Places the replacement portal part entity and destroys the old entity (so it can't be mined and get the item). Then relinks the new entity back in to its object.
 ---@param minedPortalPart PortalPart
 TunnelPortals.ReplacePortalPartEntity = function(minedPortalPart)
     -- Destroy the old entity after caching its values.
     local oldPortalPartEntity = minedPortalPart.entity
     local oldPortalPartEntity_lastUser, oldPortalPartId = oldPortalPartEntity.last_user, minedPortalPart.id
-    minedPortalPart.entity.destroy() -- OVERHAUL - does this appear on kills anywhere? it's done to stop the item going to the players inventory.
+    oldPortalPartEntity.destroy()
 
     -- Create the new entity and update the old portal part object with it.
     local newPortalPartEntity = minedPortalPart.surface.create_entity {name = minedPortalPart.entity_name, position = minedPortalPart.entity_position, direction = minedPortalPart.entity_direction, force = minedPortalPart.force, player = oldPortalPartEntity_lastUser}
@@ -799,7 +795,7 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal
     if portal ~= nil then
-        -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to the 2 portals making it up and handles/removes portal fields requiring a tunnel.
+        -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to its 2 portals and handles/removes portal fields requiring a tunnel.
         if portal.tunnel ~= nil then
             Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel, killForce, killerCauseEntity)
         end
@@ -811,7 +807,6 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
         portal.portalSegments[removedPortalPart.id] = nil
 
         -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
-
         -- Make each portal part forget its parent so they are all ready to re-merge in to new portals later.
         for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
             for _, __ in pairs(list) do
