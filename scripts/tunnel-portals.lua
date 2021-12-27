@@ -31,14 +31,14 @@ local BlockingEndPortalSetup = {
 ---@field trainWaitingAreaTilesLength int @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
----@field portalTunnelConnectionSurfacePositions table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ the 2 entries in global.tunnelPortals.portalTunnelConnectionSurfacePositions for this portal. Populated on a complete portal.
+---@field portalTunnelConnectionSurfacePositions table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ the 2 entries in global.tunnelPortals.portalTunnelConnectionSurfacePositions for this portal. Only established on a complete portal.
 ---@field entryPortalEnd PortalEnd @ the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field blockedPortalEnd PortalEnd @ the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field transitionSignals table<TunnelSignalDirection, PortalTransitionSignal> @ These are the inner locked red signals that a train paths at to enter the tunnel. Only established once this portal is part of a valid tunnel.
 ---@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @ These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. Only established once this portal is part of a valid tunnel.
 ---@field tunnel Tunnel @ ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
----@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
----@field portalOtherEntities table<UnitNumber, LuaEntity> @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
+---@field portalRailEntities table<UnitNumber, LuaEntity>|null @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
+---@field portalOtherEntities table<UnitNumber, LuaEntity>|null @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
 ---@field portalEntryPointPosition Position @ the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorEntity LuaEntity @ hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorPosition Position @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
@@ -57,15 +57,15 @@ local BlockingEndPortalSetup = {
 ---@field entity_orientation RealOrientation @ cache of the entity's orientation.
 ---@field frontPosition Position @ used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
 ---@field rearPosition Position @ used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
----@field portal Portal @ ref to the parent portal object.
 ---@field typeData PortalPartTypeData @ ref to generic data about this type of portal part.
 ---@field surface LuaSurface @ the surface this portal part object is on.
 ---@field surface_index uint @ cached index of the surface this portal part is on.
 ---@field force LuaForce @ the force this portal part object belongs to.
----@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity.
+---@field nonConnectedSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always populated, even if not part of a portal.
+---@field portal Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 
 ---@class PortalEnd : PortalPart @ the end part of a portal.
----@field endPortalType EndPortalType|null @ the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direciotn is known.
+---@field endPortalType EndPortalType|null @ the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direction within the portal is known.
 ---@field connectedToUnderground boolean @ if theres an underground segment connected to this portal on one side as part of the completed tunnel.
 
 ---@class EndPortalType
@@ -171,9 +171,8 @@ local PortalTypeData = {
 TunnelPortals.CreateGlobals = function()
     global.tunnelPortals = global.tunnelPortals or {}
     global.tunnelPortals.nextPortalId = global.tunnelPortals.nextPortalId or 1
-    global.tunnelPortals.portals = global.tunnelPortals.portals or {} ---@type table<Id, Portal>
-    global.tunnelPortals.portalEnds = global.tunnelPortals.portaportalEndslParts or {} ---@type table<UnitNumber, PortalEnd>
-    global.tunnelPortals.portalSegments = global.tunnelPortals.portalSegments or {} ---@type table<UnitNumber, PortalSegment>
+    global.tunnelPortals.portals = global.tunnelPortals.portals or {} ---@type table<Id, Portal> @ a list of all of the portals. -- OVERHAUL - not entirely sure if we need this ?
+    global.tunnelPortals.portalPartEntityIdToPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart or {} ---@type table<UnitNumber, PortalPart> @ a lookup of portal part entity unit_number to the portal part object.
     global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the entering train detection entity is killed.
     global.tunnelPortals.transitionUsageDetectorEntityIdToPortal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the transition train detection entity is killed.
     global.tunnelPortals.portalPartConnectionSurfacePositions = global.tunnelPortals.portalPartConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for positions that portal parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
@@ -277,7 +276,6 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         endPortal.frontPosition = Utils.ApplyOffsetToPosition(builtEntity_position, Utils.RotatePositionAround0(builtEntity_orientation, {x = 0, y = -2.5}))
         endPortal.rearPosition = Utils.ApplyOffsetToPosition(builtEntity_position, Utils.RotatePositionAround0(builtEntity_orientation, {x = 0, y = 2.5}))
         endPortal.connectedToUnderground = false
-        global.tunnelPortals.portalEnds[portalPartObject.id] = endPortal
     elseif portalTypeData.partType == PortalPartType.portalSegment then
         -- Placed entity is a segment.
         ---@typelist SegmentPortalTypeData, PortalSegment
@@ -289,12 +287,11 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         else
             error("unrecognised segmentPortalTypeData.segmentShape: " .. segmentPortalTypeData.segmentShape)
         end
-        global.tunnelPortals.portalSegments[portalPartObject.id] = segmentPortal
     else
         error("unrecognised portalTypeData.partType: " .. portalTypeData.partType)
     end
 
-    -- Register the parts surfacePositionStrings for reverse lookup.
+    -- Register the parts' surfacePositionStrings for reverse lookup.
     local frontSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.frontPosition)
     global.tunnelPortals.portalPartConnectionSurfacePositions[frontSurfacePositionString] = {
         id = frontSurfacePositionString,
@@ -305,6 +302,9 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         id = rearSurfacePositionString,
         portalPart = portalPartObject
     }
+
+    -- Register the part's entity for reverse lookup.
+    global.tunnelPortals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
 
     TunnelPortals.UpdatePortalsForNewPortalPart(portalPartObject)
 
@@ -379,9 +379,7 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 portalSegments = {},
                 trainWaitingAreaTilesLength = 0,
                 force = portalPartObject.force,
-                surface = portalPartObject.surface,
-                portalRailEntities = {},
-                portalTunnelConnectionSurfacePositions = {}
+                surface = portalPartObject.surface
                 --portalEntryPointPosition = Utils.ApplyOffsetToPosition(portalEntity_position, Utils.RotatePositionAround0(builtEntity.orientation, {x = 0, y = 0 - math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)})) -- OVERHAUL - not sure what this is really, fix later.
             }
             global.tunnelPortals.portals[portalId] = portal
@@ -440,6 +438,7 @@ end
 ---@param portal Portal
 TunnelPortals.PortalComplete = function(portal)
     portal.isComplete = true
+    portal.portalTunnelConnectionSurfacePositions = {}
     -- OVERHAUL - will create the stats on the portal length and make the clickable bit here. As these should be inspectable before the whole tunnel is made. Also add some sort of visual confirmation the portal is complete, maybe the concrete top graphic. No track until its a full tunnel to avoid complications.
     -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portals.
     for _, endPortalPart in pairs(portal.portalEnds) do
@@ -653,6 +652,7 @@ end
 -- Add the rails to the tunnel portal's parts.
 ---@param portal Portal
 TunnelPortals.BuildRailForPortalsParts = function(portal)
+    -- The function to place rail called within this function only.
     ---@param portalPart PortalPart
     ---@param tracksPositionOffset PortalPartTrackPositionOffset
     local PlaceRail = function(portalPart, tracksPositionOffset)
@@ -662,6 +662,9 @@ TunnelPortals.BuildRailForPortalsParts = function(portal)
         placedRail.destructible = false
         portal.portalRailEntities[placedRail.unit_number] = placedRail
     end
+
+    -- Loop over the portal parts and add their rails.
+    portal.portalRailEntities = {}
     for _, portalPart in pairs(portal.portalEnds) do
         for _, tracksPositionOffset in pairs(portalPart.typeData.tracksPositionOffset) do
             PlaceRail(portalPart, tracksPositionOffset)
@@ -715,111 +718,158 @@ TunnelPortals.OnBuiltEntityGhost = function(event)
     end
 end
 
--- TODO: GOT UP TO HERE IN THIS FILE
+-- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 TunnelPortals.OnPreMinedEntity = function(event)
+    -- Check its one of the entities this function wants to inspect.
     local minedEntity = event.entity
     if not minedEntity.valid or PortalEndAndSegmentEntityNames[minedEntity.name] == nil then
         return
     end
-    local portal = global.tunnelPortals.portals[minedEntity.unit_number]
-    if portal == nil then
+
+    -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
+    local minedPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
+    if minedPortalPart == nil then
         return
     end
 
-    local miner = event.robot -- Will be nil for player mined.
-    if miner == nil and event.player_index ~= nil then
-        miner = game.get_player(event.player_index)
+    -- Check there's a portal for this portal part. If not then we never want to block its removal.
+    local minedPortal = minedPortalPart.portal
+    if minedPortal == nil then
+        return
     end
 
-    if portal.tunnel == nil then
-        TunnelPortals.EntityRemoved(portal)
+    -- The entity is part of a registered object so we need to check and handle its removal carefully.
+    if minedPortal.tunnel == nil then
+        -- Theres no tunnel then the entity can always be removed.
+        TunnelPortals.EntityRemoved(minedPortalPart)
     else
-        if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", portal.tunnel) then
-            TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel portal while train is using tunnel", minedEntity.surface, minedEntity.position)
-            TunnelPortals.ReplacePortalEntity(portal)
+        if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", minedPortal.tunnel) then
+            -- Theres an in-use tunnel so undo the removal.
+            local miner = event.robot -- Will be nil for player mined.
+            if miner == nil and event.player_index ~= nil then
+                miner = game.get_player(event.player_index)
+            end
+            TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel portal part while a train is using the tunnel", minedEntity.surface, minedEntity.position)
+            TunnelPortals.ReplacePortalPartEntity(minedPortalPart)
         else
-            Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
-            TunnelPortals.EntityRemoved(portal)
+            TunnelPortals.EntityRemoved(minedPortalPart)
         end
     end
 end
 
----@param oldPortal Portal
-TunnelPortals.ReplacePortalEntity = function(oldPortal)
-    local centerPos, force, lastUser, directionValue, surface, entityName = oldPortal.entity.position, oldPortal.entity.force, oldPortal.entity.last_user, oldPortal.entity.direction, oldPortal.entity.surface, oldPortal.entity.name
-    oldPortal.entity.destroy()
+-- Places the replacement portal part entity and destroys the old entity (so it can't be mined and get the item). Then relinks the portal part's entity back in to its object.
+---@param minedPortalPart PortalPart
+TunnelPortals.ReplacePortalPartEntity = function(minedPortalPart)
+    -- Destroy the old entity after caching its values.
+    local oldPortalPartEntity = minedPortalPart.entity
+    local oldPortalPartEntity_lastUser, oldPortalPartId = oldPortalPartEntity.last_user, minedPortalPart.id
+    minedPortalPart.entity.destroy() -- OVERHAUL - does this appear on kills anywhere? it's done to stop the item going to the players inventory.
 
-    local newPortalEntity = surface.create_entity {name = entityName, position = centerPos, direction = directionValue, force = force, player = lastUser}
-    local newPortal = {
-        id = newPortalEntity.unit_number,
-        entityDirection = oldPortal.entityDirection,
-        entity = newPortalEntity,
-        transitionSignals = oldPortal.transitionSignals,
-        entrySignals = oldPortal.entrySignals,
-        tunnel = oldPortal.tunnel,
-        portalRailEntities = oldPortal.portalRailEntities,
-        portalOtherEntities = oldPortal.portalOtherEntities,
-        enteringTrainUsageDetectorEntity = oldPortal.enteringTrainUsageDetectorEntity,
-        entryPointDistanceFromCenter = oldPortal.entryPointDistanceFromCenter,
-        portalEntryPointPosition = oldPortal.portalEntryPointPosition
-    }
+    -- Create the new entity and update the old portal part object with it.
+    local newPortalPartEntity = minedPortalPart.surface.create_entity {name = minedPortalPart.entity_name, position = minedPortalPart.entity_position, direction = minedPortalPart.entity_direction, force = minedPortalPart.force, player = oldPortalPartEntity_lastUser}
+    newPortalPartEntity.rotatable = false
+    minedPortalPart.entity = newPortalPartEntity
+    minedPortalPart.id = newPortalPartEntity.unit_number
 
-    -- Update the signals ref back to portal if the signals exist.
-    if newPortal.transitionSignals ~= nil then
-        newPortal.transitionSignals[TunnelSignalDirection.inSignal].portal = newPortal
-        newPortal.transitionSignals[TunnelSignalDirection.outSignal].portal = newPortal
-        newPortal.entrySignals[TunnelSignalDirection.inSignal].portal = newPortal
-        newPortal.entrySignals[TunnelSignalDirection.outSignal].portal = newPortal
-    end
-    global.tunnelPortals.portals[newPortal.id] = newPortal
-    global.tunnelPortals.portals[oldPortal.id] = nil
-    Interfaces.Call("Tunnel.On_PortalReplaced", newPortal.tunnel, oldPortal, newPortal)
-end
+    -- Remove the old globals and add the new ones.
+    global.tunnelPortals.portalPartEntityIdToPortalPart[oldPortalPartId] = nil
+    global.tunnelPortals.portalPartEntityIdToPortalPart[minedPortalPart.id] = minedPortalPart
 
----@param portal Portal
----@param killForce LuaForce
----@param killerCauseEntity LuaEntity
-TunnelPortals.EntityRemoved = function(portal, killForce, killerCauseEntity)
-    -- TODO: remove the global portalPart position references when updating this function.
-    TunnelPortals.RemoveEnteringTrainUsageDetectionEntityFromPortal(portal)
-    TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal(portal)
-    TunnelShared.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
-    for _, entrySignal in pairs(portal.entrySignals) do
-        if entrySignal.entity.valid then
-            entrySignal.entity.destroy()
+    -- If there's a portal update it.
+    local portal = minedPortalPart.portal
+    if portal ~= nil then
+        if minedPortalPart.typeData.partType == PortalPartType.portalEnd then
+            portal.portalEnds[oldPortalPartId] = nil
+            portal.portalEnds[minedPortalPart.id] = minedPortalPart
+        elseif minedPortalPart.typeData.partType == PortalPartType.portalSegment then
+            portal.portalSegments[oldPortalPartId] = nil
+            portal.portalSegments[minedPortalPart.id] = minedPortalPart
+        else
+            error("unrecognised portalTypeData.partType: " .. minedPortalPart.typeData.partType)
         end
     end
-    portal.entrySignals = nil
-    for _, railEntity in pairs(portal.portalRailEntities) do
-        if railEntity.valid then
-            railEntity.destroy()
-        end
-    end
-    portal.portalRailEntities = nil
-    portal.isComplete = false
-    global.tunnelPortals.portals[portal.id] = nil
 end
 
+-- Called by other functions when a portal part entity is removed and thus we need to update the portal for this change.
+---@param removedPortalPart PortalPart
+---@param killForce LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
+    -- Handle the portal object if there is one.
+    local portal = removedPortalPart.portal
+    if portal ~= nil then
+        -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to the 2 portals making it up and handles/removes portal fields requiring a tunnel.
+        if portal.tunnel ~= nil then
+            Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel, killForce, killerCauseEntity)
+        end
+
+        -- Handle the portal object.
+
+        -- Remove this portal part from the portals fields before we re-process the other portals parts.
+        portal.portalEnds[removedPortalPart.id] = nil
+        portal.portalSegments[removedPortalPart.id] = nil
+
+        -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
+
+        -- Make each portal part forget its parent so they are all ready to re-merge in to new portals later.
+        for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
+            for _, __ in pairs(list) do
+                local loopingGenericPortalPart = __ ---@type PortalPart
+                loopingGenericPortalPart.portal = nil
+                loopingGenericPortalPart.nonConnectedSurfacePositions = {}
+                if loopingGenericPortalPart.typeData.partType == PortalPartType.portalEnd then
+                    local loopingEndPortalPart = loopingGenericPortalPart ---@type PortalEnd
+                    loopingEndPortalPart.connectedToUnderground = false
+                end
+            end
+        end
+        -- Loop over each portal part and add them back in to whatever portals they reform.
+        for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
+            for _, __ in pairs(list) do
+                local loopingGenericPortalPart = __ ---@type PortalPart
+                TunnelPortals.UpdatePortalsForNewPortalPart(loopingGenericPortalPart)
+            end
+        end
+    end
+
+    -- Handle the portal part object itself last.
+    global.tunnelPortals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
+    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(removedPortalPart.surface_index, removedPortalPart.frontPosition)
+    global.tunnelPortals.portalPartConnectionSurfacePositions[frontSurfacePositionString] = nil
+    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(removedPortalPart.surface_index, removedPortalPart.rearPosition)
+    global.tunnelPortals.portalPartConnectionSurfacePositions[rearSurfacePositionString] = nil
+end
+
+-- Called from the Tunnel Manager when a tunnel that the portal was part of has been removed.
 ---@param portals Portal[]
----@param killForce LuaForce
----@param killerCauseEntity LuaEntity
+---@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
+    -- Cleanse the portal's fields that are only populated when they are part of a tunnel.
     for _, portal in pairs(portals) do
-        TunnelShared.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
         portal.tunnel = nil
+
         for _, otherEntity in pairs(portal.portalOtherEntities) do
             if otherEntity.valid then
                 otherEntity.destroy()
             end
         end
         portal.portalOtherEntities = nil
+        TunnelShared.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
         for _, railEntity in pairs(portal.portalRailEntities) do
             if railEntity.valid then
                 railEntity.destroy()
             end
         end
         portal.portalRailEntities = nil
+
+        for _, entrySignal in pairs(portal.entrySignals) do
+            if entrySignal.entity.valid then
+                entrySignal.entity.destroy()
+            end
+        end
+        portal.entrySignals = nil
         for _, transitionSignal in pairs(portal.transitionSignals) do
             if transitionSignal.entity.valid then
                 Interfaces.Call("Tunnel.DeregisterTransitionSignal", transitionSignal)
@@ -828,26 +878,36 @@ TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         end
         portal.transitionSignals = nil
 
+        TunnelPortals.RemoveEnteringTrainUsageDetectionEntityFromPortal(portal)
+        portal.enteringTrainUsageDetectorPosition = nil
         TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal(portal)
+        portal.transitionUsageDetectorPosition = nil
+
+        portal.entryPortalEnd = nil
+        portal.blockedPortalEnd = nil
+        portal.portalEntryPointPosition = nil
+        portal.dummyLocomotivePosition = nil
+        portal.entryDirection = nil
+        portal.leavingDirection = nil
     end
 end
 
+-- Triggered when a monitored entity type is killed.
 ---@param event on_entity_died|script_raised_destroy
 TunnelPortals.OnDiedEntity = function(event)
-    local diedEntity, killerForce, killerCauseEntity = event.entity, event.force, event.cause -- The killer variables will be nil in some cases.
+    -- Check its one of the entities this function wants to inspect.
+    local diedEntity = event.entity
     if not diedEntity.valid or PortalEndAndSegmentEntityNames[diedEntity.name] == nil then
         return
     end
 
-    local portal = global.tunnelPortals.portals[diedEntity.unit_number]
-    if portal == nil then
+    -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
+    local diedPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
+    if diedPortalPart == nil then
         return
     end
 
-    if portal.tunnel ~= nil then
-        Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel)
-    end
-    TunnelPortals.EntityRemoved(portal, killerForce, killerCauseEntity)
+    TunnelPortals.EntityRemoved(diedPortalPart, event.force, event.cause)
 end
 
 -- Occurs when a train tries to pass through the border of a portal, when entering and exiting.

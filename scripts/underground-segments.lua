@@ -104,7 +104,7 @@ local SegmentTypeData = {
 
 UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments = global.undergroundSegments or {}
-    global.undergroundSegments.nextUndergroundId = global.tunnelPortals.nextUndergroundId or 1
+    global.undergroundSegments.nextUndergroundId = global.undergroundSegments.nextUndergroundId or 1
     global.undergroundSegments.undergrounds = global.undergroundSegments.undergrounds or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<UnitNumber, UndergroundSegment>
     global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for underground segments by their position string. Saves searching for entities on the map via API.
@@ -588,6 +588,7 @@ UndergroundSegments.OnPreBuild = function(event)
     segmentPositionObject.segment.beingFastReplacedTick = event.tick
 end
 
+-- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 UndergroundSegments.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
@@ -653,8 +654,8 @@ UndergroundSegments.ReplaceSegmentEntity = function(oldSegment)
 end
 
 ---@param segment UndergroundSegment
----@param killForce LuaForce
----@param killerCauseEntity LuaEntity
+---@param killForce LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
 UndergroundSegments.EntityRemoved = function(segment, killForce, killerCauseEntity)
     if segment.crossingRailEntities ~= nil then
         TunnelShared.DestroyCarriagesOnRailEntityList(segment.crossingRailEntities, killForce, killerCauseEntity)
@@ -674,8 +675,12 @@ UndergroundSegments.EntityRemoved = function(segment, killForce, killerCauseEnti
     global.undergroundSegments.segments[segment.id] = nil
 end
 
----@param segments UndergroundSegment[]
-UndergroundSegments.On_TunnelRemoved = function(segments)
+-- Called from the Tunnel Manager when a tunnel that the portal was part of has been removed.
+---@param underground Underground
+UndergroundSegments.On_TunnelRemoved = function(underground)
+    if 1 == 1 then
+        return
+    end
     for _, segment in pairs(segments) do
         segment.tunnel = nil
 

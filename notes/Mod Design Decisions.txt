@@ -38,3 +38,9 @@ Portal has tracks only with tunnel
 
 The new design is that a portal without a tunnel has no tracks or other elements. This reduces entitiy creation during building and makes things simplier. This does mean that when a tunnel is destroyed all tracks for the underground and portal are removed, killing any trains on either (rare case in real game). Also that to mine part of a tunnel (portal or underground) the entire tunnel tracks must be clear, otherwise the mine should fail.
 In the past there was a seperation between portals and undergrounds in terms of tracks, but this made things more complicated for no real world value.
+
+
+Events
+------
+
+- Use of on_pre_player_mined_item over on_player_mined_entity for portal and underground mining detection and undo logic. This is an historic decision and both events support entity type filtering. Appears to have been done as with the pre event in invalid removal situations we can destroy the old entity when we replace it. This destroying of the old entity prevents it being mined and so any mod reacting to the standard mined_entity event won't know about the attempt we blocked and undid. An alternative preivously considered was to make the entities non minable while the tunnel was in use, but this is a lot of API calls on every tunnel usage.

@@ -120,7 +120,7 @@ TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalE
             portalObject = managedTrain.exitPortal
         end
     else
-        portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
+        portalObject = global.tunnelPortals.portalPartEntityIdToPortalPart[portalEntity.unit_number]
     end
     local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntryPointPosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
     TrainManagerPlayerContainers.CancelPlayerTryLeaveTrain(player)

@@ -98,7 +98,6 @@ TrainManager.OnLoad = function()
     )
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManager.On_TunnelRemoved)
-    Interfaces.RegisterInterface("TrainManager.On_PortalReplaced", TrainManager.On_PortalReplaced)
     Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManager.GetTrainIdsManagedTrainDetails)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
 end
@@ -402,7 +401,10 @@ TrainManager.DestroyDummyTrain = function(managedTrain)
 end
 
 ---@param tunnelRemoved Tunnel
-TrainManager.On_TunnelRemoved = function(tunnelRemoved)
+---@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEntity)
+    -- TODO: the killer variables should be fed through to the other sub functions that should use them when things need to die, i.e. players.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
             if managedTrain.enteringTrainId ~= nil then
@@ -504,29 +506,6 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     end
 
     return managedTrain
-end
-
----@param tunnel Tunnel
----@param newPortal Portal
-TrainManager.On_PortalReplaced = function(tunnel, newPortal)
-    if tunnel == nil then
-        return
-    end
-    -- Updated the cached portal object reference as they have bene recreated.
-    for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if managedTrain.tunnel.id == tunnel.id then
-            -- Only entity invalid is the portal entity reference itself. None of the portal's signal entities or objects are affected. So can use the signal entities to identify which local reference Entrance/Exit this changed portal was before.
-            if newPortal.transitionSignals[managedTrain.entrancePortalTransitionSignal.direction].id == managedTrain.entrancePortalTransitionSignal.id then
-                -- Is entrance portal of this tunnel usage.
-                managedTrain.entrancePortal = newPortal
-            elseif newPortal.transitionSignals[managedTrain.exitPortalTransitionSignal.direction].id == managedTrain.exitPortalTransitionSignal.id then
-                -- Is exit portal of this tunnel usage.
-                managedTrain.exitPortal = newPortal
-            else
-                error("Portal replaced for tunnel and used by managedTrain, but transitionSignal not matched\n tunnel id: " .. tunnel.id .. "\nmanagedTrain id: " .. managedTrain.id .. "\nnewPortal id: " .. newPortal.id)
-            end
-        end
-    end
 end
 
 ---@param managedTrain ManagedTrain

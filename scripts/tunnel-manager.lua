@@ -40,7 +40,6 @@ Tunnel.OnLoad = function()
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainFinishedEnteringTunnel", Tunnel.TrainFinishedEnteringTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReleasedTunnel", Tunnel.TrainReleasedTunnel)
-    Interfaces.RegisterInterface("Tunnel.On_PortalReplaced", Tunnel.On_PortalReplaced)
     Interfaces.RegisterInterface("Tunnel.On_SegmentReplaced", Tunnel.On_SegmentReplaced)
     Interfaces.RegisterInterface("Tunnel.GetTunnelsUsageEntry", Tunnel.GetTunnelsUsageEntry)
 
@@ -115,11 +114,13 @@ Tunnel.CompleteTunnel = function(portals, underground)
 end
 
 ---@param tunnel Tunnel
-Tunnel.RemoveTunnel = function(tunnel)
-    -- TODO: not checked
-    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
-    Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals)
-    Interfaces.Call("UndergroundSegments.On_TunnelRemoved", tunnel.segments)
+---@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+Tunnel.RemoveTunnel = function(tunnel, killForce, killerCauseEntity)
+    -- TODO: not updated
+    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel, killForce, killerCauseEntity)
+    Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals, killForce, killerCauseEntity)
+    Interfaces.Call("UndergroundSegments.On_TunnelRemoved", tunnel.underground)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 
@@ -153,23 +154,6 @@ Tunnel.TrainReleasedTunnel = function(managedTrain)
 end
 
 -- TODO: not checked from here down
----@param tunnel Tunnel
----@param oldPortal Portal
----@param newPortal Portal
-Tunnel.On_PortalReplaced = function(tunnel, oldPortal, newPortal)
-    if tunnel == nil then
-        return
-    end
-    -- Updated the cached portal object reference as they have bene recreated.
-    for i, portal in pairs(tunnel.portals) do
-        if portal.id == oldPortal.id then
-            tunnel.portals[i] = newPortal
-            break
-        end
-    end
-    Interfaces.Call("TrainManager.On_PortalReplaced", tunnel, newPortal)
-end
-
 ---@param tunnel Tunnel
 ---@param oldSegment UndergroundSegment
 ---@param newSegment UndergroundSegment

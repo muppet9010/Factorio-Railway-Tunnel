@@ -41,6 +41,7 @@ MINOR:
     - the portal part connected checking in TunnelPortals.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
     - the Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
     - mark the optional arguments as ? in addition to |null
+    - flag the class fields as |null when they are not populated as part of initial object creation.
 
 
 FUTURE:
