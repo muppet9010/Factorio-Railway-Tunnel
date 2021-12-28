@@ -2,7 +2,6 @@
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 Test.RunTime = 1800
 

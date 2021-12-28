@@ -29,7 +29,7 @@ A player can fast replace an entity over itself with a different rotation if it 
 Tunnel Part Connections
 -----------------------
 
-Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. These connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look 1 tile infront of its own connection points to see if there is another part to connect to. As all parts have alteast 1 tile padding to the sides of the connection points its impossible to place a part at a side angle to another part.
+Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. A part's internal connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look in its external connection point to see if there is another part to connect to, this is 1 tile infront of its internal connection points. As all parts have alteast 1 tile padding to the sides of the connection points and must be placed on the rail grid (2x2 tiles) its impossible to place a part at a side angle to another part.
 For a tunnel there must be an underground between 2 complete portals. As otherwise seperating the portal parts from each other is a pain and why would you ever want a 0 length tunnel.
 
 

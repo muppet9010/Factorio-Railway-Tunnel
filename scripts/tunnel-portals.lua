@@ -31,7 +31,7 @@ local BlockingEndPortalSetup = {
 ---@field trainWaitingAreaTilesLength int @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
----@field portalTunnelConnectionSurfacePositions table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ the 2 entries in global.tunnelPortals.portalTunnelConnectionSurfacePositions for this portal. Only established on a complete portal.
+---@field portalTunnelExternalConnectionSurfacePositionStrings table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ the 2 entries in global.tunnelPortals.portalTunnelExternalConnectionSurfacePositionStrings for this portal. Only established on a complete portal.
 ---@field entryPortalEnd PortalEnd @ the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field blockedPortalEnd PortalEnd @ the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
 ---@field transitionSignals table<TunnelSignalDirection, PortalTransitionSignal> @ These are the inner locked red signals that a train paths at to enter the tunnel. Only established once this portal is part of a valid tunnel.
@@ -55,10 +55,10 @@ local BlockingEndPortalSetup = {
 ---@field entity_position Position @ cache of the entity's position.
 ---@field entity_direction defines.direction @ cache of the entity's direction.
 ---@field entity_orientation RealOrientation @ cache of the entity's orientation.
----@field frontPosition Position @ used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
----@field rearPosition Position @ used as base to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
----@field frontSurfacePositionString SurfacePositionString @ cache of the portal part's frontPosition as a SurfacePositionString.
----@field rearSurfacePositionString SurfacePositionString @ cache of the portal part's rearPosition as a SurfacePositionString.
+---@field frontInternalPosition Position @ our internal position to look for other parts' portalPartSurfacePositions global object entries from. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
+---@field rearInternalPosition Position @ our internal position to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
+---@field frontInternalSurfacePositionString SurfacePositionString @ cache of the portal part's frontInternalPosition as a SurfacePositionString.
+---@field rearInternalSurfacePositionString SurfacePositionString @ cache of the portal part's rearInternalPosition as a SurfacePositionString.
 ---@field frontExternalCheckSurfacePositionString SurfacePositionString @ cache of the front External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
 ---@field rearExternalCheckSurfacePositionString SurfacePositionString @ cache of the rear External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
 ---@field typeData PortalPartTypeData @ ref to generic data about this type of portal part.
@@ -179,8 +179,8 @@ TunnelPortals.CreateGlobals = function()
     global.tunnelPortals.portalPartEntityIdToPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart or {} ---@type table<UnitNumber, PortalPart> @ a lookup of portal part entity unit_number to the portal part object.
     global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the entering train detection entity is killed.
     global.tunnelPortals.transitionUsageDetectorEntityIdToPortal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the transition train detection entity is killed.
-    global.tunnelPortals.portalPartConnectionSurfacePositions = global.tunnelPortals.portalPartConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for positions that portal parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
-    global.tunnelPortals.portalTunnelConnectionSurfacePositions = global.tunnelPortals.portalTunnelConnectionSurfacePositions or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by an external position string for truing to connect to an underground. It is 0.5 tiles outside the end portal entity border, where the underground segments connection point is. Saves searching for entities on the map via API.
+    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings = global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for internal positions that portal parts can be connected on. Includes the parts's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
+    global.tunnelPortals.portalTunnelExternalConnectionSurfacePositionStrings = global.tunnelPortals.portalTunnelExternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by an external position string for trying to connect to an underground. It is 0.5 tiles outside the end portal entity border, where the underground segment's internal connection point is. Saves searching for entities on the map via API.
 end
 
 TunnelPortals.OnLoad = function()
@@ -209,7 +209,7 @@ TunnelPortals.OnLoad = function()
     Interfaces.RegisterInterface("TunnelPortals.On_PreTunnelCompleted", TunnelPortals.On_PreTunnelCompleted)
     Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
     Interfaces.RegisterInterface("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal)
-    Interfaces.RegisterInterface("TunnelPortals.CanAPortalConnectAtPosition", TunnelPortals.CanAPortalConnectAtPosition)
+    Interfaces.RegisterInterface("TunnelPortals.CanAPortalConnectAtItsExternalPosition", TunnelPortals.CanAPortalConnectAtItsExternalPosition)
     Interfaces.RegisterInterface("TunnelPortals.PortalPartsAboutToConnectionsBeInNewTunnel", TunnelPortals.PortalPartsAboutToConnectionsBeInNewTunnel)
     Interfaces.RegisterInterface("TunnelPortals.On_PostTunnelCompleted", TunnelPortals.On_PostTunnelCompleted)
 
@@ -277,8 +277,8 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         -- Placed entity is an end.
         local endPortal = portalPartObject ---@type PortalEnd
         -- Has 2 positions that other portal parts can check it for as a connection. 2.5 tiles from centre in both connecting directions (0.5 tile in from its edge).
-        endPortal.frontPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -2.5}, builtEntity_position)
-        endPortal.rearPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 2.5}, builtEntity_position)
+        endPortal.frontInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -2.5}, builtEntity_position)
+        endPortal.rearInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 2.5}, builtEntity_position)
 
         endPortal.connectedToUnderground = false
     elseif portalTypeData.partType == PortalPartType.portalSegment then
@@ -287,8 +287,8 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
         local segmentPortalTypeData, segmentPortal = portalTypeData, portalPartObject
         if segmentPortalTypeData.segmentShape == SegmentShape.straight then
             segmentPortal.segmentShape = segmentPortalTypeData.segmentShape
-            segmentPortal.frontPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -0.5}, builtEntity_position)
-            segmentPortal.rearPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 0.5}, builtEntity_position)
+            segmentPortal.frontInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -0.5}, builtEntity_position)
+            segmentPortal.rearInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 0.5}, builtEntity_position)
         else
             error("unrecognised segmentPortalTypeData.segmentShape: " .. segmentPortalTypeData.segmentShape)
         end
@@ -297,22 +297,22 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
     end
 
     -- Register the parts' surfacePositionStrings for reverse lookup.
-    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.frontPosition)
-    global.tunnelPortals.portalPartConnectionSurfacePositions[frontSurfacePositionString] = {
-        id = frontSurfacePositionString,
+    local frontInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.frontInternalPosition)
+    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
+        id = frontInternalSurfacePositionString,
         portalPart = portalPartObject
     }
-    portalPartObject.frontSurfacePositionString = frontSurfacePositionString
-    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.rearPosition)
-    global.tunnelPortals.portalPartConnectionSurfacePositions[rearSurfacePositionString] = {
-        id = rearSurfacePositionString,
+    portalPartObject.frontInternalSurfacePositionString = frontInternalSurfacePositionString
+    local rearInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.rearInternalPosition)
+    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
+        id = rearInternalSurfacePositionString,
         portalPart = portalPartObject
     }
-    portalPartObject.rearSurfacePositionString = rearSurfacePositionString
+    portalPartObject.rearInternalSurfacePositionString = rearInternalSurfacePositionString
 
     -- The External Check position is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
-    portalPartObject.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -1}, portalPartObject.frontPosition))
-    portalPartObject.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 1}, portalPartObject.rearPosition))
+    portalPartObject.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -1}, portalPartObject.frontInternalPosition))
+    portalPartObject.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 1}, portalPartObject.rearInternalPosition))
 
     -- Register the part's entity for reverse lookup.
     global.tunnelPortals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
@@ -333,16 +333,17 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
     for _, checkDetails in pairs(
         {
             {
-                ownCheckSurfacePositionString = portalPartObject.frontSurfacePositionString,
+                internalCheckSurfacePositionString = portalPartObject.frontInternalSurfacePositionString,
                 externalCheckSurfacePositionString = portalPartObject.frontExternalCheckSurfacePositionString
             },
             {
-                ownCheckSurfacePositionString = portalPartObject.rearSurfacePositionString,
+                internalCheckSurfacePositionString = portalPartObject.rearInternalSurfacePositionString,
                 externalCheckSurfacePositionString = portalPartObject.rearExternalCheckSurfacePositionString
             }
         }
     ) do
-        local foundPortalPartPositionObject = global.tunnelPortals.portalPartConnectionSurfacePositions[checkDetails.externalCheckSurfacePositionString]
+        -- Look in the global internal position string list for any part that is where our external check position is.
+        local foundPortalPartPositionObject = global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
         -- If a portal reference at this position is found next to this one add this part to its/new portal.
         if foundPortalPartPositionObject ~= nil then
             local connectedPortalPart = foundPortalPartPositionObject.portalPart
@@ -363,9 +364,10 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                         secondComplictedConnectedPart = connectedPortalPart
                     end
                 end
-                -- Update our and their nonConnectedExternalSurfacePositions as we are both now connected on this.
+                -- Update ours and their nonConnectedExternalSurfacePositions as we are both now connected on this connection side.
                 portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = nil
-                connectedPortalPart.nonConnectedExternalSurfacePositions[checkDetails.ownCheckSurfacePositionString] = nil
+                -- For the connectedPortalPart our internal check position is their external check position.
+                connectedPortalPart.nonConnectedExternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = nil
             else
                 portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
             end
@@ -410,7 +412,7 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 end
             end
         elseif portalPartObject.portal ~= nil and firstComplictedConnectedPart.portal == nil then
-            -- We have a portal now and the other complciatred connnected part doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
+            -- We have a portal now and the other complicated connnected part doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
             TunnelPortals.AddPartToPortal(portalPartObject.portal, firstComplictedConnectedPart)
         end
     end
@@ -455,27 +457,27 @@ end
 ---@param portal Portal
 TunnelPortals.PortalComplete = function(portal)
     portal.isComplete = true
-    portal.portalTunnelConnectionSurfacePositions = {}
+    portal.portalTunnelExternalConnectionSurfacePositionStrings = {}
     -- OVERHAUL - will create the stats on the portal length and make the clickable bit here. As these should be inspectable before the whole tunnel is made. Also add some sort of visual confirmation the portal is complete, maybe the concrete top graphic. No track until its a full tunnel to avoid complications.
     -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portals.
     for _, endPortalPart in pairs(portal.portalEnds) do
-        local undergroundConnectionSurfacePositionString = next(endPortalPart.nonConnectedExternalSurfacePositions)
+        local undergroundExternalConnectionSurfacePositionString = next(endPortalPart.nonConnectedExternalSurfacePositions)
         local portalTunnelConnectionSurfacePositionObject = {
-            id = undergroundConnectionSurfacePositionString,
+            id = undergroundExternalConnectionSurfacePositionString,
             portal = portal,
             endPortalPart = endPortalPart
         }
-        global.tunnelPortals.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
-        portal.portalTunnelConnectionSurfacePositions[undergroundConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
+        global.tunnelPortals.portalTunnelExternalConnectionSurfacePositionStrings[undergroundExternalConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
+        portal.portalTunnelExternalConnectionSurfacePositionStrings[undergroundExternalConnectionSurfacePositionString] = portalTunnelConnectionSurfacePositionObject
     end
 end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param portal Portal
 TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
-    for surfacePositionString, portalTunnelConnectionSurfacePositionObject in pairs(portal.portalTunnelConnectionSurfacePositions) do
+    for portalExternalSurfacePositionString, portalTunnelConnectionSurfacePositionObject in pairs(portal.portalTunnelExternalConnectionSurfacePositionStrings) do
         ---@typelist Underground, UndergroundSegment, UndergroundSegment
-        local underground, otherEndSegment = Interfaces.Call("UndergroundSegments.CanAnUndergroundConnectAtPosition", surfacePositionString)
+        local underground, otherEndSegment = Interfaces.Call("UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition", portalExternalSurfacePositionString)
         if underground ~= nil then
             local foundPortal, foundEndPortalPart = Interfaces.Call("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", otherEndSegment, portal)
             if foundPortal ~= nil then
@@ -486,14 +488,15 @@ TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
     end
 end
 
---- Checks if a complete Portal has a connection at a set point. If it does returns the objects, otherwise nil for all.
----@param surfacePositionString SurfacePositionString
+-- TODO: all requests to other parts should be made using our external position, their internal position. This way it matches up to how the parts connect to one another of the same type.
+--- Checks if a complete Portal has a connection at an External position. If it does returns the objects, otherwise nil for all.
+---@param externalSurfacePositionString SurfacePositionString
 ---@return Portal|null portal
 ---@return PortalEnd|null portalEnd
-TunnelPortals.CanAPortalConnectAtPosition = function(surfacePositionString)
-    local portalTunnelConnectionSurfacePositionObject = global.tunnelPortals.portalTunnelConnectionSurfacePositions[surfacePositionString]
-    if portalTunnelConnectionSurfacePositionObject ~= nil and portalTunnelConnectionSurfacePositionObject.portal.isComplete then
-        return portalTunnelConnectionSurfacePositionObject.portal, portalTunnelConnectionSurfacePositionObject.endPortalPart
+TunnelPortals.CanAPortalConnectAtItsExternalPosition = function(externalSurfacePositionString)
+    local portalTunnelExternalConnectionSurfacePositionObject = global.tunnelPortals.portalTunnelExternalConnectionSurfacePositionStrings[externalSurfacePositionString]
+    if portalTunnelExternalConnectionSurfacePositionObject ~= nil and portalTunnelExternalConnectionSurfacePositionObject.portal.isComplete then
+        return portalTunnelExternalConnectionSurfacePositionObject.portal, portalTunnelExternalConnectionSurfacePositionObject.endPortalPart
     end
 end
 
@@ -811,8 +814,8 @@ end
 TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal part object itself so that the surfacePositions are removed before we re-create the remaining portal part's portals.
     global.tunnelPortals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
-    global.tunnelPortals.portalPartConnectionSurfacePositions[removedPortalPart.frontSurfacePositionString] = nil
-    global.tunnelPortals.portalPartConnectionSurfacePositions[removedPortalPart.rearSurfacePositionString] = nil
+    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[removedPortalPart.frontInternalSurfacePositionString] = nil
+    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[removedPortalPart.rearInternalSurfacePositionString] = nil
 
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal

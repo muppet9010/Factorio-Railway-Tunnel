@@ -22,10 +22,10 @@ local UndergroundSegments = {}
 ---@field entity_position Position @ cache of the entity's position.
 ---@field entity_direction defines.direction @ cache of the entity's direction.
 ---@field entity_orientation RealOrientation @ cache of the entity's orientation.
----@field frontPosition Position @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
----@field rearPosition Position  @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
----@field frontSurfacePositionString SurfacePositionString @ cache of the sement's frontPosition as a SurfacePositionString.
----@field rearSurfacePositionString SurfacePositionString @ cache of the sement's rearPosition as a SurfacePositionString.
+---@field frontInternalPosition Position @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field rearInternalPosition Position  @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field frontInternalSurfacePositionString SurfacePositionString @ cache of the sement's frontInternalPosition as a SurfacePositionString.
+---@field rearInternalSurfacePositionString SurfacePositionString @ cache of the sement's rearInternalPosition as a SurfacePositionString.
 ---@field frontExternalCheckSurfacePositionString SurfacePositionString @ cache of the front External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
 ---@field rearExternalCheckSurfacePositionString SurfacePositionString @ cache of the rear External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
 ---@field surface LuaSurface @ the surface this segment object is on.
@@ -111,8 +111,8 @@ UndergroundSegments.CreateGlobals = function()
     global.undergroundSegments.nextUndergroundId = global.undergroundSegments.nextUndergroundId or 1
     global.undergroundSegments.undergrounds = global.undergroundSegments.undergrounds or {}
     global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<UnitNumber, UndergroundSegment>
-    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for underground segments by their position string. Saves searching for entities on the map via API.
-    global.undergroundSegments.segmentConnectionSurfacePositions = global.undergroundSegments.segmentConnectionSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for positions that underground segment parts can connect to each other on. It is 0.5 tiles within the edge of their connection border. Saves searching for entities on the map via API.
+    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for underground segments by their position string.
+    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for internal positions that underground segment parts can be connected on. Includes the segment's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
 end
 
 UndergroundSegments.OnLoad = function()
@@ -140,7 +140,7 @@ UndergroundSegments.OnLoad = function()
 
     Interfaces.RegisterInterface("UndergroundSegments.On_PreTunnelCompleted", UndergroundSegments.On_PreTunnelCompleted)
     Interfaces.RegisterInterface("UndergroundSegments.On_TunnelRemoved", UndergroundSegments.On_TunnelRemoved)
-    Interfaces.RegisterInterface("UndergroundSegments.CanAnUndergroundConnectAtPosition", UndergroundSegments.CanAnUndergroundConnectAtPosition)
+    Interfaces.RegisterInterface("UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition", UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition)
     Interfaces.RegisterInterface("UndergroundSegments.DoesUndergroundSegmentConnectToAPortal", UndergroundSegments.DoesUndergroundSegmentConnectToAPortal)
 end
 
@@ -196,8 +196,8 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
 
     -- Handle the caching of specific segment part type information and to their globals.
     if segmentTypeData.segmentShape == SegmentShape.straight then
-        segment.frontPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -0.5}, builtEntity_position)
-        segment.rearPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 0.5}, builtEntity_position)
+        segment.frontInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -0.5}, builtEntity_position)
+        segment.rearInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 0.5}, builtEntity_position)
     else
         error("unrecognised segmentTypeData.segmentShape: " .. segmentTypeData.segmentShape)
     end
@@ -309,22 +309,22 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     }
 
     -- Register the segments surfacePositionStrings for connection reverse lookup.
-    local frontSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.frontPosition)
-    global.undergroundSegments.segmentConnectionSurfacePositions[frontSurfacePositionString] = {
-        id = frontSurfacePositionString,
+    local frontInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.frontInternalPosition)
+    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
+        id = frontInternalSurfacePositionString,
         segment = segment
     }
-    segment.frontSurfacePositionString = frontSurfacePositionString
-    local rearSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.rearPosition)
-    global.undergroundSegments.segmentConnectionSurfacePositions[rearSurfacePositionString] = {
-        id = rearSurfacePositionString,
+    segment.frontInternalSurfacePositionString = frontInternalSurfacePositionString
+    local rearInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.rearInternalPosition)
+    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
+        id = rearInternalSurfacePositionString,
         segment = segment
     }
-    segment.rearSurfacePositionString = rearSurfacePositionString
+    segment.rearInternalSurfacePositionString = rearInternalSurfacePositionString
 
     -- The External Check position is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
-    segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -1}, segment.frontPosition))
-    segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 1}, segment.rearPosition))
+    segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -1}, segment.frontInternalPosition))
+    segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 1}, segment.rearInternalPosition))
 
     -- New segments check if they complete the tunnel and handle approperiately.
     if fastReplacedSegment == nil then
@@ -342,16 +342,17 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
     for _, checkDetails in pairs(
         {
             {
-                ownCheckSurfacePositionString = segment.frontSurfacePositionString,
+                internalCheckSurfacePositionString = segment.frontInternalSurfacePositionString,
                 externalCheckSurfacePositionString = segment.frontExternalCheckSurfacePositionString
             },
             {
-                ownCheckSurfacePositionString = segment.rearSurfacePositionString,
+                internalCheckSurfacePositionString = segment.rearInternalSurfacePositionString,
                 externalCheckSurfacePositionString = segment.rearExternalCheckSurfacePositionString
             }
         }
     ) do
-        local foundSegmentPositionObject = global.undergroundSegments.segmentConnectionSurfacePositions[checkDetails.externalCheckSurfacePositionString]
+        -- Look in the global internal position string list for any segment that is where our external check position is.
+        local foundSegmentPositionObject = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
         -- If a underground reference at this position is found next to this one add this part to its/new underground.
         if foundSegmentPositionObject ~= nil then
             local connectedSegment = foundSegmentPositionObject.segment
@@ -370,11 +371,12 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
                     secondComplictedConnectedSegment = connectedSegment
                 end
             end
-            -- Update our and their nonConnectedExternalSurfacePositions as we are both now connected on this.
+            -- Update ours and their nonConnectedExternalSurfacePositions as we are both now connected on this.
             segment.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = nil
-            connectedSegment.nonConnectedExternalSurfacePositions[checkDetails.ownCheckSurfacePositionString] = nil
+            -- For the connectedSegment our internal check position is their external check position.
+            connectedSegment.nonConnectedExternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = nil
         else
-            segment.nonConnectedExternalSurfacePositions[checkDetails.ownCheckSurfacePositionString] = checkDetails.ownCheckSurfacePositionString
+            segment.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
         end
     end
 
@@ -414,7 +416,7 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
                 end
             end
         elseif segment.underground ~= nil and firstComplictedConnectedSegment.underground == nil then
-            -- We have a underground now and the other complciatred connnected part doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
+            -- We have an underground now and the other complicated connnected part doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
             UndergroundSegments.AddSegmentToUnderground(segment.underground, firstComplictedConnectedSegment)
         end
     end
@@ -424,7 +426,6 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
     local underground = segment.underground
     underground.undergroundEndSegments = {}
     for _, thisSegment in pairs(underground.segments) do
-        -- TODO: the setting of SEGMENT.nonConnectedExternalSurfacePositions and then its usage once in UNDERGROUND.undergroundEndSegments seems inconsistent if its in the internal or exteranl connection point for front or back. The portal side is always external. If we just make it all external for underground tunnel's don't establish.
         for _, externalConnectableSurfacePosition in pairs(thisSegment.nonConnectedExternalSurfacePositions) do
             ---@type UndergroundEndSegmentObject
             local UndergroundEndSegmentObject = {
@@ -465,7 +466,7 @@ end
 UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
     local portals, endPortalParts = {}, {}
     for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
-        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", UndergroundEndSegmentObject.externalConnectableSurfacePosition)
+        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtItsExternalPosition", UndergroundEndSegmentObject.externalConnectableSurfacePosition)
         if portal then
             table.insert(portals, portal)
             table.insert(endPortalParts, endPortalPart)
@@ -477,16 +478,16 @@ UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(under
     end
 end
 
---- Checks if an underground has a connection at a set point. If it does returns the objects, otherwise nil for all.
----@param surfacePositionString SurfacePositionString
+--- Checks if an underground can connect at an internal connection position of its. If it does returns the objects, otherwise nil for all.
+---@param internalSurfacePositionString SurfacePositionString
 ---@return Underground|null underground
 ---@return UndergroundSegment|null segmentAtOtherEndOfUnderground
-UndergroundSegments.CanAnUndergroundConnectAtPosition = function(surfacePositionString)
-    local segmentSurfacePositionObject = global.undergroundSegments.segmentConnectionSurfacePositions[surfacePositionString]
-    if segmentSurfacePositionObject ~= nil then
-        local underground = segmentSurfacePositionObject.segment.underground
+UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition = function(internalSurfacePositionString)
+    local segmentInternalSurfacePositionObject = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[internalSurfacePositionString]
+    if segmentInternalSurfacePositionObject ~= nil then
+        local underground = segmentInternalSurfacePositionObject.segment.underground
         local otherEndSegment  ---@type UndergroundSegment
-        if underground.undergroundEndSegments[1].segment.id == segmentSurfacePositionObject.segment.id then
+        if underground.undergroundEndSegments[1].segment.id == segmentInternalSurfacePositionObject.segment.id then
             otherEndSegment = underground.undergroundEndSegments[2].segment
         else
             otherEndSegment = underground.undergroundEndSegments[1].segment
@@ -501,8 +502,8 @@ end
 ---@return Portal|null portal
 ---@return PortalEnd|null endPortalPart
 UndergroundSegments.DoesUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
-    for _, checkPosString in pairs(segment.nonConnectedExternalSurfacePositions) do
-        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtPosition", checkPosString)
+    for _, segmentFreeIntenalSurfacePositionString in pairs(segment.nonConnectedExternalSurfacePositions) do
+        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtItsExternalPosition", segmentFreeIntenalSurfacePositionString)
         if portal ~= nil and portal.id ~= portalToIgnore.id then
             return portal, endPortalPart
         end
@@ -708,8 +709,8 @@ UndergroundSegments.EntityRemoved = function(removedSegment, killForce, killerCa
     -- Remove the old segment's globals so that the surfacePositions are removed before we re-create the remaining segment's undergrounds.
     global.undergroundSegments.segments[removedSegment.id] = nil
     global.undergroundSegments.segmentSurfacePositions[removedSegment.surfacePositionString] = nil
-    global.undergroundSegments.segmentConnectionSurfacePositions[removedSegment.frontSurfacePositionString] = nil
-    global.undergroundSegments.segmentConnectionSurfacePositions[removedSegment.rearSurfacePositionString] = nil
+    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[removedSegment.frontInternalSurfacePositionString] = nil
+    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[removedSegment.rearInternalSurfacePositionString] = nil
 
     -- Handle the underground object.
     removedUnderground.segments[removedSegment.id] = nil
