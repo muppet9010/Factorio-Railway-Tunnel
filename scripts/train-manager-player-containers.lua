@@ -122,6 +122,7 @@ TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalE
     else
         portalObject = global.tunnelPortals.portalPartEntityIdToPortalPart[portalEntity.unit_number]
     end
+    -- OVERHAUL - portalObject.portalEntryPointPosition doesn't have a value at present as old code, check in TunnelPortals.
     local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntryPointPosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
     TrainManagerPlayerContainers.CancelPlayerTryLeaveTrain(player)
     vehicle.set_driver(nil)

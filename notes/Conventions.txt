@@ -11,3 +11,11 @@ Variable Naming
 ---------------
 
 A variable that references a LuaObject's field is named as: objectName_fieldName   i.e.  enteringTrain_speed
+
+
+
+EmmyLua Class Defintions
+------------------------
+
+- Fields that are only populated when a certain state of the parent is obtained are seperated out togeatehr with a "---" line above them. i.e. the constant fields of a portal part, vs its portal membership requiring ones, vs its tunnel requiring ones. Purely to improve class readability at the head of the document, no impact on intelisense.
+- Some large classes have their fields grouped bassed on functional role only wih a "---" line. Purely to improve class readability at the head of the document, no impact on intelisense.

@@ -459,7 +459,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         entrancePortal = entrancePortalTransitionSignal.portal,
         tunnel = entrancePortalTransitionSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(entrancePortalTransitionSignal.entity.direction + 4),
-        tempEnteringSpeed = trainSpeed, -- TODO: this is temp and will need calculating at a later point properly.
+        tempEnteringSpeed = trainSpeed, -- OVERHAUL: this is temp and will need calculating at a later point properly.
         undergroundTrainHasPlayersRiding = false
     }
     if trainSpeed == 0 then
@@ -617,7 +617,7 @@ end
 ---@param requiredOrientation RealOrientation @ Not used until we need to support corners.
 ---@return LuaEntity
 TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
-    -- OVERHAUL - until we add support for corners or non straight tunnel portal areas we never need to flip a carraige.
+    -- until we add support for corners or non straight tunnel portal areas we never need to flip a carriage.
     local sourceCarriage = refCarriage
     if 1 == 0 then
         game.print(safeCarriageFlipPosition, requiredOrientation)
@@ -686,7 +686,6 @@ end
 ---@return LuaTrain
 TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainStop, skipScheduling)
     skipScheduling = skipScheduling or false
-    -- OVERHAUL - create the carriage on another surface in each rotation once and then clone it in for each tunnel usage. Should have lower UPS usage than creating the entity. Also save adding the fuel each time.
     local locomotive =
         exitPortal.surface.create_entity {
         name = "railway_tunnel-tunnel_exit_dummy_locomotive",

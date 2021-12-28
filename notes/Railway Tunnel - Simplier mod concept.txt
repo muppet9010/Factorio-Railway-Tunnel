@@ -18,7 +18,7 @@ MAJOR:
     - QUESTION - Once the entry train detector is triggered do we want to commit the train to entering the tunnel. If we did we could create the dummy train at this point and set the train on manual and force its speed. Also stop player from affecting it? This may not save any UPS, but might help make some edge cases simplier, or may have no effect. Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach. Uses a small fraction of per train tunnel usage UPS cost. There is a current issue where the train's speed slows as it approaches the signal as although we reset it every tick the game applies some breaking as a % of distance remaining, this didn't use to happen as enterign trains were on manaul forced speed in the old mod.
 	- require a portal area the length of the train for entry and exit. So only when the entering train is fully within this area (signal block) does the train get committed and cloned to outbound portal area with 0 speed. Work out how long the train would take to navigate to the end of the exit portal area and then after that time set the train active and its speed either full or 0.
 	- Any train trying to enter the portal area that is longer than it will be hard blocked at the border, set to manual and a notificaiton to user shown.
-	- Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This are will have some above ground visual blocking graphics so train within it isn't visible.
+	- Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This area will have some above ground visual blocking graphics so train within it isn't visible. Both should be created when the portal is complete and not require a tunnel.
 
 
 MINOR:
@@ -43,7 +43,8 @@ MINOR:
     - mark the optional arguments as ? in addition to |null
     - flag the class fields as |null when they are not populated as part of initial object creation.
     - filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. on_built_entity
-    - Some edge cases of rebuilding a tunnel portal and underground parts doesn't recreate the tunnel correctly. Make a proper test for all combinations so it can be tested properly.
+    - Some edge cases of rebuilding a tunnel portal and underground parts doesn't recreate the tunnel correctly (I think still, but can't reproduce reliably). Make a proper test for all combinations so it can be tested properly.
+    - building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
 
 
 FUTURE:
