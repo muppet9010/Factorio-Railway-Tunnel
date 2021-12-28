@@ -114,7 +114,7 @@ TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalE
 
     if portalEntity == nil then
         local managedTrain = playerContainer.managedTrain
-        if Utils.GetDistanceSingleAxis(managedTrain.entrancePortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.exitPortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) then
+        if Utils.GetDistance(managedTrain.entrancePortal.entryPortalEnd.entity_position, player.position) < Utils.GetDistance(managedTrain.exitPortal.entryPortalEnd.entity_position, player.position) then
             portalObject = managedTrain.entrancePortal
         else
             portalObject = managedTrain.exitPortal
@@ -251,7 +251,9 @@ end
 
 -- OVERHAUL - has the managedTrain passed in to it now in calls to fix syntax errors.
 ---@param undergroundTrain LuaTrain
-TrainManagerPlayerContainers.On_TunnelRemoved = function(undergroundTrain)
+---@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+TrainManagerPlayerContainers.On_TunnelRemoved = function(undergroundTrain, killForce, killerCauseEntity)
     if 1 == 1 then
         --OVERHAUL: just skip this Module for now.
         return
@@ -263,7 +265,7 @@ TrainManagerPlayerContainers.On_TunnelRemoved = function(undergroundTrain)
                 playerContainer.entity.set_driver(nil)
                 local player = playerContainer.player
                 if player.character ~= nil then
-                    player.character.die()
+                    player.character.die(killForce, killerCauseEntity)
                 end
                 TrainManagerPlayerContainers.RemovePlayerContainer(playerContainer)
             end

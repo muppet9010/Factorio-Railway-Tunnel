@@ -207,4 +207,26 @@ Logging.PrintThingsDetails = function(thing, _tablesLogged)
     return returnedSafeTable
 end
 
+--- Writes out sequential numbers at the set position. Used as a visial debugging tool.
+---@param targetSurface LuaSurface
+---@param targetPosition LuaEntity|Position
+Logging.WriteOutNumberedMarker = function(targetSurface, targetPosition)
+    global.numberedCount = global.numberedCount or 1
+    rendering.draw_text {
+        text = global.numberedCount,
+        surface = targetSurface,
+        target = targetPosition,
+        color = {r = 1, g = 0, b = 0, a = 1},
+        scale_with_zoom = true
+    }
+    global.numberedCount = global.numberedCount + 1
+end
+
+--- Writes out sequential numbers at the SurfacePositionString. Used as a visial debugging tool.
+---@param targetSurfacePositionString SurfacePositionString
+Logging.WriteOutNumberedMarkerForSurfacePositionString = function(targetSurfacePositionString)
+    local tempSurfaceId, tempPos = Utils.SurfacePositionStringToSurfaceAndPosition(targetSurfacePositionString)
+    Logging.WriteOutNumberedMarker(tempSurfaceId, tempPos)
+end
+
 return Logging

@@ -404,7 +404,6 @@ end
 ---@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 ---@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEntity)
-    -- TODO: the killer variables should be fed through to the other sub functions that should use them when things need to die, i.e. players.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
             if managedTrain.enteringTrainId ~= nil then
@@ -430,7 +429,7 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEn
             end
 
             if managedTrain.undergroundTrainHasPlayersRiding then
-                TrainManagerPlayerContainers.On_TunnelRemoved(managedTrain)
+                TrainManagerPlayerContainers.On_TunnelRemoved(managedTrain, killForce, killerCauseEntity)
             end
 
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.tunnelRemoved)
@@ -572,8 +571,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
 
     -- Get the position for the front of the lead carriage; 1.5 tiles back from the entry signal. This means the front 2.5 tiles of the portal area graphics can show the train, with further back needing to be covered to hide the train graphics while the train is underground. Also this allows the train to just fit in without hitting the transition usage detector entity at the back of the exit portal.
     local exitPortalEntrySignalOutPosition = managedTrain.exitPortalEntrySignalOut.entity.position
-    local trainFrontOffsetFromSignal = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = -1.5, y = 1.5})
-    local nextCarriagePosition = Utils.ApplyOffsetToPosition(exitPortalEntrySignalOutPosition, trainFrontOffsetFromSignal)
+    local nextCarriagePosition = Utils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = -1.5, y = 1.5}, exitPortalEntrySignalOutPosition)
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator
@@ -677,8 +675,7 @@ TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastP
     if lastCarriageEntityName ~= nil then
         carriagesDistance = carriagesDistance + Common.GetCarriagePlacementDistance(lastCarriageEntityName)
     end
-    local nextCarriageOffset = Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance})
-    return Utils.ApplyOffsetToPosition(lastPosition, nextCarriageOffset)
+    return Utils.RotateOffsetAroundPosition(trainOrientation, {x = 0, y = carriagesDistance}, lastPosition)
 end
 
 -- Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.

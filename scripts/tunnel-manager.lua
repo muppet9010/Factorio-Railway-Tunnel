@@ -209,8 +209,11 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 Tunnel.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
+    if not createdEntity.valid then
+        return
+    end
     local createdEntity_type = createdEntity.type
-    if (not createdEntity.valid or (not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
+    if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
         return
     end
 

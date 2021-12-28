@@ -271,17 +271,76 @@ Utils.GetLeftTopTilePositionForChunkPosition = function(chunkPos)
     return {x = chunkPos.x * 32, y = chunkPos.y * 32}
 end
 
+--- Rotates an offset around position of {0,0}.
 ---@param orientation RealOrientation
 ---@param position Position
 ---@return Position
 Utils.RotatePositionAround0 = function(orientation, position)
-    local deg = orientation * 360
-    local rad = math.rad(deg)
+    -- Handle simple cardinal direction rotations.
+    if orientation == 0 then
+        return position
+    elseif orientation == 0.25 then
+        return {
+            x = 0 - position.y,
+            y = position.x
+        }
+    elseif orientation == 0.5 then
+        return {
+            x = 0 - position.x,
+            y = 0 - position.y
+        }
+    elseif orientation == 0.75 then
+        return {
+            x = position.y,
+            y = 0 - position.x
+        }
+    end
+
+    -- Handle any non cardinal direction orientation.
+    local rad = math.rad(orientation * 360)
     local cosValue = math.cos(rad)
     local sinValue = math.sin(rad)
     local rotatedX = (position.x * cosValue) - (position.y * sinValue)
     local rotatedY = (position.x * sinValue) + (position.y * cosValue)
     return {x = rotatedX, y = rotatedY}
+end
+
+--- Rotates an offset around a position. Combines Utils.RotatePositionAround0() and Utils.ApplyOffsetToPosition() to save UPS.
+---@param orientation RealOrientation
+---@param offset Position @ the position to be rotated by the orientation.
+---@param position Position @ the position the rotated offset is applied to.
+---@return Position
+Utils.RotateOffsetAroundPosition = function(orientation, offset, position)
+    -- Handle simple cardinal direction rotations.
+    if orientation == 0 then
+        return {
+            x = position.x + offset.x,
+            y = position.y + offset.y
+        }
+    elseif orientation == 0.25 then
+        return {
+            x = position.x - offset.y,
+            y = position.y + offset.x
+        }
+    elseif orientation == 0.5 then
+        return {
+            x = position.x - offset.x,
+            y = position.y - offset.y
+        }
+    elseif orientation == 0.75 then
+        return {
+            x = position.x + offset.y,
+            y = position.y - offset.x
+        }
+    end
+
+    -- Handle any non cardinal direction orientation.
+    local rad = math.rad(orientation * 360)
+    local cosValue = math.cos(rad)
+    local sinValue = math.sin(rad)
+    local rotatedX = (position.x * cosValue) - (position.y * sinValue)
+    local rotatedY = (position.x * sinValue) + (position.y * cosValue)
+    return {x = position.x + rotatedX, y = position.y + rotatedY}
 end
 
 --- Rotates the directionToRotate by a direction difference from the referenceDirection to the appliedDirection. Useful for rotating entities direction in proportion to a parent's direction change from known direction.
@@ -348,13 +407,14 @@ Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs = function(listOfBoundingBoxs
     return {left_top = {x = minX, y = minY}, right_bottom = {x = maxX, y = maxY}}
 end
 
+-- Applies an offset to a position. If you are rotating the offset first consider using Utils.RotateOffsetAroundPosition() as lower UPS than the 2 seperate function calls.
 ---@param position Position
 ---@param offset Position
 ---@return Position
 Utils.ApplyOffsetToPosition = function(position, offset)
     return {
-        x = position.x + (offset.x or 0),
-        y = position.y + (offset.y or 0)
+        x = position.x + offset.x,
+        y = position.y + offset.y
     }
 end
 
@@ -589,9 +649,10 @@ Utils.CalculateTilesUnderPositionedBoundingBox = function(positionedBoundingBox)
     return tiles
 end
 
+-- Gets the distance between the 2 positions.
 ---@param pos1 Position
 ---@param pos2 Position
----@return number
+---@return number @ is inheriently a positive number.
 Utils.GetDistance = function(pos1, pos2)
     -- Don't do any valid checks as called so frequently, big UPS wastage.
     local dx = pos1.x - pos2.x
@@ -599,10 +660,11 @@ Utils.GetDistance = function(pos1, pos2)
     return math.sqrt(dx * dx + dy * dy)
 end
 
+-- Gets the distance between a single axis of 2 positions.
 ---@param pos1 Position
 ---@param pos2 Position
 ---@param axis Axis
----@return number
+---@return number @ is inheriently a positive number.
 Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
     -- Don't do any valid checks as called so frequently, big UPS wastage.
     return math.abs(pos1[axis] - pos2[axis])
@@ -814,7 +876,7 @@ end
 ---@return Position position
 Utils.SurfacePositionStringToSurfaceAndPosition = function(surfacePositionString)
     local underscoreIndex = string.find(surfacePositionString, "_")
-    local surfaceId = string.sub(surfacePositionString, 1, underscoreIndex - 1)
+    local surfaceId = tonumber(string.sub(surfacePositionString, 1, underscoreIndex - 1))
     local commaIndex = string.find(surfacePositionString, ",")
     local positionX = string.sub(surfacePositionString, underscoreIndex + 1, commaIndex - 1)
     local positionY = string.sub(surfacePositionString, commaIndex + 1, string.len(surfacePositionString))
