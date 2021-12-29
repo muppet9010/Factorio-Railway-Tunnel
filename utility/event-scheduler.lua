@@ -48,10 +48,10 @@ end
 ---------------------------------------------------------------------------------------------
 
 --- Called from OnStartup() or from some other event or trigger to schedule an event.
----@param eventTick Tick|null @ eventTick of nil will be next tick, current or past ticks will fail. eventTick of -1 is a special input for current tick when used by events that run before the Factorio on_tick event, i.e. a custom input (key pressed for action) handler.
+---@param eventTick Tick| @ eventTick of nil will be next tick, current or past ticks will fail. eventTick of -1 is a special input for current tick when used by events that run before the Factorio on_tick event, i.e. a custom input (key pressed for action) handler.
 ---@param eventName string
----@param instanceId StringOrNumber|null @ Defaults to empty string if none was provided.
----@param eventData table|null @ Custom table of data that will be returned to the triggered function when called as the "data" attribute.
+---@param instanceId? StringOrNumber @ Defaults to empty string if none was provided.
+---@param eventData? table @ Custom table of data that will be returned to the triggered function when called as the "data" attribute.
 EventScheduler.ScheduleEventOnce = function(eventTick, eventName, instanceId, eventData)
     if eventName == nil then
         error("EventScheduler.ScheduleEventOnce called with missing arguments")
@@ -78,8 +78,8 @@ end
 
 --- Called whenever required.
 ---@param targetEventName string
----@param targetInstanceId StringOrNumber|null
----@param targetTick Tick|null
+---@param targetInstanceId? StringOrNumber
+---@param targetTick? Tick
 EventScheduler.IsEventScheduledOnce = function(targetEventName, targetInstanceId, targetTick)
     if targetEventName == nil then
         error("EventScheduler.IsEventScheduledOnce called with missing arguments")
@@ -93,8 +93,8 @@ end
 
 --- Called whenever required.
 ---@param targetEventName string
----@param targetInstanceId StringOrNumber|null
----@param targetTick Tick|null
+---@param targetInstanceId? StringOrNumber
+---@param targetTick? Tick
 EventScheduler.RemoveScheduledOnceEvents = function(targetEventName, targetInstanceId, targetTick)
     if targetEventName == nil then
         error("EventScheduler.RemoveScheduledOnceEvents called with missing arguments")
@@ -104,8 +104,8 @@ end
 
 --- Called whenever required.
 ---@param targetEventName string
----@param targetInstanceId StringOrNumber|null
----@param targetTick Tick|null
+---@param targetInstanceId? StringOrNumber
+---@param targetTick? Tick
 EventScheduler.GetScheduledOnceEvents = function(targetEventName, targetInstanceId, targetTick)
     if targetEventName == nil then
         error("EventScheduler.GetScheduledOnceEvents called with missing arguments")
@@ -121,8 +121,8 @@ end
 --- Called from OnStartup() or from some other event or trigger to schedule an event to fire every tick from now on until cancelled.
 --- Good if you need to pass data back with each firing and the event is going to be stopped/started. If its going to run constantly then betetr to just register for the on_tick event handler via the Events utlity class.
 ---@param eventName string
----@param instanceId StringOrNumber|null @ Defaults to empty string if none was provided.
----@param eventData table|null @ Custom table of data that will be returned to the triggered function when called as the "data" attribute.
+---@param instanceId? StringOrNumber @ Defaults to empty string if none was provided.
+---@param eventData? table @ Custom table of data that will be returned to the triggered function when called as the "data" attribute.
 EventScheduler.ScheduleEventEachTick = function(eventName, instanceId, eventData)
     if eventName == nil then
         error("EventScheduler.ScheduleEventEachTick called with missing arguments")
@@ -139,7 +139,7 @@ end
 
 --- Called whenever required.
 ---@param targetEventName string
----@param targetInstanceId StringOrNumber|null
+---@param targetInstanceId? StringOrNumber
 EventScheduler.IsEventScheduledEachTick = function(targetEventName, targetInstanceId)
     if targetEventName == nil then
         error("EventScheduler.IsEventScheduledEachTick called with missing arguments")
@@ -153,7 +153,7 @@ end
 
 --- Called whenever required.
 ---@param targetEventName string
----@param targetInstanceId StringOrNumber|null
+---@param targetInstanceId? StringOrNumber
 EventScheduler.RemoveScheduledEventFromEachTick = function(targetEventName, targetInstanceId)
     if targetEventName == nil then
         error("EventScheduler.RemoveScheduledEventsFromEachTick called with missing arguments")
@@ -163,7 +163,7 @@ end
 
 --- Called whenever required.
 ---@param targetEventName string
----@param targetInstanceId StringOrNumber|null
+---@param targetInstanceId? StringOrNumber
 EventScheduler.GetScheduledEachTickEvent = function(targetEventName, targetInstanceId)
     if targetEventName == nil then
         error("EventScheduler.GetScheduledEachTickEvent called with missing arguments")

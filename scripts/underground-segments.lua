@@ -14,7 +14,7 @@ local UndergroundSegments = {}
 ---@field surface LuaSurface @ the surface this underground object is on.
 ---@field undergroundEndSegments UndergroundEndSegmentObject[] @ objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
 ---
----@field tunnel Tunnel @ ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
+---@field tunnel? Tunnel|null @ ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
 
 ---@class UndergroundSegment
 ---@field id UnitNumber @ unit_number of the placed segment entity.
@@ -41,9 +41,9 @@ local UndergroundSegments = {}
 ---@field typeData UndergroundSegmentTypeData @ ref to generic data about this type of segment.
 ---@field nonConnectedExternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this segments non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the invisible rail entities within the tunnel segment that form part of the larger tunnel. Only established once this portal is part of a valid tunnel.
----@field signalEntities table<UnitNumber, LuaEntity> @ the hidden signal entities within the tunnel segment. Only established once this portal is part of a valid tunnel.
----@field topLayerEntity LuaEntity @ the top layer graphical entity that is showings its picture and hiding the main entities once placed. Only established once this portal is part of a valid tunnel.
+---@field tunnelRailEntities? table<UnitNumber, LuaEntity>|null @ the invisible rail entities within the tunnel segment that form part of the larger tunnel. Only established once this portal is part of a valid tunnel.
+---@field signalEntities? table<UnitNumber, LuaEntity>|null @ the hidden signal entities within the tunnel segment. Only established once this portal is part of a valid tunnel.
+---@field topLayerEntity? LuaEntity|null @ the top layer graphical entity that is showings its picture and hiding the main entities once placed. Only established once this portal is part of a valid tunnel.
 
 ---@class UndergroundEndSegmentObject @ details of a segment at the end of an underground.
 ---@field segment UndergroundSegment
@@ -485,8 +485,8 @@ end
 
 --- Checks if an underground segment can connect at a free internal connection position. If it does returns the objects, otherwise nil for all.
 ---@param segmentInternalSurfacePositionString SurfacePositionString
----@return Underground|null underground
----@return UndergroundSegment|null segmentAtOtherEndOfUnderground
+---@return Underground|nil underground
+---@return UndergroundSegment|nil segmentAtOtherEndOfUnderground
 UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition = function(segmentInternalSurfacePositionString)
     -- Uses the segment position rather than some underground ends' positions as an underground is never complete to flag these. Also entities can't overlap their internal positions so no risk of getting the wrong object.
     local segmentInternalSurfacePositionObject = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[segmentInternalSurfacePositionString]
@@ -505,8 +505,8 @@ end
 -- Checks if an underground segment can connect to a portal. Can provide a known portal to ignore, as single entity undergrounds will connect to 2 portals.
 ---@param segment UndergroundSegment
 ---@param portalToIgnore Portal
----@return Portal|null portal
----@return PortalEnd|null endPortalPart
+---@return Portal|nil portal
+---@return PortalEnd|nil endPortalPart
 UndergroundSegments.CanUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
     for _, segmentFreeExternalSurfacePositionString in pairs(segment.nonConnectedExternalSurfacePositions) do
         local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtItsInternalPosition", segmentFreeExternalSurfacePositionString)
@@ -684,8 +684,8 @@ end
 
 -- Called by other functions when a underground segment entity is removed and thus we need to update the underground for this change.
 ---@param removedSegment UndergroundSegment
----@param killForce LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
----@param killerCauseEntity LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killForce? LuaForce @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the entity is being removed due to it being killed, otherwise nil.
 UndergroundSegments.EntityRemoved = function(removedSegment, killForce, killerCauseEntity)
     local removedUnderground = removedSegment.underground
 

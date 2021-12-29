@@ -15,9 +15,9 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainState
 ---
----@field enteringTrain LuaTrain
----@field enteringTrainId Id @ The enteringTrain LuaTrain id.
----@field enteringTrainForwards boolean @ If the train is moving forwards or backwards from its viewpoint.
+---@field enteringTrain? LuaTrain|null
+---@field enteringTrainId? Id|null @ The enteringTrain LuaTrain id.
+---@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint.
 ---
 ---@field undergroundTrainHasPlayersRiding boolean @ if there are players riding in the underground train.
 ---@field tempEnteringSpeed double @ the speed the train was going when entering and we maintain at for whole tunnel approach and transversal in intiial code version.
@@ -25,17 +25,18 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field traversalStartingTick int @ the tick the train entered the tunnel.
 ---@field traversalArrivalTick int @ the tick the train reaches the far end of the tunnel and is restarted.
 ---
----@field leavingTrain LuaTrain @ The train created leaving the tunnel on the world surface.
----@field leavingTrainId Id @ The LuaTrain ID of the leaving train.
+---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
+---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
 ---
----@field portalTrackTrain LuaTrain @ The train thats on the portal track and reserved the tunnel.
----@field portalTrackTrainId Id @ The LuaTrain ID of the portalTrackTrain.
----@field portalTrackTrainInitiallyForwards boolean @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection.
----@field portalTrackTrainBySignal boolean @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet.
+---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel.
+---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain.
+---@field portalTrackTrainInitiallyForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection.
+---@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet.
 ---
----@field dummyTrain LuaTrain @ The dummy train used to keep the train stop reservation alive
----@field dummyTrainId Id @ The LuaTrain ID of the dummy train.
----@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes.
+---@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
+---@field dummyTrainId? Id|null @ The LuaTrain ID of the dummy train.
+---
+---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. -- OVERHAUL - not used by anything any more other than in its populating function.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field targetTrainStop LuaEntity @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 ---
@@ -249,6 +250,11 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
+    managedTrain.enteringTrainForwards = nil
+    managedTrain.portalTrackTrain = nil
+    managedTrain.portalTrackTrainId = nil
+    managedTrain.portalTrackTrainInitiallyForwards = nil
+    managedTrain.portalTrackTrainBySignal = nil
 
     -- Complete the state transition.
     Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
@@ -394,15 +400,16 @@ TrainManager.DestroyDummyTrain = function(managedTrain)
         for _, carriage in pairs(managedTrain.dummyTrain.carriages) do
             carriage.destroy()
         end
-        managedTrain.dummyTrain, managedTrain.dummyTrainId = nil, nil
     elseif managedTrain.dummyTrainId ~= nil then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
     end
+    managedTrain.dummyTrain = nil
+    managedTrain.dummyTrainId = nil
 end
 
 ---@param tunnelRemoved Tunnel
----@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEntity)
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
@@ -509,7 +516,7 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param releaseTunnel boolean|null @ If nil then tunnel is released (defaults to true).
+---@param releaseTunnel? boolean @ If nil then tunnel is released (defaults to true).
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
         TrainManagerPlayerContainers.On_TerminateTunnelTrip(managedTrain)

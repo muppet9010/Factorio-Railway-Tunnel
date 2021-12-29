@@ -82,6 +82,7 @@ Tunnel.CompleteTunnel = function(portals, underground)
 
     -- Create the tunnel global object.
     local refPortal = portals[1]
+    ---@type Tunnel
     local tunnel = {
         id = global.tunnels.nextTunnelId,
         surface = refPortal.surface,
@@ -113,8 +114,8 @@ Tunnel.CompleteTunnel = function(portals, underground)
 end
 
 ---@param tunnel Tunnel
----@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 Tunnel.RemoveTunnel = function(tunnel, killForce, killerCauseEntity)
     Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel, killForce, killerCauseEntity)
     Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals, killForce, killerCauseEntity)

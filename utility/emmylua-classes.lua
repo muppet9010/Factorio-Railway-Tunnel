@@ -32,6 +32,7 @@
 ---@field repeat_count uint
 ---
 ---@alias EntityActioner LuaPlayer|LuaEntity|null @ The placer of a built entity: either player, construction robot or script (nil).
+---
 ---@class LuaBaseClass @ Used as a fake base class, only supports checking defined attributes.
 ---@field valid boolean
 ---

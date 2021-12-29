@@ -373,10 +373,10 @@ end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
 --- Only needs calling if trains are being built manually/scripted, as TestFunctions.BuildBlueprintFromString() includes it.
----@param locomotives LuaEntity[]|null
----@param cargoWagons LuaEntity[]|null
----@param fluidWagons LuaEntity[]|null
----@param artilleryWagons LuaEntity[]|null
+---@param locomotives? LuaEntity[]
+---@param cargoWagons? LuaEntity[]
+---@param fluidWagons? LuaEntity[]
+---@param artilleryWagons? LuaEntity[]
 TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWagons, artilleryWagons)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
     if locomotives ~= nil then

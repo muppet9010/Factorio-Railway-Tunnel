@@ -7,22 +7,6 @@ local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = 
 local TunnelPortals = {}
 local EventScheduler = require("utility/event-scheduler")
 
--- Distances are from entry end portal position in the Portal.entryDirection direction.
-local EntryEndPortalSetup = {
-    trackEntryPointFromCenter = 3, -- the border of the portal on the entry side.
-    entrySignalsDistance = 1.5,
-    enteringTrainUsageDetectorEntityDistance = 0.5 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until just before it triggers the signal, but a leaving train won't touch it either when waiting at the exit signals. This is a judgement call as trains can actually collide when manaully driven over signals without triggering them. Positioned to minimise UPS usage
-}
-
--- Distances are from blocking end portal position in the Portal.entryDirection direction.
-local BlockingEndPortalSetup = {
-    dummyLocomotiveDistance = 1.8, -- as far back in to the end portal without touching the blocking locomotive.
-    transitionUsageDetectorEntityDistance = 4.1, -- can't go further back as otherwise the entering train will release the signal and thus the tunnel.
-    transitionSignalsDistance = 2.5,
-    transitionSignalBlockingLocomotiveDistance = -1.3, -- As far away from entry end as possible, but can't stick out beyond the portal's collision box.
-    blockedInvisibleSignalsDistance = -1.5
-}
-
 ---@class Portal
 ---@field id uint @ unique id of the portal object.
 ---@field isComplete boolean @ if the portal has 2 connected portal end objects or not.
@@ -32,23 +16,23 @@ local BlockingEndPortalSetup = {
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
 ---
----@field portalTunneExternalConnectionSurfacePositionStrings table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ the 2 external positions the portal should look for underground segments at. Only established on a complete portal.
+---@field portalTunneExternalConnectionSurfacePositionStrings? table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject>|null @ the 2 external positions the portal should look for underground segments at. Only established on a complete portal.
 ---
----@field entryPortalEnd PortalEnd @ the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
----@field blockedPortalEnd PortalEnd @ the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
----@field transitionSignals table<TunnelSignalDirection, PortalTransitionSignal> @ These are the inner locked red signals that a train paths at to enter the tunnel. Only established once this portal is part of a valid tunnel.
----@field entrySignals table<TunnelSignalDirection, PortalEntrySignal> @ These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. Only established once this portal is part of a valid tunnel.
----@field tunnel Tunnel @ ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
----@field portalRailEntities table<UnitNumber, LuaEntity>|null @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
----@field portalOtherEntities table<UnitNumber, LuaEntity>|null @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
----@field portalEntryPointPosition Position @ the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
----@field enteringTrainUsageDetectorEntity LuaEntity @ hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
----@field enteringTrainUsageDetectorPosition Position @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
----@field transitionUsageDetectorEntity LuaEntity @ hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
----@field transitionUsageDetectorPosition Position @ the position of this portals transitionUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
----@field dummyLocomotivePosition Position @ the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
----@field entryDirection defines.direction @ the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
----@field leavingDirection defines.direction @ the direction a train would be heading if leaving the tunnel via this portal. Only established once this portal is part of a valid tunnel.
+---@field entryPortalEnd? PortalEnd|null @ the entry portal object of this portal. Only established once this portal is part of a valid tunnel.
+---@field blockedPortalEnd? PortalEnd|null @ the blocked portal object of this portal. Only established once this portal is part of a valid tunnel.
+---@field transitionSignals? table<TunnelSignalDirection, PortalTransitionSignal>|null @ These are the inner locked red signals that a train paths at to enter the tunnel. Only established once this portal is part of a valid tunnel.
+---@field entrySignals? table<TunnelSignalDirection, PortalEntrySignal>|null @ These are the signals that are visible to the wider train network and player. The portals 2 IN entry signals are connected by red wire. Only established once this portal is part of a valid tunnel.
+---@field tunnel? Tunnel|null @ ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
+---@field portalRailEntities? table<UnitNumber, LuaEntity>|null @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
+---@field portalOtherEntities? table<UnitNumber, LuaEntity>|null @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
+---@field portalEntryPointPosition? Position|null @ the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
+---@field enteringTrainUsageDetectorEntity? LuaEntity|null @ hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
+---@field enteringTrainUsageDetectorPosition? Position|null @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
+---@field transitionUsageDetectorEntity? LuaEntity|null @ hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
+---@field transitionUsageDetectorPosition? Position|null @ the position of this portals transitionUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
+---@field dummyLocomotivePosition? Position|null @ the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
+---@field entryDirection? defines.direction|null @ the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
+---@field leavingDirection? defines.direction|null @ the direction a train would be heading if leaving the tunnel via this portal. Only established once this portal is part of a valid tunnel.
 
 ---@class PortalPart @ a generic part (entity) object making up part of a potral.
 ---@field id UnitNumber @ unit_number of the portal part entity.
@@ -70,12 +54,12 @@ local BlockingEndPortalSetup = {
 ---@field nonConnectedInternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---
----@field portal Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
+---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 
 ---@class PortalEnd : PortalPart @ the end part of a portal.
----
----@field endPortalType EndPortalType|null @ the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direction within the portal is known.
 ---@field connectedToUnderground boolean @ if theres an underground segment connected to this portal on one side as part of the completed tunnel. Defaults to false on non portal connected parts.
+---
+---@field endPortalType? EndPortalType|null @ the type of role this end portal is providing to the parent portal. Only populated when its part of a full tunnel and thus direction within the portal is known.
 
 ---@class EndPortalType
 local EndPortalType = {
@@ -175,6 +159,22 @@ local PortalTypeData = {
             }
         }
     }
+}
+
+-- Distances are from entry end portal position in the Portal.entryDirection direction.
+local EntryEndPortalSetup = {
+    trackEntryPointFromCenter = 3, -- the border of the portal on the entry side.
+    entrySignalsDistance = 1.5,
+    enteringTrainUsageDetectorEntityDistance = 0.5 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until just before it triggers the signal, but a leaving train won't touch it either when waiting at the exit signals. This is a judgement call as trains can actually collide when manaully driven over signals without triggering them. Positioned to minimise UPS usage
+}
+
+-- Distances are from blocking end portal position in the Portal.entryDirection direction.
+local BlockingEndPortalSetup = {
+    dummyLocomotiveDistance = 1.8, -- as far back in to the end portal without touching the blocking locomotive.
+    transitionUsageDetectorEntityDistance = 4.1, -- can't go further back as otherwise the entering train will release the signal and thus the tunnel.
+    transitionSignalsDistance = 2.5,
+    transitionSignalBlockingLocomotiveDistance = -1.3, -- As far away from entry end as possible, but can't stick out beyond the portal's collision box.
+    blockedInvisibleSignalsDistance = -1.5
 }
 
 TunnelPortals.CreateGlobals = function()
@@ -506,8 +506,8 @@ end
 
 --- Checks if a complete Portal has a connection at an internal position. If it does returns the objects, otherwise nil for all.
 ---@param portalInternalSurfacePositionString SurfacePositionString
----@return Portal|null portal
----@return PortalEnd|null portalEnd
+---@return Portal|nil portal
+---@return PortalEnd|nil portalEnd
 TunnelPortals.CanAPortalConnectAtItsInternalPosition = function(portalInternalSurfacePositionString)
     local portalTunnelInternalConnectionSurfacePositionObject = global.tunnelPortals.portalTunnelInternalConnectionSurfacePositionStrings[portalInternalSurfacePositionString]
     if portalTunnelInternalConnectionSurfacePositionObject ~= nil and portalTunnelInternalConnectionSurfacePositionObject.portal.isComplete then
@@ -825,8 +825,8 @@ end
 
 -- Called by other functions when a portal part entity is removed and thus we need to remove the portal as part of this.
 ---@param removedPortalPart PortalPart
----@param killForce LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
----@param killerCauseEntity LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killForce? LuaForce @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the entity is being removed due to it being killed, otherwise nil.
 TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal part object itself so that the surfacePositions are removed before we re-create the remaining portal part's portals.
     global.tunnelPortals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
@@ -880,8 +880,8 @@ end
 
 -- Called from the Tunnel Manager when a tunnel that the portal was part of has been removed.
 ---@param portals Portal[]
----@param killForce LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
     -- Cleanse the portal's fields that are only populated when they are part of a tunnel.
     for _, portal in pairs(portals) do
