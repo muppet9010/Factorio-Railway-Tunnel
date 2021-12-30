@@ -1,11 +1,13 @@
 --[[
     A series of tests that schedules a train to a temporary stop thats part to the tunnel and then possibly on to another stop. Check that the train behaves as desired for both pulling to end of tunnel (or not) and not looping through the tunnel infinitely. Does combinations for:
-        targetTunnelRail: tunnelEntranceAboveGround, tunnelEntranceUnderground, tunnelSegment, tunnelExitUnderground, tunnelExitAboveGround
+        targetTunnelRail: entrancePortalMiddle, entrancePortalBlockingEnd, undergroundSegment, exitPortalBlockingEnd, exitPortalMiddle
         nextStop: none, station, rail
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
+local Common = require("scripts/common")
+local TunnelRailEntityNames = Common.TunnelRailEntityNames
 
 local DoMinimalTests = true -- The minimal test to prove the concept. Just goes to a tunnel segment, then to end station, as this triggered the origional issue.
 
@@ -31,14 +33,14 @@ Test.OnLoad = function(testName)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
 end
 
-local blueprintString = "0eNqtm91u4kgQRt/F1xBR3W63zf0+xWoUMeDJWgsGGZPdKOLd1x6Y/LDNcD6Um/yKj8KnjmMXldfs+/pQ77qm7bP5a9Yst+0+m//5mu2bp3axHn/Wv+zqbJ41fb3JJlm72IzfdYtm/c/i5bE/tG29np4+Pe62Xb9YP+4P3Y/Fsp7u1sPHTT1EHydZ067qf7O5HSco/MND3PHbJBtSmr6pT8X9/OblsT1svtfdkPn2yOWhe65X058Bk2y33Q+P2bbjEw0502KSvWRzXw7Rq6arl6ffFWNFF4nuLXHfD2FPf/XXMu2UGT9nukSmp5k8MqeRHkcGGhlwZEEjI46MNLLCkSXGw/lUOJMDshkO5YjMcCiHZNgi45gMa+Q4J8MiOQEUVskJoLBMTgCFdXICKCyUF0BhozwH5bBRnoNy2CjPQTlslOegHDYq56AcNioXQGGjcgEUNioXQGGjcgEUNioIoLBRgYPy2KjAQXlsVOCgPDYqcFAeG1UIl4/YqEIAhY0qBFDYqEIAhY0qBFDYqCiAwkZFDirHRkUOKsdGRQ4qx0ZFDirHRpXC3RM2qhRAYaNKARQ2qhRAYaNKARQ2qhJAYaMq4UYXG1VxUAEbVXFQARtVcVCBjyNmnFTIeaqAKvBUgVXBUwVYkacKtITphECrYoMzs/TkzKeGPVir6enl5/Y5NKZC+XjC0qmWSnVwbjgOMsbMHGR6eEjdW2YqJdcqC+5zZXkqM2iVXWaGVGbxaWY7Pc91E6gfTl4G/xBAD0UWO8C+mpuEU8JyzX7lhsvcZHtWYs+HcPvYxpk01Q7l7Tqjab5fZiYnsU5VM4AOiB52gLtOKnlQ38Uai22n+367SxzT861+uDiJDodl3y9OX2d/tKss9RSBNpn7VXq8LD15oIs73nxZXR02hup/L+150TWL6/bEeKOAff00vtlzs4LzdOKOCsqvqsDfW0H1VRXcS6GcfVUF8d4K7GsasUxDcLcLcPLJARlW4kvit/NDBVJznhp4auCpnqcWPNV4Kr4knp7H1ii15KkCLf6n3HNaFb8o9pxWZTyV06r4e9+O06q4W47TqrhbTqDF3XICLe6WE2hxt0ygxd0ygRZ3yzgtm3G5zAux3C4zIdap9woolesVhVSul8KL66XgKsSVHZYqT3NYrDzOYbF830QxQdg4UbwVdk6Ek4yZfkOKYvm8VDh9G988Macg4xNTpyDjI1OnIOOWOQUZt8wryIStLgEZ30Ix4crT+B6KCZfJxjdRTLimN76LYsINiPFtFMsVZNyyXEHGLcsVZO+WrbfL7WbbN891amvQPYTi41lh2zVD1vmGfPYwDrjGfd39+IBuu/y77qc/DvV6/AN0TD4x9zBXeoV7GIRe8cJ+pdArfHvFgtArH/ZXfg+1+j1Up0LlOy4WhCblWy4WhF7hey5WKL3CTS2UXonqCLmYXQ64imRwqU7OUsHfTq0yhLz/78Ake667/ekllcNpqXLRV9Gi+ePxPynb6GA="
+local blueprintString = "0eNqtnN1y2kgUhN9F18il+df4Pk+xlXJhULyqgEQJ4Y3LxbtHGNsYdsDdOroJcVL0DPN1Hw2jI79mj6tdtenqps/uX7N60Tbb7P6f12xbPzXz1eHf+pdNld1ndV+ts1n2OF/83m2Gn7t5vfpv/vLQ75qmWuXHl4dN2/Xz1cN21/2aL6p8sxr+XFeD+H6W1c2y+pPdq/3sunwzX1fv4l/eovc/Z9mgUvd1dZze2w8vD81u/Vh1g+bnOxe77rla5m8Cs2zTbof3tM1hoEEnN+UsexletfOD+rLuqsXxv/1hUhei+lN02w96T//2V2XNh2w4l9UJWYPLKkLWwrI6ErIOlw2ErMdlHSEbcFkGWYnLMsgiLKsYZKrAdRlmSuG6DDSFB00x1BSeNMVgU3jUKGx41ChqeNQoaHjUKGZ41ChkcNQYVQ0HjVkCDceM4aXhkDHm0nDEmCRoOGBUbjUcMKrMaDhgVFXUcMCoIq7hgFHXHA0HjLpCGjhh1PXcwBGjdh8Gzhi1VzJwyKidnYFTRu1DDZwybtcMp8xQyOCUGQoZnDJDIYNTZqmvDnDKLIPMwimzDDILp8wyyCycMssgs3DKHIUMTpmjkMEpcxQyOGWOQganzFHI4JR5BpmDU+YZZA5OmWeQOThlnkHm4JR56pQCTlmgkMEpCxQyOGWBQganLFDI4JQFClnEzuxKe+XIzqSOlfCjj9MV0pzrhpQuHLIyXJFVKVkNnlvaz0UoAFWDqcbiJJqSsezkrD6fnE2pOnJyl6IuJerPTo7z99PlFPS7j0TZ4s4BhgqYchluCCchlbxTTQSWIqJLYT5nbMrLGacyEAr2kN14QFWRZeBSNHkMrOm4Xq5tygzBgGaIN5Y2BS2conaYbpNv+3aTOvf7KLDmosAO/t/28+Pfsx/NMksN4lBn2NP0/eX0k8t9Hr8vd4XebwdVw4xu3Icw7n+f5nne1fPr6QnhmxG31dPhtlP+gf/WjYURw5cTDG/GDx8nGF6NHr4s5MOr8exLNcHwYfzweoLhx1uvNBMMP956pZ1geIH1nHx4gfO8fHSB8SaoeQLfTVDyBLaboOKNd12UFzzB4PJyN37do7zYjbdclJe68WmL8kI3vtBEeZkTFNkoL3OCK0wMYzaTggt6vFrZds2y6p66dngFPvPVHZX+fgpxoimY0VNQRTFm3XUQjDhBZVOC4eW1zUjWW17djBMML69vRsJeXuFMFAwvL3FWYj35Vs5KrCffy1mJ9eSbOSuwnpLv5qzAekpe9ZzAemqCHZ3Aekpe9ZzAekpe9ZzEevKq5yTWk1c9L7GevOp5ifXkVc9LrCevel5gPS2vel5gPa3G7C6DALfW/GE9dNqt8KbHLwf2kDDeWBwCJUy0FjtKGG8uvs4yKYy3FwdFCeP33TwHD+/m9xQ8vAcy9xQ8vAsy9xQ8vA8y9xQ8vBMydxQ8vBcydxw8PHmOg0e09XPw8OQ5Dh5xx5uDhyfPUvAs0U1CwcM7I3NLwcN7I3NLwbPEU2sUPLw/MjccPDx5hoPn+ecCMWG+fwvT5Ru4MF04dyXlNbxRsqTWF++ULClDuBHdJpAunLmS4oY3S0aOG5y4yHGDAxc5bnDeIscNzlvkuOEPsRUUOLxr8u3UmhBWuDCFzmtcmGLnDS5MwfPEM20cPPypNsXBw59rUxy8U+5W7aJdt339XCVUdXHn/HmXVtvVg9r71/7i7vBl9fCLA7aHt3Tt4nfV57921epAZ58cGn/6TXG+wbOpKN8EPJua8k3As6kp33xpvryNN3yHV7N4A55eTVk24OnVlG8Cnl7N+QZPr+F8E0a0kZrLgzWflC75I7uE8s+jawaV0+82mWXPVbc9fqpy2GlHHWx0Njiz3/8Fcy3KpQ=="
 
 local TargetTunnelRail = {
-    tunnelEntranceAboveGround = "tunnelEntranceAboveGround",
-    tunnelEntranceUnderground = "tunnelEntranceUnderground",
-    tunnelSegment = "tunnelSegment",
-    tunnelExitUnderground = "tunnelExitUnderground",
-    tunnelExitAboveGround = "tunnelExitAboveGround"
+    entrancePortalMiddle = "entrancePortalMiddle", -- An entrance portal track after the entry detector, but before the transition detector.
+    entrancePortalBlockingEnd = "entrancePortalBlockingEnd", -- An entrance portal track after the transition detector.
+    undergroundSegment = "undergroundSegment", -- An underground tunnel track.
+    exitPortalBlockingEnd = "exitPortalBlockingEnd", -- An exit portal track on the blocking side (inside/before) of the transition detector.
+    exitPortalMiddle = "exitPortalMiddle" -- An exit portal track before the entry detector, but after the transition detector.
 }
 local NextStopTypes = {
     none = "none",
@@ -64,34 +66,34 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         end
     end
 
     -- Get the portals.
-    local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface", true, false)) do
-        if portalEntity.position.x > entrancePortalXPos then
-            entrancePortal = portalEntity
-            entrancePortalXPos = portalEntity.position.x
+    local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos, exitPortalEntryPortalEnd, exitPortalEntryPortalEndXPos = nil, -100000, nil, 100000
+    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-portal_end", true, false)) do
+        if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
+            entrancePortalEntryPortalEnd = portalEntity
+            entrancePortalEntryPortalEndXPos = portalEntity.position.x
         end
-        if portalEntity.position.x < exitPortalXPos then
-            exitPortal = portalEntity
-            exitPortalXPos = portalEntity.position.x
+        if portalEntity.position.x < exitPortalEntryPortalEndXPos then
+            exitPortalEntryPortalEnd = portalEntity
+            exitPortalEntryPortalEndXPos = portalEntity.position.x
         end
     end
 
     -- Get the first tunnel segment as we just need 1.
-    local tunnelSegment = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-underground_segment-straight", false, false)
+    local undergroundSegment = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-underground_segment-straight", false, false)
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train
+    local train = placedEntitiesByType["locomotive"][1].train
 
     -- Create the train schedule for this specific test.
     local trainSchedule = {
@@ -99,35 +101,35 @@ Test.Start = function(testName)
         records = {}
     }
     local targetTunnelRailEntities, targetTunnelRailEntity
-    if testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceAboveGround then
+    if testScenario.targetTunnelRail == TargetTunnelRail.entrancePortalMiddle then
         targetTunnelRailEntities =
-            entrancePortal.surface.find_entities_filtered {
-            name = "railway_tunnel-portal_rail-on_map",
-            position = Utils.ApplyOffsetToPosition(entrancePortal.position, {x = 8, y = 0})
+            entrancePortalEntryPortalEnd.surface.find_entities_filtered {
+            name = TunnelRailEntityNames,
+            position = Utils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -10, y = 0})
         }
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceUnderground then
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.entrancePortalBlockingEnd then
         targetTunnelRailEntities =
-            entrancePortal.surface.find_entities_filtered {
-            name = "railway_tunnel-invisible_rail-on_map_tunnel",
-            position = Utils.ApplyOffsetToPosition(entrancePortal.position, {x = -16, y = 0})
+            entrancePortalEntryPortalEnd.surface.find_entities_filtered {
+            name = TunnelRailEntityNames,
+            position = Utils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -46, y = 0})
         }
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelSegment then
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.undergroundSegment then
         targetTunnelRailEntities =
-            tunnelSegment.surface.find_entities_filtered {
-            name = "railway_tunnel-invisible_rail-on_map_tunnel",
-            position = tunnelSegment.position
+            undergroundSegment.surface.find_entities_filtered {
+            name = TunnelRailEntityNames,
+            position = undergroundSegment.position
         }
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitUnderground then
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.exitPortalBlockingEnd then
         targetTunnelRailEntities =
-            entrancePortal.surface.find_entities_filtered {
-            name = "railway_tunnel-invisible_rail-on_map_tunnel",
-            position = Utils.ApplyOffsetToPosition(exitPortal.position, {x = 16, y = 0})
+            entrancePortalEntryPortalEnd.surface.find_entities_filtered {
+            name = TunnelRailEntityNames,
+            position = Utils.ApplyOffsetToPosition(exitPortalEntryPortalEnd.position, {x = 46, y = 0})
         }
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitAboveGround then
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.exitPortalMiddle then
         targetTunnelRailEntities =
-            exitPortal.surface.find_entities_filtered {
-            name = "railway_tunnel-portal_rail-on_map",
-            position = Utils.ApplyOffsetToPosition(exitPortal.position, {x = -8, y = 0})
+            exitPortalEntryPortalEnd.surface.find_entities_filtered {
+            name = TunnelRailEntityNames,
+            position = Utils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -10, y = 0})
         }
     else
         error("Unsupported testScenario.targetTunnelRail: " .. testScenario.targetTunnelRail)
@@ -174,9 +176,9 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationEnd = stationEnd
-    testData.entrancePortal = entrancePortal
-    testData.exitPortal = exitPortal
-    testData.tunnelSegment = tunnelSegment
+    testData.entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd
+    testData.exitPortalEntryPortalEnd = exitPortalEntryPortalEnd
+    testData.undergroundSegment = undergroundSegment
     testData.targetTunnelRailEntity = targetTunnelRailEntity
     testData.train = train
     testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
@@ -196,7 +198,7 @@ Test.EveryTick = function(event)
 
     local train = testData.train
     if train == nil or not train.valid then
-        train = TestFunctions.GetTrainInArea({left_top = testData.stationEnd.position, right_bottom = testData.entrancePortal.position})
+        train = TestFunctions.GetTrainInArea({left_top = testData.stationEnd.position, right_bottom = testData.entrancePortalEntryPortalEnd.position})
     end
     if train == nil then
         -- Just ignore the train as we can't find it where expected right now.
@@ -209,7 +211,7 @@ Test.EveryTick = function(event)
             -- Train has stopped at a schedule record.
             if testScenario.expectedTunnelStopHandling == ExpectedTunnelStopHandling.endOfTunnel then
                 -- Check its at the end of the exit portal. The train is re-scheduled to this from its random unreachable rail.
-                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.exitPortal.position, {x = -22, y = 0}))
+                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.exitPortalEntryPortalEnd.position, {x = 1, y = 0}))
                 if atrainAtExitTunnelEntryRail ~= nil then
                     game.print("train pulled to front of tunnel as expected for undergroud rail")
                     testData.tunnelRailReached = true
@@ -252,7 +254,7 @@ Test.GenerateTestScenarios = function(testName)
 
     local targetTunnelRailsToTest, nextStopsToTest
     if DoMinimalTests then
-        targetTunnelRailsToTest = {TargetTunnelRail.tunnelSegment}
+        targetTunnelRailsToTest = {TargetTunnelRail.undergroundSegment}
         nextStopsToTest = {NextStopTypes.station}
     elseif DoSpecificTests then
         -- Adhock testing option.
@@ -283,9 +285,9 @@ end
 Test.CalculateExpectedResults = function(testScenario)
     local expectedTunnelStopHandling, expectedFinalTrainState
 
-    if testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceAboveGround or testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitAboveGround then
+    if testScenario.targetTunnelRail == TargetTunnelRail.entrancePortalMiddle or testScenario.targetTunnelRail == TargetTunnelRail.exitPortalMiddle then
         expectedTunnelStopHandling = ExpectedTunnelStopHandling.targetTunnelRail
-    elseif testScenario.targetTunnelRail == TargetTunnelRail.tunnelEntranceUnderground or testScenario.targetTunnelRail == TargetTunnelRail.tunnelSegment or testScenario.targetTunnelRail == TargetTunnelRail.tunnelExitUnderground then
+    elseif testScenario.targetTunnelRail == TargetTunnelRail.entrancePortalBlockingEnd or testScenario.targetTunnelRail == TargetTunnelRail.undergroundSegment or testScenario.targetTunnelRail == TargetTunnelRail.exitPortalBlockingEnd then
         expectedTunnelStopHandling = ExpectedTunnelStopHandling.endOfTunnel
     else
         error("unsupported testScenario.targetTunnelRail: " .. testScenario.targetTunnelRail)

@@ -43,6 +43,8 @@ MINOR:
     - filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. on_built_entity
     - Some edge cases of rebuilding a tunnel portal and underground parts doesn't recreate the tunnel correctly (I think still, but can't reproduce reliably). Make a proper test for all combinations so it can be tested properly.
     - building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
+    - with the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
+    - at present all rail in the portals is shown as stadnard on map. Is this really desired as it used to not be like this.
 
 
 FUTURE:

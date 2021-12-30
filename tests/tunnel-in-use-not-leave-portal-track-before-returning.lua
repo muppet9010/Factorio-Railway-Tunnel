@@ -3,7 +3,6 @@
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 Test.RunTime = 1800
 
@@ -11,15 +10,14 @@ Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
-local blueprintString =
-    "0eNqtWduO2jAU/Bc/J1V8Dea939CHaoWywctGDU6UC1uE+PfaC1qQSMvY9Qshxsw58cwc2/GJvLaz6YfGTmR9Ik3d2ZGsf57I2Oxs1fq26dgbsibNZPYkI7ba+7uhatqP6riZZmtNm18um74bpqrdjPPwVtUm71v3uTcO+pyRxm7Nb7Km55eMuKZmaswl0ufNcWPn/asZXIevGJMLYvNx6noXt+9G95fO+owcTK5kRo7uqh30thlMfflRZWScqst38sOMPvRDCBbxGNuFHNg1h/Ihh0M1NNcs6EIC/EkCo9n5YXuaAY2MLxLF55HxZaL4seOvEsUvI+OXieLryPirVPqLFaBOlUCsAmmRKoNYDVKaKoNYFVKWKoNYHdJUhZDFCpGmKoUsWompimH0bERTlUMWrcRUBZFFKzFVSeTRSkxVE3msElmqmshjlchS1UQeq0SWqibyWCUynmZ1qpZJYM8TuJXE0S/Bd+9T7jNZWoQvDzNbQpU4qsRRFY7KcdQSR6U46gpGlRpH1TgqzhYvcFScLU5xVJwtznBUnC3OUVQdAApbSwc8P+wsHUAVbCwdoCrYVxo3AIdtRYsApjSOilMlChwV50pQHBUnSzAcFWdLwLaiFGdLCBw1gC2JowawpXDUALZKHDWALdxbLIAt3FsMZ0vevNV2dbfvpuZgliDvBrUbGodyXQsV30rHon/NOfq+Q1f/MlP+NpvWS/y8FBI3HsMFInHjMVwgEjcewwUib8arq2HX5R/VzvVdeE8j/j3q9uCausF1sXPbLkXCzchxKUrcjDxAirgZeYAucDPyAF1okEFB/5NBhU9+HFegwj0ocF0o3IMC14XiWInyZfcvQ80CS5TCZ0aBS1HhZhS4FBVuRhEgENyMAdsDhZsxYCuj8JkxYNtV4sYL2CKWuPECtrMlg47/vqiSD283bsd/3yt//Pfimup3s53b63njzXr+3i0bFL/rczn8fDxCfID1wJ9nouu7I9SMHMwwXlJZOe1rVvKylLQQ5/Mf2aTj2A=="
+local blueprintString = "0eNqtW9tS2zAU/Bc/J53oZll57zf0ocMwJojgwbEzvoQyTP69MqEkFANHq/NCiOPsSj67a0lWnrObevT7rmqGbP2cVZu26bP17+esr7ZNWU/Hhqe9z9ZZNfhdtshuys3DuA/vu7KqH8un62FsGl8vTy/X+7Ybyvq6H7u7cuOX+zr83fkAflxkVXPr/2RrcbxaZOFQNVT+xPXy5um6GXc3vgsnLLKm3E2cQyBplv3Q7gPzvu3DV9pmalOAWbpw3lN4tQH6tur85vRhvsj6oTz9n/3y/UT9gUK+UfzXjdf2++Z2htGqE6N5zxjADmVXvXKKGTr1DV3vt9NFCj0Nn2/vhxnu3IHcmoHbgtyGgduA3DkDN1pvy8AtQO4indugWnMM3KjWxIqBHBWbEAzkqNqEZCBH5SYYsk2jehMM4aZhwTGkm4YFxxBvGhYcQ75pWHAMAadgwTEknEIFJxkSTqGCkwwJp1DBSYaEU6jgpIIGixIu86ehNoYBdLft2vBK6bGEL7fhagF8zXOmFgjU6dJytQDWQcHVAtjzjqsF8MRpxdUCVIlKMLUAFaKSTA1AdagUUwNQGSquQIRVyJWHsAiZ4hDmZwpDuABMUQgrkCkIUQtqphiE15CYQhBOYQ0t2ME3Pp0+qYUHHjp9TgsPu3T6lBYedOr0Ga2E650+oYWH+zp9PithraVPZ+FplUmfzcLzSZM+mYUn0iZ9LguvIJj0XIOXTkx6rsFrRiY91+DFMpOea/AqoUnPNXh51KTnGrwubNJzDV4Qz9NzDX4SkKfnGvwIJE/PNfjZTw4t0cGP2PJzlP3rzHLinZv1f1LKOVRDRxV01JyMWjg6qqWjWjpqQUc1dFRHR6VXy67oqPRqWUFGtfRqWUlHpVfLKipqTi+WJVsrj2gp2Vl5xEUlG8tG1J/sKxshVbKtbEShyK6KkFRBNlWE+guypyKMWpAtFZEpBdlREfFXkB0VkdQF2VERN5WC7KiI+19BdlTErbogO8pFFIrsKEcvlDs7qm437a4dqoOfWa1aXVzRtqsCyuv4Z/VjCoVp818/ndu1mwc/LO9GX0/fOs5Rkv3m6NpwZL+968p3qIqOSleHOztuU3bbdvlYbsO5M5jF1xe9OYRDbRdOaca6nmMy9PbThehyOmqEEi0dNUIXZCcKEaELR6zg5QozVEGxWtE7QJfgiwmosCYClm5DYSNgFS2lpn0gn1xuGZlSYqXpXXERXaFbUooIWLonZYxM6KaUMTKhu1LGyMTRYSNKJugWVBElE3QLqoiSXez2/Gp7/Fu91IfVjfP2+J/ltD3+Khza3PvbsX7dj3/24PQ+DCGCQS9OOv0+4OMe+w+4E/LLzwbWF78yWGQH3/WnthRCWyetdkZbo47Hv7MXfdI="
 
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
+    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
 
     -- Get the stations placed by name.
     local stationWest, stationEast
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "West" then
             stationWest = stationEntity
         elseif stationEntity.backer_name == "East" then
@@ -27,7 +25,7 @@ Test.Start = function(testName)
         end
     end
 
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+    local train = placedEntitiesByType["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationWestReached = false

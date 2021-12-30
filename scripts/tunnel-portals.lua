@@ -663,7 +663,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
             records = {
                 {
                     rail = surface.find_entities_filtered {
-                        name = Common.TunnelSurfaceRailEntityNames,
+                        name = Common.TunnelRailEntityNames,
                         position = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance + 3}, blockedPortalEnd.entity_position),
                         limit = 1
                     }[1]

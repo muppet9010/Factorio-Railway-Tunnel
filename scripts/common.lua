@@ -9,14 +9,14 @@ Common.UndergroundSegmentEntityNames = {["railway_tunnel-underground_segment-str
 Common.PortalEndAndSegmentEntityNames = Utils.TableMerge({Common.PortalEndEntityNames, Common.PortalSegmentEntityNames}) ---@type table<string, string>
 Common.UndergroundSegmentAndAllPortalEntityNames = Utils.TableMerge({Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames}) ---@type table<string, string>
 
----@class TunnelSurfaceRailEntityNames
-Common.TunnelSurfaceRailEntityNames = {
+---@class TunnelRailEntityNames
+Common.TunnelRailEntityNames = {
     -- Doesn't include the tunnel crossing rail as this isn't deemed part of the tunnel's rails.
-    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel" ---@type TunnelSurfaceRailEntityNames
+    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelRailEntityNames
+    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelRailEntityNames
+    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel", ---@type TunnelRailEntityNames
+    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map", ---@type TunnelRailEntityNames
+    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel" ---@type TunnelRailEntityNames
 }
 
 ---@class RollingStockTypes

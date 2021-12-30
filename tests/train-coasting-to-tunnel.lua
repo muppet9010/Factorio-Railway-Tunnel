@@ -1,4 +1,4 @@
--- Sends a single short train coasting in to a tunnel portal entrance while it is in the differnt mod handled schedule states. All should be stopped at portal entrance.
+-- Sends a single short train coasting in to a tunnel portal entrance while it is in the differnt schedule states. All should be stopped with the loco at the entrance portal entry point.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -17,7 +17,7 @@ Test.OnLoad = function(testName)
     Test.GenerateTestScenarios() -- Call here so its always populated.
 end
 
-local blueprintString = "0eNqtl91u4yAUhN+Fa7sKPzaxX2UVRdShKVoMFsbpRpHfvbiumkp11WHVm0RgNOeEmS+YG3m0kx6CcZG0N2I670bS/rmR0ZydsstcvA6atMRE3ZOCONUvo6CMfVHXY5yc07Zcv46DD1HZ4ziFJ9XpcrDps9dJei6IcSf9j7R0PhQkTZlo9FrpbXA9uql/1CEt+I8ap9TY4Mek6d3ScqpTVrIgV9LyJtU+maC79WFdkIsKRq0jOhdfGmC/1MB2ffZjff5Rf4ypg/NzLJdGNirQHd2usaEqYNWmgUUrXFTCojUuWsGiEhflsOgeF8WNamDRPW4U3eGquFOU4qq4VZThqrhXFMaKZmwrTBXDA0BhqljGz4epYhlOwVSxjFDBVLEMo2CqOG4Ug6HiuFEMZorjRjEYKY4bxWCiOG4Ug4kSGUbBRIkMo2CiRIZRMFEiwyiYKJFhFExUhRvF70RZ3/neR3PRG4rioeHy0676YJLS+zvV7mF5tLyujsv64Lu/OpZPk7bLOThvlYWZq/B8cJi5Cs8Hh5mr8HzwO3OdCmdfvqhzWvtFsqbAtrtLmvIhLXGTtVvVYBgrPI0chrHOSCMMY50RCxjGOiMWDejg/jccFPC5V+MhFDCDNR4LATMoM25SMIMSj4WAzz35XSwO659eUrhf6dNlU4dxXbCnQjZM8kZSSfk8vwI4d0jv"
+local blueprintString = "0eNqtWu2OojAUfZf+hon9pr7KZmIQOy4ZBFPAWWN89y3rbMxGzd7b2z9DBOac0nvO6S16Ydtu9sfQ9hNbX1jbDP3I1j8ubGz3fd0t56bz0bM1ayd/YAXb1s3nfIyfQ912X/V5M81977vydtgchzDV3Wacw0fd+PLYxb8HH8GvBWv7nf/F1vz6XrB4qp1af+P68+G86efD1od4Q8H6+uAfOb7Bfb+LAzkOY0QY+mWIEbU0umDneORWR65dG3xzuywKdqpDW98+8WvxQCj+Qzj6/fIM5TjF6/uf0zN2nswu6ezaJbOrDOw2mV1nYE+vu8nALpPZbQb2dNVVdHaVrjqXgT1ddXyVgT5ddpxnoE/XHc8QdypdeDxD3sl05fEMgScJ0suQeJIgvQyRJwnSy5B5kiC9DKEnCNLLkHoiXXoiQ+oJQpOVIfVEuvSESOoqeXq5xcugm2MjHPZhiEfIU3PCpKtcYyDMvM41hnTnC5NpDAQ52ExDICRAleQBQunpiUfYV9HzLv3JJT3t0l0v6R1eusgkvb9LN5mkd3eElJH05o6Qs5Le2xFWGklv7ThBdPTOjrDSS3rMiXTVKXrOEfoqRQ86QlOp6ElH6KgVPeoI2wlFzzrCXkrRs46wkVT0rCPsohU96wivEBQ96wjvT5RL6SEJr6v0Pd7+PlC5MD9pVKuXk/oMl8NxNQZXwHElBlfCcTkGV4FxrcPgajguqm4Gjouqm4XjoupWwXFRdXNgXIOpmwH7TWHKZsB2U6jRgt2mMZNrwGbTGC0YsNc0RroGbDWNKhnYaRpVMrDRDKpkYJ8ZVMnANjOYklmwywymZBbsMlQmWLDLUBFmwS5DJa4Fuwy1QFiwy1DrmQW7DLX82rvLuqEZDsPUnvwjZiXenPx3GobQRqzvjmz1tlxcfvsxLv8RhubTT+XH7Lvla9TrM2KwD1FtigX7ENVVVWAfoprA6u7Dpg77ofyq9/HeR1AHmv7+FE8NId7Uz133jA9sUFSPXIENWmG0WYEN6jASqcAGdSiJGFgtnclUS/D66FCSBPvSoSQC9qXDSMSBfclXGI04Dsd9LZL3WyRGkPuv5+JG1ofxdkPFlXXCKqeV1fJ6/Q0is0Ty"
 
 local TrainScheduleStates = {
     manualMode = "manualMode",
@@ -34,10 +34,10 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
+    local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
 
     -- Get the blueprinted entities.
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train ---@type LuaTrain
+    local train = placedEntitiesByType["locomotive"][1].train ---@type LuaTrain
     train.speed = 2
     if testScenario.trainScheduleState == "manualMode" then
         train.manual_mode = true
@@ -48,19 +48,19 @@ Test.Start = function(testName)
         error("Unsupported trainScheduleState: " .. testScenario.trainScheduleState)
     end
 
-    -- Get the portals.
-    local entrancePortal, entrancePortalXPos = nil, -100000
+    -- Get the east portal portal end entity.
+    local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000
     ---@typelist uint, LuaEntity
-    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-tunnel_portal_surface", true, false)) do
-        if portalEntity.position.x > entrancePortalXPos then
-            entrancePortal = portalEntity
-            entrancePortalXPos = portalEntity.position.x
+    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-portal_end", true, false)) do
+        if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
+            entrancePortalEntryPortalEnd = portalEntity
+            entrancePortalEntryPortalEndXPos = portalEntity.position.x
         end
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.train = train
-    testData.entrancePortal = entrancePortal
+    testData.entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -72,12 +72,12 @@ end
 Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     ---@typelist LuaTrain, LuaEntity
-    local train, entrancePortal = testData.train, testData.entrancePortal
+    local train, entrancePortalEntryPortalEnd = testData.train, testData.entrancePortalEntryPortalEnd
     if not train.valid then
         TestFunctions.TestFailed(testName, "Train entered the tunnel which it never should")
         return
     end
-    local trainFoundAtPortalEntrance = TestFunctions.GetTrainInArea({left_top = {x = entrancePortal.position.x + 27, y = entrancePortal.position.y}, right_bottom = {x = entrancePortal.position.x + 28, y = entrancePortal.position.y}})
+    local trainFoundAtPortalEntrance = TestFunctions.GetTrainInArea({left_top = {x = entrancePortalEntryPortalEnd.position.x + 3, y = entrancePortalEntryPortalEnd.position.y}, right_bottom = {x = entrancePortalEntryPortalEnd.position.x + 4, y = entrancePortalEntryPortalEnd.position.y}})
     if trainFoundAtPortalEntrance ~= nil and trainFoundAtPortalEntrance.speed == 0 then
         game.print("Train stopped")
         TestFunctions.TestCompleted(testName)
