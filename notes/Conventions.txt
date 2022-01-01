@@ -2,7 +2,7 @@ Terminology
 -----------
 
 A tunnel is the connection between 2 portals and can be used in either direction.
-Each portal has an Entry part where the trains enter, a Transition point where the trains are teleported away and beyond this a Far area where the tracks are permentantly blocked.
+Each portal has an Entry part where the trains enter, a Transition point where the trains are teleported away and beyond this a Blocked area where the tracks are permentantly blocked.
 A managed train is a train using a tunnel. The manage train has a direction of travel through the tunnel and thus an Entrance portal and Exit portal.
 
 
@@ -11,3 +11,22 @@ Variable Naming
 ---------------
 
 A variable that references a LuaObject's field is named as: objectName_fieldName   i.e.  enteringTrain_speed
+
+
+
+EmmyLua Class Defintions
+------------------------
+
+- Fields that are only populated when a certain state of the parent is obtained are seperated out togeatehr with a "---" line above them. i.e. the constant fields of a portal part, vs its portal membership requiring ones, vs its tunnel requiring ones. Purely to improve class readability at the head of the document, no impact on intelisense.
+- Some large classes have their fields grouped bassed on functional role only wih a "---" line. Purely to improve class readability at the head of the document, no impact on intelisense.
+
+
+
+EmmyLua nil, null and ? for optional things.
+--------------------------------------------
+
+- Function optional arguments can have "?" appended to the end of the argument name and they show in intellisense nicely. No need for use of "null" in type.
+- Function returns can use nil as a return type as expected.
+- "nil" doesn't work for anything other than function returns, so I added "null" as a placeholder.
+- Class defintions can have ? appeneded to field definitions, but they aren't clear in some usage cases so I also add the extra type of "null" to their field definitions as this fills the gaps in display usage.
+- Aliases don't support ? or "nil", so must have "null" used.

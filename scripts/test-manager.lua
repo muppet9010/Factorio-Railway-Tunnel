@@ -38,29 +38,26 @@ local KeepRunningTest = false -- If enabled the first test run will not stop whe
 -- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
 local TestsToRun = {
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")},
-    ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")},
-    --ShortTunnelLongTrainWestToEastCurvedApproach = {enabled = false, testScript = require("tests/short-tunnel-long-train-west-to-east-curved-approach")}, -- DONT USE - train too long
+    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
     DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
     PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-    --TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")}, -- DONT USE - train too long
-    --PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")}, -- DONT USE - error in TrainManager.TrainEnterTunnel()
-    InwardFacingTrain = {enabled = false, testScript = require("tests/inward-facing-train")},
+    --TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")} -- hits known issue where tunnel signals have 1 tick open at transition point.
+    --PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")}, -- hits known issue where tunnel signals have 1 tick open at transition point.
     InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
-    --InwardFacingTrainBlockedExitDoesntLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-doesnt-leave-tunnel")}, -- DONT USE - train too long
-    --PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")}, -- DONT USE - train too long
-    --PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")}, -- DONT USE - train too long
+    PostExitSignalBlockedExitRailSegmentsLongTrain = {enabled = false, testScript = require("tests/post-exit-signal-blocked-exit-rail-segments-long-train")},
+    PostExitMultipleStationsWhenInTunnelLongTrain = {enabled = false, testScript = require("tests/post-exit-multiple-stations-when-in-tunnel-long-train")},
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
-    --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")}, -- DONT USE - fails one of the default tests with a short train.
-    --MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")}, -- DONT USE - test needs updating to new tunnel logic. Referenced tunnelUsageEntry.undergroundTrain
-    PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")}
-    --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")}, -- DONT USE - train too long
-    --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more and train too long.
-    --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")} -- DONT USE - train too long
+    --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")} -- DONT USE - test needs major overhaul as was designed for complex logic we don;t have to handle any more.
+    --MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")}, -- DONT USE - test needs updating to new tunnel logic.
+    PathToTunnelRailTests = {enabled = true, testScript = require("tests/path-to-tunnel-rail-tests")}
+    --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
+    --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
+    --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")} -- DONT USE - test needs updating to new tunnel logic.
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -91,11 +88,11 @@ local TestsToRun = {
 
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
-    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @Used to flag when a save was started with tests already.
+    global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @ Used to flag when a save was started with tests already.
     global.testManager.testSurface = global.testManager.testSurface or nil ---@type LuaSurface
     global.testManager.playerForce = global.testManager.playerForce or nil ---@type LuaForce
-    global.testManager.testData = global.testManager.testData or {} ---@type table<TestName, TestData> @Used by tests to store their local data.
-    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
+    global.testManager.testData = global.testManager.testData or {} ---@type table<TestName, TestData> @ Used by tests to store their local data.
+    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @ Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests ---@type boolean
     global.testManager.keepRunningTest = KeepRunningTest ---@type boolean
     global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60 ---@type Tick
@@ -292,7 +289,7 @@ end
 
 --- Called when the test script needs to be referenced as it can't be stored in global data.
 ---@param testName TestName
----@return table @The script lua file of this test.
+---@return table @ The script lua file of this test.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
 end

@@ -3,40 +3,39 @@ local Interfaces = require("utility/interfaces")
 local Tunnel = {}
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local TunnelAlignment, RollingStockTypes, TunnelSurfaceRailEntityNames, TunnelAlignmentOrientation = Common.TunnelAlignment, Common.RollingStockTypes, Common.TunnelSurfaceRailEntityNames, Common.TunnelAlignmentOrientation
+local RollingStockTypes, TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.RollingStockTypes, Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
 local Utils = require("utility/utils")
 
---[[
-    Notes: We have to handle the "placed" versions being built as this is what blueprints get and when player is in the editor in "entity" mode and pipette's a placed entity. All other player modes select the placement item with pipette.
-]]
----@class Tunnel
----@field id Id @unqiue id of the tunnel.
----@field alignment TunnelAlignment
----@field alignmentOrientation TunnelAlignmentOrientation
----@field alignmentAxis Axis
+---@class Tunnel @ the tunnel object that managed trains can pass through.
+---@field id Id @ unqiue id of the tunnel.
 ---@field surface LuaSurface
+---@field force LuaForce
 ---@field portals Portal[]
----@field segments Segment[]
----@field managedTrain ManagedTrain @one is currently using this tunnel.
----@field tunnelRailEntities table<UnitNumber, LuaEntity> @the invisible rail entities of the whole tunnel (portal and segments).
----@field portalRailEntities table<UnitNumber, LuaEntity> @the visible rail entities that are part of the portal (visible rails).
----@field tunnelLength int @the length of the tunnel segments in tiles.
+---@field underground Underground
+---@field managedTrain ManagedTrain @ one is currently using this tunnel.
+---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
+---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 
----@class TunnelDetails
----@field tunnelId Id @Id of the tunnel.
----@field portals LuaEntity[] @Not in any special order.
----@field segments LuaEntity[] @Not in any special order.
----@field tunnelUsageId Id
+---@class RemoteTunnelDetails @ used by remote interface calls only.
+---@field tunnelId Id @ Id of the tunnel.
+---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
+---@field undergroundSegmentEntities  table<UnitNumber, LuaEntity> @ array of all the underground segments making up the underground section of the tunnel.
+---@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+
+---@class RemotePortalDetails
+---@field portalId Id @ unique id of the portal object.
+---@field portalPartEntities table<UnitNumber, LuaEntity> @ array of all the parts making up the portal.
 
 Tunnel.CreateGlobals = function()
     global.tunnels = global.tunnels or {}
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId or 1
     global.tunnels.tunnels = global.tunnels.tunnels or {} ---@type table<Id, Tunnel>
-    global.tunnels.transitionSignals = global.tunnels.transitionSignals or {} ---@type table<UnitNumber, PortalTransitionSignal> @the tunnel's portal's "inSignal" transitionSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
+    global.tunnels.transitionSignals = global.tunnels.transitionSignals or {} ---@type table<UnitNumber, PortalTransitionSignal> @ the tunnel's portal's "inSignal" transitionSignal objects. Is used as a quick lookup for trains stopping at this signal and reserving the tunnel.
 end
 
 Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
+    Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "Tunnel.OnPlayerRotatedEntity", Tunnel.OnPlayerRotatedEntity)
 
     Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
     Interfaces.RegisterInterface("Tunnel.RegisterTransitionSignal", Tunnel.RegisterTransitionSignal)
@@ -45,8 +44,6 @@ Tunnel.OnLoad = function()
     Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainFinishedEnteringTunnel", Tunnel.TrainFinishedEnteringTunnel)
     Interfaces.RegisterInterface("Tunnel.TrainReleasedTunnel", Tunnel.TrainReleasedTunnel)
-    Interfaces.RegisterInterface("Tunnel.On_PortalReplaced", Tunnel.On_PortalReplaced)
-    Interfaces.RegisterInterface("Tunnel.On_SegmentReplaced", Tunnel.On_SegmentReplaced)
     Interfaces.RegisterInterface("Tunnel.GetTunnelsUsageEntry", Tunnel.GetTunnelsUsageEntry)
 
     local rollingStockFilter = {
@@ -70,87 +67,74 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
         return
     end
     local signal = train.signal
-    if signal == nil or global.tunnels.transitionSignals[signal.unit_number] == nil then
+    if signal == nil then
         return
     end
-    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, global.tunnels.transitionSignals[signal.unit_number])
+    local transitionSignal = global.tunnels.transitionSignals[signal.unit_number]
+    if transitionSignal == nil then
+        return
+    end
+    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, transitionSignal)
 end
 
----@param tunnelPortalEntities LuaEntity[]
----@param tunnelSegmentEntities LuaEntity[]
-Tunnel.CompleteTunnel = function(tunnelPortalEntities, tunnelSegmentEntities)
-    ---@typelist LuaForce, LuaSurface, LuaEntity
-    local force, surface, refTunnelPortalEntity = tunnelPortalEntities[1].force, tunnelPortalEntities[1].surface, tunnelPortalEntities[1]
-    local refTunnelPortalEntity_direction = refTunnelPortalEntity.direction
-
+---@param portals Portal[]
+---@param underground Underground
+Tunnel.CompleteTunnel = function(portals, underground)
     -- Call any other modules before the tunnel object is created.
-    local tunnelPortals = Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", tunnelPortalEntities, force, surface) ---@type table<int,Portal>
-    local tunnelSegments = Interfaces.Call("TunnelSegments.On_PreTunnelCompleted", tunnelSegmentEntities, force, surface) ---@type table<int,Segment>
+    Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", portals)
+    Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", underground)
 
     -- Create the tunnel global object.
-    local alignment, alignmentOrientation, alignmentAxis
-    if refTunnelPortalEntity_direction == defines.direction.north or refTunnelPortalEntity_direction == defines.direction.south then
-        alignment = TunnelAlignment.vertical
-        alignmentOrientation = TunnelAlignmentOrientation.vertical
-        alignmentAxis = "y"
-    elseif refTunnelPortalEntity_direction == defines.direction.east or refTunnelPortalEntity_direction == defines.direction.west then
-        alignment = TunnelAlignment.horizontal
-        alignmentOrientation = TunnelAlignmentOrientation.horizontal
-        alignmentAxis = "x"
-    else
-        error("Unsupported refTunnelPortalEntity.direction: " .. refTunnelPortalEntity_direction)
-    end
+    local refPortal = portals[1]
+    ---@type Tunnel
     local tunnel = {
         id = global.tunnels.nextTunnelId,
-        alignment = alignment,
-        alignmentOrientation = alignmentOrientation,
-        alignmentAxis = alignmentAxis,
-        surface = surface,
-        portals = tunnelPortals,
-        segments = tunnelSegments,
+        surface = refPortal.surface,
+        portals = portals,
+        force = refPortal.force,
+        underground = underground,
         tunnelRailEntities = {},
-        portalRailEntities = {},
-        tunnelLength = #tunnelSegmentEntities * 2
+        portalRailEntities = {}
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
-    for _, portal in pairs(tunnelPortals) do
+
+    -- Update the parts of the tunnel.
+    for _, portal in pairs(portals) do
         portal.tunnel = tunnel
-        for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(portal.tunnelRailEntities) do
-            tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
-        end
         for portalRailEntity_unitNumber, portalRailEntity in pairs(portal.portalRailEntities) do
             tunnel.portalRailEntities[portalRailEntity_unitNumber] = portalRailEntity
         end
     end
-    for _, segment in pairs(tunnelSegments) do
-        segment.tunnel = tunnel
+    underground.tunnel = tunnel
+    for _, segment in pairs(underground.segments) do
         for tunnelRailEntity_unitNumber, tunnelRailEntity in pairs(segment.tunnelRailEntities) do
             tunnel.tunnelRailEntities[tunnelRailEntity_unitNumber] = tunnelRailEntity
         end
     end
+
+    -- Call any other modules after the tunnel object is created.
+    Interfaces.Call("TunnelPortals.On_PostTunnelCompleted", portals)
 end
 
 ---@param tunnel Tunnel
-Tunnel.RemoveTunnel = function(tunnel)
-    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel)
-    for _, portal in pairs(tunnel.portals) do
-        Interfaces.Call("TunnelPortals.On_TunnelRemoved", portal)
-    end
-    for _, segment in pairs(tunnel.segments) do
-        Interfaces.Call("TunnelSegments.On_TunnelRemoved", segment)
-    end
+---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+Tunnel.RemoveTunnel = function(tunnel, killForce, killerCauseEntity)
+    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel, killForce, killerCauseEntity)
+    Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals, killForce, killerCauseEntity)
+    Interfaces.Call("UndergroundSegments.On_TunnelRemoved", tunnel.underground)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 
 ---@param transitionSignal PortalTransitionSignal
 Tunnel.RegisterTransitionSignal = function(transitionSignal)
-    global.tunnels.transitionSignals[transitionSignal.entity.unit_number] = transitionSignal
+    global.tunnels.transitionSignals[transitionSignal.id] = transitionSignal
 end
 
 ---@param transitionSignal PortalTransitionSignal
 Tunnel.DeregisterTransitionSignal = function(transitionSignal)
-    global.tunnels.transitionSignals[transitionSignal.entity.unit_number] = nil
+    global.tunnels.transitionSignals[transitionSignal.id] = nil
 end
 
 ---@param managedTrain ManagedTrain
@@ -168,41 +152,7 @@ Tunnel.TrainReleasedTunnel = function(managedTrain)
     Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, true)
     Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.exitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
-        -- In some edge cases the call from a newly reversing train manager entry comes in before the old one is terminated, so handle this scenario.
         managedTrain.tunnel.managedTrain = nil
-    end
-end
-
----@param tunnel Tunnel
----@param oldPortal Portal
----@param newPortal Portal
-Tunnel.On_PortalReplaced = function(tunnel, oldPortal, newPortal)
-    if tunnel == nil then
-        return
-    end
-    -- Updated the cached portal object reference as they have bene recreated.
-    for i, portal in pairs(tunnel.portals) do
-        if portal.id == oldPortal.id then
-            tunnel.portals[i] = newPortal
-            break
-        end
-    end
-    Interfaces.Call("TrainManager.On_PortalReplaced", tunnel, newPortal)
-end
-
----@param tunnel Tunnel
----@param oldSegment Segment
----@param newSegment Segment
-Tunnel.On_SegmentReplaced = function(tunnel, oldSegment, newSegment)
-    if tunnel == nil then
-        return
-    end
-    -- Updated the cached segment object reference as they have bene recreated.
-    for i, segment in pairs(tunnel.segments) do
-        if segment.id == oldSegment.id then
-            tunnel.segments[i] = newSegment
-            break
-        end
     end
 end
 
@@ -213,24 +163,61 @@ Tunnel.GetTunnelsUsageEntry = function(tunnelToCheck)
     return tunnelToCheck.managedTrain
 end
 
+---@class RemoteTunnelDetails @ used by remote interface calls only.
+---@field tunnelId Id @ Id of the tunnel.
+---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
+---@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+
+---@class RemotePortalDetails
+---@field portalId Id @ unique id of the portal object.
+---@field portalPartEntities table<UnitNumber, LuaEntity> @ array of all the parts making up the portal.
+
 ---@param tunnel Tunnel
----@return TunnelDetails
+---@return RemoteTunnelDetails
 Tunnel.Remote_GetTunnelDetails = function(tunnel)
-    local tunnelSegments = {}
-    for _, segment in pairs(tunnel.segments) do
-        table.insert(tunnelSegments, segment.entity)
+    -- Get the details for the underground segments.
+    local undergroundSegmentEntities = {}
+    for undergroundSegmentId, undergroundSegmentObject in pairs(tunnel.underground.segments) do
+        undergroundSegmentEntities[undergroundSegmentId] = undergroundSegmentObject.entity
     end
+
+    -- Get the details for the 2 portals.
+    local portal1PartEntities = {}
+    for portalEndPartId, portalEndPartObject in pairs(tunnel.portals[1].portalEnds) do
+        portal1PartEntities[portalEndPartId] = portalEndPartObject.entity
+    end
+    for portalSegmentPartId, portalSegmentPartObject in pairs(tunnel.portals[1].portalSegments) do
+        portal1PartEntities[portalSegmentPartId] = portalSegmentPartObject.entity
+    end
+    local portal2PartEntities = {}
+    for portalEndPartId, portalEndPartObject in pairs(tunnel.portals[2].portalEnds) do
+        portal2PartEntities[portalEndPartId] = portalEndPartObject.entity
+    end
+    for portalSegmentPartId, portalSegmentPartObject in pairs(tunnel.portals[2].portalSegments) do
+        portal2PartEntities[portalSegmentPartId] = portalSegmentPartObject.entity
+    end
+
+    ---@type RemoteTunnelDetails
     local tunnelDetails = {
         tunnelId = tunnel.id,
-        portals = {tunnel.portals[1].entity, tunnel.portals[2].entity},
-        segments = tunnelSegments,
+        portals = {
+            {
+                portalId = tunnel.portals[1].id,
+                portalPartEntities = portal1PartEntities
+            },
+            {
+                portalId = tunnel.portals[2].id,
+                portalPartEntities = portal2PartEntities
+            }
+        },
+        undergroundSegmentEntities = undergroundSegmentEntities,
         tunnelUsageId = tunnel.managedTrain.id
     }
     return tunnelDetails
 end
 
 ---@param tunnelId Id
----@return TunnelDetails
+---@return RemoteTunnelDetails
 Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
     local tunnel = global.tunnels.tunnels[tunnelId]
     if tunnel == nil then
@@ -240,16 +227,23 @@ Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
 end
 
 ---@param entityUnitNumber UnitNumber
----@return TunnelDetails
-Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
+---@return RemoteTunnelDetails
+Tunnel.Remote_GetTunnelDetailsForEntityUnitNumber = function(entityUnitNumber)
     for _, tunnel in pairs(global.tunnels.tunnels) do
         for _, portal in pairs(tunnel.portals) do
-            if portal.id == entityUnitNumber then
-                return Tunnel.Remote_GetTunnelDetails(tunnel)
+            for portalEndId, _ in pairs(portal.portalEnds) do
+                if portalEndId == entityUnitNumber then
+                    return Tunnel.Remote_GetTunnelDetails(tunnel)
+                end
+            end
+            for portalSegmentId, _ in pairs(portal.portalSegments) do
+                if portalSegmentId == entityUnitNumber then
+                    return Tunnel.Remote_GetTunnelDetails(tunnel)
+                end
             end
         end
-        for _, segment in pairs(tunnel.segments) do
-            if segment.id == entityUnitNumber then
+        for segmentId, _ in pairs(tunnel.underground.segments) do
+            if segmentId == entityUnitNumber then
                 return Tunnel.Remote_GetTunnelDetails(tunnel)
             end
         end
@@ -257,26 +251,28 @@ Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
     return nil
 end
 
+-- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 Tunnel.OnBuiltEntity = function(event)
-    -- Check for any train carriages (real or ghost) being built on the portal or tunnel segments. Ghost placing train carriages doesn't raise the on_built_event for some reason.
-    -- Known limitation that you can't place a single carriage on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
     local createdEntity = event.created_entity or event.entity
+    if not createdEntity.valid then
+        return
+    end
     local createdEntity_type = createdEntity.type
-    if (not createdEntity.valid or (not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil))) then
+    if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
         return
     end
 
     if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
-        local createdEntity_unitNumber = createdEntity.unit_number
 
         if Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) then
-            -- Carriage was built on a managed train, so this will be handled by seperate train manipulation tracking logic.
+            -- Carriage was built as part of a managed train, so just ignore it for these purposes.
             return
         end
 
+        local createdEntity_unitNumber = createdEntity.unit_number
         -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
         local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
         if train.front_stock.unit_number == createdEntity_unitNumber then
@@ -287,19 +283,19 @@ Tunnel.OnBuiltEntity = function(event)
         end
         if trainFrontStockIsPlacedEntity and trainBackStockIsPlacedEntity then
             -- Both ends of the train is this carriage so its a train of 1.
-            if TunnelSurfaceRailEntityNames[train.front_rail.name] == nil and TunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+            if TunnelRailEntityNames[train.front_rail.name] == nil and TunnelRailEntityNames[train.back_rail.name] == nil then
                 -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
                 return
             end
         elseif trainFrontStockIsPlacedEntity then
             -- Placed carriage is front of train
-            if TunnelSurfaceRailEntityNames[train.front_rail.name] == nil then
+            if TunnelRailEntityNames[train.front_rail.name] == nil then
                 -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
                 return
             end
         elseif trainBackStockIsPlacedEntity then
             -- Placed carriage is rear of train
-            if TunnelSurfaceRailEntityNames[train.back_rail.name] == nil then
+            if TunnelRailEntityNames[train.back_rail.name] == nil then
                 -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
                 return
             end
@@ -310,6 +306,8 @@ Tunnel.OnBuiltEntity = function(event)
     else
         -- Is a ghost so check it approperiately. This isn't perfect, but if it misses an invalid case the real entity being placed will catch it. Nicer to warn the player at the ghost stage however.
 
+        -- Known limitation that you can't place a single carriage ghost on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
+
         -- Have to check what rails are at the approximate ends of the ghost carriage.
         local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
         local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
@@ -317,7 +315,7 @@ Tunnel.OnBuiltEntity = function(event)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
         for _, railEntity in pairs(frontRailsFound) do
-            if TunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
+            if TunnelRailEntityNames[railEntity.name] ~= nil then
                 tunnelRailFound = true
             else
                 tunnelRailFound = false
@@ -327,7 +325,7 @@ Tunnel.OnBuiltEntity = function(event)
         if not tunnelRailFound then
             local backRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = backRailPosition}
             for _, railEntity in pairs(backRailsFound) do
-                if TunnelSurfaceRailEntityNames[railEntity.name] ~= nil then
+                if TunnelRailEntityNames[railEntity.name] ~= nil then
                     tunnelRailFound = true
                 else
                     tunnelRailFound = false
@@ -344,7 +342,20 @@ Tunnel.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnels", "rolling stock")
+    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnel rail's", "rolling stock")
+end
+
+-- Triggered when a player rotates a monitored entity type. This should only be possible in Editor mode as we make all parts un-rotatable to regular players.
+---@param event on_player_rotated_entity
+Tunnel.OnPlayerRotatedEntity = function(event)
+    local rotatedEntity = event.entity
+    -- Just check if the player (editor mode) rotated a portal or underground entity.
+    if UndergroundSegmentAndAllPortalEntityNames[rotatedEntity.name] == nil then
+        return
+    end
+    -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
+    rotatedEntity.direction = event.previous_direction
+    TunnelShared.EntityErrorMessage(game.get_player(event.player_index), "Don't try and rotate parts of tunnel portals.", rotatedEntity.surface, rotatedEntity.position)
 end
 
 return Tunnel

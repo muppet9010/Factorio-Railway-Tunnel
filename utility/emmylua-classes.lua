@@ -1,14 +1,18 @@
---- Generic EmmyLua classes. You don't need to require this file anywhere, EmyyLua will discover it within the workspace.
+--[[
+    Generic EmmyLua classes. You don't need to require this file anywhere, EmyyLua will discover it within the workspace.
+--]]
+---@meta
+---@diagnostic disable
 ---
 ---
 ---
----@class Id : uint @id attribute of this thing.
+---@class Id : uint @ id attribute of this thing.
 ---
----@class UnitNumber : uint @unit_number of the related entity.
+---@class UnitNumber : uint @ unit_number of the related entity.
 ---
 ---@alias Axis "'x'"|"'y'"
 ---
----@class PlayerIndex:uint @Player index attribute.
+---@class PlayerIndex:uint @ Player index attribute.
 ---
 ---@class Tick : int
 ---
@@ -27,10 +31,13 @@
 ---@field height uint
 ---@field repeat_count uint
 ---
----@alias EntityActioner LuaPlayer|LuaEntity|null @The placer of a built entity: either player, construction robot or script (nil).
----@class LuaBaseClass @Used as a fake base class, only supports checking defined attributes.
+---@alias EntityActioner LuaPlayer|LuaEntity|null @ The placer of a built entity: either player, construction robot or script (nil).
+---
+---@class LuaBaseClass @ Used as a fake base class, only supports checking defined attributes.
 ---@field valid boolean
 ---
----@class StringOrNumber @A string or number (int/double).
+---@class StringOrNumber string|int|double
 ---
----@class null @Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.
+---@class null @ Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.
+---
+---@class SurfacePositionString @ the entities surface and position as a string: "surfaceId_x,y"

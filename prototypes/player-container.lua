@@ -9,7 +9,7 @@ data:extend(
         {
             type = "spider-vehicle",
             name = "railway_tunnel-player_container",
-            icon = "__railway_tunnel__/graphics/icon/tunnel_portal_surface/railway_tunnel-tunnel_portal_surface-placement.png",
+            icon = "__railway_tunnel__/graphics/icon/railway_tunnel.png",
             icon_size = 32,
             icon_mipmaps = 4,
             subgroup = "railway_tunnel-hidden_cars",

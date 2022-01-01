@@ -26,7 +26,6 @@ local baseBlockerPrototype = {
     map_color = {0, 0, 0, 0}, -- No map color ever.
     friendly_map_color = {0, 0, 0, 0}, -- No map color ever.
     enemy_map_color = {0, 0, 0, 0} -- No map color ever.
-    --selection_box = {{-0.5, -0.5}, {0.5, 0.5}} -- For testing when we need to select them
 }
 
 local portalEntryTrainDetector1x1 = Utils.DeepCopy(baseBlockerPrototype)

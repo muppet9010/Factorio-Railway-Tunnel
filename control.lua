@@ -1,7 +1,7 @@
 local EventScheduler = require("utility/event-scheduler")
 local TunnelManager = require("scripts/tunnel-manager")
 local TunnelPortals = require("scripts/tunnel-portals")
-local TunnelSegments = require("scripts/tunnel-segments")
+local UndergroundSegments = require("scripts/underground-segments")
 local TrainManager = require("scripts/train-manager")
 local TrainManagerRemote = require("scripts/train-manager-remote")
 local TestManager = require("scripts/test-manager")
@@ -11,7 +11,7 @@ local Events = require("utility/events")
 
 local function CreateGlobals()
     global.debugRelease = true -- If TRUE it runs key code in a try/catch and it does UPS intensive state check so makes code run slower.
-    global.strictStateHandling = true -- If TRUE unexpected edge cases will raise an error, otherwise they just print to the screen and are handled in some rought manner.
+    global.strictStateHandling = true -- If TRUE unexpected edge cases will raise an error, otherwise they just print to the screen and are handled in some rought manner. -- OVERHAUL - these scenarios should be removed and made to behave in a standard supported manner.
 
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
@@ -19,7 +19,7 @@ local function CreateGlobals()
     TrainManagerPlayerContainers.CreateGlobals()
     TunnelManager.CreateGlobals()
     TunnelPortals.CreateGlobals()
-    TunnelSegments.CreateGlobals()
+    UndergroundSegments.CreateGlobals()
 
     TestManager.CreateGlobals()
 end
@@ -50,14 +50,14 @@ local function OnLoad()
                 return TrainManagerRemote.GetTemporaryCarriageNames()
             end,
             ---@param tunnelId Id
-            ---@return TunnelDetails
+            ---@return RemoteTunnelDetails
             get_tunnel_details_for_id = function(tunnelId)
-                return TrainManagerRemote.GetTunnelDetailsForId(tunnelId)
+                return TunnelManager.Remote_GetTunnelDetailsForId(tunnelId)
             end,
             ---@param entityUnitNumber UnitNumber
-            ---@return TunnelDetails
-            get_tunnel_details_for_entity = function(entityUnitNumber)
-                return TunnelManager.Remote_GetTunnelDetailsForEntity(entityUnitNumber)
+            ---@return RemoteTunnelDetails
+            get_tunnel_details_for_entity_unit_number = function(entityUnitNumber)
+                return TunnelManager.Remote_GetTunnelDetailsForEntityUnitNumber(entityUnitNumber)
             end
         }
     )
@@ -65,7 +65,7 @@ local function OnLoad()
     TrainManager.OnLoad()
     TunnelManager.OnLoad()
     TunnelPortals.OnLoad()
-    TunnelSegments.OnLoad()
+    UndergroundSegments.OnLoad()
     TrainManagerPlayerContainers.OnLoad()
 
     TestManager.OnLoad()

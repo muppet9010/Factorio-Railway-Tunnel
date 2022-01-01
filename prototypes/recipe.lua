@@ -2,39 +2,52 @@ data:extend(
     {
         {
             type = "recipe",
-            name = "railway_tunnel-tunnel_portal",
+            name = "railway_tunnel-portal_end",
             enabled = false,
             ingredients = {
-                {"concrete", 200},
-                {"steel-plate", 200},
-                {"rail", 25},
+                {"concrete", 30},
+                {"steel-plate", 30},
+                {"rail", 3},
                 {"rail-signal", 2}
             },
-            result = "railway_tunnel-tunnel_portal_surface-placement",
+            result = "railway_tunnel-portal_end",
             result_count = 1
         },
         {
             type = "recipe",
-            name = "railway_tunnel-tunnel_segment",
+            name = "railway_tunnel-portal_segment-straight",
             enabled = false,
             ingredients = {
                 {"concrete", 10},
                 {"steel-plate", 10},
                 {"rail", 1}
             },
-            result = "railway_tunnel-tunnel_segment_surface-placement",
+            result = "railway_tunnel-portal_segment-straight",
             result_count = 1
         },
         {
             type = "recipe",
-            name = "railway_tunnel-tunnel_segment_rail_crossing",
+            name = "railway_tunnel-underground_segment-straight",
+            enabled = false,
+            ingredients = {
+                {"concrete", 10},
+                {"steel-plate", 10},
+                {"rail", 1},
+                {"landfill", 1}
+            },
+            result = "railway_tunnel-underground_segment-straight",
+            result_count = 1
+        },
+        {
+            type = "recipe",
+            name = "railway_tunnel-underground_segment-straight-rail_crossing",
             enabled = false,
             ingredients = {
                 {"concrete", 10},
                 {"rail", 3},
-                {"railway_tunnel-tunnel_segment_surface-placement", 1}
+                {"railway_tunnel-underground_segment-straight", 1}
             },
-            result = "railway_tunnel-tunnel_segment_surface_rail_crossing-placement",
+            result = "railway_tunnel-underground_segment-straight-rail_crossing",
             result_count = 1
         }
     }

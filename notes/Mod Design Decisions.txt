@@ -1,0 +1,46 @@
+Mod Behavours
+=============
+
+
+Underground segments building, mining and fast replacing
+--------------------------------------------------------
+The difficult variation here is supporting the fast replacing and the variation between player and robot events triggered.
+
+Player:
+    Place ghost on empty space: on_pre_build > on_built_entity
+    Place ghost fast replace over entity: on_pre_build
+    Place ghost fast replace over ghost: on_pre_build > on_built_entity
+    Build entity: on_pre_build > on_built_entity
+    Mine entity: on_pre_player_mined_item
+    Fast Replace entity: on_pre_build > on_pre_player_mined_item > on_built_entity
+
+Construction bot:
+    Bot build entity: on_robot_built_entity
+    Bot mine entity: on_robot_pre_mined
+    Bot fast replace entity: on_built_entity
+
+
+Ghost placement of fast replacement and rotations
+-------------------------------------------------
+
+A player can fast replace an entity over itself with a different rotation if it supports fast replacement; But a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
+
+
+Tunnel Part Connections
+-----------------------
+
+Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. A part's internal connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look in its external connection point to see if there is another part to connect to, this is 1 tile infront of its internal connection points. As all parts have alteast 1 tile padding to the sides of the connection points and must be placed on the rail grid (2x2 tiles) its impossible to place a part at a side angle to another part.
+For a tunnel there must be an underground between 2 complete portals. As otherwise seperating the portal parts from each other is a pain and why would you ever want a 0 length tunnel.
+
+
+Portal has tracks only with tunnel
+----------------------------------
+
+The new design is that a portal without a tunnel has no tracks or other elements. This reduces entitiy creation during building and makes things simplier. This does mean that when a tunnel is destroyed all tracks for the underground and portal are removed, killing any trains on either (rare case in real game). Also that to mine part of a tunnel (portal or underground) the entire tunnel tracks must be clear, otherwise the mine should fail.
+In the past there was a seperation between portals and undergrounds in terms of tracks, but this made things more complicated for no real world value.
+
+
+Events
+------
+
+- Use of on_pre_player_mined_item over on_player_mined_entity for portal and underground mining detection and undo logic. This is an historic decision and both events support entity type filtering. Appears to have been done as with the pre event in invalid removal situations we can destroy the old entity when we replace it. This destroying of the old entity prevents it being mined and so any mod reacting to the standard mined_entity event won't know about the attempt we blocked and undid. An alternative preivously considered was to make the entities non minable while the tunnel was in use, but this is a lot of API calls on every tunnel usage.

@@ -1,6 +1,5 @@
---[[
-	Logging functions.
---]]
+-- Logging functions.
+
 local Logging = {}
 local Constants = require("constants")
 local Utils = require("utility/utils")
@@ -119,8 +118,8 @@ Logging.RunFunctionAndCatchErrors = function(functionRef, ...)
 end
 
 -- Used to make a text object of something's attributes that can be stringified. Supports LuaObjects with handling for specific ones.
----@param thing any @can be a simple data type, table, or LuaObject.
----@param _tablesLogged table @don't pass in, only used internally when slef referencing the function for looping.
+---@param thing any @ can be a simple data type, table, or LuaObject.
+---@param _tablesLogged table @ don't pass in, only used internally when slef referencing the function for looping.
 ---@return table
 Logging.PrintThingsDetails = function(thing, _tablesLogged)
     _tablesLogged = _tablesLogged or {} -- Internal variable passed when self referencing to avoid loops.
@@ -206,6 +205,28 @@ Logging.PrintThingsDetails = function(thing, _tablesLogged)
         end
     end
     return returnedSafeTable
+end
+
+--- Writes out sequential numbers at the set position. Used as a visial debugging tool.
+---@param targetSurface LuaSurface
+---@param targetPosition LuaEntity|Position
+Logging.WriteOutNumberedMarker = function(targetSurface, targetPosition)
+    global.numberedCount = global.numberedCount or 1
+    rendering.draw_text {
+        text = global.numberedCount,
+        surface = targetSurface,
+        target = targetPosition,
+        color = {r = 1, g = 0, b = 0, a = 1},
+        scale_with_zoom = true
+    }
+    global.numberedCount = global.numberedCount + 1
+end
+
+--- Writes out sequential numbers at the SurfacePositionString. Used as a visial debugging tool.
+---@param targetSurfacePositionString SurfacePositionString
+Logging.WriteOutNumberedMarkerForSurfacePositionString = function(targetSurfacePositionString)
+    local tempSurfaceId, tempPos = Utils.SurfacePositionStringToSurfaceAndPosition(targetSurfacePositionString)
+    Logging.WriteOutNumberedMarker(tempSurfaceId, tempPos)
 end
 
 return Logging

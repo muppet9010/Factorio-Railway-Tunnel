@@ -10,6 +10,8 @@
     Require the file and call GeneratePrototypes in data.lua:
         require("utility/style-data").GeneratePrototypes()
 ]]
+--
+
 local styleData = {}
 
 styleData.styleVersion = "_1_0_0"

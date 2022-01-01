@@ -12,7 +12,7 @@ local Events = require("utility/events")
 ---@field tunnelId Id
 
 TrainManagerRemote.CreateGlobals = function()
-    global.trainManager.eventsToRaise = global.trainManager.eventsToRaise or {} ---@type table[] @Events are raised at end of tick to avoid other mods interupting this mod's process and breaking things.
+    global.trainManager.eventsToRaise = global.trainManager.eventsToRaise or {} ---@type table[] @ Events are raised at end of tick to avoid other mods interupting this mod's process and breaking things.
 end
 
 TrainManagerRemote.ProcessTicksEvents = function()
@@ -84,7 +84,7 @@ TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
     end
 end
 
----@return table<string, string> @Entity names.
+---@return table<string, string> @ Entity names.
 TrainManagerRemote.GetTemporaryCarriageNames = function()
     return {
         ["railway_tunnel-tunnel_exit_dummy_locomotive"] = "railway_tunnel-tunnel_exit_dummy_locomotive",

@@ -9,20 +9,20 @@ local RollingStockTypes = Common.RollingStockTypes
 -- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the managedTrain object passed in, rather than being abstracted.
 
 ---@class PlayerContainer
----@field id UnitNumber @Unit_number of the player container entity.
----@field entity LuaEntity @The player container entity the player is sitting in.
----@field player LuaPlayer @The player the container is for.
----@field undergroundCarriageEntity LuaEntity @The underground carriage entity this container is related to.
----@field undergroundCarriageId UnitNumber @The unit_number of the underground carriage entity this container is related to.
----@field managedTrain ManagedTrain @The global.trainManager.managedTrain object this is owned by.
+---@field id UnitNumber @ Unit_number of the player container entity.
+---@field entity LuaEntity @ The player container entity the player is sitting in.
+---@field player LuaPlayer @ The player the container is for.
+---@field undergroundCarriageEntity LuaEntity @ The underground carriage entity this container is related to.
+---@field undergroundCarriageId UnitNumber @ The unit_number of the underground carriage entity this container is related to.
+---@field managedTrain ManagedTrain @ The global.trainManager.managedTrain object this is owned by.
 
 TrainManagerPlayerContainers.CreateGlobals = function()
     global.playerContainers = global.playerContainers or {}
-    global.playerContainers.containers = global.playerContainers.playerContainers or {} ---@type table<Id, PlayerContainer>
-    global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the player index.
-    global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
-    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @Key is the underground carriage unit_number. Value is the player playerContainer related to it.
-    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<Id, PlayerContainer>> @Table of ManagedTrain.Id to table of player containers by their id.
+    global.playerContainers.containers = global.playerContainers.playerContainers or {} ---@type table<UnitNumber, PlayerContainer>
+    global.playerContainers.playerIdToPlayerContainer = global.playerContainers.playerIdToPlayerContainer or {} ---@type table<int, PlayerContainer> @ Key is the player index.
+    global.playerContainers.playerTryLeaveVehicle = global.playerContainers.playerTryLeaveVehicle or {} ---@type table<PlayerIndex, LuaEntity>@ Key is the player index. Value is the vehicle entity the player was in before they hit the enter/exit vehicle button.
+    global.playerContainers.undergroudCarriageIdsToPlayerContainer = global.playerContainers.undergroudCarriageIdsToPlayerContainer or {} ---@type table<int, PlayerContainer> @ Key is the underground carriage unit_number. Value is the player playerContainer related to it.
+    global.playerContainers.trainManageEntriesPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers or {} ---@type table<Id, table<UnitNumber, PlayerContainer>> @ Table of ManagedTrain.Id to table of player containers by their UnitNumbers.
 end
 
 TrainManagerPlayerContainers.OnLoad = function()
@@ -93,7 +93,7 @@ TrainManagerPlayerContainers.OnToggleDrivingInputAfterChangedState = function(ev
         TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle(player, nil, oldVehicle)
     elseif player.vehicle ~= nil then
         -- Was in a train carriage before trying to get out and still is, so check if its on a portal entity (blocks player getting out).
-        local portalEntitiesFound = player.vehicle.surface.find_entities_filtered {position = player.vehicle.position, name = "railway_tunnel-tunnel_portal_surface-placed", limit = 1}
+        local portalEntitiesFound = player.vehicle.surface.find_entities_filtered {position = player.vehicle.position, name = "railway_tunnel-tunnel_portal_surface", limit = 1}
         if #portalEntitiesFound == 1 then
             TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle(player, portalEntitiesFound[1], nil)
         end
@@ -114,14 +114,15 @@ TrainManagerPlayerContainers.PlayerLeaveTunnelVehicle = function(player, portalE
 
     if portalEntity == nil then
         local managedTrain = playerContainer.managedTrain
-        if Utils.GetDistanceSingleAxis(managedTrain.entrancePortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) < Utils.GetDistanceSingleAxis(managedTrain.exitPortal.entity.position, player.position, managedTrain.tunnel.alignmentAxis) then
+        if Utils.GetDistance(managedTrain.entrancePortal.entryPortalEnd.entity_position, player.position) < Utils.GetDistance(managedTrain.exitPortal.entryPortalEnd.entity_position, player.position) then
             portalObject = managedTrain.entrancePortal
         else
             portalObject = managedTrain.exitPortal
         end
     else
-        portalObject = global.tunnelPortals.portals[portalEntity.unit_number]
+        portalObject = global.tunnelPortals.portalPartEntityIdToPortalPart[portalEntity.unit_number]
     end
+    -- OVERHAUL - portalObject.portalEntryPointPosition doesn't have a value at present as old code, check in TunnelPortals.
     local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntryPointPosition, 0, 0.2) -- Use a rail signal to test place as it collides with rails and so we never get placed on the track.
     TrainManagerPlayerContainers.CancelPlayerTryLeaveTrain(player)
     vehicle.set_driver(nil)
@@ -251,7 +252,9 @@ end
 
 -- OVERHAUL - has the managedTrain passed in to it now in calls to fix syntax errors.
 ---@param undergroundTrain LuaTrain
-TrainManagerPlayerContainers.On_TunnelRemoved = function(undergroundTrain)
+---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+TrainManagerPlayerContainers.On_TunnelRemoved = function(undergroundTrain, killForce, killerCauseEntity)
     if 1 == 1 then
         --OVERHAUL: just skip this Module for now.
         return
@@ -263,7 +266,7 @@ TrainManagerPlayerContainers.On_TunnelRemoved = function(undergroundTrain)
                 playerContainer.entity.set_driver(nil)
                 local player = playerContainer.player
                 if player.character ~= nil then
-                    player.character.die()
+                    player.character.die(killForce, killerCauseEntity)
                 end
                 TrainManagerPlayerContainers.RemovePlayerContainer(playerContainer)
             end

@@ -2,7 +2,6 @@
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 Test.RunTime = 1800
 
@@ -10,14 +9,14 @@ Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
-local blueprintString = "0eNqtm91u4kgQhd/F17Bydbu73dzvM+zFKkIe8GSsBRsZk5koyruPDWTyV1nOafkmCQQ+ijp1+s/lp+zb7lQf+qYdstVT1my69pit/n3Kjs19W+2m54bHQ52tsmao99kia6v99Kivmt3P6nE9nNq23i0vv9aHrh+q3fp46r9Xm3p52I0/9/WIfl5kTbutf2UreV5A8DdvMc93i2ykNENTX4I7P3hct6f9t7ofmX/euTn1D/V2eQYsskN3HN/TtdMHjZylGL/IHrNVObK3TV9vLv/0U0gfkAZFSqkhrYK0GFJcgQZZgERv0BjdH+JxGGH3P4avcxnPUJH31KBQPU4Vp1JFoQaUKk7gUEsY6vFII1pM9iKUFLeZkhNJtWqoTsMKj7VAtAbOaxFVqiaWWJoqtz0gsK3KF7U0CmElEfUrq/p4HusAfXAzFUGlqvqUNNUC+kQ8BXlUg9Uya3IeG25n1gieA6dStcwaQ1Pd7cwaS6QgqMGqmS14bAQy6/AcWJWqZtbT1ABkNpBTgDHvoYUGLYm8OjUDqlyRxhpgErQ5nlhRqZpcVljqxxSoSzXDTQEf1dLSahlzWTUBKrbgscCEbXFz2ahSVbU8TQUmbBuIFIgarJrZkscCU62NeA6CStUyW+Q0FZhqC6H3AwaYagtDbthMCWQA91ckQgUXg8tIROrA0eVlLvjANBqTcJZTv72qf+B2mFCk9BYLivTVVRO0XR6H7qBW1NWpHybtMX3Hobr8nf1TH6cji8+74zzh/GOrRGGuFoyfgnio+qb6evBwciOCY30/HbjcDkFSIzAzRZAcgJ0pAJsaQDFTAC41ADdTAMlV6GcKIKYGEOYqwuQqLOeKILkM41wRpNahz+eKILUQ/VzDoaRWop9rODSplejnGg9NaiX6uQZEk1yJc42IyROzn2tINMmVONeYaJMrca4x0SZX4lxjok2txDDXmGhTKzHIPItUr4tgbgdgiE2jXmvaviEQ5ydfDOcqljg/+WKeUrGOvuYFYT19eQbCBvqqAoQt6SN1CBvp82QEW+b8uSeCFf6ADsEa/nQKwfKnKAgVN1kkBMM9Fgm9cItFQi7cYZFQCzdYSaiF+6vE1Yq4vUpcrYi7q8TViri5SlytiHsr4GpF3FuBUAv3ViDUwr0VCLVwbwVCLdxbnlAL95bH1ZIcN5d3BBZ3l7cEFreXFwKL+8tFAosbzDGS4Q5zjGS4xRwjGeyxkkkt7LHI1AHsMWICF7zhilhsCN5vRSyMBG+3IhZxQrRbEStOkQLHMnrhV7BzRjD8QlvOKIY3YOWMZK8G23Wbbt8NzUOtHYO/SWzXNyPmusHP/5qm96k99zi9tu82/9XD8vup3o21o/a94e1ZzFZS8PYsZuMrRHsWsU0Xoj+LOFQQvEGLOQIRvEGLObARokHLMJLhDjSMZLgDDSMZfrnbMJIRXSSEZESTliUkI7q0LCGZNXTTC4S1dJcShC3oBjgIS7dBYljPdphiWLrRGMOWbCc4ho3sPQYQlmjWYtboeLeWMDuKAncZs/9506/1fx07L0wrn65DvDbs/F1NDTt341ObH/X2tLveJvS65Jkej4uhN6+43OT0vuVnkf2smmG96drtOYQLZWQcqr5eX29V6vrxdde/6/1heBw/+HxP0/to0ll30xc53xC1enNz1iJ7qPvj5auXozeiCTYEN+5On59/Ax0Q1M4="
+local blueprintString = "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"
 
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 60}, testName)
+    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 60}, testName)
 
     -- Get the stations placed by name.
     local trainStopWest, trainStopEast
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "West" then
             trainStopWest = stationEntity
         elseif stationEntity.backer_name == "East" then
@@ -25,7 +24,7 @@ Test.Start = function(testName)
         end
     end
 
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+    local train = placedEntitiesByType["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.westStationReached = false

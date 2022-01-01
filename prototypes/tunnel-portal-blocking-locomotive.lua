@@ -10,11 +10,10 @@ data:extend(
             icon = "__base__/graphics/icons/locomotive.png",
             icon_size = 64,
             icon_mipmaps = 4,
-            flags = {"not-deconstructable", "not-upgradable", "not-blueprintable"},
+            flags = {"not-deconstructable", "not-upgradable", "not-blueprintable", "placeable-off-grid"},
             subgroup = "railway_tunnel-hidden_locomotives",
-            collision_box = {{-0.3, -2}, {0.3, 2}},
+            collision_box = {{-0.3, -1.5}, {0.3, 1.5}}, -- Minimum size that doesn't connect to vanilla railway carriages is 1.1 each side.
             collision_mask = CollisionMaskUtil.get_default_mask("locomotive"),
-            --selection_box = {{-1, -2}, {1, 2}}, -- For testing when we need to select them
             weight = 1,
             braking_force = 1,
             friction_force = 1,

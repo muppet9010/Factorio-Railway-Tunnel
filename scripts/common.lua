@@ -3,28 +3,20 @@ local Common = {}
 
 -- Make the entity lists.
 ---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
-Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames = {}, {}, {}, {}
-for _, coreName in pairs({"railway_tunnel-tunnel_segment_surface", "railway_tunnel-tunnel_segment_surface_rail_crossing"}) do
-    Common.TunnelSegmentPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    Common.TunnelSegmentPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
-end
-Common.TunnelSegmentPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames}) ---@type table<string, string>
-for _, coreName in pairs({"railway_tunnel-tunnel_portal_surface"}) do
-    Common.TunnelPortalPlacedEntityNames[coreName .. "-placed"] = coreName .. "-placed"
-    Common.TunnelPortalPlacementEntityNames[coreName .. "-placement"] = coreName .. "-placement"
-end
-Common.TunnelPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames}) ---@type table<string, string>
-Common.TunnelSegmentAndPortalPlacedEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelPortalPlacedEntityNames}) ---@type table<string, string>
-Common.TunnelSegmentAndPortalPlacedPlacementEntityNames = Utils.TableMerge({Common.TunnelSegmentPlacedEntityNames, Common.TunnelSegmentPlacementEntityNames, Common.TunnelPortalPlacedEntityNames, Common.TunnelPortalPlacementEntityNames}) ---@type table<string, string>
+Common.PortalEndEntityNames = {["railway_tunnel-portal_end"] = "railway_tunnel-portal_end"}
+Common.PortalSegmentEntityNames = {["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight"}
+Common.UndergroundSegmentEntityNames = {["railway_tunnel-underground_segment-straight"] = "railway_tunnel-underground_segment-straight", ["railway_tunnel-underground_segment-straight-rail_crossing"] = "railway_tunnel-underground_segment-straight-rail_crossing"}
+Common.PortalEndAndSegmentEntityNames = Utils.TableMerge({Common.PortalEndEntityNames, Common.PortalSegmentEntityNames}) ---@type table<string, string>
+Common.UndergroundSegmentAndAllPortalEntityNames = Utils.TableMerge({Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames}) ---@type table<string, string>
 
----@class TunnelSurfaceRailEntityNames
-Common.TunnelSurfaceRailEntityNames = {
+---@class TunnelRailEntityNames
+Common.TunnelRailEntityNames = {
     -- Doesn't include the tunnel crossing rail as this isn't deemed part of the tunnel's rails.
-    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map", ---@type TunnelSurfaceRailEntityNames
-    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel" ---@type TunnelSurfaceRailEntityNames
+    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelRailEntityNames
+    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelRailEntityNames
+    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel", ---@type TunnelRailEntityNames
+    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map", ---@type TunnelRailEntityNames
+    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel" ---@type TunnelRailEntityNames
 }
 
 ---@class RollingStockTypes
@@ -36,7 +28,7 @@ Common.RollingStockTypes = {
 }
 
 -- Gets the distance from the center of the carriage to the end of it for when placing carriages.
----@param carriageEntityName string @The entity name.
+---@param carriageEntityName string @ The entity name.
 ---@return double
 Common.GetCarriagePlacementDistance = function(carriageEntityName)
     -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
@@ -44,18 +36,6 @@ Common.GetCarriagePlacementDistance = function(carriageEntityName)
         return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
     end
 end
-
----@class TunnelAlignment
-Common.TunnelAlignment = {
-    vertical = "vertical",
-    horizontal = "horizontal"
-}
-
----@class TunnelAlignmentOrientation
-Common.TunnelAlignmentOrientation = {
-    vertical = 0,
-    horizontal = 0.25
-}
 
 ---@class TunnelSignalDirection
 Common.TunnelSignalDirection = {

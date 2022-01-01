@@ -4,7 +4,6 @@
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificNoFuelPointFilter = {} -- Pass in array of NoFuelPoints keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
@@ -41,18 +40,18 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         end
     end
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train
+    local train = placedEntitiesByType["locomotive"][1].train
 
     -- Set starting fuel based on desired no fuel stopping point.
     local woodCount

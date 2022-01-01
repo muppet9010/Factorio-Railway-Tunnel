@@ -6,7 +6,7 @@ data:extend(
             order = "zzzzzzz",
             icons = {
                 {
-                    icon = "__railway_tunnel__/graphics/icon/tunnel_portal_surface/railway_tunnel-tunnel_portal_surface-placement.png",
+                    icon = "__railway_tunnel__/graphics/icon/railway_tunnel.png",
                     icon_size = 32
                 },
                 {

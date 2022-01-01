@@ -83,8 +83,8 @@ end
 
 --- Register a unique name and function for future event scheduling. Must be called from a test's OnLoad() and is a pre-requisite for any events to be scheduled during a test Start().
 ---@param testName TestName
----@param eventName string @Name of the event, used when triggering it.
----@param testFunction function @Function thats called when the event is triggered.
+---@param eventName string @ Name of the event, used when triggering it.
+---@param testFunction function @ Function thats called when the event is triggered.
 TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, testFunction)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RegisterScheduledEventType(completeName, testFunction)
@@ -93,9 +93,9 @@ end
 --- Schedule an event named function once at a given tick. To be called from Start().
 ---@param tick Tick
 ---@param testName TestName
----@param eventName string @Name of the event to trigger.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @OPTIONAL - data table passed back in to the handler function when triggered.
+---@param eventName string @ Name of the event to trigger.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, instanceId, eventData)
     -- instanceId and eventData are optional.
     local completeName = "Test." .. testName .. "." .. eventName
@@ -107,9 +107,9 @@ end
 
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
 ---@param testName TestName
----@param eventName string @Name of the event to trigger.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @OPTIONAL - data table passed back in to the handler function when triggered.
+---@param eventName string @ Name of the event to trigger.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instanceId, eventData)
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
@@ -120,8 +120,8 @@ end
 
 --- Remove any instances of future scheduled once events. To be called from Stop().
 ---@param testName TestName
----@param eventName string @Name of the event to remove the schedule of.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventName string @ Name of the event to remove the schedule of.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledOnceEvents(completeName, instanceId)
@@ -129,8 +129,8 @@ end
 
 --- Remove any instances of future scheduled every tick events. To be called from Stop().
 ---@param testName TestName
----@param eventName string @Name of the event to remove the schedule of.
----@param instanceId string @OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventName string @ Name of the event to remove the schedule of.
+---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledEventFromEachTick(completeName, instanceId)
@@ -138,10 +138,10 @@ end
 
 --- Register a unique name and function to react to a named event. Will only trigger when this test is active. Must be called from OnLoad() and Start().
 ---@param testName TestName
----@param eventName defines.events @The Factorio event to react to.
----@param testFunctionName string @Unique name of this event function handler.
----@param testFunction function @Function to be triggered when the event occurs.
----@param filterData EventFilter @OPTIONAL - Factorio event filter to be used.
+---@param eventName defines.events @ The Factorio event to react to.
+---@param testFunctionName string @ Unique name of this event function handler.
+---@param testFunction function @ Function to be triggered when the event occurs.
+---@param filterData EventFilter @ OPTIONAL - Factorio event filter to be used.
 TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterData)
     -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
@@ -177,15 +177,15 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
 end
 
 ---@class TrainSnapshot
----@field carriageCount uint @how many carriages are in this train.
+---@field carriageCount uint @ how many carriages are in this train.
 ---@field carriages CarriageSnapshot[]
 
 ---@class CarriageSnapshot
----@field name string @Entity prototype name
----@field health float @How much health the carriage has.
----@field facingForwards boolean @If the carriage is facing forwards relative to the train's front.
----@field cargoInventory string @The cargo of non-locomotives as a JSON string.
----@field color string @Color attribute as a JSON string.
+---@field name string @ Entity prototype name
+---@field health float @ How much health the carriage has.
+---@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front.
+---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
+---@field color string @ Color attribute as a JSON string.
 
 --- Returns an abstract meta data of a train to be compared later.
 ---@param train LuaTrain
@@ -310,15 +310,16 @@ TestFunctions.GetTrainAtPosition = function(searchPosition)
     end
 end
 
---- Builds a given blueprint string centered on the given position and returns a list of all build entities. Also starts any placed trains (set to automatic mode). To aid train comparison locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
+--- Builds a given blueprint string centered on the given position. Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 ---@param blueprintString string
 ---@param position Position
 ---@param testName TestName
----@return LuaEntity[]
+---@return LuaEntity[] placedEntities @ all build entities
+---@return table<string, LuaEntity[]> placedEntitiesByType @ the key entities built grouped on their prototype type.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
-    -- Utility function to build a blueprint from a string on the test surface.
-    -- Makes sure that trains in the blueprint are properly built, their fuel requests are fulfilled and the trains are set to automatic.
-    -- Returns the list of directly placed entities and scripted player interactable tunnel entities. Any other script reaction to entities being revived will lead to invalid entity references in the returned result.
+    -- This is the list of entity types that will be unique tracked and returned for easy accessing by test functions. Adding rare types is fine, but anything really generic could be obtained within the test by Utils.GetTableValueWithInnerKeyValue() and may be lower UPS.
+    ---@type table<string, LuaEntity[]>
+    local placedEntitiesByType = {["locomotive"] = {}, ["cargo-wagon"] = {}, ["fluid-wagon"] = {}, ["artillery-wagon"] = {}, ["train-stop"] = {}}
 
     local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]
@@ -337,62 +338,25 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         surface = testSurface,
         force = global.testManager.playerForce,
         position = position,
-        by_player = player
+        by_player = player,
+        skip_fog_of_war = true
     }
     if #ghosts == 0 then
         error("Blueprint in test failed to place, likely outside of generated/revealed area. Test: " .. testName)
     end
     itemStack.clear()
 
+    ---@typelist table<number, LuaEntity>, table<number, LuaEntity>, table<number, LuaEntity>
     local pass2Ghosts, fuelProxies, placedEntities = {}, {}, {}
 
+    -- Try to revive all the ghosts. Some may fail and we will try these again as a second pass.
     for _, ghost in pairs(ghosts) do
-        -- Special cases where the placed entity will be removed by other scripts.
-        local tunnelPortalPosition, tunnelSegmentPosition
-        local ghostName = ghost.ghost_name
-        if ghostName == "railway_tunnel-tunnel_portal_surface-placed" then
-            tunnelPortalPosition = ghost.position
-        elseif ghostName == "railway_tunnel-tunnel_segment_surface-placed" then
-            tunnelSegmentPosition = ghost.position
-        end
-
-        -- Revive the ghost and handle the outcome.
-        local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
-        if revivedOutcome == nil then
-            -- Train ghosts can't be revived before the rail underneath them, so save failed ghosts for a second pass.
-            table.insert(pass2Ghosts, ghost)
-        elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
-            -- Only record valid entities, anything else is passed help.
-            table.insert(placedEntities, revivedGhostEntity)
-        elseif #revivedOutcome == 0 then
-            -- Entity was revived and instantly removed by a script event.
-            if tunnelPortalPosition ~= nil then
-                -- Tunnel Portal was revived.
-                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_portal_surface-placed", tunnelPortalPosition)
-                table.insert(placedEntities, tunnelEntity)
-            elseif tunnelSegmentPosition ~= nil then
-                -- Tunnel Segment was revived.
-                local tunnelEntity = testSurface.find_entity("railway_tunnel-tunnel_segment_surface-placed", tunnelSegmentPosition)
-                table.insert(placedEntities, tunnelEntity)
-            end
-        end
-
-        if fuelProxy ~= nil then
-            table.insert(fuelProxies, fuelProxy)
-        end
+        TestFunctions._ReviveGhost(ghost, pass2Ghosts, fuelProxies, placedEntities, testName, placedEntitiesByType)
     end
 
+    -- Try to revive then ghosts that failed the first time. This is generally carriages that try to be revived before the rails they are on.
     for _, ghost in pairs(pass2Ghosts) do
-        local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
-        if revivedOutcome == nil then
-            error("only 2 rounds of ghost reviving supported. Test: " .. testName)
-        elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
-            -- Only record valid entities, anythng else is passed help.
-            table.insert(placedEntities, revivedGhostEntity)
-        end
-        if fuelProxy ~= nil then
-            table.insert(fuelProxies, fuelProxy)
-        end
+        TestFunctions._ReviveGhost(ghost, nil, fuelProxies, placedEntities, testName, placedEntitiesByType)
     end
 
     for _, fuelProxy in pairs(fuelProxies) do
@@ -402,31 +366,42 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         fuelProxy.destroy()
     end
 
-    TestFunctions.MakeCarriagesUnique(placedEntities)
+    TestFunctions.MakeCarriagesUnique(placedEntitiesByType["locomotive"], placedEntitiesByType["cargo-wagon"], placedEntitiesByType["fluid-wagon"], placedEntitiesByType["artillery-wagon"])
 
-    return placedEntities
+    return placedEntities, placedEntitiesByType
 end
 
---- Makes all the train carriages in the provided entity list unique via color or cargo. Can take a random list of entities safely. Helps make train snapshot comparison easier if every carriage is unique.
---- Only needed if trains are being built manually/scripted and not via TestFunctions.BuildBlueprintFromString().
----@param entities LuaEntity[]
-TestFunctions.MakeCarriagesUnique = function(entities)
+--- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
+--- Only needs calling if trains are being built manually/scripted, as TestFunctions.BuildBlueprintFromString() includes it.
+---@param locomotives? LuaEntity[]
+---@param cargoWagons? LuaEntity[]
+---@param fluidWagons? LuaEntity[]
+---@param artilleryWagons? LuaEntity[]
+TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWagons, artilleryWagons)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "locomotive", true, false)) do
-        carriage.train.manual_mode = false
-        carriage.color = {math.random(0, 255), math.random(0, 255), math.random(0, 255), 1}
+    if locomotives ~= nil then
+        for _, carriage in pairs(locomotives) do
+            carriage.train.manual_mode = false
+            carriage.color = {math.random(0, 255), math.random(0, 255), math.random(0, 255), 1}
+        end
     end
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "cargo-wagon", true, false)) do
-        cargoWagonCount = cargoWagonCount + 1
-        carriage.insert({name = "iron-plate", count = cargoWagonCount})
+    if cargoWagons ~= nil then
+        for _, carriage in pairs(cargoWagons) do
+            cargoWagonCount = cargoWagonCount + 1
+            carriage.insert({name = "iron-plate", count = cargoWagonCount})
+        end
     end
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "fluid-wagon", true, false)) do
-        fluidWagonCount = fluidWagonCount + 1
-        carriage.insert({name = "water", count = fluidWagonCount})
+    if fluidWagons ~= nil then
+        for _, carriage in pairs(fluidWagons) do
+            fluidWagonCount = fluidWagonCount + 1
+            carriage.insert({name = "water", count = fluidWagonCount})
+        end
     end
-    for _, carriage in pairs(Utils.GetTableValueWithInnerKeyValue(entities, "type", "artillery-wagon", true, false)) do
-        artilleryWagonCount = artilleryWagonCount + 1
-        carriage.insert({name = "artillery-shell", count = artilleryWagonCount})
+    if artilleryWagons ~= nil then
+        for _, carriage in pairs(artilleryWagons) do
+            artilleryWagonCount = artilleryWagonCount + 1
+            carriage.insert({name = "artillery-shell", count = artilleryWagonCount})
+        end
     end
 end
 
@@ -441,6 +416,42 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
+
+-- The function called to revive the ghosts on the first and second attempt. It populates a bunch of passed in tables, rather than returning anything itself.
+---@param ghost LuaEntity
+---@param pass2GhostsTableToPopulate table<number, LuaEntity> @ table passed in that is populated for use by the calling function.
+---@param fuelProxiesTableToPopulate table<number, LuaEntity> @ table passed in that is populated for use by the calling function.
+---@param placedEntitiesTableToPopulate table<number, LuaEntity> @ table passed in that is populated for use by the calling function.
+---@param testName string
+---@param placedEntitiesByTypeTableToPopulate table<string, LuaEntity[]> @ table passed in that is populated for use by the calling function.
+TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelProxiesTableToPopulate, placedEntitiesTableToPopulate, testName, placedEntitiesByTypeTableToPopulate)
+    local ghostType = ghost.ghost_type
+
+    -- Revive the ghost and handle the outcome.
+    local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
+    if revivedOutcome == nil then
+        if pass2GhostsTableToPopulate ~= nil then
+            -- Train ghosts can't be revived before the rail underneath them, so save failed ghosts for a second pass.
+            table.insert(pass2GhostsTableToPopulate, ghost)
+        else
+            error("only 2 rounds of ghost reviving supported. Test: " .. testName)
+        end
+    elseif revivedGhostEntity ~= nil and revivedGhostEntity.valid then
+        -- Only record valid entities, anything else is passed help.
+        table.insert(placedEntitiesTableToPopulate, revivedGhostEntity)
+        if placedEntitiesByTypeTableToPopulate[ghostType] ~= nil then
+            table.insert(placedEntitiesByTypeTableToPopulate[ghostType], revivedGhostEntity)
+        end
+    elseif #revivedOutcome == 0 then
+        -- Entity was revived and instantly removed by a script event.
+        error("this shouldn't be hit any more")
+    end
+
+    -- Add fuel if its in the blueprint for this entity.
+    if fuelProxy ~= nil then
+        table.insert(fuelProxiesTableToPopulate, fuelProxy)
+    end
+end
 
 ---@param carriage1 CarriageSnapshot
 ---@param carriage2 CarriageSnapshot

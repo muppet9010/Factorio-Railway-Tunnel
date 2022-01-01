@@ -44,12 +44,11 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
     elseif lastCarriageSpeed < 0 then
-        leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+        leadCarriageForwardOrientation = Utils.LoopOrientationValue(leadCarriage.orientation + 0.5)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end
-    local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
-    local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
+    local firstRailLeadCarriageUsedPosition = Utils.RotateOffsetAroundPosition(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)}, leadCarriage.position)
     local firstRail = trainPathRails[1]
     local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
     local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
@@ -78,12 +77,11 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation = function(train,
     if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
     elseif lastCarriageSpeed < 0 then
-        leadCarriageForwardOrientation = Utils.BoundFloatValueWithinRange(leadCarriage.orientation + 0.5, 0, 1)
+        leadCarriageForwardOrientation = Utils.LoopOrientationValue(leadCarriage.orientation + 0.5)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end
-    local leadCarriageEdgePositionOffset = Utils.RotatePositionAround0(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)})
-    local firstRailLeadCarriageUsedPosition = Utils.ApplyOffsetToPosition(leadCarriage.position, leadCarriageEdgePositionOffset)
+    local firstRailLeadCarriageUsedPosition = Utils.RotateOffsetAroundPosition(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)}, leadCarriage.position)
     local firstRail = trainPath.rails[trainPath.current]
     local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
     local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
@@ -104,7 +102,7 @@ end
 TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientation)
     local railFarEndPosition
     if railEntity.type == "straight-rail" then
-        railFarEndPosition = Utils.ApplyOffsetToPosition(railEntity.position, Utils.RotatePositionAround0(forwardsOrientation, {x = 0, y = -1}))
+        railFarEndPosition = Utils.RotateOffsetAroundPosition(railEntity.position, Utils.RotatePositionAround0(forwardsOrientation, {x = 0, y = -1}))
     elseif railEntity.type == "curved-rail" then
         -- Curved end offset position based on that a diagonal straight rail is 2 long and this sets where the curved end points must be.
         local directionDetails = {
@@ -181,7 +179,7 @@ TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientati
     return railFarEndPosition
 end
 
----@param railEntityType string @Prototype name.
+---@param railEntityType string @ Prototype name.
 ---@return double
 TrainManagerFuncs.GetRailEntityLength = function(railEntityType)
     if railEntityType == "straight-rail" then
