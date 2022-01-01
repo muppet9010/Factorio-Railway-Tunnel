@@ -16,11 +16,15 @@ local Utils = require("utility/utils")
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 
----@class TunnelDetails @ used by remote interface calls only.
+---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
----@field portalEntities LuaEntity[] @ Not in any special order.
----@field undergroundEntities LuaEntity[] @ Not in any special order.
----@field tunnelUsageId Id
+---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
+---@field undergroundSegmentEntities  table<UnitNumber, LuaEntity> @ array of all the underground segments making up the underground section of the tunnel.
+---@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+
+---@class RemotePortalDetails
+---@field portalId Id @ unique id of the portal object.
+---@field portalPartEntities table<UnitNumber, LuaEntity> @ array of all the parts making up the portal.
 
 Tunnel.CreateGlobals = function()
     global.tunnels = global.tunnels or {}
@@ -159,27 +163,62 @@ Tunnel.GetTunnelsUsageEntry = function(tunnelToCheck)
     return tunnelToCheck.managedTrain
 end
 
+---@class RemoteTunnelDetails @ used by remote interface calls only.
+---@field tunnelId Id @ Id of the tunnel.
+---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
+---@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+
+---@class RemotePortalDetails
+---@field portalId Id @ unique id of the portal object.
+---@field portalPartEntities table<UnitNumber, LuaEntity> @ array of all the parts making up the portal.
+
 ---@param tunnel Tunnel
----@return TunnelDetails
+---@return RemoteTunnelDetails
 Tunnel.Remote_GetTunnelDetails = function(tunnel)
-    -- TODO: not checked as a remote
-    local undergroundSegments = {}
-    for _, segment in pairs(tunnel.segments) do
-        table.insert(undergroundSegments, segment.entity)
+    -- Get the details for the underground segments.
+    local undergroundSegmentEntities = {}
+    for undergroundSegmentId, undergroundSegmentObject in pairs(tunnel.underground.segments) do
+        undergroundSegmentEntities[undergroundSegmentId] = undergroundSegmentObject.entity
     end
+
+    -- Get the details for the 2 portals.
+    local portal1PartEntities = {}
+    for portalEndPartId, portalEndPartObject in pairs(tunnel.portals[1].portalEnds) do
+        portal1PartEntities[portalEndPartId] = portalEndPartObject.entity
+    end
+    for portalSegmentPartId, portalSegmentPartObject in pairs(tunnel.portals[1].portalSegments) do
+        portal1PartEntities[portalSegmentPartId] = portalSegmentPartObject.entity
+    end
+    local portal2PartEntities = {}
+    for portalEndPartId, portalEndPartObject in pairs(tunnel.portals[2].portalEnds) do
+        portal2PartEntities[portalEndPartId] = portalEndPartObject.entity
+    end
+    for portalSegmentPartId, portalSegmentPartObject in pairs(tunnel.portals[2].portalSegments) do
+        portal2PartEntities[portalSegmentPartId] = portalSegmentPartObject.entity
+    end
+
+    ---@type RemoteTunnelDetails
     local tunnelDetails = {
         tunnelId = tunnel.id,
-        portals = {tunnel.portals[1].entity, tunnel.portals[2].entity},
-        segments = undergroundSegments,
+        portals = {
+            {
+                portalId = tunnel.portals[1].id,
+                portalPartEntities = portal1PartEntities
+            },
+            {
+                portalId = tunnel.portals[2].id,
+                portalPartEntities = portal2PartEntities
+            }
+        },
+        undergroundSegmentEntities = undergroundSegmentEntities,
         tunnelUsageId = tunnel.managedTrain.id
     }
     return tunnelDetails
 end
 
 ---@param tunnelId Id
----@return TunnelDetails
+---@return RemoteTunnelDetails
 Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
-    -- TODO: not checked as a remote
     local tunnel = global.tunnels.tunnels[tunnelId]
     if tunnel == nil then
         return nil
@@ -188,17 +227,23 @@ Tunnel.Remote_GetTunnelDetailsForId = function(tunnelId)
 end
 
 ---@param entityUnitNumber UnitNumber
----@return TunnelDetails
-Tunnel.Remote_GetTunnelDetailsForEntity = function(entityUnitNumber)
-    -- TODO: not checked as a remote
+---@return RemoteTunnelDetails
+Tunnel.Remote_GetTunnelDetailsForEntityUnitNumber = function(entityUnitNumber)
     for _, tunnel in pairs(global.tunnels.tunnels) do
         for _, portal in pairs(tunnel.portals) do
-            if portal.id == entityUnitNumber then
-                return Tunnel.Remote_GetTunnelDetails(tunnel)
+            for portalEndId, _ in pairs(portal.portalEnds) do
+                if portalEndId == entityUnitNumber then
+                    return Tunnel.Remote_GetTunnelDetails(tunnel)
+                end
+            end
+            for portalSegmentId, _ in pairs(portal.portalSegments) do
+                if portalSegmentId == entityUnitNumber then
+                    return Tunnel.Remote_GetTunnelDetails(tunnel)
+                end
             end
         end
-        for _, segment in pairs(tunnel.segments) do
-            if segment.id == entityUnitNumber then
+        for segmentId, _ in pairs(tunnel.underground.segments) do
+            if segmentId == entityUnitNumber then
                 return Tunnel.Remote_GetTunnelDetails(tunnel)
             end
         end

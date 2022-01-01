@@ -30,10 +30,9 @@ MINOR:
     - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests. All UPS using consistency checks have already been gated behind this setting to save UPS in when in a production release.
     - global.strictStateHandling is legacy and should be removed as part of overhaul when other code superseeds its usage cases.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
-    - look at when we get position of the tunnel's various entities and cache them as they don't change once the tunnel is complete. Also unit numbers and directions. This will generally require a change from referencing an entity in object field to a table of its cached attributes and the entity.
     - do train arrival check as per mod aim.
     - make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
-    - updated Tests that used any portal or segment of placed or placement and the various entity types.
+    - updated remaining old Tests.
     - rename scripts UndergroundSegments and its lua file to just underground as thats the name of the top object.
     - rename scripts tunnel-portals and its lua file to just portal as thats the name of the top object.
     - train blocker prototype blocks players and vehicles as they have the "train" layer in current Factorio. Use a new collision mask for this wail wagon only purpose.
@@ -41,10 +40,11 @@ MINOR:
     - the portal part connected checking in TunnelPortals.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
     - the Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
     - filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. on_built_entity
-    - Some edge cases of rebuilding a tunnel portal and underground parts doesn't recreate the tunnel correctly (I think still, but can't reproduce reliably). Make a proper test for all combinations so it can be tested properly.
+    - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
     - building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
     - with the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
-    - at present all rail in the portals is shown as stadnard on map. Is this really desired as it used to not be like this.
+    - at present all rail in the portals is shown as standard on map. Is this really desired as it used to not be like this.
+    - check when we store tables by unit number vs just being a list. If we don't lookup by unit number then don't store by it to save the API call.
 
 
 FUTURE:

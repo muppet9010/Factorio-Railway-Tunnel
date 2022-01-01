@@ -36,7 +36,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
 ---@field dummyTrainId? Id|null @ The LuaTrain ID of the dummy train.
 ---
----@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. -- OVERHAUL - not used by anything any more other than in its populating function.
+---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal. -- OVERHAUL - not used by anything any more other than in its populating function.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field targetTrainStop LuaEntity @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 ---

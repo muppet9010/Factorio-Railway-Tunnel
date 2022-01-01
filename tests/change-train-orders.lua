@@ -62,11 +62,11 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationOrigional, stationForwards, stationBackwards
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "Origional" then
             stationOrigional = stationEntity
         elseif stationEntity.backer_name == "Forwards" then

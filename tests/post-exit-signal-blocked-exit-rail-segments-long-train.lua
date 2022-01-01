@@ -20,12 +20,11 @@ Test.OnLoad = function(testName)
 end
 
 Test.Start = function(testName)
-    local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 24}, testName)
+    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 24}, testName)
 
     -- Get the trains/wagons. The blocking wagons are the single carriage trains sorted south to north.
     local movingTrain, blockingWagons = nil, {}
-    local wagonEntities = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "cargo-wagon", true, false)
-    for _, wagonEntity in pairs(wagonEntities) do
+    for _, wagonEntity in pairs(placedEntitiesByType["cargo-wagon"]) do
         if #wagonEntity.train.carriages == 1 then
             table.insert(blockingWagons, wagonEntity)
         else
@@ -41,8 +40,7 @@ Test.Start = function(testName)
 
     -- Get the competitor train, the single loco train.
     local competitorTrain
-    local locoEntities = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", true, false)
-    for _, locoEntity in pairs(locoEntities) do
+    for _, locoEntity in pairs(placedEntitiesByType["locomotive"]) do
         if #locoEntity.train.carriages == 1 then
             competitorTrain = locoEntity.train
         end
@@ -50,7 +48,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then

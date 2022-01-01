@@ -50,14 +50,14 @@ local function OnLoad()
                 return TrainManagerRemote.GetTemporaryCarriageNames()
             end,
             ---@param tunnelId Id
-            ---@return TunnelDetails
+            ---@return RemoteTunnelDetails
             get_tunnel_details_for_id = function(tunnelId)
-                return TrainManagerRemote.GetTunnelDetailsForId(tunnelId)
+                return TunnelManager.Remote_GetTunnelDetailsForId(tunnelId)
             end,
             ---@param entityUnitNumber UnitNumber
-            ---@return TunnelDetails
-            get_tunnel_details_for_entity = function(entityUnitNumber)
-                return TunnelManager.Remote_GetTunnelDetailsForEntity(entityUnitNumber)
+            ---@return RemoteTunnelDetails
+            get_tunnel_details_for_entity_unit_number = function(entityUnitNumber)
+                return TunnelManager.Remote_GetTunnelDetailsForEntityUnitNumber(entityUnitNumber)
             end
         }
     )

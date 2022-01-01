@@ -1,4 +1,4 @@
-OVERHAOUL: this all needs reviewing and updating.
+OVERHAUL: this all needs reviewing and updating.
 
 Remote Interfaces & Custom Events
 =================
@@ -101,8 +101,10 @@ Tunnel Object Attributes
 
 The common attributes that are returned giving details about a tunnel by many of the mods events and remote interfaces. If the tunnel is not complete these values will all be nil.
 - tunnelId = Id of the tunnel (INT).
-- portals = Array of the 2 portal entities in this tunnel.
-- segments = Array of the tunnel segment entities in this tunnel.
+- portals = table of the 2 portals in this tunnel. Comprising the below details:
+    - portalId = Id of the portal (INT).
+    - portalPartEntities = table of the portal part entities as: unit_number -> entity
+- undergroundSegmentEntities = table of the tunnel segment entities in this tunnel as: unit_number -> entity
 - tunnelUsageId = Id (INT) of the tunnel usage entry using this tunnel if one is currently active. Can use the get_tunnel_usage_entry_for_id remote interface to get details of the tunnel usage entry.
 
 
@@ -119,11 +121,11 @@ Get Tunnel Details For Id
 
 
 
-Get Tunnel Details For Entity
+Get Tunnel Details For Entity Unit Number
 -----------------
 
-- Interface Name: get_tunnel_details_for_entity
-- Description: Remote interface to get details on a specific tunnel that a tunnel part (portal or segment) entity is part of, by the entities unit_number.
+- Interface Name: get_tunnel_details_for_entity_unit_number
+- Description: Remote interface to get the details of the tunnel a tunnel part (portal or segment) entity is part of, by the entities unit_number.
 - Arguments:
     - Tunnel Part Unit Number (INT) - The unit number of an entity that is part of the tunne.
 - Returns:

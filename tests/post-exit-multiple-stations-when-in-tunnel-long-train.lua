@@ -17,11 +17,11 @@ Test.Start = function(testName)
     local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the train.
-    local movingTrain = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive", false, false).train
+    local movingTrain = placedEntitiesByType["locomotive"][1].train
 
     -- Get the stations placed by name.
     local trainStopFirst, trainStopSecond, trainStopThird, trainStopSouth
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
         if stationEntity.backer_name == "First" then
             trainStopFirst = stationEntity
         elseif stationEntity.backer_name == "Second" then
