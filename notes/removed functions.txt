@@ -11,7 +11,7 @@ TrainManager.TrainLeavingFirstCarriage = function(managedTrain)
     TrainManagerFuncs.TrainSetSchedule(managedTrain.leavingTrain, schedule, isManual, targetTrainStop)
 
     -- Follow up items post train creation.
-    TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
+    PlayerContainer.TransferPlayerFromContainerForClonedUndergroundCarriage(undergroundLeadCarriage, placedCarriage)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startedLeaving)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leavingCarriageAdded)
     managedTrain.undergroundTrainSetsSpeed = true
@@ -675,7 +675,7 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     end
 
     -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage.
-    TrainManagerPlayerContainers.On_TrainManagerReversed(oldManagedTrain, newManagedTrain)
+    PlayerContainer.On_TrainManagerReversed(oldManagedTrain, newManagedTrain)
 
     TrainManagerRemote.TunnelUsageChanged(newManagedTrain.id, TunnelUsageAction.reversedDuringUse, TunnelUsageChangeReason.forwardPathLost, oldManagedTrain.id)
 

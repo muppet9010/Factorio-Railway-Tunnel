@@ -1,12 +1,12 @@
 local EventScheduler = require("utility/event-scheduler")
-local TunnelManager = require("scripts/tunnel-manager")
-local TunnelPortals = require("scripts/tunnel-portals")
-local UndergroundSegments = require("scripts/underground-segments")
+local Tunnel = require("scripts/tunnel")
+local Portal = require("scripts/portal")
+local Underground = require("scripts/underground")
 local TrainManager = require("scripts/train-manager")
 local TrainManagerRemote = require("scripts/train-manager-remote")
 local TestManager = require("scripts/test-manager")
 local Force = require("scripts/force")
-local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
+local PlayerContainer = require("scripts/player-container")
 local Events = require("utility/events")
 
 local function CreateGlobals()
@@ -16,10 +16,10 @@ local function CreateGlobals()
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
     TrainManagerRemote.CreateGlobals()
-    TrainManagerPlayerContainers.CreateGlobals()
-    TunnelManager.CreateGlobals()
-    TunnelPortals.CreateGlobals()
-    UndergroundSegments.CreateGlobals()
+    PlayerContainer.CreateGlobals()
+    Tunnel.CreateGlobals()
+    Portal.CreateGlobals()
+    Underground.CreateGlobals()
 
     TestManager.CreateGlobals()
 end
@@ -52,21 +52,21 @@ local function OnLoad()
             ---@param tunnelId Id
             ---@return RemoteTunnelDetails
             get_tunnel_details_for_id = function(tunnelId)
-                return TunnelManager.Remote_GetTunnelDetailsForId(tunnelId)
+                return Tunnel.Remote_GetTunnelDetailsForId(tunnelId)
             end,
             ---@param entityUnitNumber UnitNumber
             ---@return RemoteTunnelDetails
             get_tunnel_details_for_entity_unit_number = function(entityUnitNumber)
-                return TunnelManager.Remote_GetTunnelDetailsForEntityUnitNumber(entityUnitNumber)
+                return Tunnel.Remote_GetTunnelDetailsForEntityUnitNumber(entityUnitNumber)
             end
         }
     )
 
     TrainManager.OnLoad()
-    TunnelManager.OnLoad()
-    TunnelPortals.OnLoad()
-    UndergroundSegments.OnLoad()
-    TrainManagerPlayerContainers.OnLoad()
+    Tunnel.OnLoad()
+    Portal.OnLoad()
+    Underground.OnLoad()
+    PlayerContainer.OnLoad()
 
     TestManager.OnLoad()
 end

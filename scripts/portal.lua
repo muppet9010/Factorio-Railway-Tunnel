@@ -3,7 +3,7 @@ local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
 local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = Common.PortalEndAndSegmentEntityNames, Common.TunnelSignalDirection, Common.TunnelUsageParts
-local TunnelPortals = {}
+local Portal = {}
 local EventScheduler = require("utility/event-scheduler")
 
 ---@class Portal
@@ -176,61 +176,61 @@ local BlockingEndPortalSetup = {
     blockedInvisibleSignalsDistance = -1.5
 }
 
-TunnelPortals.CreateGlobals = function()
-    global.tunnelPortals = global.tunnelPortals or {}
-    global.tunnelPortals.nextPortalId = global.tunnelPortals.nextPortalId or 1
-    global.tunnelPortals.portals = global.tunnelPortals.portals or {} ---@type table<Id, Portal> @ a list of all of the portals.
-    global.tunnelPortals.portalPartEntityIdToPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart or {} ---@type table<UnitNumber, PortalPart> @ a lookup of portal part entity unit_number to the portal part object.
-    global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the entering train detection entity is killed.
-    global.tunnelPortals.transitionUsageDetectorEntityIdToPortal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the transition train detection entity is killed.
-    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings = global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for internal positions that portal parts can be connected on. Includes the parts's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
-    global.tunnelPortals.portalTunnelInternalConnectionSurfacePositionStrings = global.tunnelPortals.portalTunnelInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by internal position string for trying to connect to an underground.
+Portal.CreateGlobals = function()
+    global.portals = global.portals or {}
+    global.portals.nextPortalId = global.portals.nextPortalId or 1
+    global.portals.portals = global.portals.portals or {} ---@type table<Id, Portal> @ a list of all of the portals.
+    global.portals.portalPartEntityIdToPortalPart = global.portals.portalPartEntityIdToPortalPart or {} ---@type table<UnitNumber, PortalPart> @ a lookup of portal part entity unit_number to the portal part object.
+    global.portals.enteringTrainUsageDetectorEntityIdToPortal = global.portals.enteringTrainUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the entering train detection entity is killed.
+    global.portals.transitionUsageDetectorEntityIdToPortal = global.portals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the transition train detection entity is killed.
+    global.portals.portalPartInternalConnectionSurfacePositionStrings = global.portals.portalPartInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for internal positions that portal parts can be connected on. Includes the parts's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
+    global.portals.portalTunnelInternalConnectionSurfacePositionStrings = global.portals.portalTunnelInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by internal position string for trying to connect to an underground.
 end
 
-TunnelPortals.OnLoad = function()
+Portal.OnLoad = function()
     local portalEntityNames_Filter = {}
     for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityNames_Filter, {filter = "name", name = name})
     end
 
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "TunnelPortals.OnBuiltEntity", TunnelPortals.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelPortals.OnPreMinedEntity", TunnelPortals.OnPreMinedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelPortals.OnPreMinedEntity", TunnelPortals.OnPreMinedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntity", TunnelPortals.OnDiedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntity", TunnelPortals.OnDiedEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
 
     local portalEntityGhostNames_Filter = {}
     for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
 
-    MOD.Interfaces.TunnelPortals = MOD.Interfaces.TunnelPortals or {}
-    MOD.Interfaces.TunnelPortals.On_PreTunnelCompleted = TunnelPortals.On_PreTunnelCompleted
-    MOD.Interfaces.TunnelPortals.On_TunnelRemoved = TunnelPortals.On_TunnelRemoved
-    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal = TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal
-    MOD.Interfaces.TunnelPortals.CanAPortalConnectAtItsInternalPosition = TunnelPortals.CanAPortalConnectAtItsInternalPosition
-    MOD.Interfaces.TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel = TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel
-    MOD.Interfaces.TunnelPortals.On_PostTunnelCompleted = TunnelPortals.On_PostTunnelCompleted
+    MOD.Interfaces.Portal = MOD.Interfaces.Portal or {}
+    MOD.Interfaces.Portal.On_PreTunnelCompleted = Portal.On_PreTunnelCompleted
+    MOD.Interfaces.Portal.On_TunnelRemoved = Portal.On_TunnelRemoved
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal = Portal.AddEnteringTrainUsageDetectionEntityToPortal
+    MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition = Portal.CanAPortalConnectAtItsInternalPosition
+    MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel
+    MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
 
-    EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
+    EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
 
     local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntityPortalEntryTrainDetector", TunnelPortals.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntityPortalEntryTrainDetector", TunnelPortals.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
 
     local portalTransitionTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1"}}
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelPortals.OnDiedEntityPortalTransitionTrainDetector", TunnelPortals.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelPortals.OnDiedEntityPortalTransitionTrainDetector", TunnelPortals.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-TunnelPortals.OnBuiltEntity = function(event)
+Portal.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid then
         return
@@ -243,14 +243,14 @@ TunnelPortals.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    TunnelPortals.TunnelPortalPartBuilt(createdEntity, placer, createdEntity_name)
+    Portal.TunnelPortalPartBuilt(createdEntity, placer, createdEntity_name)
 end
 
 ---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@param builtEntity_name string
 ---@return boolean
-TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
+Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
@@ -304,13 +304,13 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
 
     -- Register the parts' surfacePositionStrings for reverse lookup.
     local frontInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.frontInternalPosition)
-    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
+    global.portals.portalPartInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
         id = frontInternalSurfacePositionString,
         portalPart = portalPartObject
     }
     portalPartObject.frontInternalSurfacePositionString = frontInternalSurfacePositionString
     local rearInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, portalPartObject.rearInternalPosition)
-    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
+    global.portals.portalPartInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
         id = rearInternalSurfacePositionString,
         portalPart = portalPartObject
     }
@@ -321,18 +321,18 @@ TunnelPortals.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_
     portalPartObject.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 1}, portalPartObject.rearInternalPosition))
 
     -- Register the part's entity for reverse lookup.
-    global.tunnelPortals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
+    global.portals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
 
-    TunnelPortals.UpdatePortalsForNewPortalPart(portalPartObject)
+    Portal.UpdatePortalsForNewPortalPart(portalPartObject)
 
     if portalPartObject.portal ~= nil and portalPartObject.portal.isComplete then
-        TunnelPortals.CheckAndHandleTunnelCompleteFromPortal(portalPartObject.portal)
+        Portal.CheckAndHandleTunnelCompleteFromPortal(portalPartObject.portal)
     end
 end
 
 --- Check if this portal part is next to another portal part on either/both sides. If it is create/add to a portal object for them. A single portal part doesn't get a portal object.
 ---@param portalPartObject PortalPart
-TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
+Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
     local firstComplictedConnectedPart, secondComplictedConnectedPart = nil, nil
 
     -- Check for a connected viable portal part in both directions from our portal part.
@@ -349,7 +349,7 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
         }
     ) do
         -- Look in the global internal position string list for any part that is where our external check position is.
-        local foundPortalPartPositionObject = global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
+        local foundPortalPartPositionObject = global.portals.portalPartInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
         -- If a portal reference at this position is found next to this one add this part to its/new portal.
         if foundPortalPartPositionObject ~= nil then
             local connectedPortalPart = foundPortalPartPositionObject.portalPart
@@ -358,10 +358,10 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 -- Valid portal to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
                 if portalPartObject.portal and connectedPortalPart.portal == nil then
                     -- We have a portal and they don't, so add them to our portal.
-                    TunnelPortals.AddPartToPortal(portalPartObject.portal, connectedPortalPart)
+                    Portal.AddPartToPortal(portalPartObject.portal, connectedPortalPart)
                 elseif portalPartObject.portal == nil and connectedPortalPart.portal then
                     -- We don't have a portal and they do, so add us to their portal.
-                    TunnelPortals.AddPartToPortal(connectedPortalPart.portal, portalPartObject)
+                    Portal.AddPartToPortal(connectedPortalPart.portal, portalPartObject)
                 else
                     -- Either we both have portals or neither have portals. Just flag this and review after checking both directions.
                     if firstComplictedConnectedPart == nil then
@@ -391,8 +391,8 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
     if firstComplictedConnectedPart ~= nil then
         if portalPartObject.portal == nil then
             -- none has a portal, so create one for all. As if either connected part had a portal we would have one now.
-            local portalId = global.tunnelPortals.nextPortalId
-            global.tunnelPortals.nextPortalId = global.tunnelPortals.nextPortalId + 1
+            local portalId = global.portals.nextPortalId
+            global.portals.nextPortalId = global.portals.nextPortalId + 1
             ---@type Portal
             local portal = {
                 id = portalId,
@@ -403,11 +403,11 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 force = portalPartObject.force,
                 surface = portalPartObject.surface
             }
-            global.tunnelPortals.portals[portalId] = portal
-            TunnelPortals.AddPartToPortal(portal, portalPartObject)
-            TunnelPortals.AddPartToPortal(portal, firstComplictedConnectedPart)
+            global.portals.portals[portalId] = portal
+            Portal.AddPartToPortal(portal, portalPartObject)
+            Portal.AddPartToPortal(portal, firstComplictedConnectedPart)
             if secondComplictedConnectedPart ~= nil then
-                TunnelPortals.AddPartToPortal(portal, secondComplictedConnectedPart)
+                Portal.AddPartToPortal(portal, secondComplictedConnectedPart)
             end
         elseif portalPartObject.portal ~= nil and firstComplictedConnectedPart.portal ~= nil then
             -- Us and the one complicated part both have a portal.
@@ -415,14 +415,14 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
             -- If the 2 portals are different then merge them. Use whichever has more segments as new master as this is generally the best one. It can end up that both have the same portal during the connection process and in this case do nothing to the shared portal.
             if portalPartObject.portal.id ~= firstComplictedConnectedPart.portal.id then
                 if Utils.GetTableNonNilLength(portalPartObject.portal.portalSegments) >= Utils.GetTableNonNilLength(firstComplictedConnectedPart.portal.portalSegments) then
-                    TunnelPortals.MergePortalInToOtherPortal(firstComplictedConnectedPart.portal, portalPartObject.portal)
+                    Portal.MergePortalInToOtherPortal(firstComplictedConnectedPart.portal, portalPartObject.portal)
                 else
-                    TunnelPortals.MergePortalInToOtherPortal(portalPartObject.portal, firstComplictedConnectedPart.portal)
+                    Portal.MergePortalInToOtherPortal(portalPartObject.portal, firstComplictedConnectedPart.portal)
                 end
             end
         elseif portalPartObject.portal ~= nil and firstComplictedConnectedPart.portal == nil then
             -- We have a portal now and the other complicated connnected part doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
-            TunnelPortals.AddPartToPortal(portalPartObject.portal, firstComplictedConnectedPart)
+            Portal.AddPartToPortal(portalPartObject.portal, firstComplictedConnectedPart)
         else
             -- If a situation should be ignored add it explicitly.
             error("unexpected scenario")
@@ -431,14 +431,14 @@ TunnelPortals.UpdatePortalsForNewPortalPart = function(portalPartObject)
 
     -- Check if portal is complete.
     if portalPartObject.portal ~= nil and Utils.GetTableNonNilLength(portalPartObject.portal.portalEnds) == 2 then
-        TunnelPortals.PortalComplete(portalPartObject.portal)
+        Portal.PortalComplete(portalPartObject.portal)
     end
 end
 
 --- Add the portalPart to the portal based on its type.
 ---@param portal Portal
 ---@param portalPart PortalPart
-TunnelPortals.AddPartToPortal = function(portal, portalPart)
+Portal.AddPartToPortal = function(portal, portalPart)
     portalPart.portal = portal
     if portalPart.typeData.partType == PortalPartType.portalEnd then
         portal.portalEnds[portalPart.id] = portalPart
@@ -453,7 +453,7 @@ end
 --- Moves the old partal parts to the new portal and removes the old portal object.
 ---@param oldPortal Portal
 ---@param newPortal Portal
-TunnelPortals.MergePortalInToOtherPortal = function(oldPortal, newPortal)
+Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
     for id, part in pairs(oldPortal.portalEnds) do
         newPortal.portalEnds[id] = part
         part.portal = newPortal
@@ -463,18 +463,18 @@ TunnelPortals.MergePortalInToOtherPortal = function(oldPortal, newPortal)
         part.portal = newPortal
     end
     newPortal.trainWaitingAreaTilesLength = newPortal.trainWaitingAreaTilesLength + oldPortal.trainWaitingAreaTilesLength
-    global.tunnelPortals.portals[oldPortal.id] = nil
+    global.portals.portals[oldPortal.id] = nil
 end
 
 ---@param portal Portal
-TunnelPortals.PortalComplete = function(portal)
+Portal.PortalComplete = function(portal)
     portal.isComplete = true
     portal.portalTunneExternalConnectionSurfacePositionStrings = {}
 
-    -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portals.
+    -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portal.
     for _, endPortalPart in pairs(portal.portalEnds) do
         local undergroundInternalConnectionSurfacePositionString = next(endPortalPart.nonConnectedInternalSurfacePositions)
-        global.tunnelPortals.portalTunnelInternalConnectionSurfacePositionStrings[undergroundInternalConnectionSurfacePositionString] = {
+        global.portals.portalTunnelInternalConnectionSurfacePositionStrings[undergroundInternalConnectionSurfacePositionString] = {
             id = undergroundInternalConnectionSurfacePositionString,
             portal = portal,
             endPortalPart = endPortalPart
@@ -490,14 +490,14 @@ end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param portal Portal
-TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
+Portal.CheckAndHandleTunnelCompleteFromPortal = function(portal)
     for portalExternalSurfacePositionString, portalTunnelExternalConnectionSurfacePositionObject in pairs(portal.portalTunneExternalConnectionSurfacePositionStrings) do
         ---@typelist Underground, UndergroundSegment, UndergroundSegment
-        local underground, otherEndSegment = MOD.Interfaces.UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition(portalExternalSurfacePositionString)
+        local underground, otherEndSegment = MOD.Interfaces.Underground.CanAnUndergroundConnectAtItsInternalPosition(portalExternalSurfacePositionString)
         if underground ~= nil then
-            local foundPortal, foundEndPortalPart = MOD.Interfaces.UndergroundSegments.CanUndergroundSegmentConnectToAPortal(otherEndSegment, portal)
+            local foundPortal, foundEndPortalPart = MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal(otherEndSegment, portal)
             if foundPortal ~= nil then
-                TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
+                Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
                 MOD.Interfaces.Tunnel.CompleteTunnel({portal, foundPortal}, underground)
             end
         end
@@ -508,8 +508,8 @@ end
 ---@param portalInternalSurfacePositionString SurfacePositionString
 ---@return Portal|nil portal
 ---@return PortalEnd|nil portalEnd
-TunnelPortals.CanAPortalConnectAtItsInternalPosition = function(portalInternalSurfacePositionString)
-    local portalTunnelInternalConnectionSurfacePositionObject = global.tunnelPortals.portalTunnelInternalConnectionSurfacePositionStrings[portalInternalSurfacePositionString]
+Portal.CanAPortalConnectAtItsInternalPosition = function(portalInternalSurfacePositionString)
+    local portalTunnelInternalConnectionSurfacePositionObject = global.portals.portalTunnelInternalConnectionSurfacePositionStrings[portalInternalSurfacePositionString]
     if portalTunnelInternalConnectionSurfacePositionObject ~= nil and portalTunnelInternalConnectionSurfacePositionObject.portal.isComplete then
         return portalTunnelInternalConnectionSurfacePositionObject.portal, portalTunnelInternalConnectionSurfacePositionObject.endPortalPart
     end
@@ -517,14 +517,14 @@ end
 
 --- Called when a tunnel is about to be created and the 2 end portal parts that connect to the underground are known.
 ---@param endPortalParts PortalEnd[]
-TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel = function(endPortalParts)
+Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = function(endPortalParts)
     endPortalParts[1].connectedToUnderground = true
     endPortalParts[2].connectedToUnderground = true
 end
 
 -- Registers and sets up the tunnel's portals prior to the tunnel object being created and references created.
 ---@param portals Portal[]
-TunnelPortals.On_PreTunnelCompleted = function(portals)
+Portal.On_PreTunnelCompleted = function(portals)
     -- Add all the bits to each portal that only appear when the portal is part of a completed tunnel.
     for _, portal in pairs(portals) do
         -- Work out which portal end is the blocked end.
@@ -552,7 +552,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
         local entryOrientation = Utils.DirectionToOrientation(entryDirection)
         local surface, force = portal.surface, portal.force
 
-        TunnelPortals.BuildRailForPortalsParts(portal)
+        Portal.BuildRailForPortalsParts(portal)
 
         -- Add the signals at the entry part to the tunnel.
         local entrySignalInEntityPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 1.5, y = EntryEndPortalSetup.entrySignalsDistance}, entryPortalEnd.entity_position)
@@ -682,13 +682,13 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
     end
 
     portals[1].entrySignals[TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelSignalDirection.inSignal].entity}
-    TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[1].entrySignals[TunnelSignalDirection.inSignal].entity, "signal-1", "signal-2")
-    TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[2].entrySignals[TunnelSignalDirection.inSignal].entity, "signal-2", "signal-1")
+    Portal.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[1].entrySignals[TunnelSignalDirection.inSignal].entity, "signal-1", "signal-2")
+    Portal.LinkRailSignalsToCloseWhenOtherIsntOpen(portals[2].entrySignals[TunnelSignalDirection.inSignal].entity, "signal-2", "signal-1")
 end
 
 -- Add the rails to the tunnel portal's parts.
 ---@param portal Portal
-TunnelPortals.BuildRailForPortalsParts = function(portal)
+Portal.BuildRailForPortalsParts = function(portal)
     -- The function to place rail called within this function only.
     ---@param portalPart PortalPart
     ---@param tracksPositionOffset PortalPartTrackPositionOffset
@@ -717,7 +717,7 @@ end
 ---@param railSignalEntity LuaEntity
 ---@param nonGreenSignalOutputName string @ Virtual signal name to be output to the cirtuit network when the signal state isn't green.
 ---@param closeOnSignalName string @ Virtual signal name that triggers the singal state to be closed when its greater than 0 on the circuit network.
-TunnelPortals.LinkRailSignalsToCloseWhenOtherIsntOpen = function(railSignalEntity, nonGreenSignalOutputName, closeOnSignalName)
+Portal.LinkRailSignalsToCloseWhenOtherIsntOpen = function(railSignalEntity, nonGreenSignalOutputName, closeOnSignalName)
     local controlBehavior = railSignalEntity.get_or_create_control_behavior() ---@type LuaRailSignalControlBehavior
     controlBehavior.read_signal = true
     controlBehavior.red_signal = {type = "virtual", name = nonGreenSignalOutputName}
@@ -728,17 +728,17 @@ end
 
 -- Registers and sets up the portal elements after the tunnel has been created.
 ---@param portals Portal[]
-TunnelPortals.On_PostTunnelCompleted = function(portals)
+Portal.On_PostTunnelCompleted = function(portals)
     for _, portal in pairs(portals) do
         -- Both of these functions require the tunnel to be present in the portal object as they are called throughout the portals lifetime.
-        TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(portal, false)
-        TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false)
+        Portal.AddTransitionUsageDetectionEntityToPortal(portal)
     end
 end
 
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
-TunnelPortals.OnBuiltEntityGhost = function(event)
+Portal.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -756,7 +756,7 @@ end
 
 -- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
-TunnelPortals.OnPreMinedEntity = function(event)
+Portal.OnPreMinedEntity = function(event)
     -- Check its one of the entities this function wants to inspect.
     local minedEntity = event.entity
     if not minedEntity.valid or PortalEndAndSegmentEntityNames[minedEntity.name] == nil then
@@ -764,7 +764,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
     end
 
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
-    local minedPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
+    local minedPortalPart = global.portals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
     if minedPortalPart == nil then
         return
     end
@@ -773,7 +773,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
     local minedPortal = minedPortalPart.portal
     if minedPortal == nil or minedPortal.tunnel == nil then
         -- Part isn't in a portal so the entity can always be removed.
-        TunnelPortals.EntityRemoved(minedPortalPart)
+        Portal.EntityRemoved(minedPortalPart)
     else
         if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedPortal.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
@@ -782,17 +782,17 @@ TunnelPortals.OnPreMinedEntity = function(event)
                 miner = game.get_player(event.player_index)
             end
             TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel portal part while a train is using the tunnel", minedEntity.surface, minedEntity.position)
-            TunnelPortals.ReplacePortalPartEntity(minedPortalPart)
+            Portal.ReplacePortalPartEntity(minedPortalPart)
         else
             -- Safe to mine the part.
-            TunnelPortals.EntityRemoved(minedPortalPart)
+            Portal.EntityRemoved(minedPortalPart)
         end
     end
 end
 
 -- Places the replacement portal part entity and destroys the old entity (so it can't be mined and get the item). Then relinks the new entity back in to its object.
 ---@param minedPortalPart PortalPart
-TunnelPortals.ReplacePortalPartEntity = function(minedPortalPart)
+Portal.ReplacePortalPartEntity = function(minedPortalPart)
     -- Destroy the old entity after caching its values.
     local oldPortalPartEntity = minedPortalPart.entity
     local oldPortalPartEntity_lastUser, oldPortalPartId = oldPortalPartEntity.last_user, minedPortalPart.id
@@ -805,8 +805,8 @@ TunnelPortals.ReplacePortalPartEntity = function(minedPortalPart)
     minedPortalPart.id = newPortalPartEntity.unit_number
 
     -- Remove the old globals and add the new ones.
-    global.tunnelPortals.portalPartEntityIdToPortalPart[oldPortalPartId] = nil
-    global.tunnelPortals.portalPartEntityIdToPortalPart[minedPortalPart.id] = minedPortalPart
+    global.portals.portalPartEntityIdToPortalPart[oldPortalPartId] = nil
+    global.portals.portalPartEntityIdToPortalPart[minedPortalPart.id] = minedPortalPart
 
     -- If there's a portal update it.
     local portal = minedPortalPart.portal
@@ -827,11 +827,11 @@ end
 ---@param removedPortalPart PortalPart
 ---@param killForce? LuaForce @ Populated if the entity is being removed due to it being killed, otherwise nil.
 ---@param killerCauseEntity? LuaEntity @ Populated if the entity is being removed due to it being killed, otherwise nil.
-TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
+Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal part object itself so that the surfacePositions are removed before we re-create the remaining portal part's portals.
-    global.tunnelPortals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
-    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[removedPortalPart.frontInternalSurfacePositionString] = nil
-    global.tunnelPortals.portalPartInternalConnectionSurfacePositionStrings[removedPortalPart.rearInternalSurfacePositionString] = nil
+    global.portals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
+    global.portals.portalPartInternalConnectionSurfacePositionStrings[removedPortalPart.frontInternalSurfacePositionString] = nil
+    global.portals.portalPartInternalConnectionSurfacePositionStrings[removedPortalPart.rearInternalSurfacePositionString] = nil
 
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal
@@ -845,9 +845,9 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
 
         -- Remove the portal's global objects.
         for _, endPortalPart in pairs(portal.portalEnds) do
-            global.tunnelPortals.portalTunnelInternalConnectionSurfacePositionStrings[next(endPortalPart.nonConnectedInternalSurfacePositions)] = nil
+            global.portals.portalTunnelInternalConnectionSurfacePositionStrings[next(endPortalPart.nonConnectedInternalSurfacePositions)] = nil
         end
-        global.tunnelPortals.portals[portal.id] = nil
+        global.portals.portals[portal.id] = nil
 
         -- Remove this portal part from the portals fields before we re-process the other portals parts.
         portal.portalEnds[removedPortalPart.id] = nil
@@ -872,7 +872,7 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
         for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
             for _, __ in pairs(list) do
                 local loopingGenericPortalPart = __ ---@type PortalPart
-                TunnelPortals.UpdatePortalsForNewPortalPart(loopingGenericPortalPart)
+                Portal.UpdatePortalsForNewPortalPart(loopingGenericPortalPart)
             end
         end
     end
@@ -882,7 +882,7 @@ end
 ---@param portals Portal[]
 ---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 ---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
-TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
+Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
     -- Cleanse the portal's fields that are only populated when they are part of a tunnel.
     for _, portal in pairs(portals) do
         portal.tunnel = nil
@@ -915,9 +915,9 @@ TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         end
         portal.transitionSignals = nil
 
-        TunnelPortals.RemoveEnteringTrainUsageDetectionEntityFromPortal(portal)
+        Portal.RemoveEnteringTrainUsageDetectionEntityFromPortal(portal)
         portal.enteringTrainUsageDetectorPosition = nil
-        TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal(portal)
+        Portal.RemoveTransitionUsageDetectionEntityFromPortal(portal)
         portal.transitionUsageDetectorPosition = nil
 
         portal.entryPortalEnd.endPortalType = nil
@@ -934,7 +934,7 @@ end
 
 -- Triggered when a monitored entity type is killed.
 ---@param event on_entity_died|script_raised_destroy
-TunnelPortals.OnDiedEntity = function(event)
+Portal.OnDiedEntity = function(event)
     -- Check its one of the entities this function wants to inspect.
     local diedEntity = event.entity
     if not diedEntity.valid or PortalEndAndSegmentEntityNames[diedEntity.name] == nil then
@@ -942,17 +942,17 @@ TunnelPortals.OnDiedEntity = function(event)
     end
 
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
-    local diedPortalPart = global.tunnelPortals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
+    local diedPortalPart = global.portals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
     if diedPortalPart == nil then
         return
     end
 
-    TunnelPortals.EntityRemoved(diedPortalPart, event.force, event.cause)
+    Portal.EntityRemoved(diedPortalPart, event.force, event.cause)
 end
 
 -- Occurs when a train tries to pass through the border of a portal, when entering and exiting.
 ---@param event on_entity_died|script_raised_destroy
-TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
+Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     local diedEntity, carriageEnteringPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
         -- Needed due to how died event handlers are all bundled togeather.
@@ -961,8 +961,8 @@ TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
-    local portal = global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
-    global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber] = nil
+    local portal = global.portals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
+    global.portals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber] = nil
     if portal == nil then
         -- No portal any more so nothing further to do.
         return
@@ -976,7 +976,7 @@ TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     if carriageEnteringPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
-        TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
         return
     end
     local train = carriageEnteringPortalTrack.train
@@ -1018,7 +1018,7 @@ TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
                     return
                 else
                     train.speed = 0
-                    TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+                    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
                     rendering.draw_text {
                         text = "Tunnel in use",
                         surface = portal.tunnel.surface,
@@ -1043,7 +1043,7 @@ TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     -- Train is coasting so stop it at the border and try to put the detection entity back.
     train.speed = 0
-    TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
     rendering.draw_text {
         text = "Unpowered trains can't use tunnels",
         surface = portal.tunnel.surface,
@@ -1059,19 +1059,19 @@ end
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
-TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
+Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
     if portal.tunnel == nil or not portal.isComplete or portal.enteringTrainUsageDetectorEntity ~= nil then
         -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
-    return TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, retry)
+    return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, retry)
 end
 
 ---@param event ScheduledEvent
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
-TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(event, portal, retry)
+Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(event, portal, retry)
     local eventData
     if event ~= nil then
         eventData = event.data
@@ -1091,7 +1091,7 @@ TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(ev
     }
     if enteringTrainUsageDetectorEntity ~= nil then
         portal.enteringTrainUsageDetectorEntity = enteringTrainUsageDetectorEntity
-        global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = portal
+        global.portals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = portal
         return portal.enteringTrainUsageDetectorEntity
     elseif retry then
         -- Schedule this to be tried again next tick.
@@ -1101,15 +1101,15 @@ TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(ev
         else
             postbackData = {portal = portal, retry = retry}
         end
-        EventScheduler.ScheduleEventOnce(nil, "TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", portal.id, postbackData)
+        EventScheduler.ScheduleEventOnce(nil, "Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition", portal.id, postbackData)
     end
 end
 
 ---@param portal Portal
-TunnelPortals.RemoveEnteringTrainUsageDetectionEntityFromPortal = function(portal)
+Portal.RemoveEnteringTrainUsageDetectionEntityFromPortal = function(portal)
     if portal.enteringTrainUsageDetectorEntity ~= nil then
         if portal.enteringTrainUsageDetectorEntity.valid then
-            global.tunnelPortals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = nil
+            global.portals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = nil
             portal.enteringTrainUsageDetectorEntity.destroy()
         end
         portal.enteringTrainUsageDetectorEntity = nil
@@ -1118,7 +1118,7 @@ end
 
 -- Occurs when a train passes through the transition point of a portal when fully entering the tunnel.
 ---@param event on_entity_died|script_raised_destroy
-TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
+Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
     local diedEntity, carriageAtTransitionOfPortalTrack = event.entity, event.cause
     if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_transition_train_detector_1x1" then
         -- Needed due to how died event handlers are all bundled togeather.
@@ -1127,8 +1127,8 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
-    local portal = global.tunnelPortals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
-    global.tunnelPortals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber] = nil
+    local portal = global.portals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
+    global.portals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber] = nil
     if portal == nil then
         -- No portal any more so nothing further to do.
         return
@@ -1142,7 +1142,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     if carriageAtTransitionOfPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
-        TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
+        Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return
     end
     local train = carriageAtTransitionOfPortalTrack.train
@@ -1159,7 +1159,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
                     -- Train had reserved the tunnel via signals at distance and is now ready to fully enter the tunnel.
                     MOD.Interfaces.TrainManager.TrainEnterTunnel(managedTrain)
-                    TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
+                    Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                     return
                 elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
                     error("Train has been using the tunnel and is now trying to pass backwards through the tunnel. This may be supported in future, but error for now.")
@@ -1187,7 +1187,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
                     return
                 else
                     train.speed = 0
-                    TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
+                    Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                     rendering.draw_text {
                         text = "Tunnel in use",
                         surface = portal.tunnel.surface,
@@ -1213,7 +1213,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
     -- Train is coasting so stop it dead and try to put the detection entity back. This shouldn't be reachable really.
     error("Train is coasting at transition of portal track. This shouldn't be reachable really.")
     train.speed = 0
-    TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
+    Portal.AddTransitionUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
         text = "Unpowered trains can't use tunnels",
         surface = portal.tunnel.surface,
@@ -1227,7 +1227,7 @@ end
 
 --- Will place the transition detection entity and should only be called when the train has been cloned and removed.
 ---@param portal Portal
-TunnelPortals.AddTransitionUsageDetectionEntityToPortal = function(portal)
+Portal.AddTransitionUsageDetectionEntityToPortal = function(portal)
     if portal.tunnel == nil or not portal.isComplete or portal.transitionUsageDetectorEntity ~= nil then
         -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
@@ -1242,19 +1242,19 @@ TunnelPortals.AddTransitionUsageDetectionEntityToPortal = function(portal)
     if transitionUsageDetectorEntity == nil then
         error("Failed to create Portal's transition usage train detection entity")
     end
-    global.tunnelPortals.transitionUsageDetectorEntityIdToPortal[transitionUsageDetectorEntity.unit_number] = portal
+    global.portals.transitionUsageDetectorEntityIdToPortal[transitionUsageDetectorEntity.unit_number] = portal
     portal.transitionUsageDetectorEntity = transitionUsageDetectorEntity
 end
 
 ---@param portal Portal
-TunnelPortals.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
+Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
     if portal.transitionUsageDetectorEntity ~= nil then
         if portal.transitionUsageDetectorEntity.valid then
-            global.tunnelPortals.transitionUsageDetectorEntityIdToPortal[portal.transitionUsageDetectorEntity.unit_number] = nil
+            global.portals.transitionUsageDetectorEntityIdToPortal[portal.transitionUsageDetectorEntity.unit_number] = nil
             portal.transitionUsageDetectorEntity.destroy()
         end
         portal.transitionUsageDetectorEntity = nil
     end
 end
 
-return TunnelPortals
+return Portal

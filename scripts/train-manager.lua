@@ -5,7 +5,7 @@ local Utils = require("utility/utils")
 local Events = require("utility/events")
 local Logging = require("utility/logging")
 local EventScheduler = require("utility/event-scheduler")
-local TrainManagerPlayerContainers = require("scripts/train-manager-player-containers")
+local PlayerContainer = require("scripts/player-container") -- TODO: This should be made via interface calls.
 local Common = require("scripts/common")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
 local TrainManagerRemote = require("scripts/train-manager-remote")
@@ -273,7 +273,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
     if currentTick < managedTrain.traversalArrivalTick then
         -- Train still waiting on its arrival time.
         if managedTrain.undergroundTrainHasPlayersRiding then
-            TrainManagerPlayerContainers.MoveATrainsPlayerContainers(managedTrain)
+            PlayerContainer.MoveATrainsPlayerContainer(managedTrain)
         end
     else
         -- Train arrival time has come.
@@ -306,7 +306,7 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, leavingTrain)
 
     if managedTrain.undergroundTrainHasPlayersRiding then
-        TrainManagerPlayerContainers.TransferPlayerFromContainerForClonedUndergroundCarriage(nil, nil)
+        PlayerContainer.TransferPlayerFromContainerForClonedUndergroundCarriage(nil, nil)
     end
 
     -- Tidy up for the leaving train and propigate state updates.
@@ -348,7 +348,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
             local trainForwards = trainSpeed > 0
             if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
                 -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
-                local placedDetectionEntity = MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false)
+                local placedDetectionEntity = MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false)
                 if placedDetectionEntity then
                     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
                 end
@@ -436,7 +436,7 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEn
             end
 
             if managedTrain.undergroundTrainHasPlayersRiding then
-                TrainManagerPlayerContainers.On_TunnelRemoved(managedTrain, killForce, killerCauseEntity)
+                PlayerContainer.On_TunnelRemoved(managedTrain, killForce, killerCauseEntity)
             end
 
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.tunnelRemoved)
@@ -519,7 +519,7 @@ end
 ---@param releaseTunnel? boolean @ If nil then tunnel is released (defaults to true).
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
-        TrainManagerPlayerContainers.On_TerminateTunnelTrip(managedTrain)
+        PlayerContainer.On_TerminateTunnelTrip(managedTrain)
     end
     TrainManager.RemoveManagedTrainEntry(managedTrain)
 
@@ -610,7 +610,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
         local driver = refCarriage.get_driver()
         if driver ~= nil then
             managedTrain.undergroundTrainHasPlayersRiding = true
-            TrainManagerPlayerContainers.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
+            PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
         end
     end
 

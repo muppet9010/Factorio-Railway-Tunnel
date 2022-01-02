@@ -81,8 +81,8 @@ end
 ---@param underground Underground
 Tunnel.CompleteTunnel = function(portals, underground)
     -- Call any other modules before the tunnel object is created.
-    MOD.Interfaces.TunnelPortals.On_PreTunnelCompleted(portals)
-    MOD.Interfaces.UndergroundSegments.On_PreTunnelCompleted(underground)
+    MOD.Interfaces.Portal.On_PreTunnelCompleted(portals)
+    MOD.Interfaces.Underground.On_PreTunnelCompleted(underground)
 
     -- Create the tunnel global object.
     local refPortal = portals[1]
@@ -114,7 +114,7 @@ Tunnel.CompleteTunnel = function(portals, underground)
     end
 
     -- Call any other modules after the tunnel object is created.
-    MOD.Interfaces.TunnelPortals.On_PostTunnelCompleted(portals)
+    MOD.Interfaces.Portal.On_PostTunnelCompleted(portals)
 end
 
 ---@param tunnel Tunnel
@@ -122,8 +122,8 @@ end
 ---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 Tunnel.RemoveTunnel = function(tunnel, killForce, killerCauseEntity)
     MOD.Interfaces.TrainManager.On_TunnelRemoved(tunnel, killForce, killerCauseEntity)
-    MOD.Interfaces.TunnelPortals.On_TunnelRemoved(tunnel.portals, killForce, killerCauseEntity)
-    MOD.Interfaces.UndergroundSegments.On_TunnelRemoved(tunnel.underground)
+    MOD.Interfaces.Portal.On_TunnelRemoved(tunnel.portals, killForce, killerCauseEntity)
+    MOD.Interfaces.Underground.On_TunnelRemoved(tunnel.underground)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 
@@ -144,13 +144,13 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
-    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.exitPortal, true)
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.exitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         managedTrain.tunnel.managedTrain = nil
     end

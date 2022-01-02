@@ -3,7 +3,7 @@ local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
 local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
-local UndergroundSegments = {}
+local Underground = {}
 
 ---@class Underground
 ---@field id uint @ unique id of the underground object.
@@ -107,47 +107,47 @@ local SegmentTypeData = {
     }
 }
 
-UndergroundSegments.CreateGlobals = function()
-    global.undergroundSegments = global.undergroundSegments or {}
-    global.undergroundSegments.nextUndergroundId = global.undergroundSegments.nextUndergroundId or 1
-    global.undergroundSegments.undergrounds = global.undergroundSegments.undergrounds or {}
-    global.undergroundSegments.segments = global.undergroundSegments.segments or {} ---@type table<UnitNumber, UndergroundSegment>
-    global.undergroundSegments.segmentSurfacePositions = global.undergroundSegments.segmentSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for underground segments by their position string.
-    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for internal positions that underground segments can be connected on. Includes the segment's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
+Underground.CreateGlobals = function()
+    global.undergrounds = global.undergrounds or {}
+    global.undergrounds.nextUndergroundId = global.undergrounds.nextUndergroundId or 1
+    global.undergrounds.undergrounds = global.undergrounds.undergrounds or {}
+    global.undergrounds.segments = global.undergrounds.segments or {} ---@type table<UnitNumber, UndergroundSegment>
+    global.undergrounds.segmentSurfacePositions = global.undergrounds.segmentSurfacePositions or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for underground segments by their position string.
+    global.undergrounds.segmentInternalConnectionSurfacePositionStrings = global.undergrounds.segmentInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, SegmentSurfacePosition> @ a lookup for internal positions that underground segments can be connected on. Includes the segment's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
 end
 
-UndergroundSegments.OnLoad = function()
+Underground.OnLoad = function()
     local segmentEntityNames_Filter = {}
     for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "UndergroundSegments.OnBuiltEntity", UndergroundSegments.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "UndergroundSegments.OnBuiltEntity", UndergroundSegments.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "UndergroundSegments.OnBuiltEntity", UndergroundSegments.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "UndergroundSegments.OnBuiltEntity", UndergroundSegments.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "UndergroundSegments.OnPreMinedEntity", UndergroundSegments.OnPreMinedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "UndergroundSegments.OnPreMinedEntity", UndergroundSegments.OnPreMinedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_build, "UndergroundSegments.OnPreBuild", UndergroundSegments.OnPreBuild)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "UndergroundSegments.OnDiedEntity", UndergroundSegments.OnDiedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "UndergroundSegments.OnDiedEntity", UndergroundSegments.OnDiedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
 
     local segmentEntityGhostNames_Filter = {}
     for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "UndergroundSegments.OnBuiltEntityGhost", UndergroundSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "UndergroundSegments.OnBuiltEntityGhost", UndergroundSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "UndergroundSegments.OnBuiltEntityGhost", UndergroundSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
 
-    MOD.Interfaces.UndergroundSegments = MOD.Interfaces.UndergroundSegments or {}
-    MOD.Interfaces.UndergroundSegments.On_PreTunnelCompleted = UndergroundSegments.On_PreTunnelCompleted
-    MOD.Interfaces.UndergroundSegments.On_TunnelRemoved = UndergroundSegments.On_TunnelRemoved
-    MOD.Interfaces.UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition = UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition
-    MOD.Interfaces.UndergroundSegments.CanUndergroundSegmentConnectToAPortal = UndergroundSegments.CanUndergroundSegmentConnectToAPortal
+    MOD.Interfaces.Underground = MOD.Interfaces.Underground or {}
+    MOD.Interfaces.Underground.On_PreTunnelCompleted = Underground.On_PreTunnelCompleted
+    MOD.Interfaces.Underground.On_TunnelRemoved = Underground.On_TunnelRemoved
+    MOD.Interfaces.Underground.CanAnUndergroundConnectAtItsInternalPosition = Underground.CanAnUndergroundConnectAtItsInternalPosition
+    MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal = Underground.CanUndergroundSegmentConnectToAPortal
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-UndergroundSegments.OnBuiltEntity = function(event)
+Underground.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid then
         return
@@ -160,14 +160,14 @@ UndergroundSegments.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    UndergroundSegments.UndergroundSegmentBuilt(createdEntity, placer, createdEntity_name)
+    Underground.UndergroundSegmentBuilt(createdEntity, placer, createdEntity_name)
 end
 
 ---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@param builtEntity_name string
 ---@return boolean
-UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_name)
+Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
@@ -205,7 +205,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     end
 
     -- Check if this is a fast replacement and if it is handle eveything special ready for standard built entity function logic.
-    local fastReplacedSegmentByPosition = global.undergroundSegments.segmentSurfacePositions[surfacePositionString]
+    local fastReplacedSegmentByPosition = global.undergrounds.segmentSurfacePositions[surfacePositionString]
     ---@typelist UndergroundSegment, FastReplaceChange
     local fastReplacedSegment, newSegmentTypeBuilt = nil, true
     if fastReplacedSegmentByPosition ~= nil then
@@ -228,7 +228,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
                     -- Put the old correct entity back and correct whats been done.
                     TunnelShared.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on above ground crossing track", surface, builtEntity_position)
                     fastReplacedSegment.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
-                    UndergroundSegments.ReplaceSegmentEntity(fastReplacedSegment)
+                    Underground.ReplaceSegmentEntity(fastReplacedSegment)
                     Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing", count = 1})
                     Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight", count = 1})
                     return
@@ -278,7 +278,7 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
         end
 
         -- Tidy up the old removed segment.
-        global.undergroundSegments.segments[fastReplacedSegment.id] = nil
+        global.undergrounds.segments[fastReplacedSegment.id] = nil
     end
 
     -- For new segment type being built add the type extras.
@@ -304,21 +304,21 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
     end
 
     -- Register the new segment and its position for fast replace.
-    global.undergroundSegments.segments[segment.id] = segment
-    global.undergroundSegments.segmentSurfacePositions[segment.surfacePositionString] = {
+    global.undergrounds.segments[segment.id] = segment
+    global.undergrounds.segmentSurfacePositions[segment.surfacePositionString] = {
         id = segment.surfacePositionString,
         segment = segment
     }
 
     -- Register the segments surfacePositionStrings for connection reverse lookup.
     local frontInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.frontInternalPosition)
-    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
+    global.undergrounds.segmentInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
         id = frontInternalSurfacePositionString,
         segment = segment
     }
     segment.frontInternalSurfacePositionString = frontInternalSurfacePositionString
     local rearInternalSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, segment.rearInternalPosition)
-    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
+    global.undergrounds.segmentInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
         id = rearInternalSurfacePositionString,
         segment = segment
     }
@@ -330,14 +330,14 @@ UndergroundSegments.UndergroundSegmentBuilt = function(builtEntity, placer, buil
 
     -- New segments check if they complete the tunnel and handle approperiately.
     if fastReplacedSegment == nil then
-        UndergroundSegments.UpdateUndergroundsForNewSegment(segment)
-        UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground(segment.underground)
+        Underground.UpdateUndergroundsForNewSegment(segment)
+        Underground.CheckAndHandleTunnelCompleteFromUnderground(segment.underground)
     end
 end
 
 --- Check if this segment is next to another segment on either/both sides. If it is create/add to an underground object for them.
 ---@param segment UndergroundSegment
-UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
+Underground.UpdateUndergroundsForNewSegment = function(segment)
     local firstComplictedConnectedSegment, secondComplictedConnectedSegment = nil, nil
 
     -- Check for a connected viable segment in both directions from our segment.
@@ -354,17 +354,17 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
         }
     ) do
         -- Look in the global internal position string list for any segment that is where our external check position is.
-        local foundSegmentPositionObject = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
+        local foundSegmentPositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
         -- If a underground reference at this position is found next to this one add this segment to its/new underground.
         if foundSegmentPositionObject ~= nil then
             local connectedSegment = foundSegmentPositionObject.segment
             -- Valid underground to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
             if segment.underground and connectedSegment.underground == nil then
                 -- We have a underground and they don't, so add them to our underground.
-                UndergroundSegments.AddSegmentToUnderground(segment.underground, connectedSegment)
+                Underground.AddSegmentToUnderground(segment.underground, connectedSegment)
             elseif segment.underground == nil and connectedSegment.underground then
                 -- We don't have a underground and they do, so add us to their underground.
-                UndergroundSegments.AddSegmentToUnderground(connectedSegment.underground, segment)
+                Underground.AddSegmentToUnderground(connectedSegment.underground, segment)
             else
                 -- Either we both have undergrounds or neither have undergrounds. Just flag this and review after checking both directions.
                 if firstComplictedConnectedSegment == nil then
@@ -386,8 +386,8 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
     -- The logging of complicated segments was based on our state at the time of the comparison. So the second connected segment may have changed our state since we compared to the first connected segment.
     if segment.underground == nil then
         -- We always need an underground, so create one and add anyone else to it.
-        local undergroundId = global.undergroundSegments.nextUndergroundId
-        global.undergroundSegments.nextUndergroundId = global.undergroundSegments.nextUndergroundId + 1
+        local undergroundId = global.undergrounds.nextUndergroundId
+        global.undergrounds.nextUndergroundId = global.undergrounds.nextUndergroundId + 1
         ---@type Underground
         local underground = {
             id = undergroundId,
@@ -396,13 +396,13 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
             force = segment.force,
             surface = segment.surface
         }
-        global.undergroundSegments.undergrounds[undergroundId] = underground
-        UndergroundSegments.AddSegmentToUnderground(underground, segment)
+        global.undergrounds.undergrounds[undergroundId] = underground
+        Underground.AddSegmentToUnderground(underground, segment)
         if firstComplictedConnectedSegment ~= nil then
-            UndergroundSegments.AddSegmentToUnderground(underground, firstComplictedConnectedSegment)
+            Underground.AddSegmentToUnderground(underground, firstComplictedConnectedSegment)
         end
         if secondComplictedConnectedSegment ~= nil then
-            UndergroundSegments.AddSegmentToUnderground(underground, secondComplictedConnectedSegment)
+            Underground.AddSegmentToUnderground(underground, secondComplictedConnectedSegment)
         end
     end
     if firstComplictedConnectedSegment ~= nil then
@@ -412,14 +412,14 @@ UndergroundSegments.UpdateUndergroundsForNewSegment = function(segment)
             -- If the 2 undergrounds are different then merge them. Use whichever has more segments as new master as this is generally the best one. It can end up that both have the same underground during the connection process and in this case do nothing to the shared underground.
             if segment.underground.id ~= firstComplictedConnectedSegment.underground.id then
                 if Utils.GetTableNonNilLength(segment.underground.segments) >= Utils.GetTableNonNilLength(firstComplictedConnectedSegment.underground.segments) then
-                    UndergroundSegments.MergeUndergroundInToOtherUnderground(firstComplictedConnectedSegment.underground, segment.underground)
+                    Underground.MergeUndergroundInToOtherUnderground(firstComplictedConnectedSegment.underground, segment.underground)
                 else
-                    UndergroundSegments.MergeUndergroundInToOtherUnderground(segment.underground, firstComplictedConnectedSegment.underground)
+                    Underground.MergeUndergroundInToOtherUnderground(segment.underground, firstComplictedConnectedSegment.underground)
                 end
             end
         elseif segment.underground ~= nil and firstComplictedConnectedSegment.underground == nil then
             -- We have an underground now and the other complicated connnected segment doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
-            UndergroundSegments.AddSegmentToUnderground(segment.underground, firstComplictedConnectedSegment)
+            Underground.AddSegmentToUnderground(segment.underground, firstComplictedConnectedSegment)
         else
             -- If a situation should be ignored add it explicitly.
             error("unexpected scenario")
@@ -448,7 +448,7 @@ end
 --- Add the new segment to the existing underground.
 ---@param underground Underground
 ---@param segment UndergroundSegment
-UndergroundSegments.AddSegmentToUnderground = function(underground, segment)
+Underground.AddSegmentToUnderground = function(underground, segment)
     segment.underground = underground
     underground.tilesLength = underground.tilesLength + segment.typeData.tilesLength
     underground.segments[segment.id] = segment
@@ -457,28 +457,28 @@ end
 --- Moves the old segments to the new underground and removes the old underground object.
 ---@param oldUnderground Underground
 ---@param newUnderground Underground
-UndergroundSegments.MergeUndergroundInToOtherUnderground = function(oldUnderground, newUnderground)
+Underground.MergeUndergroundInToOtherUnderground = function(oldUnderground, newUnderground)
     for id, segment in pairs(oldUnderground.segments) do
         newUnderground.segments[id] = segment
         segment.underground = newUnderground
     end
     newUnderground.tilesLength = newUnderground.tilesLength + oldUnderground.tilesLength
-    global.undergroundSegments.undergrounds[oldUnderground.id] = nil
+    global.undergrounds.undergrounds[oldUnderground.id] = nil
 end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param underground Underground
-UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
+Underground.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
     local portals, endPortalParts = {}, {}
     for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
-        local portal, endPortalPart = MOD.Interfaces.TunnelPortals.CanAPortalConnectAtItsInternalPosition(UndergroundEndSegmentObject.externalConnectableSurfacePosition)
+        local portal, endPortalPart = MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition(UndergroundEndSegmentObject.externalConnectableSurfacePosition)
         if portal then
             table.insert(portals, portal)
             table.insert(endPortalParts, endPortalPart)
         end
     end
     if #portals == 2 then
-        MOD.Interfaces.TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel(endPortalParts)
+        MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel(endPortalParts)
         MOD.Interfaces.Tunnel.CompleteTunnel(portals, underground)
     end
 end
@@ -487,9 +487,9 @@ end
 ---@param segmentInternalSurfacePositionString SurfacePositionString
 ---@return Underground|nil underground
 ---@return UndergroundSegment|nil segmentAtOtherEndOfUnderground
-UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition = function(segmentInternalSurfacePositionString)
+Underground.CanAnUndergroundConnectAtItsInternalPosition = function(segmentInternalSurfacePositionString)
     -- Uses the segment position rather than some underground ends' positions as an underground is never complete to flag these. Also entities can't overlap their internal positions so no risk of getting the wrong object.
-    local segmentInternalSurfacePositionObject = global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[segmentInternalSurfacePositionString]
+    local segmentInternalSurfacePositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[segmentInternalSurfacePositionString]
     if segmentInternalSurfacePositionObject ~= nil then
         local underground = segmentInternalSurfacePositionObject.segment.underground
         local otherEndSegment  ---@type UndergroundSegment
@@ -507,9 +507,9 @@ end
 ---@param portalToIgnore Portal
 ---@return Portal|nil portal
 ---@return PortalEnd|nil endPortalPart
-UndergroundSegments.CanUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
+Underground.CanUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
     for _, segmentFreeExternalSurfacePositionString in pairs(segment.nonConnectedExternalSurfacePositions) do
-        local portal, endPortalPart = MOD.Interfaces.TunnelPortals.CanAPortalConnectAtItsInternalPosition(segmentFreeExternalSurfacePositionString)
+        local portal, endPortalPart = MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition(segmentFreeExternalSurfacePositionString)
         if portal ~= nil and portal.id ~= portalToIgnore.id then
             return portal, endPortalPart
         end
@@ -518,11 +518,11 @@ end
 
 -- Registers and sets up the underground prior to the tunnel object being created and references created.
 ---@param underground Underground
-UndergroundSegments.On_PreTunnelCompleted = function(underground)
+Underground.On_PreTunnelCompleted = function(underground)
     for _, segment in pairs(underground.segments) do
         local refPos, force, surface, directionValue = segment.entity_position, underground.force, underground.surface, segment.entity_direction
 
-        UndergroundSegments.BuildRailForSegment(segment)
+        Underground.BuildRailForSegment(segment)
 
         -- Add the singals to the underground tunnel rail.
         segment.signalEntities = {}
@@ -544,7 +544,7 @@ end
 
 -- Add the rails to the an underground segment.
 ---@param segment UndergroundSegment
-UndergroundSegments.BuildRailForSegment = function(segment)
+Underground.BuildRailForSegment = function(segment)
     segment.tunnelRailEntities = {}
     for _, tracksPositionOffset in pairs(segment.typeData.undergroundTracksPositionOffset) do
         local railPos = Utils.RotateOffsetAroundPosition(segment.entity_orientation, tracksPositionOffset.positionOffset, segment.entity_position)
@@ -556,7 +556,7 @@ end
 
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
-UndergroundSegments.OnBuiltEntityGhost = function(event)
+Underground.OnBuiltEntityGhost = function(event)
     local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
@@ -574,7 +574,7 @@ end
 
 -- This is needed so when a player is doing a fast replace by hand the OnPreMinedEntity knows can know its a fast replace and not check mining conflicts or affect the pre_mine. All other scenarios of this triggering do no harm as the beingFastReplaced attribute is either cleared or the object recreated cleanly on the follow on event.
 ---@param event on_pre_build
-UndergroundSegments.OnPreBuild = function(event)
+Underground.OnPreBuild = function(event)
     local player = game.get_player(event.player_index)
     local player_cursorStack = player.cursor_stack
     if not player_cursorStack.valid or not player_cursorStack.valid_for_read or UndergroundSegmentEntityNames[player_cursorStack.name] == nil then
@@ -583,7 +583,7 @@ UndergroundSegments.OnPreBuild = function(event)
 
     local surface = player.surface
     local surfacePositionString = Utils.FormatSurfacePositionToString(surface.index, event.position)
-    local segmentPositionObject = global.undergroundSegments.segmentSurfacePositions[surfacePositionString]
+    local segmentPositionObject = global.undergrounds.segmentSurfacePositions[surfacePositionString]
     if segmentPositionObject == nil then
         return
     end
@@ -600,7 +600,7 @@ end
 
 -- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
-UndergroundSegments.OnPreMinedEntity = function(event)
+Underground.OnPreMinedEntity = function(event)
     -- Check its one of the entities this function wants to inspect.
     local minedEntity = event.entity
     if not minedEntity.valid or UndergroundSegmentEntityNames[minedEntity.name] == nil then
@@ -608,7 +608,7 @@ UndergroundSegments.OnPreMinedEntity = function(event)
     end
 
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
-    local minedSegment = global.undergroundSegments.segments[minedEntity.unit_number]
+    local minedSegment = global.undergrounds.segments[minedEntity.unit_number]
     if minedSegment == nil then
         return
     end
@@ -629,7 +629,7 @@ UndergroundSegments.OnPreMinedEntity = function(event)
                     miner = game.get_player(event.player_index)
                 end
                 TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel underground segment while train is on the above ground crossing track", minedEntity.surface, minedEntity.position)
-                UndergroundSegments.ReplaceSegmentEntity(minedSegment)
+                Underground.ReplaceSegmentEntity(minedSegment)
                 return
             end
         end
@@ -637,7 +637,7 @@ UndergroundSegments.OnPreMinedEntity = function(event)
 
     if minedSegment.underground.tunnel == nil then
         -- segment isn't in a tunnel so the entity can always be removed.
-        UndergroundSegments.EntityRemoved(minedSegment)
+        Underground.EntityRemoved(minedSegment)
     else
         if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedSegment.underground.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
@@ -646,17 +646,17 @@ UndergroundSegments.OnPreMinedEntity = function(event)
                 miner = game.get_player(event.player_index)
             end
             TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel underground segment while a train is using tunnel", minedEntity.surface, minedEntity.position)
-            UndergroundSegments.ReplaceSegmentEntity(minedSegment)
+            Underground.ReplaceSegmentEntity(minedSegment)
         else
             -- Safe to mine the segment.
-            UndergroundSegments.EntityRemoved(minedSegment)
+            Underground.EntityRemoved(minedSegment)
         end
     end
 end
 
 -- Places the replacement underground segment entity and destroys the old entity (so it can't be mined and get the item). Then relinks the new entity back in to its object.
 ---@param minedSegment UndergroundSegment
-UndergroundSegments.ReplaceSegmentEntity = function(minedSegment)
+Underground.ReplaceSegmentEntity = function(minedSegment)
     -- Destroy the old entity after caching its values.
     local minedSegmentEntity = minedSegment.entity
     local minedSegmentEntity_lastUser, minedSegmentEntityId = minedSegmentEntity.last_user, minedSegment.id
@@ -669,8 +669,8 @@ UndergroundSegments.ReplaceSegmentEntity = function(minedSegment)
     minedSegment.id = newSegmentEntity.unit_number
 
     -- Remove the old globals and add the new ones.
-    global.undergroundSegments.segments[minedSegmentEntityId] = nil
-    global.undergroundSegments.segments[minedSegment.id] = minedSegment
+    global.undergrounds.segments[minedSegmentEntityId] = nil
+    global.undergrounds.segments[minedSegment.id] = minedSegment
 
     -- Update the underground.
     local underground = minedSegment.underground
@@ -686,7 +686,7 @@ end
 ---@param removedSegment UndergroundSegment
 ---@param killForce? LuaForce @ Populated if the entity is being removed due to it being killed, otherwise nil.
 ---@param killerCauseEntity? LuaEntity @ Populated if the entity is being removed due to it being killed, otherwise nil.
-UndergroundSegments.EntityRemoved = function(removedSegment, killForce, killerCauseEntity)
+Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntity)
     local removedUnderground = removedSegment.underground
 
     -- Handle the tunnel if there is one before the underground itself. As the remove tunnel function calls back to its underground and handles/removes underground fields requiring a tunnel.
@@ -712,14 +712,14 @@ UndergroundSegments.EntityRemoved = function(removedSegment, killForce, killerCa
     end
 
     -- Remove the old segment's globals so that the surfacePositions are removed before we re-create the remaining segment's undergrounds.
-    global.undergroundSegments.segments[removedSegment.id] = nil
-    global.undergroundSegments.segmentSurfacePositions[removedSegment.surfacePositionString] = nil
-    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[removedSegment.frontInternalSurfacePositionString] = nil
-    global.undergroundSegments.segmentInternalConnectionSurfacePositionStrings[removedSegment.rearInternalSurfacePositionString] = nil
+    global.undergrounds.segments[removedSegment.id] = nil
+    global.undergrounds.segmentSurfacePositions[removedSegment.surfacePositionString] = nil
+    global.undergrounds.segmentInternalConnectionSurfacePositionStrings[removedSegment.frontInternalSurfacePositionString] = nil
+    global.undergrounds.segmentInternalConnectionSurfacePositionStrings[removedSegment.rearInternalSurfacePositionString] = nil
 
     -- Handle the underground object.
     removedUnderground.segments[removedSegment.id] = nil
-    global.undergroundSegments.undergrounds[removedUnderground.id] = nil
+    global.undergrounds.undergrounds[removedUnderground.id] = nil
 
     -- As we don't know the underground's segment makeup we will just disolve the underground and recreate new one(s) by checking each remaining segment. This is a bit crude, but can be reviewed if UPS impactful.
     -- Make each underground segment forget its parent so they are all ready to re-merge in to new undergrounds later.
@@ -729,13 +729,13 @@ UndergroundSegments.EntityRemoved = function(removedSegment, killForce, killerCa
     end
     -- Loop over each underground segment and add them back in to whatever underground they reform.
     for _, loopingUndergroundSegment in pairs(removedUnderground.segments) do
-        UndergroundSegments.UpdateUndergroundsForNewSegment(loopingUndergroundSegment)
+        Underground.UpdateUndergroundsForNewSegment(loopingUndergroundSegment)
     end
 end
 
 -- Called from the Tunnel Manager when a tunnel that the underground was part of has been removed.
 ---@param underground Underground
-UndergroundSegments.On_TunnelRemoved = function(underground)
+Underground.On_TunnelRemoved = function(underground)
     underground.tunnel = nil
 
     -- Update each segment to reflect the tunnel's been removed.
@@ -763,7 +763,7 @@ end
 
 -- Triggered when a monitored entity type is killed.
 ---@param event on_entity_died|script_raised_destroy
-UndergroundSegments.OnDiedEntity = function(event)
+Underground.OnDiedEntity = function(event)
     -- Check its one of the entities this function wants to inspect.
     local diedEntity = event.entity
     if not diedEntity.valid or UndergroundSegmentEntityNames[diedEntity.name] == nil then
@@ -771,12 +771,12 @@ UndergroundSegments.OnDiedEntity = function(event)
     end
 
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
-    local segment = global.undergroundSegments.segments[diedEntity.unit_number]
+    local segment = global.undergrounds.segments[diedEntity.unit_number]
     if segment == nil then
         return
     end
 
-    UndergroundSegments.EntityRemoved(segment, event.force, event.cause)
+    Underground.EntityRemoved(segment, event.force, event.cause)
 end
 
-return UndergroundSegments
+return Underground
