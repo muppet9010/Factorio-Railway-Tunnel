@@ -7,7 +7,6 @@ local TestManager = {}
 local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
-local Interfaces = require("utility/interfaces")
 local Colors = require("utility/colors")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -54,7 +53,7 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")} -- DONT USE - test needs major overhaul as was designed for complex logic we don;t have to handle any more.
     --MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")}, -- DONT USE - test needs updating to new tunnel logic.
-    PathToTunnelRailTests = {enabled = true, testScript = require("tests/path-to-tunnel-rail-tests")}
+    PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")}
     --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")} -- DONT USE - test needs updating to new tunnel logic.
@@ -108,8 +107,10 @@ TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.ClearMap", TestManager.ClearMap)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
-    Interfaces.RegisterInterface("TestManager.GetTestScript", TestManager.GetTestScript)
-    Interfaces.RegisterInterface("TestManager.LogTestOutcome", TestManager.LogTestOutcome)
+
+    MOD.Interfaces.TestManager = MOD.Interfaces.TestManager or {}
+    MOD.Interfaces.TestManager.GetTestScript = TestManager.GetTestScript
+    MOD.Interfaces.TestManager.LogTestOutcome = TestManager.LogTestOutcome
 
     -- Run any active tests OnLoad function.
     for testName, test in pairs(TestsToRun) do
@@ -289,7 +290,7 @@ end
 
 --- Called when the test script needs to be referenced as it can't be stored in global data.
 ---@param testName TestName
----@return table @ The script lua file of this test.
+---@return table @ The script lua file of this test. -- TODO: add an EmmyLua for the generic functions we include in these script files for external calling.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
 end

@@ -2,7 +2,6 @@
 
 local TrainManager = {}
 local Utils = require("utility/utils")
-local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Logging = require("utility/logging")
 local EventScheduler = require("utility/event-scheduler")
@@ -67,39 +66,14 @@ TrainManager.CreateGlobals = function()
 end
 
 TrainManager.OnLoad = function()
-    Interfaces.RegisterInterface(
-        "TrainManager.RegisterTrainApproachingPortalSignal",
-        function(...)
-            if global.debugRelease then
-                Logging.RunFunctionAndCatchErrors(TrainManager.RegisterTrainApproachingPortalSignal, ...)
-            else
-                TrainManager.RegisterTrainApproachingPortalSignal(...)
-            end
-        end
-    )
-    Interfaces.RegisterInterface(
-        "TrainManager.RegisterTrainOnPortalTrack",
-        function(...)
-            if global.debugRelease then
-                Logging.RunFunctionAndCatchErrors(TrainManager.RegisterTrainOnPortalTrack, ...)
-            else
-                TrainManager.RegisterTrainOnPortalTrack(...)
-            end
-        end
-    )
-    Interfaces.RegisterInterface(
-        "TrainManager.TrainEnterTunnel",
-        function(...)
-            if global.debugRelease then
-                Logging.RunFunctionAndCatchErrors(TrainManager.TrainEnterTunnel, ...)
-            else
-                TrainManager.TrainEnterTunnel(...)
-            end
-        end
-    )
+    MOD.Interfaces.TrainManager = MOD.Interfaces.TrainManager or {}
+    MOD.Interfaces.TrainManager.RegisterTrainApproachingPortalSignal = TrainManager.RegisterTrainApproachingPortalSignal
+    MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack = TrainManager.RegisterTrainOnPortalTrack
+    MOD.Interfaces.TrainManager.TrainEnterTunnel = TrainManager.TrainEnterTunnel
+    MOD.Interfaces.TrainManager.On_TunnelRemoved = TrainManager.On_TunnelRemoved
+    MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails = TrainManager.GetTrainIdsManagedTrainDetails
+
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
-    Interfaces.RegisterInterface("TrainManager.On_TunnelRemoved", TrainManager.On_TunnelRemoved)
-    Interfaces.RegisterInterface("TrainManager.GetTrainIdsManagedTrainDetails", TrainManager.GetTrainIdsManagedTrainDetails)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
 end
 
@@ -112,6 +86,15 @@ end
 ---@param enteringTrain LuaTrain
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
 TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, entrancePortalTransitionSignal)
+    if global.debugRelease then
+        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainApproachingPortalSignal_Internal, enteringTrain, entrancePortalTransitionSignal)
+    else
+        TrainManager._RegisterTrainApproachingPortalSignal_Internal(enteringTrain, entrancePortalTransitionSignal)
+    end
+end
+---@param enteringTrain LuaTrain
+---@param entrancePortalTransitionSignal PortalTransitionSignal
+TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(enteringTrain, entrancePortalTransitionSignal)
     -- Check if this train is already using the tunnel in some way.
     -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local existingTrainIDTrackedObject = global.trainManager.trainIdToManagedTrain[enteringTrain.id]
@@ -135,7 +118,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(enteringTrain, entr
 
     local managedTrain = TrainManager.CreateManagedTrainObject(enteringTrain, entrancePortalTransitionSignal, true, upgradeManagedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
-    Interfaces.Call("Tunnel.TrainReservedTunnel", managedTrain)
+    MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     if replacedManagedTrain ~= nil then
         -- Include in the new train approaching event the old leavingTrain entry id that has been stopped.
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, replacedManagedTrain.id)
@@ -148,6 +131,15 @@ end
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
+    if global.debugRelease then
+        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainOnPortalTrack_Internal, trainOnPortalTrack, portal)
+    else
+        TrainManager._RegisterTrainOnPortalTrack_Internal(trainOnPortalTrack, portal)
+    end
+end
+---@param trainOnPortalTrack LuaTrain
+---@param portal Portal
+TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack, portal)
     -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
     managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
@@ -209,6 +201,14 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.TrainEnterTunnel = function(managedTrain)
+    if global.debugRelease then
+        Logging.RunFunctionAndCatchErrors(TrainManager._TrainEnterTunnel_Internal, managedTrain)
+    else
+        TrainManager._TrainEnterTunnel_Internal(managedTrain)
+    end
+end
+---@param managedTrain ManagedTrain
+TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain
     local enteringTrain_carriages = enteringTrain.carriages
 
@@ -257,7 +257,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain)
     managedTrain.portalTrackTrainBySignal = nil
 
     -- Complete the state transition.
-    Interfaces.Call("Tunnel.TrainFinishedEnteringTunnel", managedTrain)
+    MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
 
     -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
@@ -348,7 +348,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
             local trainForwards = trainSpeed > 0
             if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
                 -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
-                local placedDetectionEntity = Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, false)
+                local placedDetectionEntity = MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false)
                 if placedDetectionEntity then
                     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
                 end
@@ -524,7 +524,7 @@ TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReaso
     TrainManager.RemoveManagedTrainEntry(managedTrain)
 
     if releaseTunnel == nil or releaseTunnel == true then
-        Interfaces.Call("Tunnel.TrainReleasedTunnel", managedTrain)
+        MOD.Interfaces.Tunnel.TrainReleasedTunnel(managedTrain)
     end
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.terminated, tunnelUsageChangeReason)
 end
@@ -559,7 +559,7 @@ TrainManager.RemoveManagedTrainEntry = function(managedTrain)
 end
 
 ---@param trainId Id
----@return ManagedTrain
+---@return TrainIdToManagedTrain
 TrainManager.GetTrainIdsManagedTrainDetails = function(trainId)
     return global.trainManager.trainIdToManagedTrain[trainId]
 end

@@ -1,5 +1,4 @@
 local Events = require("utility/events")
-local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
@@ -211,12 +210,13 @@ TunnelPortals.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelPortals.OnBuiltEntityGhost", TunnelPortals.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
 
-    Interfaces.RegisterInterface("TunnelPortals.On_PreTunnelCompleted", TunnelPortals.On_PreTunnelCompleted)
-    Interfaces.RegisterInterface("TunnelPortals.On_TunnelRemoved", TunnelPortals.On_TunnelRemoved)
-    Interfaces.RegisterInterface("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal)
-    Interfaces.RegisterInterface("TunnelPortals.CanAPortalConnectAtItsInternalPosition", TunnelPortals.CanAPortalConnectAtItsInternalPosition)
-    Interfaces.RegisterInterface("TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel", TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel)
-    Interfaces.RegisterInterface("TunnelPortals.On_PostTunnelCompleted", TunnelPortals.On_PostTunnelCompleted)
+    MOD.Interfaces.TunnelPortals = MOD.Interfaces.TunnelPortals or {}
+    MOD.Interfaces.TunnelPortals.On_PreTunnelCompleted = TunnelPortals.On_PreTunnelCompleted
+    MOD.Interfaces.TunnelPortals.On_TunnelRemoved = TunnelPortals.On_TunnelRemoved
+    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal = TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal
+    MOD.Interfaces.TunnelPortals.CanAPortalConnectAtItsInternalPosition = TunnelPortals.CanAPortalConnectAtItsInternalPosition
+    MOD.Interfaces.TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel = TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel
+    MOD.Interfaces.TunnelPortals.On_PostTunnelCompleted = TunnelPortals.On_PostTunnelCompleted
 
     EventScheduler.RegisterScheduledEventType("TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition", TunnelPortals.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
 
@@ -493,12 +493,12 @@ end
 TunnelPortals.CheckAndHandleTunnelCompleteFromPortal = function(portal)
     for portalExternalSurfacePositionString, portalTunnelExternalConnectionSurfacePositionObject in pairs(portal.portalTunneExternalConnectionSurfacePositionStrings) do
         ---@typelist Underground, UndergroundSegment, UndergroundSegment
-        local underground, otherEndSegment = Interfaces.Call("UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition", portalExternalSurfacePositionString)
+        local underground, otherEndSegment = MOD.Interfaces.UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition(portalExternalSurfacePositionString)
         if underground ~= nil then
-            local foundPortal, foundEndPortalPart = Interfaces.Call("UndergroundSegments.CanUndergroundSegmentConnectToAPortal", otherEndSegment, portal)
+            local foundPortal, foundEndPortalPart = MOD.Interfaces.UndergroundSegments.CanUndergroundSegmentConnectToAPortal(otherEndSegment, portal)
             if foundPortal ~= nil then
                 TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
-                Interfaces.Call("Tunnel.CompleteTunnel", {portal, foundPortal}, underground)
+                MOD.Interfaces.Tunnel.CompleteTunnel({portal, foundPortal}, underground)
             end
         end
     end
@@ -631,7 +631,7 @@ TunnelPortals.On_PreTunnelCompleted = function(portals)
                 direction = TunnelSignalDirection.outSignal
             }
         }
-        Interfaces.Call("Tunnel.RegisterTransitionSignal", portal.transitionSignals[TunnelSignalDirection.inSignal])
+        MOD.Interfaces.Tunnel.RegisterTransitionSignal(portal.transitionSignals[TunnelSignalDirection.inSignal])
 
         -- Add blocking loco and extra signals after where the Transition signals are at the very end of the portal. These make the Transition signals go red and stop paths being reservable across the underground track, thus leading trains to target the transitional signal.
         ---@type LuaEntity
@@ -775,7 +775,7 @@ TunnelPortals.OnPreMinedEntity = function(event)
         -- Part isn't in a portal so the entity can always be removed.
         TunnelPortals.EntityRemoved(minedPortalPart)
     else
-        if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", minedPortal.tunnel) then
+        if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedPortal.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
             local miner = event.robot -- Will be nil for player mined.
             if miner == nil and event.player_index ~= nil then
@@ -838,7 +838,7 @@ TunnelPortals.EntityRemoved = function(removedPortalPart, killForce, killerCause
     if portal ~= nil then
         -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to its 2 portals and handles/removes portal fields requiring a tunnel.
         if portal.tunnel ~= nil then
-            Interfaces.Call("Tunnel.RemoveTunnel", portal.tunnel, killForce, killerCauseEntity)
+            MOD.Interfaces.Tunnel.RemoveTunnel(portal.tunnel, killForce, killerCauseEntity)
         end
 
         -- Handle the portal object.
@@ -909,7 +909,7 @@ TunnelPortals.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         portal.entrySignals = nil
         for _, transitionSignal in pairs(portal.transitionSignals) do
             if transitionSignal.entity.valid then
-                Interfaces.Call("Tunnel.DeregisterTransitionSignal", transitionSignal)
+                MOD.Interfaces.Tunnel.DeregisterTransitionSignal(transitionSignal)
                 transitionSignal.entity.destroy()
             end
         end
@@ -984,7 +984,7 @@ TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
         local train_id = train.id
-        local trainIdToManagedTrain = Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train_id) ---@type TrainIdToManagedTrain
+        local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
         if trainIdToManagedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
             local managedTrain = trainIdToManagedTrain.managedTrain
@@ -1008,7 +1008,7 @@ TunnelPortals.OnDiedEntityPortalEntryTrainDetector = function(event)
             -- This train hasn't reserved any tunnel.
             if portal.tunnel.managedTrain == nil then
                 -- Portal's tunnel isn't reserved so this train can grab the portal.
-                Interfaces.Call("TrainManager.RegisterTrainOnPortalTrack", train, portal)
+                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train entering. Not sure how this could have happened, but just stop the new train here and restore the entering train detection entity.
@@ -1150,7 +1150,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
         local train_id = train.id
-        local trainIdToManagedTrain = Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train_id) ---@type TrainIdToManagedTrain
+        local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
         if trainIdToManagedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
             local managedTrain = trainIdToManagedTrain.managedTrain
@@ -1158,7 +1158,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 -- The train has reserved this tunnel.
                 if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
                     -- Train had reserved the tunnel via signals at distance and is now ready to fully enter the tunnel.
-                    Interfaces.Call("TrainManager.TrainEnterTunnel", managedTrain)
+                    MOD.Interfaces.TrainManager.TrainEnterTunnel(managedTrain)
                     TunnelPortals.AddTransitionUsageDetectionEntityToPortal(portal)
                     return
                 elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
@@ -1177,7 +1177,7 @@ TunnelPortals.OnDiedEntityPortalTransitionTrainDetector = function(event)
             if portal.tunnel.managedTrain == nil then
                 -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now.
                 error("unsupported unexpected train entering tunnel without having passed through entry detector at present")
-                Interfaces.Call("TrainManager.TrainEnterTunnel", nil, train)
+                MOD.Interfaces.TrainManager.TrainEnterTunnel(train)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train from using the tunnel. Not sure how this could have happened, but just stop the new train here and restore the transition detection entity.

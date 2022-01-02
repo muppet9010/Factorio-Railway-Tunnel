@@ -26,13 +26,12 @@ MINOR:
 	- manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and then at the far end return it to the players control from 0 speed.
 	- add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
-    - Review possibility to remove the internal mod "interfaces" concept and just pass a shared object to all modules that they register against. This should remove the need of caching the odd function reference (done at present). Looking to save UPS and if it will improve EmmyLua's function intelisense.
     - Make the global.debugRelease have a command, and default if off. Enable it as part of the tests. All UPS using consistency checks have already been gated behind this setting to save UPS in when in a production release.
     - global.strictStateHandling is legacy and should be removed as part of overhaul when other code superseeds its usage cases.
     - the current player container concept needs updating to calculate the player containers current position in the tunnel.
     - do train arrival check as per mod aim.
     - make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
-    - updated remaining old Tests.
+    - update remaining old Tests.
     - rename scripts UndergroundSegments and its lua file to just underground as thats the name of the top object.
     - rename scripts tunnel-portals and its lua file to just portal as thats the name of the top object.
     - train blocker prototype blocks players and vehicles as they have the "train" layer in current Factorio. Use a new collision mask for this wail wagon only purpose.

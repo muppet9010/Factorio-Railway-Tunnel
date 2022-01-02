@@ -1,7 +1,6 @@
 local TestFunctions = {}
 local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
-local Interfaces = require("utility/interfaces")
 local Events = require("utility/events")
 local Colors = require("utility/colors")
 
@@ -47,9 +46,9 @@ end
 ---@param testName TestName
 TestFunctions.TestCompleted = function(testName)
     game.print("Completed Test", Colors.lightgreen)
-    Interfaces.Call("TestManager.LogTestOutcome", "Test Completed")
+    MOD.Interfaces.TestManager.LogTestOutcome("Test Completed")
     local testManagerData = global.testManager.testsToRun[testName]
-    Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
+    MOD.Interfaces.TestManager.GetTestScript(testName).Stop(testName)
     if testManagerData.runLoopsCount == testManagerData.runLoopsMax then
         testManagerData.finished = true
         testManagerData.success = true
@@ -66,9 +65,9 @@ end
 ---@param errorText string
 TestFunctions.TestFailed = function(testName, errorText)
     game.print("Failure Message: " .. errorText, Colors.red)
-    Interfaces.Call("TestManager.LogTestOutcome", "Test Failed: " .. errorText)
+    MOD.Interfaces.TestManager.LogTestOutcome("Test Failed: " .. errorText)
     local testManagerData = global.testManager.testsToRun[testName]
-    Interfaces.Call("TestManager.GetTestScript", testName).Stop(testName)
+    MOD.Interfaces.TestManager.GetTestScript(testName).Stop(testName)
     if not global.testManager.justLogAllTests then
         testManagerData.finished = true
         testManagerData.success = false

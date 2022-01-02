@@ -1,5 +1,4 @@
 local Events = require("utility/events")
-local Interfaces = require("utility/interfaces")
 local Tunnel = {}
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
@@ -37,14 +36,15 @@ Tunnel.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
     Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "Tunnel.OnPlayerRotatedEntity", Tunnel.OnPlayerRotatedEntity)
 
-    Interfaces.RegisterInterface("Tunnel.CompleteTunnel", Tunnel.CompleteTunnel)
-    Interfaces.RegisterInterface("Tunnel.RegisterTransitionSignal", Tunnel.RegisterTransitionSignal)
-    Interfaces.RegisterInterface("Tunnel.DeregisterTransitionSignal", Tunnel.DeregisterTransitionSignal)
-    Interfaces.RegisterInterface("Tunnel.RemoveTunnel", Tunnel.RemoveTunnel)
-    Interfaces.RegisterInterface("Tunnel.TrainReservedTunnel", Tunnel.TrainReservedTunnel)
-    Interfaces.RegisterInterface("Tunnel.TrainFinishedEnteringTunnel", Tunnel.TrainFinishedEnteringTunnel)
-    Interfaces.RegisterInterface("Tunnel.TrainReleasedTunnel", Tunnel.TrainReleasedTunnel)
-    Interfaces.RegisterInterface("Tunnel.GetTunnelsUsageEntry", Tunnel.GetTunnelsUsageEntry)
+    MOD.Interfaces.Tunnel = MOD.Interfaces.Tunnel or {}
+    MOD.Interfaces.Tunnel.CompleteTunnel = Tunnel.CompleteTunnel
+    MOD.Interfaces.Tunnel.RegisterTransitionSignal = Tunnel.RegisterTransitionSignal
+    MOD.Interfaces.Tunnel.DeregisterTransitionSignal = Tunnel.DeregisterTransitionSignal
+    MOD.Interfaces.Tunnel.RemoveTunnel = Tunnel.RemoveTunnel
+    MOD.Interfaces.Tunnel.TrainReservedTunnel = Tunnel.TrainReservedTunnel
+    MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel = Tunnel.TrainFinishedEnteringTunnel
+    MOD.Interfaces.Tunnel.TrainReleasedTunnel = Tunnel.TrainReleasedTunnel
+    MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
 
     local rollingStockFilter = {
         {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
@@ -74,15 +74,15 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if transitionSignal == nil then
         return
     end
-    Interfaces.Call("TrainManager.RegisterTrainApproachingPortalSignal", train, transitionSignal)
+    MOD.Interfaces.TrainManager.RegisterTrainApproachingPortalSignal(train, transitionSignal)
 end
 
 ---@param portals Portal[]
 ---@param underground Underground
 Tunnel.CompleteTunnel = function(portals, underground)
     -- Call any other modules before the tunnel object is created.
-    Interfaces.Call("TunnelPortals.On_PreTunnelCompleted", portals)
-    Interfaces.Call("UndergroundSegments.On_PreTunnelCompleted", underground)
+    MOD.Interfaces.TunnelPortals.On_PreTunnelCompleted(portals)
+    MOD.Interfaces.UndergroundSegments.On_PreTunnelCompleted(underground)
 
     -- Create the tunnel global object.
     local refPortal = portals[1]
@@ -114,16 +114,16 @@ Tunnel.CompleteTunnel = function(portals, underground)
     end
 
     -- Call any other modules after the tunnel object is created.
-    Interfaces.Call("TunnelPortals.On_PostTunnelCompleted", portals)
+    MOD.Interfaces.TunnelPortals.On_PostTunnelCompleted(portals)
 end
 
 ---@param tunnel Tunnel
 ---@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 ---@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 Tunnel.RemoveTunnel = function(tunnel, killForce, killerCauseEntity)
-    Interfaces.Call("TrainManager.On_TunnelRemoved", tunnel, killForce, killerCauseEntity)
-    Interfaces.Call("TunnelPortals.On_TunnelRemoved", tunnel.portals, killForce, killerCauseEntity)
-    Interfaces.Call("UndergroundSegments.On_TunnelRemoved", tunnel.underground)
+    MOD.Interfaces.TrainManager.On_TunnelRemoved(tunnel, killForce, killerCauseEntity)
+    MOD.Interfaces.TunnelPortals.On_TunnelRemoved(tunnel.portals, killForce, killerCauseEntity)
+    MOD.Interfaces.UndergroundSegments.On_TunnelRemoved(tunnel.underground)
     global.tunnels.tunnels[tunnel.id] = nil
 end
 
@@ -144,13 +144,13 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, true)
+    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.entrancePortal, true)
-    Interfaces.Call("TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal", managedTrain.exitPortal, true)
+    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
+    MOD.Interfaces.TunnelPortals.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.exitPortal, true)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         managedTrain.tunnel.managedTrain = nil
     end
@@ -267,7 +267,7 @@ Tunnel.OnBuiltEntity = function(event)
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
 
-        if Interfaces.Call("TrainManager.GetTrainIdsManagedTrainDetails", train.id) then
+        if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train.id) then
             -- Carriage was built as part of a managed train, so just ignore it for these purposes.
             return
         end

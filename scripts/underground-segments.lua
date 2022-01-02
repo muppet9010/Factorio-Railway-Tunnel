@@ -1,5 +1,4 @@
 local Events = require("utility/events")
-local Interfaces = require("utility/interfaces")
 local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
@@ -140,10 +139,11 @@ UndergroundSegments.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "UndergroundSegments.OnBuiltEntityGhost", UndergroundSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "UndergroundSegments.OnBuiltEntityGhost", UndergroundSegments.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
 
-    Interfaces.RegisterInterface("UndergroundSegments.On_PreTunnelCompleted", UndergroundSegments.On_PreTunnelCompleted)
-    Interfaces.RegisterInterface("UndergroundSegments.On_TunnelRemoved", UndergroundSegments.On_TunnelRemoved)
-    Interfaces.RegisterInterface("UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition", UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition)
-    Interfaces.RegisterInterface("UndergroundSegments.CanUndergroundSegmentConnectToAPortal", UndergroundSegments.CanUndergroundSegmentConnectToAPortal)
+    MOD.Interfaces.UndergroundSegments = MOD.Interfaces.UndergroundSegments or {}
+    MOD.Interfaces.UndergroundSegments.On_PreTunnelCompleted = UndergroundSegments.On_PreTunnelCompleted
+    MOD.Interfaces.UndergroundSegments.On_TunnelRemoved = UndergroundSegments.On_TunnelRemoved
+    MOD.Interfaces.UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition = UndergroundSegments.CanAnUndergroundConnectAtItsInternalPosition
+    MOD.Interfaces.UndergroundSegments.CanUndergroundSegmentConnectToAPortal = UndergroundSegments.CanUndergroundSegmentConnectToAPortal
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
@@ -471,15 +471,15 @@ end
 UndergroundSegments.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
     local portals, endPortalParts = {}, {}
     for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
-        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtItsInternalPosition", UndergroundEndSegmentObject.externalConnectableSurfacePosition)
+        local portal, endPortalPart = MOD.Interfaces.TunnelPortals.CanAPortalConnectAtItsInternalPosition(UndergroundEndSegmentObject.externalConnectableSurfacePosition)
         if portal then
             table.insert(portals, portal)
             table.insert(endPortalParts, endPortalPart)
         end
     end
     if #portals == 2 then
-        Interfaces.Call("TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel", endPortalParts)
-        Interfaces.Call("Tunnel.CompleteTunnel", portals, underground)
+        MOD.Interfaces.TunnelPortals.PortalPartsAboutToConnectToUndergroundInNewTunnel(endPortalParts)
+        MOD.Interfaces.Tunnel.CompleteTunnel(portals, underground)
     end
 end
 
@@ -509,7 +509,7 @@ end
 ---@return PortalEnd|nil endPortalPart
 UndergroundSegments.CanUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
     for _, segmentFreeExternalSurfacePositionString in pairs(segment.nonConnectedExternalSurfacePositions) do
-        local portal, endPortalPart = Interfaces.Call("TunnelPortals.CanAPortalConnectAtItsInternalPosition", segmentFreeExternalSurfacePositionString)
+        local portal, endPortalPart = MOD.Interfaces.TunnelPortals.CanAPortalConnectAtItsInternalPosition(segmentFreeExternalSurfacePositionString)
         if portal ~= nil and portal.id ~= portalToIgnore.id then
             return portal, endPortalPart
         end
@@ -639,7 +639,7 @@ UndergroundSegments.OnPreMinedEntity = function(event)
         -- segment isn't in a tunnel so the entity can always be removed.
         UndergroundSegments.EntityRemoved(minedSegment)
     else
-        if Interfaces.Call("Tunnel.GetTunnelsUsageEntry", minedSegment.underground.tunnel) then
+        if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedSegment.underground.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
             local miner = event.robot -- Will be nil for player mined.
             if miner == nil and event.player_index ~= nil then
@@ -691,7 +691,7 @@ UndergroundSegments.EntityRemoved = function(removedSegment, killForce, killerCa
 
     -- Handle the tunnel if there is one before the underground itself. As the remove tunnel function calls back to its underground and handles/removes underground fields requiring a tunnel.
     if removedUnderground.tunnel then
-        Interfaces.Call("Tunnel.RemoveTunnel", removedUnderground.tunnel, killForce, killerCauseEntity)
+        MOD.Interfaces.Tunnel.RemoveTunnel(removedUnderground.tunnel, killForce, killerCauseEntity)
     end
 
     -- Handle the segment object.
