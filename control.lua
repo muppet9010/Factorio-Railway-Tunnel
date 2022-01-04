@@ -8,10 +8,10 @@ local TestManager = require("scripts/test-manager")
 local Force = require("scripts/force")
 local PlayerContainer = require("scripts/player-container")
 local Events = require("utility/events")
+local Commands = require("utility/commands")
 
 local function CreateGlobals()
-    global.debugRelease = true -- If TRUE it runs key code in a try/catch and it does UPS intensive state check so makes code run slower.
-    global.strictStateHandling = true -- If TRUE unexpected edge cases will raise an error, otherwise they just print to the screen and are handled in some rought manner. -- OVERHAUL - these scenarios should be removed and made to behave in a standard supported manner.
+    global.debugRelease = false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
 
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
@@ -62,12 +62,30 @@ local function OnLoad()
         }
     )
 
+    -- Handle the debugRelease global setting.
+    Commands.Register(
+        "railway_tunnel_toggle_debug_state",
+        ": toggles debug handling of mod logic",
+        function()
+            if global.debugRelease then
+                global.debugRelease = false
+                game.print("Disabled Railway Tunnel mod's debug handling")
+            else
+                global.debugRelease = true
+                game.print("Enabled Railway Tunnel mod's debug handling")
+            end
+        end,
+        true
+    )
+
+    -- Call the module's OnLoad functions.
     TrainManager.OnLoad()
     Tunnel.OnLoad()
     Portal.OnLoad()
     Underground.OnLoad()
     PlayerContainer.OnLoad()
 
+    -- Start the test manager last.
     TestManager.OnLoad()
 end
 

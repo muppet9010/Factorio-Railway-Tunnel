@@ -22,9 +22,10 @@ local Colors = require("utility/colors")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
-local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
+local DoTests = false -- Enable test mode and does the enabled tests below if TRUE.
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
+local EnableDebugMode = true -- Enables debug mode when tests are run.
 
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
@@ -35,6 +36,7 @@ local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test conti
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
 
 -- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
+---@type table<TestName, TestToRun>
 local TestsToRun = {
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
     --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
@@ -83,6 +85,22 @@ local TestsToRun = {
 
 ---@alias TestData table
 
+--- A configuration object to define which tests should be run.
+---@class TestToRun
+---@field enabled boolean @ If the test will be run.
+---@field notInAllTests? boolean|null @ If TRUE then this test is not automatically included when the "AllTests" global option is enabled. For use by adhoc/non standard test scripts or demo scripts.
+---@field testScript TestScript
+
+--- The test's script file as a table of interface and internal functions of this specific test.
+---@class TestScript
+---@field RunTime int @ How long the test runs for (ticks) before being failed as un-completed.
+---@field RunLoopsMax? int|null @ How many times this tests will be run. For use by tests that have different setups per iteration. If not provided then the test is run 1 time.
+---@field OnLoad function @ Anything the test needs registering OnLoad of the mod.
+---@field GetTestDisplayName? function|null @ Let the test define its test name per run. For use when RunLoopsMax > 1. If not set then the TestName in the TestToRun object is used from Test Manager configuration.
+---@field Start function @ Called to start the test.
+---@field Stop function @ Called when the test is being stopped for any reason.
+---@field EveryTick function @ Called every tick for the test to check its state and react.
+
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
     global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @ Used to flag when a save was started with tests already.
@@ -111,9 +129,9 @@ TestManager.OnLoad = function()
     MOD.Interfaces.TestManager.LogTestOutcome = TestManager.LogTestOutcome
 
     -- Run any active tests OnLoad function.
-    for testName, test in pairs(TestsToRun) do
-        if ((AllTests and not test.notInAllTests) or test.enabled) and test.testScript.OnLoad ~= nil then
-            test.testScript.OnLoad(testName)
+    for testName, testToRun in pairs(TestsToRun) do
+        if ((AllTests and not testToRun.notInAllTests) or testToRun.enabled) and testToRun.testScript.OnLoad ~= nil then
+            testToRun.testScript.OnLoad(testName)
         end
     end
 end
@@ -123,6 +141,11 @@ TestManager.OnStartup = function()
         return
     end
     global.testManager.testProcessStarted = true
+
+    -- Enable debug mode within the mod.
+    if EnableDebugMode then
+        global.debugRelease = true
+    end
 
     global.testManager.testSurface = game.surfaces[1]
     global.testManager.playerForce = game.forces["player"]
@@ -203,8 +226,9 @@ TestManager.WaitForPlayerThenRunTests = function(event)
     end
 end
 
+-- Clean any previous entities off the map.
 TestManager.ClearMap = function()
-    -- Clean any previous entities off the map. Remove any trains first and then everything else; to avoid triggering tunnel removal destroying trains alerts.
+    -- Remove any trains first and then everything else; to avoid triggering tunnel removal destroying trains alerts.
     for _, entityTypeFilter in pairs({{"cargo-wagon", "locomotive", "fluid-wagon"}, {}}) do
         for _, entity in pairs(global.testManager.testSurface.find_entities_filtered({name = entityTypeFilter})) do
             entity.destroy({raise_destroy = true})
@@ -252,11 +276,12 @@ end
 ---@param testName TestName
 ---@return string
 TestManager.GetTestDisplayName = function(testName)
-    local displayTestName = testName
-    if TestManager.GetTestScript(testName).GetTestDisplayName ~= nil then
-        displayTestName = TestManager.GetTestScript(testName).GetTestDisplayName(testName)
+    local testScript = TestManager.GetTestScript(testName)
+    if testScript.GetTestDisplayName ~= nil then
+        return testScript.GetTestDisplayName(testName)
+    else
+        return testName
     end
-    return displayTestName
 end
 
 ---@param event on_player_created
@@ -288,7 +313,7 @@ end
 
 --- Called when the test script needs to be referenced as it can't be stored in global data.
 ---@param testName TestName
----@return table @ The script lua file of this test. -- TODO: add an EmmyLua for the generic functions we include in these script files for external calling.
+---@return TestScript @ The script lua file of this test.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
 end

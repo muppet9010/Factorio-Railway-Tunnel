@@ -1012,24 +1012,22 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train entering. Not sure how this could have happened, but just stop the new train here and restore the entering train detection entity.
-                if global.strictStateHandling then
-                    -- This being a strict failure will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
-                    error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
-                    return
-                else
-                    train.speed = 0
-                    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
-                    rendering.draw_text {
-                        text = "Tunnel in use",
-                        surface = portal.tunnel.surface,
-                        target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
-                        time_to_live = 180,
-                        forces = {portal.force},
-                        color = {r = 1, g = 0, b = 0, a = 1},
-                        scale_with_zoom = true
-                    }
-                    return
-                end
+
+                -- This will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
+                error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
+
+                train.speed = 0
+                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+                rendering.draw_text {
+                    text = "Tunnel in use",
+                    surface = portal.tunnel.surface,
+                    target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
+                    time_to_live = 180,
+                    forces = {portal.force},
+                    color = {r = 1, g = 0, b = 0, a = 1},
+                    scale_with_zoom = true
+                }
+                return
             end
         end
     end
@@ -1181,24 +1179,22 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train from using the tunnel. Not sure how this could have happened, but just stop the new train here and restore the transition detection entity.
-                if global.strictStateHandling then
-                    -- This being a strict failure will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
-                    error("Train has reached the transition of a portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
-                    return
-                else
-                    train.speed = 0
-                    Portal.AddTransitionUsageDetectionEntityToPortal(portal)
-                    rendering.draw_text {
-                        text = "Tunnel in use",
-                        surface = portal.tunnel.surface,
-                        target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
-                        time_to_live = 180,
-                        forces = {portal.force},
-                        color = {r = 1, g = 0, b = 0, a = 1},
-                        scale_with_zoom = true
-                    }
-                    return
-                end
+
+                -- This will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
+                error("Train has reached the transition of a portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
+
+                train.speed = 0
+                Portal.AddTransitionUsageDetectionEntityToPortal(portal)
+                rendering.draw_text {
+                    text = "Tunnel in use",
+                    surface = portal.tunnel.surface,
+                    target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
+                    time_to_live = 180,
+                    forces = {portal.force},
+                    color = {r = 1, g = 0, b = 0, a = 1},
+                    scale_with_zoom = true
+                }
+                return
             end
         end
     end

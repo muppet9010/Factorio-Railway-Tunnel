@@ -5,7 +5,7 @@ local Utils = require("utility/utils")
 local Events = require("utility/events")
 local Logging = require("utility/logging")
 local EventScheduler = require("utility/event-scheduler")
-local PlayerContainer = require("scripts/player-container") -- TODO: This should be made via interface calls.
+local PlayerContainer = require("scripts/player-container")
 local Common = require("scripts/common")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
 local TrainManagerRemote = require("scripts/train-manager-remote")
@@ -98,36 +98,36 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(enteringT
     -- Check if this train is already using the tunnel in some way.
     -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local existingTrainIDTrackedObject = global.trainManager.trainIdToManagedTrain[enteringTrain.id]
-    local replacedManagedTrain, upgradeManagedTrain = nil, nil
+    local reversedManagedTrain, committedManagedTrain = nil, nil
     if existingTrainIDTrackedObject ~= nil then
         if existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.leavingTrain then
             -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
-            replacedManagedTrain = existingTrainIDTrackedObject.managedTrain
+            reversedManagedTrain = existingTrainIDTrackedObject.managedTrain
             -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
-            TrainManager.TerminateTunnelTrip(replacedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, false)
+            TrainManager.TerminateTunnelTrip(reversedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
         elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
             -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful.
             -- Train was using the portal track and is now entering the tunnel.
-            upgradeManagedTrain = existingTrainIDTrackedObject.managedTrain
-            -- Just tidy up the managedTrain's entities its related globals before the new one overwrites it. No tunnel trip to be dealt with.
-            TrainManager.RemoveManagedTrainEntry(upgradeManagedTrain)
+            committedManagedTrain = existingTrainIDTrackedObject.managedTrain
+            -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
+            TrainManager.RemoveManagedTrainEntry(committedManagedTrain)
         else
             error("Unsupported situation")
         end
     end
 
-    local managedTrain = TrainManager.CreateManagedTrainObject(enteringTrain, entrancePortalTransitionSignal, true, upgradeManagedTrain)
+    local managedTrain = TrainManager.CreateManagedTrainObject(enteringTrain, entrancePortalTransitionSignal, true, committedManagedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
-    if replacedManagedTrain ~= nil then
+    if reversedManagedTrain ~= nil then
         -- Include in the new train approaching event the old leavingTrain entry id that has been stopped.
-        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, replacedManagedTrain.id)
+        TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching, nil, reversedManagedTrain.id)
     else
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching)
     end
 end
 
---- Used when a train is claiming a portals track (and thus the tunnel), but not planning to actively use the tunnel yet. Is like the opposite to a leavingTrain monitoring. Only reached by pathing trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
+--- Used when a train is claiming a portals track (and thus the tunnel), but not planning to actively use the tunnel yet. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
@@ -143,6 +143,7 @@ TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack,
     -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
     managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
+    MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
 end
 
@@ -170,13 +171,8 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
         TrainManager.TrainOnPortalTrackOngoing(managedTrain)
         return
     elseif managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
-        -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
-        if managedTrain.enteringTrain.state ~= defines.train_state.arrive_signal or managedTrain.enteringTrain.signal ~= managedTrain.entrancePortalTransitionSignal.entity then
-            TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
-            return
-        else
-            TrainManager.TrainApproachingOngoing(managedTrain)
-        end
+        -- Keep on running until either the train reaches the Transition train detector or the train's target stops being the transition signal.
+        TrainManager.TrainApproachingOngoing(managedTrain)
     elseif managedTrain.primaryTrainPartName == PrimaryTrainState.underground then
         if managedTrain.undergroundTrainHasPlayersRiding then
             -- Only reason we have to update per tick while travelling underground currently.
@@ -190,7 +186,7 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     end
 end
 
--- This tracks a train once it triggers the entry train detector until it reserves the Transition signal of the Entrance portal. It is to detect and then handle trains that enter the portal track and then turn around and leave. Could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available.
+-- This tracks a train once it triggers the entry train detector, until it reserves the Transition signal of the Entrance portal or leaves the portal track (turn around and leave). Turning around could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available. No state change or control of the train is required or applied at this stage.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
@@ -225,9 +221,18 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     end
 end
 
+-- The train is approaching the transition signal so maintain its speed.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain ---@type LuaTrain
+
+    -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
+    if enteringTrain.state ~= defines.train_state.arrive_signal or enteringTrain.signal ~= managedTrain.entrancePortalTransitionSignal.entity then
+        TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
+        -- TODO: If the train has entered the tracks (triggered the portal tracks train detector) we need to return to that state as the train is still on portal tracks now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals.
+        return
+    end
+
     -- This won't keep the train exactly at this speed as it will try and brake its max amount each tick off this speed. But will stay reasonably close to its desired speed.
     enteringTrain.speed = managedTrain.tempEnteringSpeed -- OVERHAUL - this should be calculated programatically.
 
@@ -444,6 +449,7 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEn
     end
 end
 
+--- Just creates the managed train object for the approaching/on-portal-track train.
 ---@param train LuaTrain
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
 ---@param traversingTunnel boolean
@@ -516,14 +522,14 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param releaseTunnel? boolean @ If nil then tunnel is released (defaults to true).
-TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, releaseTunnel)
+---@param dontReleaseTunnel? boolean @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
+TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, dontReleaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
         PlayerContainer.On_TerminateTunnelTrip(managedTrain)
     end
     TrainManager.RemoveManagedTrainEntry(managedTrain)
 
-    if releaseTunnel == nil or releaseTunnel == true then
+    if not dontReleaseTunnel then
         MOD.Interfaces.Tunnel.TrainReleasedTunnel(managedTrain)
     end
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.terminated, tunnelUsageChangeReason)

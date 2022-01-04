@@ -1,4 +1,5 @@
 -- OVERHAUL: THIS ENTIRE MODULE NEEDS REWRITING TO CALCULATE THE PLAYERS POSITION ALONG THE TUNNEL.
+-- Calls to this module from train-manager should be made via interface calls.
 
 local PlayerContainer = {}
 local Events = require("utility/events")
