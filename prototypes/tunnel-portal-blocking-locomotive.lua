@@ -27,10 +27,7 @@ data:extend(
             max_power = "0.0001W",
             reversing_power_modifier = 1,
             energy_source = {
-                type = "burner",
-                render_no_power_icon = false,
-                render_no_network_icon = false,
-                fuel_inventory_size = 0
+                type = "void"
             },
             allow_passengers = false
         }

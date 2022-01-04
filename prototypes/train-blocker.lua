@@ -3,6 +3,8 @@
 ]]
 local Utils = require("utility/utils")
 
+local tunnelTrainCollisionLayer = MODDATA.railway_tunnel.tunnelTrainCollisionLayer
+
 local baseBlockerPrototype = {
     type = "simple-entity-with-owner",
     icons = {
@@ -21,7 +23,7 @@ local baseBlockerPrototype = {
     subgroup = "railway_tunnel-train_blockers",
     flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable", "placeable-off-grid", "not-in-kill-statistics"},
     selectable_in_game = false,
-    collision_mask = {"train-layer"}, -- Just collide with trains.
+    collision_mask = {tunnelTrainCollisionLayer}, -- Just collide with trains, no other entity types.
     picture = Utils.EmptyRotatedSprite(),
     map_color = {0, 0, 0, 0}, -- No map color ever.
     friendly_map_color = {0, 0, 0, 0}, -- No map color ever.

@@ -190,6 +190,41 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     end
 end
 
+-- This tracks a train once it triggers the entry train detector until it reserves the Transition signal of the Entrance portal. It is to detect and then handle trains that enter the portal track and then turn around and leave. Could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available.
+---@param managedTrain ManagedTrain
+TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
+    local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
+
+    if not managedTrain.portalTrackTrainBySignal then
+        -- Not tracking by singal yet. Initially we have to track the trains speed (direction) to confirm that its still entering until it triggers the Entry signal. Tracking by speed is less UPS effecient than using the entry signal.
+        if entrancePortalEntrySignalEntity.signal_state == defines.signal_state.closed then
+            -- The signal state is now closed, so we can start tracking by signal in the future. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
+            managedTrain.portalTrackTrainBySignal = true
+        else
+            -- Continue to track by speed until we can start tracking by signal.
+            local trainSpeed = managedTrain.portalTrackTrain.speed
+            if trainSpeed == 0 then
+                -- If the train isn't moving we don't need to check for any state change this tick.
+                return
+            end
+            local trainForwards = trainSpeed > 0
+            if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
+                -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
+                local placedDetectionEntity = MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false)
+                if placedDetectionEntity then
+                    TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
+                end
+            end
+        end
+    else
+        -- Track the tunnel's entrance portal entry rail signal so we can mark the tunnel as open for the next train if the current train leaves the portal track. Should the train trigger tunnel usage via the Transition signal this managed train entry will be terminated by that event. We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its rear rail signal is our portal entrance one.
+        if entrancePortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
+            -- No train in the block so our one must have left.
+            TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
+        end
+    end
+end
+
 ---@param managedTrain ManagedTrain
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain ---@type LuaTrain
@@ -325,41 +360,6 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
         managedTrain.leavingTrain = nil
         managedTrain.leavingTrainId = nil
         TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.completedTunnelUsage)
-    end
-end
-
--- This tracks a train once it triggers the entry train detector if it hasn't reserved the Transition signal of the Entrance portal. It is to detect and then handle trains that enter the portal track and then turn around and leave. Could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available.
----@param managedTrain ManagedTrain
-TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
-    local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
-
-    if not managedTrain.portalTrackTrainBySignal then
-        -- Not tracking by singal yet. Initially we have to track the trains speed (direction) to confirm that its still entering until it triggers the Entry signal. Tracking by speed is less UPS effecient than using the entry signal.
-        if entrancePortalEntrySignalEntity.signal_state == defines.signal_state.closed then
-            -- The signal state is now closed, so we can start tracking by signal in the future. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
-            managedTrain.portalTrackTrainBySignal = true
-        else
-            -- Continue to track by speed until we can start tracking by signal.
-            local trainSpeed = managedTrain.portalTrackTrain.speed
-            if trainSpeed == 0 then
-                -- If the train isn't moving we don't need to check for any state change this tick.
-                return
-            end
-            local trainForwards = trainSpeed > 0
-            if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
-                -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
-                local placedDetectionEntity = MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false)
-                if placedDetectionEntity then
-                    TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
-                end
-            end
-        end
-    else
-        -- Track the tunnel's entrance portal entry rail signal so we can mark the tunnel as open for the next train if the current train leaves the portal track. Should the train trigger tunnel usage via the Transition signal this managed train entry will be terminated by that event. We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its rear rail signal is our portal entrance one.
-        if entrancePortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
-            -- No train in the block so our one must have left.
-            TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
-        end
     end
 end
 
@@ -703,8 +703,6 @@ TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainS
         create_build_effect_smoke = false
     }
     locomotive.destructible = false
-    locomotive.burner.currently_burning = "coal"
-    locomotive.burner.remaining_burning_fuel = 4000000
     local dummyTrain = locomotive.train
     if not skipScheduling then
         TrainManager.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop)
