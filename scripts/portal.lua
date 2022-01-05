@@ -11,7 +11,7 @@ local EventScheduler = require("utility/event-scheduler")
 ---@field isComplete boolean @ if the portal has 2 connected portal end objects or not.
 ---@field portalEnds table<UnitNumber, PortalEnd> @ the portal end objects of this portal. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalSegments table<UnitNumber, PortalSegment> @ the portal segment objects of this portal. Key'd by the portal segment entity unit_number (id).
----@field trainWaitingAreaTilesLength int @ how many tiles this portal has for trains to wait in it when using the tunnel.
+---@field trainWaitingAreaTilesLength uint @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
 ---
@@ -106,7 +106,7 @@ local SegmentShape = {
 ---@class PortalPartTypeData
 ---@field name string
 ---@field partType PortalPartType
----@field trainWaitingAreaTilesLength int @ how many tiles this part has for trains to wait in it when using the tunnel.
+---@field trainWaitingAreaTilesLength uint @ how many tiles this part has for trains to wait in it when using the tunnel.
 ---@field tracksPositionOffset PortalPartTrackPositionOffset[] @the type of track and its position offset from the center of the part when in a 0 orientation.
 
 ---@class EndPortalTypeData:PortalPartTypeData
@@ -219,6 +219,7 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
+    EventScheduler.RegisterScheduledEventType("Portal.SetTrainToManual_Scheduled", Portal.SetTrainToManual_Scheduled)
 
     local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
@@ -970,7 +971,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     portal.enteringTrainUsageDetectorEntity = nil
 
     if portal.tunnel == nil then
-        -- if no tunnel then the portal won';'t have tracks, so nothing further to do.
+        -- If no tunnel then the portal won't have tracks, so nothing further to do.
         return
     end
 
@@ -980,6 +981,35 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
         return
     end
     local train = carriageEnteringPortalTrack.train
+
+    -- Check the tunnel will conceptually accept the train.
+    if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
+        -- Train can't enter the portal so stop it and alert the player.
+        train.speed = 0
+        train.manual_mode = true
+        Portal.SetTrainToManualNextTick(train)
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
+        rendering.draw_text {
+            text = {"message.railway_tunnel-train_too_long"},
+            surface = portal.tunnel.surface,
+            target = portal.entryPortalEnd.entity,
+            time_to_live = 300,
+            forces = {portal.force},
+            color = {r = 1, g = 0, b = 0, a = 1},
+            scale_with_zoom = true
+        }
+
+        -- Add an alert that the train is too long.
+        for _, player in pairs(portal.tunnel.force.players) do
+            player.add_custom_alert(portal.entryPortalEnd.entity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
+        end
+
+        -- Setup a schedule to detect when the issue is resolved and the alert can be removed. Alerts for the same values overwrite each other it seems.
+        -- TODO: if the train isn't on manual or has a speed thne alert can be removed.
+        -- TODO: test if we force this to occur repeatedly that alerts stay as desired.
+
+        return
+    end
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
@@ -1017,12 +1047,13 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
 
                 train.speed = 0
-                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+                train.manual_mode = true
+                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
                 rendering.draw_text {
                     text = "Tunnel in use",
                     surface = portal.tunnel.surface,
-                    target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
-                    time_to_live = 180,
+                    target = portal.entryPortalEnd.entity,
+                    time_to_live = 300,
                     forces = {portal.force},
                     color = {r = 1, g = 0, b = 0, a = 1},
                     scale_with_zoom = true
@@ -1040,13 +1071,15 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     end
 
     -- Train is coasting so stop it at the border and try to put the detection entity back.
+    -- TODO: also look at if this should be functionised with the other nearly identical messages for portals.
+    train.manual_mode = true -- TODO: check the train is truely stopped in this case and doesn't need Portal.SetTrainToManualNextTick()
     train.speed = 0
-    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
         text = "Unpowered trains can't use tunnels",
         surface = portal.tunnel.surface,
-        target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
-        time_to_live = 180,
+        target = portal.entryPortalEnd.entity,
+        time_to_live = 300,
         forces = {portal.force},
         color = {r = 1, g = 0, b = 0, a = 1},
         scale_with_zoom = true
@@ -1145,6 +1178,25 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
     end
     local train = carriageAtTransitionOfPortalTrack.train
 
+    -- Check the tunnel will conceptually accept the train.
+    if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
+        -- TODO: populate this as per the other trian detector.
+        -- Train can't enter the portal so stop it and alert the player.
+        train.speed = 0
+        train.manual_mode = true
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
+        rendering.draw_text {
+            text = "Train too long for tunnel",
+            surface = portal.tunnel.surface,
+            target = portal.blockedPortalEnd.entity,
+            time_to_live = 300,
+            forces = {portal.force},
+            color = {r = 1, g = 0, b = 0, a = 1},
+            scale_with_zoom = true
+        }
+        return
+    end
+
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
         local train_id = train.id
@@ -1183,12 +1235,13 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 -- This will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
                 error("Train has reached the transition of a portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
 
+                train.manual_mode = true
                 train.speed = 0
                 Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                 rendering.draw_text {
                     text = "Tunnel in use",
                     surface = portal.tunnel.surface,
-                    target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
+                    target = portal.blockedPortalEnd.entity,
                     time_to_live = 180,
                     forces = {portal.force},
                     color = {r = 1, g = 0, b = 0, a = 1},
@@ -1208,12 +1261,13 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     -- Train is coasting so stop it dead and try to put the detection entity back. This shouldn't be reachable really.
     error("Train is coasting at transition of portal track. This shouldn't be reachable really.")
+    train.manual_mode = true
     train.speed = 0
     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
         text = "Unpowered trains can't use tunnels",
         surface = portal.tunnel.surface,
-        target = portal.entrySignals[TunnelSignalDirection.inSignal].entity_position,
+        target = portal.blockedPortalEnd.entity,
         time_to_live = 180,
         forces = {portal.force},
         color = {r = 1, g = 0, b = 0, a = 1},
@@ -1250,6 +1304,21 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
             portal.transitionUsageDetectorEntity.destroy()
         end
         portal.transitionUsageDetectorEntity = nil
+    end
+end
+
+-- Schedule a train to be set to manual next tick. Can be needed as sometimes the Factorio game engine will restart a stopped train upon collision.
+---@param train LuaTrain
+Portal.SetTrainToManualNextTick = function(train)
+    EventScheduler.ScheduleEventOnce(game.tick + 1, "Portal.SetTrainToManual_Scheduled", train.id, {train = train})
+end
+
+-- Set the train to manual.
+---@param event ScheduledEvent
+Portal.SetTrainToManual_Scheduled = function(event)
+    local train = event.data.train ---@type LuaTrain
+    if train.valid then
+        train.manual_mode = true
     end
 end
 

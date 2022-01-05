@@ -14,6 +14,7 @@ local Utils = require("utility/utils")
 ---@field managedTrain ManagedTrain @ one is currently using this tunnel.
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
+---@field maxTrainLengthTiles uint @ the max train length in tiles this tunnel supports.
 
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
@@ -45,6 +46,7 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel = Tunnel.TrainFinishedEnteringTunnel
     MOD.Interfaces.Tunnel.TrainReleasedTunnel = Tunnel.TrainReleasedTunnel
     MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
+    MOD.Interfaces.Tunnel.CanTrainUseTunnel = Tunnel.CanTrainUseTunnel
 
     local rollingStockFilter = {
         {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
@@ -99,11 +101,16 @@ Tunnel.CompleteTunnel = function(portals, underground)
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
 
-    -- Update the parts of the tunnel.
+    -- Loop over the parts of the tunnel and update them and us.
     for _, portal in pairs(portals) do
         portal.tunnel = tunnel
         for portalRailEntity_unitNumber, portalRailEntity in pairs(portal.portalRailEntities) do
             tunnel.portalRailEntities[portalRailEntity_unitNumber] = portalRailEntity
+        end
+        if tunnel.maxTrainLengthTiles == nil then
+            tunnel.maxTrainLengthTiles = portal.trainWaitingAreaTilesLength
+        else
+            tunnel.maxTrainLengthTiles = math.min(tunnel.maxTrainLengthTiles, portal.trainWaitingAreaTilesLength)
         end
     end
     underground.tunnel = tunnel
@@ -356,6 +363,23 @@ Tunnel.OnPlayerRotatedEntity = function(event)
     -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
     rotatedEntity.direction = event.previous_direction
     TunnelShared.EntityErrorMessage(game.get_player(event.player_index), "Don't try and rotate parts of tunnel portals.", rotatedEntity.surface, rotatedEntity.position)
+end
+
+-- Checks if the tunnel can accept the train. Currently just checks lengths.
+---@param train LuaTrain
+---@param tunnel Tunnel
+---@return boolean
+Tunnel.CanTrainUseTunnel = function(train, tunnel)
+    -- Check the trains length against the max tunnel length.
+    local trainLength = 0
+    for _, carriage in pairs(train.carriages) do
+        trainLength = trainLength + Common.GetCarriageConnectedLength(carriage.name)
+    end
+    if trainLength > tunnel.maxTrainLengthTiles then
+        return false
+    end
+
+    return true
 end
 
 return Tunnel

@@ -22,7 +22,7 @@ local Colors = require("utility/colors")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
-local DoTests = false -- Enable test mode and does the enabled tests below if TRUE.
+local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
 local EnableDebugMode = true -- Enables debug mode when tests are run.
@@ -53,10 +53,11 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")} -- DONT USE - test needs major overhaul as was designed for complex logic we don;t have to handle any more.
     --MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")}, -- DONT USE - test needs updating to new tunnel logic.
-    PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")}
+    PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
     --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
-    --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")} -- DONT USE - test needs updating to new tunnel logic.
+    --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
+    TrainTooLong = {enabled = true, testScript = require("tests/train-too-long")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

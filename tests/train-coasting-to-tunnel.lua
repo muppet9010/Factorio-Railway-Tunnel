@@ -48,7 +48,7 @@ Test.Start = function(testName)
         error("Unsupported trainScheduleState: " .. testScenario.trainScheduleState)
     end
 
-    -- Get the east portal portal end entity.
+    -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000
     ---@typelist uint, LuaEntity
     for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-portal_end", true, false)) do

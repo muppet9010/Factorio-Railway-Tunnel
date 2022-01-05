@@ -30,6 +30,9 @@ DON'T COMMIT:
 
 TODO NEXT:
     - Any train trying to enter the portal area that is longer than it will be hard blocked at the border, set to manual and a notificaiton to user shown.
+    - Include portal end parts in the returned BP'd items as used quite often and only a few of them.
+    - Update any scheduled functions to have _Scheduled affixed to them. Can tell as they have param type ScheduledEvent.
+    - Localise all of the error messages created ass game.print or rendering.draw_text.
     - Work out train travel time as per Vision.
     - update remaining old Tests.
     - for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this, or leave the entering train's lead locomotive (one that kills the detector) in place for a tick with 0 speed on manual (change force, invunerable, can't be deconned, etc). It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.

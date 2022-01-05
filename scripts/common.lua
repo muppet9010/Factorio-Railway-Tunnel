@@ -27,13 +27,23 @@ Common.RollingStockTypes = {
     ["artillery-wagon"] = "artillery-wagon" ---@type RollingStockTypes
 }
 
--- Gets the distance from the center of the carriage to the end of it for when placing carriages.
+-- Gets the distance from the center of the carriage to the end of it for when placing carriages. This is half the combined connection and joint distance of the carriage.
 ---@param carriageEntityName string @ The entity name.
 ---@return double
 Common.GetCarriagePlacementDistance = function(carriageEntityName)
     -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
     if carriageEntityName ~= nil then
         return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
+    end
+end
+
+-- Gets the combined connection and joint distance of the carriage.
+---@param carriageEntityName string @ The entity name.
+---@return double
+Common.GetCarriageConnectedLength = function(carriageEntityName)
+    -- For now we assume all unknown carriages have a length of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
+    if carriageEntityName ~= nil then
+        return 7
     end
 end
 

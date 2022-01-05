@@ -54,7 +54,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@alias TrainTravelOrientation "0"|"0.25"|"0.5"|"0.75"
 
 ---@class TrainIdToManagedTrain
----@field trainId Id @ the LuaTrain id, used as Id.
+---@field trainId Id @ the LuaTrain id.
 ---@field managedTrain ManagedTrain
 ---@field tunnelUsagePart TunnelUsageParts
 
@@ -96,7 +96,6 @@ end
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
 TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(enteringTrain, entrancePortalTransitionSignal)
     -- Check if this train is already using the tunnel in some way.
-    -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local existingTrainIDTrackedObject = global.trainManager.trainIdToManagedTrain[enteringTrain.id]
     local reversedManagedTrain, committedManagedTrain = nil, nil
     if existingTrainIDTrackedObject ~= nil then
@@ -140,7 +139,6 @@ end
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack, portal)
-    -- OVERHAUL - must check train length isn't more than tunnel allowed max length. If it is reject.
     local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
     managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
@@ -402,9 +400,7 @@ TrainManager.DestroyDummyTrain = function(managedTrain)
     -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
     if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
-        for _, carriage in pairs(managedTrain.dummyTrain.carriages) do
-            carriage.destroy()
-        end
+        managedTrain.dummyTrain.front_stock.destroy()
     elseif managedTrain.dummyTrainId ~= nil then
         global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
     end
