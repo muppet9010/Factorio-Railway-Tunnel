@@ -5,6 +5,7 @@ local Common = require("scripts/common")
 local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = Common.PortalEndAndSegmentEntityNames, Common.TunnelSignalDirection, Common.TunnelUsageParts
 local Portal = {}
 local EventScheduler = require("utility/event-scheduler")
+local PlayerAlerts = require("utility/player-alerts")
 
 ---@class Portal
 ---@field id uint @ unique id of the portal object.
@@ -220,6 +221,7 @@ Portal.OnLoad = function()
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
     EventScheduler.RegisterScheduledEventType("Portal.SetTrainToManual_Scheduled", Portal.SetTrainToManual_Scheduled)
+    EventScheduler.RegisterScheduledEventType("Portal.CheckIfTooLongTrainStillStopped_Scheduled", Portal.CheckIfTooLongTrainStillStopped_Scheduled)
 
     local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
@@ -984,7 +986,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     -- Check the tunnel will conceptually accept the train.
     if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
-        -- Train can't enter the portal so stop it and alert the player.
+        -- Train can't enter the portal so stop it and alert the players.
         train.speed = 0
         train.manual_mode = true
         Portal.SetTrainToManualNextTick(train)
@@ -998,16 +1000,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
             color = {r = 1, g = 0, b = 0, a = 1},
             scale_with_zoom = true
         }
-
-        -- Add an alert that the train is too long.
-        for _, player in pairs(portal.tunnel.force.players) do
-            player.add_custom_alert(portal.entryPortalEnd.entity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
-        end
-
-        -- Setup a schedule to detect when the issue is resolved and the alert can be removed. Alerts for the same values overwrite each other it seems.
-        -- TODO: if the train isn't on manual or has a speed thne alert can be removed.
-        -- TODO: test if we force this to occur repeatedly that alerts stay as desired.
-
+        Portal.AddAlertForStoppedTooLongTrainUntilItMoves(train, portal.entryPortalEnd.entity, portal.tunnel)
         return
     end
 
@@ -1307,18 +1300,61 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
     end
 end
 
--- Schedule a train to be set to manual next tick. Can be needed as sometimes the Factorio game engine will restart a stopped train upon collision.
+--- Schedule a train to be set to manual next tick. Can be needed as sometimes the Factorio game engine will restart a stopped train upon collision.
 ---@param train LuaTrain
 Portal.SetTrainToManualNextTick = function(train)
     EventScheduler.ScheduleEventOnce(game.tick + 1, "Portal.SetTrainToManual_Scheduled", train.id, {train = train})
 end
 
--- Set the train to manual.
+--- Set the train to manual.
 ---@param event ScheduledEvent
 Portal.SetTrainToManual_Scheduled = function(event)
     local train = event.data.train ---@type LuaTrain
     if train.valid then
         train.manual_mode = true
+    end
+end
+
+--- Add an alert that the train is too long and initiate monitoring of it for when the alert should be removed.
+---@param train LuaTrain @ the train the alert is about.
+---@param alertEntity LuaEntity @ the entity the alert will be focused on.
+---@param tunnel Tunnel
+Portal.AddAlertForStoppedTooLongTrainUntilItMoves = function(train, alertEntity, tunnel)
+    ---@typelist LuaEntity, SignalID, LocalisedString
+    local alertId = PlayerAlerts.AddCustomAlertToForce(tunnel.force, train.id, alertEntity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
+
+    -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
+    EventScheduler.ScheduleEventOnce(game.tick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", train.id, {train = train, alertEntity = alertEntity, alertId = alertId})
+end
+
+--- Checks a train until it is no longer stopped and then removes the alert associated with it.
+---@param event ScheduledEvent
+Portal.CheckIfTooLongTrainStillStopped_Scheduled = function(event)
+    ---@typelist LuaTrain, LuaEntity, Id
+    local train, alertEntity, alertId = event.data.train, event.data.alertEntity, event.data.alertId
+    local trainStopped = true
+
+    if not train.valid then
+        -- Train is not valid any more so alert should be removed.
+        trainStopped = false
+    elseif not alertEntity.valid then
+        -- The alert target entity is not valid any more so alert should be removed.
+        trainStopped = false
+    elseif train.speed ~= 0 then
+        -- The train has speed and so isn't stopped any more.
+        trainStopped = false
+    elseif not train.manual_mode then
+        -- The train is in automatic so isn't stopped any more.
+        trainStopped = false
+    end
+
+    -- Handle the stopped state.
+    if not trainStopped then
+        -- Train isn't stopped so remove the alert.
+        PlayerAlerts.RemoveCustomAlertFromForce(alertEntity.force.index, alertId)
+    else
+        -- Train is still stopped so schedule a check for next tick.
+        EventScheduler.ScheduleEventOnce(event.tick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", event.instanceId, event.data)
     end
 end
 

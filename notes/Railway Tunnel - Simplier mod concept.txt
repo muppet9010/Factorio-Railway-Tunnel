@@ -29,7 +29,6 @@ DON'T COMMIT:
 
 
 TODO NEXT:
-    - Any train trying to enter the portal area that is longer than it will be hard blocked at the border, set to manual and a notificaiton to user shown.
     - Include portal end parts in the returned BP'd items as used quite often and only a few of them.
     - Update any scheduled functions to have _Scheduled affixed to them. Can tell as they have param type ScheduledEvent.
     - Localise all of the error messages created ass game.print or rendering.draw_text.

@@ -84,7 +84,7 @@ Test.EveryTick = function(event)
 
                 -- The alert should appear instantly.
                 local playerAlerts = player.get_alerts {entity = entrancePortalEntryPortalEnd}
-                if playerAlerts == nil then
+                if playerAlerts[entrancePortalEntryPortalEnd.surface.index] == nil or #playerAlerts[entrancePortalEntryPortalEnd.surface.index] == 0 or #playerAlerts[entrancePortalEntryPortalEnd.surface.index][defines.alert_type.custom] ~= 1 then
                     TestFunctions.TestFailed(testName, "Train was rejected from tunnel, but alert didn't show")
                 end
 
@@ -116,7 +116,7 @@ Test.EveryTick = function(event)
         if eastTrainStop.get_stopped_train() ~= nil then
             -- The alert should have vanished by now.
             local playerAlerts = player.get_alerts {entity = entrancePortalEntryPortalEnd}
-            if playerAlerts ~= nil then
+            if #playerAlerts[entrancePortalEntryPortalEnd.surface.index][defines.alert_type.custom] ~= 0 then
                 TestFunctions.TestFailed(testName, "Train has reached reverse station, but alert hasn't stopped")
             else
                 TestFunctions.TestCompleted(testName)

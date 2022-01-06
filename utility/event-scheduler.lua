@@ -25,7 +25,7 @@ MOD.scheduledEventNames =
 
 --------------------------------------------------------------------------------------------
 --                                    Setup Functions
----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
 
 --- Called from the root of Control.lua
 EventScheduler.RegisterScheduler = function()
@@ -45,7 +45,7 @@ end
 
 --------------------------------------------------------------------------------------------
 --                                    Schedule Once Functions
----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
 
 --- Called from OnStartup() or from some other event or trigger to schedule an event.
 ---@param eventTick Tick| @ eventTick of nil will be next tick, current or past ticks will fail. eventTick of -1 is a special input for current tick when used by events that run before the Factorio on_tick event, i.e. a custom input (key pressed for action) handler.
@@ -116,7 +116,7 @@ end
 
 --------------------------------------------------------------------------------------------
 --                                    Schedule For Each Tick Functions
----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
 
 --- Called from OnStartup() or from some other event or trigger to schedule an event to fire every tick from now on until cancelled.
 --- Good if you need to pass data back with each firing and the event is going to be stopped/started. If its going to run constantly then betetr to just register for the on_tick event handler via the Events utlity class.
@@ -174,7 +174,7 @@ end
 
 --------------------------------------------------------------------------------------------
 --                                    Internal Functions
----------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
 
 EventScheduler._OnSchedulerCycle = function(event)
     local tick = event.tick
