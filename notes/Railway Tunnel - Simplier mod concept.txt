@@ -30,7 +30,7 @@ DON'T COMMIT:
 
 TODO NEXT:
     - Include portal end parts in the returned BP'd items as used quite often and only a few of them.
-    - Update any scheduled functions to have _Scheduled affixed to them. Can tell as they have param type ScheduledEvent.
+    - Update any scheduled functions to have _Scheduled affixed to them. Can tell as they have param type UtilityScheduledEventCallbackObject.
     - Localise all of the error messages created ass game.print or rendering.draw_text.
     - Work out train travel time as per Vision.
     - update remaining old Tests.

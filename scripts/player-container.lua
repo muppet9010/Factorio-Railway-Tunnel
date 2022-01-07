@@ -76,7 +76,7 @@ PlayerContainer.OnPlayerDrivingChangedState = function(event)
     end
 end
 
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 PlayerContainer.OnToggleDrivingInputAfterChangedState = function(event)
     if 1 == 1 then
         --OVERHAUL: just skip this Module for now.

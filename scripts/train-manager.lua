@@ -319,7 +319,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
     end
 end
 
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local managedTrain = event.data.managedTrain
     if managedTrain == nil or managedTrain.primaryTrainPartName ~= PrimaryTrainState.underground then

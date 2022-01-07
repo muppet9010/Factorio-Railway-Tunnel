@@ -57,7 +57,7 @@ local TestsToRun = {
     --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
-    TrainTooLong = {enabled = true, testScript = require("tests/train-too-long")}
+    TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -197,7 +197,7 @@ TestManager.OnStartup = function()
     end
 end
 
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 TestManager.WaitForPlayerThenRunTests = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
@@ -295,7 +295,7 @@ TestManager.OnPlayerCreated = function(event)
     TestManager.OnPlayerCreatedMakeCharacter({instanceId = player.index})
 end
 
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 TestManager.OnPlayerCreatedMakeCharacter = function(event)
     -- Add a character since it was lost in surface destruction. Then go to Map Editor, that way if we leave map editor we have a character to return to.
     local player = game.get_player(event.instanceId)

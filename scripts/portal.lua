@@ -1078,7 +1078,7 @@ Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
     return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, retry)
 end
 
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
@@ -1282,7 +1282,7 @@ Portal.SetTrainToManualNextTick = function(train)
 end
 
 --- Set the train to manual.
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 Portal.SetTrainToManual_Scheduled = function(event)
     local train = event.data.train ---@type LuaTrain
     if train.valid then
@@ -1320,7 +1320,7 @@ Portal.StopTrainAsTooLong = function(train, portal, alertEntity)
 end
 
 --- Checks a train until it is no longer stopped and then removes the alert associated with it.
----@param event ScheduledEvent
+---@param event UtilityScheduledEventCallbackObject
 Portal.CheckIfTooLongTrainStillStopped_Scheduled = function(event)
     ---@typelist LuaTrain, LuaEntity, Id
     local train, alertEntity, alertId = event.data.train, event.data.alertEntity, event.data.alertId
