@@ -986,21 +986,8 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     -- Check the tunnel will conceptually accept the train.
     if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
-        -- Train can't enter the portal so stop it and alert the players.
-        train.speed = 0
-        train.manual_mode = true
-        Portal.SetTrainToManualNextTick(train)
+        Portal.StopTrainAsTooLong(train, portal, portal.entryPortalEnd.entity)
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
-        rendering.draw_text {
-            text = {"message.railway_tunnel-train_too_long"},
-            surface = portal.tunnel.surface,
-            target = portal.entryPortalEnd.entity,
-            time_to_live = 300,
-            forces = {portal.force},
-            color = {r = 1, g = 0, b = 0, a = 1},
-            scale_with_zoom = true
-        }
-        Portal.AddAlertForStoppedTooLongTrainUntilItMoves(train, portal.entryPortalEnd.entity, portal.tunnel)
         return
     end
 
@@ -1173,20 +1160,8 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     -- Check the tunnel will conceptually accept the train.
     if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
-        -- TODO: populate this as per the other trian detector.
-        -- Train can't enter the portal so stop it and alert the player.
-        train.speed = 0
-        train.manual_mode = true
-        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
-        rendering.draw_text {
-            text = "Train too long for tunnel",
-            surface = portal.tunnel.surface,
-            target = portal.blockedPortalEnd.entity,
-            time_to_live = 300,
-            forces = {portal.force},
-            color = {r = 1, g = 0, b = 0, a = 1},
-            scale_with_zoom = true
-        }
+        Portal.StopTrainAsTooLong(train, portal, portal.blockedPortalEnd.entity)
+        Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return
     end
 
@@ -1315,13 +1290,30 @@ Portal.SetTrainToManual_Scheduled = function(event)
     end
 end
 
---- Add an alert that the train is too long and initiate monitoring of it for when the alert should be removed.
----@param train LuaTrain @ the train the alert is about.
----@param alertEntity LuaEntity @ the entity the alert will be focused on.
----@param tunnel Tunnel
-Portal.AddAlertForStoppedTooLongTrainUntilItMoves = function(train, alertEntity, tunnel)
-    ---@typelist LuaEntity, SignalID, LocalisedString
-    local alertId = PlayerAlerts.AddCustomAlertToForce(tunnel.force, train.id, alertEntity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
+--- Train can't enter the portal so stop it and alert the players.
+---@param train LuaTrain
+---@param portal Portal
+---@param alertEntity LuaEntity
+Portal.StopTrainAsTooLong = function(train, portal, alertEntity)
+    -- Stop the train.
+    train.speed = 0
+    train.manual_mode = true
+    -- Have to set the train to be stopped next tick as the Factorio game engine will restart a stopped train upon collision.
+    Portal.SetTrainToManualNextTick(train)
+
+    -- Show a text message at the tunnel entrance for a short period.
+    rendering.draw_text {
+        text = {"message.railway_tunnel-train_too_long"},
+        surface = portal.tunnel.surface,
+        target = alertEntity,
+        time_to_live = 300,
+        forces = {portal.force},
+        color = {r = 1, g = 0, b = 0, a = 1},
+        scale_with_zoom = true
+    }
+
+    -- Add the alert for the tunnel force.
+    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train.id, alertEntity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
 
     -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
     EventScheduler.ScheduleEventOnce(game.tick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", train.id, {train = train, alertEntity = alertEntity, alertId = alertId})
@@ -1351,7 +1343,7 @@ Portal.CheckIfTooLongTrainStillStopped_Scheduled = function(event)
     -- Handle the stopped state.
     if not trainStopped then
         -- Train isn't stopped so remove the alert.
-        PlayerAlerts.RemoveCustomAlertFromForce(alertEntity.force.index, alertId)
+        PlayerAlerts.RemoveCustomAlertFromForce(alertEntity.force, alertId)
     else
         -- Train is still stopped so schedule a check for next tick.
         EventScheduler.ScheduleEventOnce(event.tick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", event.instanceId, event.data)

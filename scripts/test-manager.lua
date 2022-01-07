@@ -148,20 +148,20 @@ TestManager.OnStartup = function()
         global.debugRelease = true
     end
 
-    global.testManager.testSurface = game.surfaces[1]
-    global.testManager.playerForce = game.forces["player"]
-    local playerForce = global.testManager.playerForce
-
+    local playerForce = game.forces["player"]
     playerForce.character_running_speed_modifier = 10
     playerForce.character_build_distance_bonus = 100
     playerForce.character_reach_distance_bonus = 100
+    global.testManager.playerForce = playerForce
 
-    local testSurface = global.testManager.testSurface
+    local testSurface = game.surfaces[1]
     testSurface.generate_with_lab_tiles = true
     testSurface.always_day = true
     testSurface.freeze_daytime = true
     testSurface.show_clouds = false
+    global.testManager.testSurface = testSurface
 
+    -- Remove the default map so the lab tile map chunks appear.
     for chunk in testSurface.get_chunks() do
         testSurface.delete_chunk({x = chunk.x, y = chunk.y})
     end

@@ -9,6 +9,7 @@ local Force = require("scripts/force")
 local PlayerContainer = require("scripts/player-container")
 local Events = require("utility/events")
 local Commands = require("utility/commands")
+local PlayerAlerts = require("utility/player-alerts")
 
 local function CreateGlobals()
     global.debugRelease = false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
@@ -109,6 +110,7 @@ script.on_configuration_changed(OnStartup)
 --script.on_event(defines.events.on_runtime_mod_setting_changed, OnSettingChanged)
 script.on_load(OnLoad)
 EventScheduler.RegisterScheduler()
+PlayerAlerts.RegisterPlayerAlerts()
 
 -- Mod wide function interface table creation. Means EmmyLua can support it and saves on UPS cost of old Interface function middelayer.
 ---@class InternalInterfaces
