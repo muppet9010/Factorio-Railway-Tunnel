@@ -34,7 +34,7 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
+    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
 
     -- Get the blueprinted entities.
     local train = placedEntitiesByType["locomotive"][1].train ---@type LuaTrain
@@ -51,7 +51,7 @@ Test.Start = function(testName)
     -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000
     ---@typelist uint, LuaEntity
-    for _, portalEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-portal_end", true, false)) do
+    for _, portalEntity in pairs(placedEntitiesByType["railway_tunnel-portal_end"]) do
         if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
             entrancePortalEntryPortalEnd = portalEntity
             entrancePortalEntryPortalEndXPos = portalEntity.position.x

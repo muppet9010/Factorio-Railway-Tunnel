@@ -119,11 +119,11 @@ TestManager.OnLoad = function()
     if not DoTests then
         return
     end
-    EventScheduler.RegisterScheduledEventType("TestManager.RunTests", TestManager.RunTests)
-    EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests", TestManager.WaitForPlayerThenRunTests)
-    EventScheduler.RegisterScheduledEventType("TestManager.ClearMap", TestManager.ClearMap)
+    EventScheduler.RegisterScheduledEventType("TestManager.RunTests_Scheduled", TestManager.RunTests_Scheduled)
+    EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests_Scheduled", TestManager.WaitForPlayerThenRunTests_Scheduled)
+    EventScheduler.RegisterScheduledEventType("TestManager.ClearMap_Scheduled", TestManager.ClearMap_Scheduled)
     Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
-    EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter", TestManager.OnPlayerCreatedMakeCharacter)
+    EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter_Scheduled", TestManager.OnPlayerCreatedMakeCharacter_Scheduled)
 
     MOD.Interfaces.TestManager = MOD.Interfaces.TestManager or {}
     MOD.Interfaces.TestManager.GetTestScript = TestManager.GetTestScript
@@ -193,12 +193,12 @@ TestManager.OnStartup = function()
 
     if not Utils.IsTableEmpty(global.testManager.testsToRun) then
         -- Only if there are tests do we need to start this loop. Otherwise test world setup is complete.
-        EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
+        EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests_Scheduled", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
     end
 end
 
 ---@param event UtilityScheduledEventCallbackObject
-TestManager.WaitForPlayerThenRunTests = function(event)
+TestManager.WaitForPlayerThenRunTests_Scheduled = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
         TestManager.GetTestScript(currentTestName).Stop(currentTestName)
@@ -221,14 +221,14 @@ TestManager.WaitForPlayerThenRunTests = function(event)
             end
         end
         game.tick_paused = true
-        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.ClearMap")
+        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.ClearMap_Scheduled")
     else
-        TestManager.ClearMap()
+        TestManager.ClearMap_Scheduled()
     end
 end
 
 -- Clean any previous entities off the map.
-TestManager.ClearMap = function()
+TestManager.ClearMap_Scheduled = function()
     -- Remove any trains first and then everything else; to avoid triggering tunnel removal destroying trains alerts.
     for _, entityTypeFilter in pairs({{"cargo-wagon", "locomotive", "fluid-wagon"}, {}}) do
         for _, entity in pairs(global.testManager.testSurface.find_entities_filtered({name = entityTypeFilter})) do
@@ -242,10 +242,10 @@ TestManager.ClearMap = function()
     end
 
     -- Wait 1 tick so any end of tick mod events from the mpa clearing are raised and ignored, before we start the next test.
-    EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests")
+    EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests_Scheduled")
 end
 
-TestManager.RunTests = function()
+TestManager.RunTests_Scheduled = function()
     for testName, test in pairs(global.testManager.testsToRun) do
         if ((AllTests and not test.notInAllTests) or test.enabled) and test.runLoopsCount < test.runLoopsMax then
             TestManager.PrepPlayersForNextTest()
@@ -257,7 +257,7 @@ TestManager.RunTests = function()
             global.testManager.testData[testName] = {} -- Reset for every test run as this is the test's internal data object.
             TestManager.GetTestScript(testName).Start(testName)
             if test.runTime ~= nil then
-                EventScheduler.ScheduleEventOnce(game.tick + test.runTime, "TestManager.WaitForPlayerThenRunTests", nil, {currentTestName = testName})
+                EventScheduler.ScheduleEventOnce(game.tick + test.runTime, "TestManager.WaitForPlayerThenRunTests_Scheduled", nil, {currentTestName = testName})
             end
             global.testManager.playerForce.chart_all(global.testManager.testSurface)
 
@@ -292,18 +292,18 @@ TestManager.OnPlayerCreated = function(event)
         player.exit_cutscene()
     end
 
-    TestManager.OnPlayerCreatedMakeCharacter({instanceId = player.index})
+    TestManager.OnPlayerCreatedMakeCharacter_Scheduled({instanceId = player.index})
 end
 
 ---@param event UtilityScheduledEventCallbackObject
-TestManager.OnPlayerCreatedMakeCharacter = function(event)
+TestManager.OnPlayerCreatedMakeCharacter_Scheduled = function(event)
     -- Add a character since it was lost in surface destruction. Then go to Map Editor, that way if we leave map editor we have a character to return to.
     local player = game.get_player(event.instanceId)
     if player.character == nil then
         local characterCreated = player.create_character()
         if characterCreated == false then
             -- Character can't create yet, try again later.
-            EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.OnPlayerCreatedMakeCharacter", player.index)
+            EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.OnPlayerCreatedMakeCharacter_Scheduled", player.index)
             return
         end
     end

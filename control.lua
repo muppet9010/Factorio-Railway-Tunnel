@@ -70,10 +70,10 @@ local function OnLoad()
         function()
             if global.debugRelease then
                 global.debugRelease = false
-                game.print("Disabled Railway Tunnel mod's debug handling")
+                game.print({"message.railway_tunnel-debug_changed", {"message.railway_tunnel-Disabled"}})
             else
                 global.debugRelease = true
-                game.print("Enabled Railway Tunnel mod's debug handling")
+                game.print({"message.railway_tunnel-debug_changed", {"message.railway_tunnel-Enabled"}})
             end
         end,
         true

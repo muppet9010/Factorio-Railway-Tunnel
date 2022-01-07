@@ -318,7 +318,7 @@ end
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
     -- This is the list of entity types that will be unique tracked and returned for easy accessing by test functions. Adding rare types is fine, but anything really generic could be obtained within the test by Utils.GetTableValueWithInnerKeyValue() and may be lower UPS.
     ---@type table<string, LuaEntity[]>
-    local placedEntitiesByType = {["locomotive"] = {}, ["cargo-wagon"] = {}, ["fluid-wagon"] = {}, ["artillery-wagon"] = {}, ["train-stop"] = {}}
+    local placedEntitiesByType = {["locomotive"] = {}, ["cargo-wagon"] = {}, ["fluid-wagon"] = {}, ["artillery-wagon"] = {}, ["train-stop"] = {}, ["railway_tunnel-portal_end"] = {}}
 
     local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]

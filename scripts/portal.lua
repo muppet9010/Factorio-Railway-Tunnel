@@ -219,7 +219,7 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
 
-    EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition)
+    EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
     EventScheduler.RegisterScheduledEventType("Portal.SetTrainToManual_Scheduled", Portal.SetTrainToManual_Scheduled)
     EventScheduler.RegisterScheduledEventType("Portal.CheckIfTooLongTrainStillStopped_Scheduled", Portal.CheckIfTooLongTrainStillStopped_Scheduled)
 
@@ -784,7 +784,7 @@ Portal.OnPreMinedEntity = function(event)
             if miner == nil and event.player_index ~= nil then
                 miner = game.get_player(event.player_index)
             end
-            TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel portal part while a train is using the tunnel", minedEntity.surface, minedEntity.position)
+            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
             Portal.ReplacePortalPartEntity(minedPortalPart)
         else
             -- Safe to mine the part.
@@ -1030,7 +1030,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 train.manual_mode = true
                 Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
                 rendering.draw_text {
-                    text = "Tunnel in use",
+                    text = {"message.railway_tunnel-tunnel_in_use"},
                     surface = portal.tunnel.surface,
                     target = portal.entryPortalEnd.entity,
                     time_to_live = 300,
@@ -1056,7 +1056,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     train.speed = 0
     Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
-        text = "Unpowered trains can't use tunnels",
+        text = {"message.railway_tunnel-unpowered_trains_cant_use_tunnels"},
         surface = portal.tunnel.surface,
         target = portal.entryPortalEnd.entity,
         time_to_live = 300,
@@ -1075,14 +1075,14 @@ Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
         -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
-    return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition(nil, portal, retry)
+    return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled(nil, portal, retry)
 end
 
 ---@param event UtilityScheduledEventCallbackObject
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
-Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(event, portal, retry)
+Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled = function(event, portal, retry)
     local eventData
     if event ~= nil then
         eventData = event.data
@@ -1112,7 +1112,7 @@ Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition = function(event, po
         else
             postbackData = {portal = portal, retry = retry}
         end
-        EventScheduler.ScheduleEventOnce(nil, "Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition", portal.id, postbackData)
+        EventScheduler.ScheduleEventOnce(nil, "Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", portal.id, postbackData)
     end
 end
 
@@ -1207,7 +1207,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 train.speed = 0
                 Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                 rendering.draw_text {
-                    text = "Tunnel in use",
+                    text = {"message.railway_tunnel-tunnel_in_use"},
                     surface = portal.tunnel.surface,
                     target = portal.blockedPortalEnd.entity,
                     time_to_live = 180,
@@ -1227,13 +1227,12 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
         return
     end
 
-    -- Train is coasting so stop it dead and try to put the detection entity back. This shouldn't be reachable really.
-    error("Train is coasting at transition of portal track. This shouldn't be reachable really.")
+    -- Train is coasting so stop it dead and try to put the detection entity back. This is only reachable in edge cases.
     train.manual_mode = true
     train.speed = 0
     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
-        text = "Unpowered trains can't use tunnels",
+        text = {"message.railway_tunnel-unpowered_trains_cant_use_tunnels"},
         surface = portal.tunnel.surface,
         target = portal.blockedPortalEnd.entity,
         time_to_live = 180,

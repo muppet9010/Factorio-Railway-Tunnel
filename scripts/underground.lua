@@ -226,7 +226,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
             for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
                 if not railCrossingTrackEntity.can_be_destroyed() then
                     -- Put the old correct entity back and correct whats been done.
-                    TunnelShared.EntityErrorMessage(placer, "Can not fast replace crossing rail tunnel segment while train is on above ground crossing track", surface, builtEntity_position)
+                    TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, surface, builtEntity_position)
                     fastReplacedSegment.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
                     Underground.ReplaceSegmentEntity(fastReplacedSegment)
                     Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing", count = 1})
@@ -620,7 +620,7 @@ Underground.OnPreMinedEntity = function(event)
 
     -- The entity is part of a registered object so we need to check and handle its removal carefully.
 
-    -- if theres above ground crossing rails we need to check these are clear.
+    -- If theres above ground crossing rails we need to check these are clear.
     if minedSegment.crossingRailEntities ~= nil then
         for _, railEntity in pairs(minedSegment.crossingRailEntities) do
             if not railEntity.can_be_destroyed() then
@@ -628,7 +628,7 @@ Underground.OnPreMinedEntity = function(event)
                 if miner == nil and event.player_index ~= nil then
                     miner = game.get_player(event.player_index)
                 end
-                TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel underground segment while train is on the above ground crossing track", minedEntity.surface, minedEntity.position)
+                TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
                 Underground.ReplaceSegmentEntity(minedSegment)
                 return
             end
@@ -645,7 +645,7 @@ Underground.OnPreMinedEntity = function(event)
             if miner == nil and event.player_index ~= nil then
                 miner = game.get_player(event.player_index)
             end
-            TunnelShared.EntityErrorMessage(miner, "Can not mine tunnel underground segment while a train is using tunnel", minedEntity.surface, minedEntity.position)
+            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
             Underground.ReplaceSegmentEntity(minedSegment)
         else
             -- Safe to mine the segment.

@@ -349,7 +349,7 @@ Tunnel.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, "Rolling stock can't be built on tunnel rail's", "rolling stock")
+    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
 -- Triggered when a player rotates a monitored entity type. This should only be possible in Editor mode as we make all parts un-rotatable to regular players.
@@ -362,7 +362,7 @@ Tunnel.OnPlayerRotatedEntity = function(event)
     end
     -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
     rotatedEntity.direction = event.previous_direction
-    TunnelShared.EntityErrorMessage(game.get_player(event.player_index), "Don't try and rotate parts of tunnel portals.", rotatedEntity.surface, rotatedEntity.position)
+    TunnelShared.EntityErrorMessage(game.get_player(event.player_index), {"message.railway_tunnel-dont_rotate_tunnel_parts"}, rotatedEntity.surface, rotatedEntity.position)
 end
 
 -- Checks if the tunnel can accept the train. Currently just checks lengths.

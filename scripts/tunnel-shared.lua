@@ -16,14 +16,14 @@ end
 ---@param placer EntityActioner
 ---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
 TunnelShared.UndoInvalidTunnelPartPlacement = function(builtEntity, placer, mine)
-    TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, "Tunnel must be placed on the rail grid", "tunnel part")
+    TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, {"message.railway_tunnel-tunnel_part_must_be_on_rail_grid"}, "tunnel part")
 end
 
 ---@param builtEntity LuaEntity
 ---@param placer EntityActioner
 ---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
 ---@param highlightValidRailGridPositions boolean @ If to show to the placer valid positions on the rail grid.
----@param warningMessageText string @ Text shown to the placer
+---@param warningMessageText LocalisedString @ Text shown to the placer
 ---@param errorEntityNameText string @ Entity name shown if the process errors.
 TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highlightValidRailGridPositions, warningMessageText, errorEntityNameText)
     if placer ~= nil then
@@ -51,7 +51,7 @@ TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highligh
         end
     else
         builtEntity.destroy()
-        game.print("invalid placement of " .. errorEntityNameText .. " by script at {" .. tostring(builtEntity.position.x) .. "," .. tostring(builtEntity.position.y) .. "} removed", Colors.red)
+        game.print({"message.railway_tunnel-invalid_placement_by_script", errorEntityNameText, tostring(builtEntity.position.x), tostring(builtEntity.position.y)}, Colors.red)
     end
 end
 
@@ -101,7 +101,7 @@ end
 
 --- Shows warning/error text on the map to either the player (character) or the force (construction robots) doign the interaction.
 ---@param entityDoingInteraction EntityActioner
----@param text string @ Text shown.
+---@param text LocalisedString @ Text shown.
 ---@param surface LuaSurface
 ---@param position Position
 TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)

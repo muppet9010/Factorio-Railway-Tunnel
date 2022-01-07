@@ -29,7 +29,7 @@ end
 PlayerContainer.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-toggle_driving", "PlayerContainer.OnToggleDrivingInput", PlayerContainer.OnToggleDrivingInput)
     Events.RegisterHandlerEvent(defines.events.on_player_driving_changed_state, "PlayerContainer.OnPlayerDrivingChangedState", PlayerContainer.OnPlayerDrivingChangedState)
-    EventScheduler.RegisterScheduledEventType("PlayerContainer.OnToggleDrivingInputAfterChangedState", PlayerContainer.OnToggleDrivingInputAfterChangedState)
+    EventScheduler.RegisterScheduledEventType("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled", PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled)
 end
 
 ---@param event CustomInputEvent
@@ -51,7 +51,7 @@ PlayerContainer.OnToggleDrivingInput = function(event)
         local playerVehicleType = playerVehicle.type
         if playerVehicle.name == "railway_tunnel-player_container" or RollingStockTypes[playerVehicleType] ~= nil then
             global.playerContainers.playerTryLeaveVehicle[player.index] = playerVehicle
-            EventScheduler.ScheduleEventOnce(-1, "PlayerContainer.OnToggleDrivingInputAfterChangedState", player.index)
+            EventScheduler.ScheduleEventOnce(-1, "PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled", player.index)
         end
     end
 end
@@ -77,7 +77,7 @@ PlayerContainer.OnPlayerDrivingChangedState = function(event)
 end
 
 ---@param event UtilityScheduledEventCallbackObject
-PlayerContainer.OnToggleDrivingInputAfterChangedState = function(event)
+PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled = function(event)
     if 1 == 1 then
         --OVERHAUL: just skip this Module for now.
         return
@@ -138,7 +138,7 @@ PlayerContainer.CancelPlayerTryLeaveTrain = function(player)
         return
     end
     global.playerContainers.playerTryLeaveVehicle[player.index] = nil
-    EventScheduler.RemoveScheduledOnceEvents("PlayerContainer.OnToggleDrivingInputAfterChangedState", player.index, game.tick)
+    EventScheduler.RemoveScheduledOnceEvents("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled", player.index, game.tick)
 end
 
 ---@param managedTrain ManagedTrain
