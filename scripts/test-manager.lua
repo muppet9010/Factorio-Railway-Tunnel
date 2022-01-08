@@ -25,7 +25,7 @@ local Colors = require("utility/colors")
 local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting. If false then each test just will honour their other settings.
-local EnableDebugMode = true -- Enables debug mode when tests are run.
+local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "railway_tunnel_toggle_debug_state" command.
 
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.

@@ -66,11 +66,11 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local builtEntities, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local builtEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd
-    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         end
@@ -78,7 +78,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos, exitPortalEntryPortalEnd, exitPortalEntryPortalEndXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(placedEntitiesByType["railway_tunnel-portal_end"]) do
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
         if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
             entrancePortalEntryPortalEnd = portalEntity
             entrancePortalEntryPortalEndXPos = portalEntity.position.x
@@ -90,10 +90,10 @@ Test.Start = function(testName)
     end
 
     -- Get the first tunnel segment as we just need 1.
-    local undergroundSegment = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "railway_tunnel-underground_segment-straight", false, false)
+    local undergroundSegment = placedEntitiesByGroup["railway_tunnel-underground_segment-straight"][1]
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
-    local train = placedEntitiesByType["locomotive"][1].train
+    local train = placedEntitiesByGroup["locomotive"][1].train
 
     -- Create the train schedule for this specific test.
     local trainSchedule = {

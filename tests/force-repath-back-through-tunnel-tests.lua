@@ -473,11 +473,11 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd, stationStart, stationReservationCompetitorStart
-    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         elseif stationEntity.backer_name == "Start" then
@@ -489,7 +489,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local enteringPortal, enteringPortalXPos, leavingPortal, leavingPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(placedEntitiesByType["railway_tunnel-tunnel_portal_surface"]) do
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-tunnel_portal_surface"]) do
         if portalEntity.position.x > enteringPortalXPos then
             enteringPortal = portalEntity
             enteringPortalXPos = portalEntity.position.x

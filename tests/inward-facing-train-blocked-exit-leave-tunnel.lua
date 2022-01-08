@@ -15,11 +15,11 @@ Test.OnLoad = function(testName)
 end
 
 Test.Start = function(testName)
-    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the trains/wagons
     local blockingWagon, movingTrain
-    for _, wagon in pairs(placedEntitiesByType["cargo-wagon"]) do
+    for _, wagon in pairs(placedEntitiesByGroup["cargo-wagon"]) do
         if #wagon.train.carriages == 1 then
             blockingWagon = wagon
         else
@@ -29,7 +29,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then

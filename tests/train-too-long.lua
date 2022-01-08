@@ -2,7 +2,6 @@
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 Test.RunTime = 1000
 Test.RunLoopsMax = 1 -- Populated when script loaded.
@@ -14,23 +13,23 @@ end
 local blueprintString = "0eNqtWtty2jAU/Bc9QwZdLfHeb+hDJ5NxQCWeGpuxDSmT4d8rBxqSQJs9Bz0lxvaurN09Ohi9iMd6Gzdd1Qxi/iKqRdv0Yv7jRfTVqinr8bNhv4liLqohrsVENOV6POrKqn4u9w/DtmliPd203VDWD31crWMzTPshnV89DeIwEVWzjL/FXB4mEOi7W9ThfiISXDVU8Tio14P9Q7NdP8YuYb7dOfI1ibbdJLRN26db2mbkSTDTIkzEPl1tioS9rLq4OJ51E9EP5fF/8T3243AvONQXjxyb5RVKW5wow0fKhLYru+pEKq/waeoUXyHXXHKTgVxyye3t5CZwyV0GcrbmRQZyyyX3GcjZhgsZyNmGk7Pb2TXbcVJmYGdbTqoM7GzPyQxVTrNNJzOUOc13XYY6p/iuy1DoFN91GSqd4rsuQ6lTfNdlqHWK7TqVodZJtutUhlon2a5TGWqdZLtOaVYHKflS/7O8bVNf3a26Nv1Fnpk/4TbTCPiT7jKNgB13VWQaAd8HPs8I+AMIHOezNde3lzh2gdO3Fzh+4PXt9U2yfa5vb+X4tVXf3snxlxV9eyPHX1G142SL373oczn7+zjT19c1/3nd8pnkGqzHYQsCbMBhLQ5rZjisJsBKHFYSYBUM6wiSGY3DEiQzBoelSGZxWIpkDoelSAanTFGmFg6ZovgAzpgmzICFI6YJclk4YZrgLQsHTBPUsnC+NEEtC8fLUNSC02UoasHhMhS14GwZilpwtgxFLThblqCWg7NlCWo5OFuWoJaDs2UJajk4W5agloOzRVkLHJwtysLl4GxRVlkHZ4vSEjg4W5T+xcHZojRbBZwtSmdYwNmitLEFnC1Kz13A2aJ8QSjO2arbRbtuh2oXLyG9vgv6wxy0XZWgTt9oZnfjufHH5n68oWsXv+Iw/bmN9fgr0OEaL5w+T3EJnD5PcQmcPk9xCZw+T3HJOX2Lslu10+dyla69fBMzQwRtdumjtkvXNNu6vvbjJhxLTzClh2MZCObwcCwDwRxegxNe5JlweC0MBC96OI2B4EUPpzFQzAGnUc4o7vBQIZQz84WOilgJfcCfh+DLMMNhCU4JEoclWCUoHJbglQCvmVISvBIMtDHqDdPKi9eB541R38pxY9R9+mjxFJfb+rQV62zC8Tgt096/u+a4hezT5qr7EeV1x9f83a6zidjFrj/yemmKoAoTrCmsPhz+AFVR8KI="
 
 Test.Start = function(testName)
-    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
 
     -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000
     ---@typelist uint, LuaEntity
-    for _, portalEntity in pairs(placedEntitiesByType["railway_tunnel-portal_end"]) do
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
         if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
             entrancePortalEntryPortalEnd = portalEntity
             entrancePortalEntryPortalEndXPos = portalEntity.position.x
         end
     end
 
-    local train = placedEntitiesByType["locomotive"][1].train
+    local train = placedEntitiesByGroup["locomotive"][1].train
 
     -- Get the East station.
     local eastTrainStop
-    for _, trainStop in pairs(placedEntitiesByType["train-stop"]) do
+    for _, trainStop in pairs(placedEntitiesByGroup["train-stop"]) do
         if trainStop.backer_name == "East" then
             eastTrainStop = trainStop
             break

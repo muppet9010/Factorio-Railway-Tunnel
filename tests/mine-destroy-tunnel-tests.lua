@@ -77,11 +77,11 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEast, stationWest
-    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "East" then
             stationEast = stationEntity
         elseif stationEntity.backer_name == "West" then
@@ -91,7 +91,7 @@ Test.Start = function(testName)
 
     -- Get the portals.
     local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(placedEntitiesByType["railway_tunnel-tunnel_portal_surface"]) do
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-tunnel_portal_surface"]) do
         if portalEntity.position.x > entrancePortalXPos then
             entrancePortal = portalEntity
             entrancePortalXPos = portalEntity.position.x
@@ -104,7 +104,7 @@ Test.Start = function(testName)
 
     -- Get the eastern most segment. Its touching a portal and has the othe segments to its west.
     local tunnelSegmentToRemove, tunnelSegmentXPos = nil, -1000000
-    for _, semmentEntity in pairs(placedEntitiesByType["railway_tunnel-underground_segment-straight"]) do
+    for _, semmentEntity in pairs(placedEntitiesByGroup["railway_tunnel-underground_segment-straight"]) do
         if semmentEntity.position.x > tunnelSegmentXPos then
             tunnelSegmentToRemove = semmentEntity
             tunnelSegmentXPos = semmentEntity.position.x
@@ -112,7 +112,7 @@ Test.Start = function(testName)
     end
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
-    local train = placedEntitiesByType["locomotive"][1].train
+    local train = placedEntitiesByGroup["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.stationEast = stationEast

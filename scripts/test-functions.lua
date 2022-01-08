@@ -53,10 +53,10 @@ TestFunctions.TestCompleted = function(testName)
         testManagerData.finished = true
         testManagerData.success = true
     end
-    EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
+    EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests_Scheduled")
     if not global.testManager.keepRunningTest then
         local delay = 1 + global.testManager.continueTestAfterCompletioTicks
-        EventScheduler.ScheduleEventOnce(game.tick + delay, "TestManager.WaitForPlayerThenRunTests")
+        EventScheduler.ScheduleEventOnce(game.tick + delay, "TestManager.WaitForPlayerThenRunTests_Scheduled")
     end
 end
 
@@ -73,10 +73,10 @@ TestFunctions.TestFailed = function(testName, errorText)
         testManagerData.success = false
         game.tick_paused = true
     end
-    EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests")
+    EventScheduler.RemoveScheduledOnceEvents("TestManager.WaitForPlayerThenRunTests_Scheduled")
     if global.testManager.justLogAllTests then
         -- Continue with scheduling next test when running all tests.
-        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests")
+        EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests_Scheduled")
     end
 end
 
@@ -314,11 +314,17 @@ end
 ---@param position Position
 ---@param testName TestName
 ---@return LuaEntity[] placedEntities @ all build entities
----@return table<string, LuaEntity[]> placedEntitiesByType @ the key entities built grouped on their prototype type.
+---@return table<string, LuaEntity[]> placedEntitiesByGroup @ the key entities built grouped on their prototype type or prototype name. Currently: locomotive, cargo-wagon, fluid-wagon, artillery-wagon, train-stop, railway_tunnel-portal_end, railway_tunnel-underground_segment-straight.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
-    -- This is the list of entity types that will be unique tracked and returned for easy accessing by test functions. Adding rare types is fine, but anything really generic could be obtained within the test by Utils.GetTableValueWithInnerKeyValue() and may be lower UPS.
+    -- This is the lists of entity types that will be unique tracked and returned for easy accessing by test functions. Adding low instance types per BP is fine if multiple test needs them, but anything thats in a BP in high quantity (ie. rail) should be obtained within the test by Utils.GetTableValueWithInnerKeyValue() and may be lower UPS.
     ---@type table<string, LuaEntity[]>
-    local placedEntitiesByType = {["locomotive"] = {}, ["cargo-wagon"] = {}, ["fluid-wagon"] = {}, ["artillery-wagon"] = {}, ["train-stop"] = {}, ["railway_tunnel-portal_end"] = {}}
+    local placedEntitiesByType = {["locomotive"] = {}, ["cargo-wagon"] = {}, ["fluid-wagon"] = {}, ["artillery-wagon"] = {}, ["train-stop"] = {}}
+    -- This is the entity types that will have their name checked against the placedEntitiesByName list. As most entity types don't need checking for inclusion in the list. Key is the entity type and value is if it should be checked. Defaults to not checked if not included in the list.
+    ---@type table<string, boolean>
+    local entityTypesToCheckNameOn = {["simple-entity-with-owner"] = true}
+    -- List of entity names that will be recorded if the built entity is of a type in the entityTypesToCheckNameOn list. This is just to save checking entities we don't need too.
+    ---@type table<string, LuaEntity[]>
+    local placedEntitiesByName = {["railway_tunnel-portal_end"] = {}, ["railway_tunnel-underground_segment-straight"] = {}}
 
     local testSurface = global.testManager.testSurface
     local player = game.connected_players[1]
@@ -350,12 +356,12 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 
     -- Try to revive all the ghosts. Some may fail and we will try these again as a second pass.
     for _, ghost in pairs(ghosts) do
-        TestFunctions._ReviveGhost(ghost, pass2Ghosts, fuelProxies, placedEntities, testName, placedEntitiesByType)
+        TestFunctions._ReviveGhost(ghost, pass2Ghosts, fuelProxies, placedEntities, testName, placedEntitiesByType, placedEntitiesByName, entityTypesToCheckNameOn)
     end
 
     -- Try to revive then ghosts that failed the first time. This is generally carriages that try to be revived before the rails they are on.
     for _, ghost in pairs(pass2Ghosts) do
-        TestFunctions._ReviveGhost(ghost, nil, fuelProxies, placedEntities, testName, placedEntitiesByType)
+        TestFunctions._ReviveGhost(ghost, nil, fuelProxies, placedEntities, testName, placedEntitiesByType, placedEntitiesByName, entityTypesToCheckNameOn)
     end
 
     for _, fuelProxy in pairs(fuelProxies) do
@@ -367,7 +373,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 
     TestFunctions.MakeCarriagesUnique(placedEntitiesByType["locomotive"], placedEntitiesByType["cargo-wagon"], placedEntitiesByType["fluid-wagon"], placedEntitiesByType["artillery-wagon"])
 
-    return placedEntities, placedEntitiesByType
+    return placedEntities, Utils.TableMerge({placedEntitiesByType, placedEntitiesByName})
 end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
@@ -423,8 +429,10 @@ end
 ---@param placedEntitiesTableToPopulate table<number, LuaEntity> @ table passed in that is populated for use by the calling function.
 ---@param testName string
 ---@param placedEntitiesByTypeTableToPopulate table<string, LuaEntity[]> @ table passed in that is populated for use by the calling function.
-TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelProxiesTableToPopulate, placedEntitiesTableToPopulate, testName, placedEntitiesByTypeTableToPopulate)
-    local ghostType = ghost.ghost_type
+---@param placedEntitiesByNameTableToPopulate table<string, LuaEntity[]> @ table passed in that is populated for use by the calling function.
+---@param entityTypesToCheckNameOn table<string, boolean> @ table of entity types that should be checked to see if they're on the Name list. Key is the entity type and value is if it should be checked. Defaults to not checked if not included in the list.
+TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelProxiesTableToPopulate, placedEntitiesTableToPopulate, testName, placedEntitiesByTypeTableToPopulate, placedEntitiesByNameTableToPopulate, entityTypesToCheckNameOn)
+    local ghostType, ghostName = ghost.ghost_type, ghost.ghost_name
 
     -- Revive the ghost and handle the outcome.
     local revivedOutcome, revivedGhostEntity, fuelProxy = ghost.silent_revive({raise_revive = true, return_item_request_proxy = true})
@@ -440,6 +448,10 @@ TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelPro
         table.insert(placedEntitiesTableToPopulate, revivedGhostEntity)
         if placedEntitiesByTypeTableToPopulate[ghostType] ~= nil then
             table.insert(placedEntitiesByTypeTableToPopulate[ghostType], revivedGhostEntity)
+        end
+        -- Only check a few entity types to save getting the name of every entity we place.
+        if entityTypesToCheckNameOn[ghostType] and placedEntitiesByNameTableToPopulate[ghostName] ~= nil then
+            table.insert(placedEntitiesByNameTableToPopulate[ghostName], revivedGhostEntity)
         end
     elseif #revivedOutcome == 0 then
         -- Entity was revived and instantly removed by a script event.

@@ -40,18 +40,18 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local _, placedEntitiesByType = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd
-    for _, stationEntity in pairs(placedEntitiesByType["train-stop"]) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "End" then
             stationEnd = stationEntity
         end
     end
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
-    local train = placedEntitiesByType["locomotive"][1].train
+    local train = placedEntitiesByGroup["locomotive"][1].train
 
     -- Set starting fuel based on desired no fuel stopping point.
     local woodCount

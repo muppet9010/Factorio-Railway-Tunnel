@@ -1028,6 +1028,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
 
                 train.speed = 0
                 train.manual_mode = true
+                -- OVERHAUL: this may need setting to manual mode next tick as well?
                 Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
                 rendering.draw_text {
                     text = {"message.railway_tunnel-tunnel_in_use"},
@@ -1050,9 +1051,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
         return
     end
 
-    -- Train is coasting so stop it at the border and try to put the detection entity back.
-    -- TODO: also look at if this should be functionised with the other nearly identical messages for portals.
-    train.manual_mode = true -- TODO: check the train is truely stopped in this case and doesn't need Portal.SetTrainToManualNextTick()
+    -- Train is coasting so stop it and put the detection entity back.
     train.speed = 0
     Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
@@ -1203,8 +1202,9 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 -- This will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
                 error("Train has reached the transition of a portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
 
-                train.manual_mode = true
                 train.speed = 0
+                train.manual_mode = true
+                -- OVERHAUL: this may need setting to manual mode next tick as well?
                 Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                 rendering.draw_text {
                     text = {"message.railway_tunnel-tunnel_in_use"},
@@ -1228,7 +1228,6 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
     end
 
     -- Train is coasting so stop it dead and try to put the detection entity back. This is only reachable in edge cases.
-    train.manual_mode = true
     train.speed = 0
     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
     rendering.draw_text {
@@ -1289,7 +1288,7 @@ Portal.SetTrainToManual_Scheduled = function(event)
     end
 end
 
---- Train can't enter the portal so stop it and alert the players.
+--- Train can't enter the portal so stop it, set it to manual and alert the players.
 ---@param train LuaTrain
 ---@param portal Portal
 ---@param alertEntity LuaEntity
