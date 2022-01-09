@@ -19,6 +19,7 @@ local PrototypeAttributes = require("utility/prototype-attributes")
 ---@field enteringTrainId? Id|null @ The enteringTrain LuaTrain id.
 ---@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint.
 ---@field enteringTrainExpectedSpeed double @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking.
+---@field enteringTrainReachdFullSpeed boolean @ If the entering train has reached its full speed already.
 ---
 ---@field trainWeight double @ The total weight of the train.
 ---@field trainFrictionForce double @ The total friction force of the train.
@@ -28,8 +29,6 @@ local PrototypeAttributes = require("utility/prototype-attributes")
 ---@field maxSpeed double @ The max speed the train can achieve.
 ---
 ---@field undergroundTrainHasPlayersRiding boolean @ if there are players riding in the underground train.
----@field traversalTotalTicks int @ the time in ticks it will take for the train to have travelled from the tunnel entering point to when we set it as leaving.
----@field traversalStartingTick int @ the tick the train entered the tunnel.
 ---@field traversalArrivalTick int @ the tick the train reaches the far end of the tunnel and is restarted.
 ---@field trainLeavingSpeed double @ the speed the train will be set too at the moment it starts leaving the tunnel.
 ---
@@ -84,6 +83,7 @@ TrainManager.OnLoad = function()
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
+    EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompletedDelayed_Scheduled", TrainManager.TrainUndergroundCompletedDelayed_Scheduled)
 end
 
 -------------------------------------------------------------------------------
@@ -240,16 +240,20 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
         return
     end
 
-    -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target. See https://wiki.factorio.com/Locomotive
-    local cruisingSpeed = math.max(0, (math.abs(managedTrain.enteringTrainExpectedSpeed) - managedTrain.trainWeightedFrictionForce))
-    local accelerationRawSpeed = cruisingSpeed + managedTrain.locomotiveAccelerationPower
-    local accelerationWindSpeed = accelerationRawSpeed * managedTrain.trainAirResistanceReductionMultiplier
-    local newSpeed = math.min(accelerationWindSpeed, managedTrain.maxSpeed)
-    if not managedTrain.enteringTrainForwards then
-        newSpeed = 0 - newSpeed
+    -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target, with just the last few ticks it climbing significantly as a % of current speed.
+    if not managedTrain.enteringTrainReachdFullSpeed then
+        -- If the train hasn't yet reached its full speed then work out the new speed.
+        local newSpeed = TrainManager.CalculateAcceleratedTrainSpeed(managedTrain, managedTrain.enteringTrainExpectedSpeed, managedTrain.enteringTrainForwards)
+        if managedTrain.enteringTrainExpectedSpeed == newSpeed then
+            -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
+            managedTrain.enteringTrainReachdFullSpeed = true
+        end
+        managedTrain.enteringTrainExpectedSpeed = newSpeed
+        enteringTrain.speed = newSpeed
+    else
+        -- Train is at full speed so just maintain it.
+        enteringTrain.speed = managedTrain.enteringTrainExpectedSpeed
     end
-    managedTrain.enteringTrainExpectedSpeed = newSpeed
-    enteringTrain.speed = newSpeed
 
     -- Theres a transition portal track detector to flag when a train reaches the end of the portal track and is ready to enter the tunnel. So need to check in here.
 end
@@ -292,12 +296,24 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
 
     -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
     -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
-    local travelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
-    -- TODO: work out travel time.
-    managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
-    managedTrain.traversalStartingTick = game.tick
-    managedTrain.traversalArrivalTick = managedTrain.traversalStartingTick + math.ceil(managedTrain.traversalTotalTicks)
-    -- TODO: needs to set trainLeavingSpeed assuming the train will have a path on the far side
+    local tunnelTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
+    -- Work out the distance the train will cover over time and thus how many ticks it will take to complete the distance.
+    local distanceTravelled, estimatedTrainReachedFullSpeed, speedThisTick, ticksTaken = 0, false, managedTrain.enteringTrainExpectedSpeed, 0
+    while distanceTravelled < tunnelTravelDistance do
+        ticksTaken = ticksTaken + 1
+        if not estimatedTrainReachedFullSpeed then
+            -- If the train hasn't yet reached its full speed then work out the new speed.
+            local newSpeed = TrainManager.CalculateAcceleratedTrainSpeed(managedTrain, speedThisTick, managedTrain.enteringTrainForwards)
+            if speedThisTick == newSpeed then
+                -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
+                estimatedTrainReachedFullSpeed = true
+            end
+            speedThisTick = newSpeed
+        end
+        distanceTravelled = distanceTravelled + math.abs(speedThisTick)
+    end
+    managedTrain.traversalArrivalTick = game.tick + ticksTaken
+    managedTrain.trainLeavingSpeed = speedThisTick
 
     -- Destroy entering train's entities as we have finished with them.
     for _, carriage in pairs(enteringTrain_carriages) do
@@ -307,6 +323,8 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
     managedTrain.enteringTrainForwards = nil
+    managedTrain.enteringTrainExpectedSpeed = nil
+    managedTrain.enteringTrainReachdFullSpeed = nil
     managedTrain.portalTrackTrain = nil
     managedTrain.portalTrackTrainId = nil
     managedTrain.portalTrackTrainInitiallyForwards = nil
@@ -322,10 +340,12 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
     end
 end
 
--- Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
+--- Runs each tick for when we need to track a train while underground in detail.
+--- Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
 ---@param managedTrain ManagedTrain
 ---@param currentTick Tick
 TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
+    -- OVERHAUL: use of managedTrain.traversalArrivalTick doesn't handle if the train is delayed. Will mean the player goes at full speed through the tunnel and then sits still for the delayed arrival from the train having to brake. Will also need to store the movement per tick so we can move te player container by that much.
     if currentTick < managedTrain.traversalArrivalTick then
         -- Train still waiting on its arrival time.
         if managedTrain.undergroundTrainHasPlayersRiding then
@@ -333,10 +353,11 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
         end
     else
         -- Train arrival time has come.
-        TrainManager.TrainUndergroundCompleted(managedTrain)
+        TrainManager.TrainUndergroundCompleted(managedTrain, true)
     end
 end
 
+--- Run when the train is scheduled to arrive at the end of the tunnel.
 ---@param event UtilityScheduledEventCallbackObject
 TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local managedTrain = event.data.managedTrain
@@ -344,18 +365,61 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         -- Something has happened to the train/tunnel being managed while this has been scheduled, so just give up.
         return
     end
-    TrainManager.TrainUndergroundCompleted(managedTrain)
-end
 
----@param managedTrain ManagedTrain
-TrainManager.TrainUndergroundCompleted = function(managedTrain)
-    -- Train has arrived and should be activated.
-    local leavingTrain = managedTrain.leavingTrain
     -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
+    local leavingTrain = managedTrain.leavingTrain
     leavingTrain.speed = managedTrain.trainLeavingSpeed
     TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
     if leavingTrain.speed == 0 then
-        leavingTrain.speed = -1 * managedTrain.trainLeavingSpeed
+        leavingTrain.speed = 0 - managedTrain.trainLeavingSpeed
+    end
+
+    -- Check if the train can leave at its full speed or not.
+    if leavingTrain.state == defines.train_state.on_the_path then
+        -- Train can leave at full speed.
+        TrainManager.TrainUndergroundCompleted(managedTrain, false)
+    else
+        -- Train can't leave at speed, so it must leave at 0 speed which requires it to spend some extra time slowing down.
+
+        -- Calculate the delayed arrival time and schedule back to it.
+        -- TODO
+        local delayedArrivalTick = game.tick + 1
+        EventScheduler.ScheduleEventOnce(delayedArrivalTick, "TrainManager.TrainUndergroundCompletedDelayed_Scheduled", managedTrain.id, {managedTrain = managedTrain})
+
+        -- Reset the leaving trains speed and state as we don't want it to do anything yet.
+        leavingTrain.speed = 0
+        leavingTrain.manual_mode = true
+        managedTrain.trainLeavingSpeed = 0
+    end
+end
+
+--- Run when the train is delayed scheduled to arrive at the end of the tunnel after it couldn't leave the tunnel at speed.
+---@param event UtilityScheduledEventCallbackObject
+TrainManager.TrainUndergroundCompletedDelayed_Scheduled = function(event)
+    local managedTrain = event.data.managedTrain
+    if managedTrain == nil or managedTrain.primaryTrainPartName ~= PrimaryTrainState.underground then
+        -- Something has happened to the train/tunnel being managed while this has been scheduled, so just give up.
+        return
+    end
+
+    TrainManager.TrainUndergroundCompleted(managedTrain, true)
+end
+
+---@param managedTrain ManagedTrain
+TrainManager.TrainUndergroundCompleted = function(managedTrain, speedAutomaticNeedsDoing)
+    -- Train has arrived and should be activated.
+    local leavingTrain = managedTrain.leavingTrain
+
+    -- Some states can lead to this being set before the function is called, so only needs applying in some scenarios.
+    if speedAutomaticNeedsDoing then
+        -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
+        if managedTrain.trainLeavingSpeed ~= 0 then
+            leavingTrain.speed = managedTrain.trainLeavingSpeed
+        end
+        TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
+        if managedTrain.trainLeavingSpeed ~= 0 and leavingTrain.speed == 0 then
+            leavingTrain.speed = 0 - managedTrain.trainLeavingSpeed
+        end
     end
 
     -- Check the target isn't part of this tunnel once
@@ -494,9 +558,10 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     }
     local trainForwards = train_speed > 0
 
-    -- Cache the trains attributes for working out each speed. Only needed if its traversing the tunnel. See https://wiki.factorio.com/Locomotive
+    -- Cache the trains attributes for working out each speed. Only needed if its traversing the tunnel.
     if traversingTunnel then
         managedTrain.enteringTrainExpectedSpeed = train_speed
+        managedTrain.enteringTrainReachdFullSpeed = false
 
         managedTrain.trainWeight = train.weight
         local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus = 0, 0, nil
@@ -639,7 +704,8 @@ TrainManager.GetTrainIdsManagedTrainDetails = function(trainId)
     return global.trainManager.trainIdToManagedTrain[trainId]
 end
 
--- Clone the entering train to the front of the exit portal. This will minimise any tracking of the train when leaving.
+--- Clone the entering train to the front of the exit portal. This will minimise any tracking of the train when leaving.
+--- This happens to duplicate the train schedule as a by product of using the entity clone feature.
 ---@param managedTrain ManagedTrain
 ---@param enteringTrain_carriages LuaEntity[]
 ---@return LuaTrain @ Leaving train
@@ -790,6 +856,7 @@ TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainS
     return dummyTrain
 end
 
+--- Sets a trains schedule and returns it to automatic, while handling if the train should be in manual mode.
 ---@param train LuaTrain
 ---@param schedule TrainSchedule
 ---@param isManual boolean
@@ -808,6 +875,7 @@ TrainManager.TrainSetSchedule = function(train, schedule, isManual, targetTrainS
     end
 end
 
+--- Check if a train has a healthy state (not a pathing failure state).
 ---@param train LuaTrain
 ---@return boolean
 TrainManager.IsTrainHealthlyState = function(train)
@@ -833,6 +901,19 @@ TrainManager.SetTrainToAuto = function(train, targetTrainStop)
         -- There was no target train stop, so no special handling needed.
         train.manual_mode = false
     end
+end
+
+--- Work out the speed of a train this tick as if accelerating. This doesn't match vaniall trains perfectly, but seems close with vanilla trains. From https://wiki.factorio.com/Locomotive
+---@param managedTrain ManagedTrain
+---@param initialSpeed double
+---@param trainFacingForwards boolean @ If the train is heading forwards relative to it (positive speed).
+---@return number speed
+TrainManager.CalculateAcceleratedTrainSpeed = function(managedTrain, initialSpeed, trainFacingForwards)
+    local newSpeed = math.min((math.max(0, (math.abs(initialSpeed) - managedTrain.trainWeightedFrictionForce)) + managedTrain.locomotiveAccelerationPower) * managedTrain.trainAirResistanceReductionMultiplier, managedTrain.maxSpeed)
+    if not trainFacingForwards then
+        newSpeed = 0 - newSpeed
+    end
+    return newSpeed
 end
 
 return TrainManager
