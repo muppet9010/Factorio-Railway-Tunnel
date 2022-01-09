@@ -9,6 +9,7 @@ local PlayerContainer = require("scripts/player-container")
 local Common = require("scripts/common")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
 local TrainManagerRemote = require("scripts/train-manager-remote")
+local PrototypeAttributes = require("utility/prototype-attributes")
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
@@ -17,12 +18,20 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field enteringTrain? LuaTrain|null
 ---@field enteringTrainId? Id|null @ The enteringTrain LuaTrain id.
 ---@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint.
+---@field enteringTrainExpectedSpeed double @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking.
+---
+---@field trainWeight double @ The total weight of the train.
+---@field trainFrictionForce double @ The total friction force of the train.
+---@field trainWeightedFrictionForce double @ The train's friction force divided by train weight.
+---@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add.
+---@field trainAirResistanceReductionMultiplier double @ The air resistance of the train (lead carriage in current direction).
+---@field maxSpeed double @ The max speed the train can achieve.
 ---
 ---@field undergroundTrainHasPlayersRiding boolean @ if there are players riding in the underground train.
----@field tempEnteringSpeed double @ the speed the train was going when entering and we maintain at for whole tunnel approach and transversal in intiial code version.
 ---@field traversalTotalTicks int @ the time in ticks it will take for the train to have travelled from the tunnel entering point to when we set it as leaving.
 ---@field traversalStartingTick int @ the tick the train entered the tunnel.
 ---@field traversalArrivalTick int @ the tick the train reaches the far end of the tunnel and is restarted.
+---@field trainLeavingSpeed double @ the speed the train will be set too at the moment it starts leaving the tunnel.
 ---
 ---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
 ---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
@@ -105,7 +114,7 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(enteringT
             -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
             TrainManager.TerminateTunnelTrip(reversedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
         elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.portalTrackTrain then
-            -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful.
+            -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful. Note check what in CreateManagedTrainObject() is only done on traversal as we will need to include an upgrade path through the function.
             -- Train was using the portal track and is now entering the tunnel.
             committedManagedTrain = existingTrainIDTrackedObject.managedTrain
             -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
@@ -231,10 +240,18 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
         return
     end
 
-    -- This won't keep the train exactly at this speed as it will try and brake its max amount each tick off this speed. But will stay reasonably close to its desired speed.
-    enteringTrain.speed = managedTrain.tempEnteringSpeed -- OVERHAUL - this should be calculated programatically.
+    -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target. See https://wiki.factorio.com/Locomotive
+    local cruisingSpeed = math.max(0, (math.abs(managedTrain.enteringTrainExpectedSpeed) - managedTrain.trainWeightedFrictionForce))
+    local accelerationRawSpeed = cruisingSpeed + managedTrain.locomotiveAccelerationPower
+    local accelerationWindSpeed = accelerationRawSpeed * managedTrain.trainAirResistanceReductionMultiplier
+    local newSpeed = math.min(accelerationWindSpeed, managedTrain.maxSpeed)
+    if not managedTrain.enteringTrainForwards then
+        newSpeed = 0 - newSpeed
+    end
+    managedTrain.enteringTrainExpectedSpeed = newSpeed
+    enteringTrain.speed = newSpeed
 
-    -- Theres a transition portal track detector to flag when a train reaches the end of the portal track and is ready to enter the tunnel.
+    -- Theres a transition portal track detector to flag when a train reaches the end of the portal track and is ready to enter the tunnel. So need to check in here.
 end
 
 ---@param managedTrain ManagedTrain
@@ -273,13 +290,14 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
         tunnelUsagePart = TunnelUsageParts.dummyTrain
     }
 
-    -- Work out how long it will take to reach the far end at current speed from leading carriages current forward tip.
+    -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
     -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
     local travelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
-    -- Just assume the speed stays constant at the entering speed for the whole duration for now.
+    -- TODO: work out travel time.
     managedTrain.traversalTotalTicks = travelDistance / math.abs(managedTrain.tempEnteringSpeed)
     managedTrain.traversalStartingTick = game.tick
     managedTrain.traversalArrivalTick = managedTrain.traversalStartingTick + math.ceil(managedTrain.traversalTotalTicks)
+    -- TODO: needs to set trainLeavingSpeed assuming the train will have a path on the far side
 
     -- Destroy entering train's entities as we have finished with them.
     for _, carriage in pairs(enteringTrain_carriages) do
@@ -334,10 +352,10 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Train has arrived and should be activated.
     local leavingTrain = managedTrain.leavingTrain
     -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
-    leavingTrain.speed = managedTrain.tempEnteringSpeed
+    leavingTrain.speed = managedTrain.trainLeavingSpeed
     TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
     if leavingTrain.speed == 0 then
-        leavingTrain.speed = -1 * managedTrain.tempEnteringSpeed
+        leavingTrain.speed = -1 * managedTrain.trainLeavingSpeed
     end
 
     -- Check the target isn't part of this tunnel once
@@ -453,7 +471,11 @@ end
 ---@return ManagedTrain
 TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransitionSignal, traversingTunnel, upgradeManagedTrain)
     ---@typelist Id, double
-    local trainId, trainSpeed = train.id, train.speed
+    local train_id, train_speed = train.id, train.speed
+    if train_speed == 0 then
+        error("TrainManager.CreateManagedTrainObject() doesn't support 0 speed\ntrain id: " .. train_id)
+    end
+
     local managedTrainId
     if upgradeManagedTrain then
         managedTrainId = upgradeManagedTrain.id
@@ -468,21 +490,72 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         entrancePortal = entrancePortalTransitionSignal.portal,
         tunnel = entrancePortalTransitionSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(entrancePortalTransitionSignal.entity.direction + 4),
-        tempEnteringSpeed = trainSpeed, -- OVERHAUL: this is temp and will need calculating at a later point properly.
         undergroundTrainHasPlayersRiding = false
     }
-    if trainSpeed == 0 then
-        error("TrainManager.CreateManagedTrainObject() doesn't support 0 speed\ntrain id: " .. trainId)
+    local trainForwards = train_speed > 0
+
+    -- Cache the trains attributes for working out each speed. Only needed if its traversing the tunnel. See https://wiki.factorio.com/Locomotive
+    if traversingTunnel then
+        managedTrain.enteringTrainExpectedSpeed = train_speed
+
+        managedTrain.trainWeight = train.weight
+        local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus = 0, 0, nil
+        local train_carriages = train.carriages
+
+        -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
+        local minCarriageIndex, maxCarriageIndex, carriageIterator
+        if (train_speed > 0) then
+            minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #train_carriages, 1
+        elseif (train_speed < 0) then
+            minCarriageIndex, maxCarriageIndex, carriageIterator = #train_carriages, 1, -1
+        end
+
+        local firstCarriage = true
+        for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
+            local carriage = train_carriages[currentSourceTrainCarriageIndex]
+            local carriage_name, carriage_speed = carriage.name, carriage.speed
+
+            trainFrictionForce = trainFrictionForce + PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "friction_force")
+
+            if firstCarriage then
+                firstCarriage = false
+                managedTrain.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (managedTrain.trainWeight / 1000))
+                -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
+                if trainForwards then
+                    managedTrain.maxSpeed = train.max_forward_speed
+                elseif not trainForwards then
+                    managedTrain.maxSpeed = train.max_backward_speed
+                end
+            end
+
+            if carriage_speed == train_speed and carriage.type == "locomotive" then
+                -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
+                if fuelAccelerationBonus == nil then
+                    local currentFuel = carriage.burner.inventory[1] ---@type LuaItemStack
+                    if currentFuel ~= nil then
+                        fuelAccelerationBonus = currentFuel.prototype.fuel_acceleration_multiplier
+                    else
+                        -- OVERHAUL: add some robust resolution for this....
+                        error("don't support loco with non simply identified fuel")
+                    end
+                end
+
+                forwardFacingLocoCount = forwardFacingLocoCount + 1
+            end
+        end
+
+        managedTrain.trainFrictionForce = trainFrictionForce
+        managedTrain.trainWeightedFrictionForce = (managedTrain.trainFrictionForce / managedTrain.trainWeight)
+        managedTrain.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * (fuelAccelerationBonus / managedTrain.trainWeight)
     end
-    local trainForwards = trainSpeed > 0
 
     if traversingTunnel then
         -- Normal tunnel usage.
         managedTrain.enteringTrain = train
-        managedTrain.enteringTrainId = trainId
+        managedTrain.enteringTrainId = train_id
 
-        global.trainManager.trainIdToManagedTrain[trainId] = {
-            trainId = trainId,
+        global.trainManager.trainIdToManagedTrain[train_id] = {
+            trainId = train_id,
             managedTrain = managedTrain,
             tunnelUsagePart = TunnelUsageParts.enteringTrain
         }
@@ -490,9 +563,9 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     else
         -- Reserved tunnel, but not using it.
         managedTrain.portalTrackTrain = train
-        managedTrain.portalTrackTrainId = trainId
-        global.trainManager.trainIdToManagedTrain[trainId] = {
-            trainId = trainId,
+        managedTrain.portalTrackTrainId = train_id
+        global.trainManager.trainIdToManagedTrain[train_id] = {
+            trainId = train_id,
             managedTrain = managedTrain,
             tunnelUsagePart = TunnelUsageParts.portalTrackTrain
         }
@@ -571,6 +644,7 @@ end
 ---@param enteringTrain_carriages LuaEntity[]
 ---@return LuaTrain @ Leaving train
 TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_carriages)
+    -- TODO: make use of the fact we have to get some of the carriage values when calculating speed now. So cache what we need against the managedTrain.
     -- This currently assumes the portals are in a straight line of each other and that the portal areas are straight.
     local enteringTrain, trainCarriagesForwardOrientation = managedTrain.enteringTrain, managedTrain.trainTravelOrientation
     local targetSurface = managedTrain.surface
@@ -593,7 +667,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain, enteringTrain_car
         error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain.\nrefTrain id: " .. enteringTrain.id)
     end
 
-    --Iterate over the carriages and clone them.
+    -- Iterate over the carriages and clone them.
     local refCarriage, refCarriage_name
     local lastPlacedCarriage, lastPlacedCarriage_name
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do

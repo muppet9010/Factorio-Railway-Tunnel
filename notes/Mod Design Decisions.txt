@@ -44,3 +44,15 @@ Events
 ------
 
 - Use of on_pre_player_mined_item over on_player_mined_entity for portal and underground mining detection and undo logic. This is an historic decision and both events support entity type filtering. Appears to have been done as with the pre event in invalid removal situations we can destroy the old entity when we replace it. This destroying of the old entity prevents it being mined and so any mod reacting to the standard mined_entity event won't know about the attempt we blocked and undid. An alternative preivously considered was to make the entities non minable while the tunnel was in use, but this is a lot of API calls on every tunnel usage.
+
+
+Train Detector Usage
+--------------------
+
+Using entities that are killed by a train reaching a certain point allow us to not track distances each tick, thus being significantly lower in UPS overall. They also trigger when the train reaches that exact spot, meaning no over run is possible before we have reviewed the situation and taken the desired action. This results in no need for padding within the portal for fast moving trains and should let us support infinitely fast trains.
+
+
+Death Event Detection
+---------------------
+
+At present we don't subscribe to any common named prototype death events, only our custom ones. And so I don;t believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.

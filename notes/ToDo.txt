@@ -15,26 +15,26 @@ DON'T COMMIT:
 TODO next
 ----------------
     - Work out train travel time as per Vision. Note aim of low UPS rather than perfection. Document decision, known negatives and reasoning.
-    - update remaining old Tests.
-    - for 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this, or leave the entering train's lead locomotive (one that kills the detector) in place for a tick with 0 speed on manual (change force, invunerable, can't be deconned, etc). It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
+    - Update remaining old Tests.
+    - For 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this, or leave the entering train's lead locomotive (one that kills the detector) in place for a tick with 0 speed on manual (change force, invunerable, can't be deconned, etc). It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
     - An extension to the 1 tick delay issue on trains transitioning. The same applies to entering trains, if 2 trains both try to drive/path through the tunnel at the same tick I think they will both be allowed to start their journeys. The second will be rejected at the entrance entry signal, but will then be blocking the line. Only applies to bi-directional tunnel usage and needs special tests with facing off locos right on the end of the tunnel with slow acceleration. Needs a dedicated test to confirm behavour.
 
 
 TODO later
 ----------------
-    - the current player container concept needs updating to calculate the player containers current position in the tunnel.
+    - The current player container concept needs updating to calculate the player containers current position in the tunnel.
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
     - Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This area will have some above ground visual blocking graphics so train within it isn't visible. Both should be created when the portal is complete and not require a tunnel.
-    - make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
+    - Make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered in a sane method.
 	- A transitioning train can be marked for decon, it needs to prevent this in addition to being invunerable, not player selectable, notable to have its orders accessed/changed.
-	- add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
-    - at present all rail in the portals is shown as standard on map. Is this really desired as it used to not be like this.
-    - with the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
-    - filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
+	- Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
+    - At present all rail in the portals is shown as standard on map. Is this really desired as it used to not be like this.
+    - With the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
+    - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
-    - the Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
-    - the portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
+    - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
+    - The portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
 
 
 TODO Future
@@ -42,18 +42,20 @@ TODO Future
 	- Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carraiges and flipping them.
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
     - Utils class - break out in to seperate files.
-	- manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and then at the far end return it to the players control from 0 speed. Currently they are blocked from entering always. Would need to handle trains arriving on top of one another and destroying one another when placed. If this is done then some of the preliminary checks at entrance detection could be removed?
+    - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically.
+	- Manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and then at the far end return it to the players control from 0 speed. Currently they are blocked from entering always. Would need to handle trains arriving on top of one another and destroying one another when placed. If this is done then some of the preliminary checks at entrance detection could be removed?
     - Support 2 tunnels crossing - details vary - UPDATED NOTES IN DEDICATED BRANCH FOR THIS
     - Mod Compatibility:
         - Look at TSM compatibility.
         - Look at LTN compatibility.
+        - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but managedTrain.locomotiveAccelerationPower doesn't account for max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. I believe the current hardcoded value of "10" is for the default loco attribute.
     - Tunnel usage events being raised uses some UPS per tunnel carriage activity (N)? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway.
     - Move the player riding tests to their own test(s) and remove them from other tests. Cover:
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
         - Tunnel destroyed while player underground.
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.
-    - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag.
+    - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag. As signals at Blocker End of portal and the one in the crossing segment will always end up with 1 between 2 crossing segments next to each other.
     - Diagonal tunnel crossings. Would have to be a 8 long tunnel section to get the track to clear the 6 wide tunnel. If the collision box of the crossing was made 0.5~ in from each edge then rails diagonal rails should be placable up to the edge of it. The width doesn't prevent close and spaced double diagonal tracks from being built over a tunnel. Technically some existing entities on the edge would overlap with the mod placed rails, however this is unavoidable to let the player build diagonal rails up to the crossing.
     - When a tunnel is destroyed (by force):
         - Any riding players should have their bodies dumped at the tunnel entrance position (it may be gone), as in vanilla Factorio you can't loose a body. At present the body ends up on the surface where the player's PlayerContainer was.
@@ -72,9 +74,8 @@ Concept Changes
     - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
         - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
         - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well.
-    - Should we change our on_entity_died events to use the specific entity instance died event instead to reduce UPS imapct during high death periods. Would save UPS in these edge cases: https://lua-api.factorio.com/latest/LuaBootstrap.html#LuaBootstrap.register_on_entity_destroyed
 	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
-    - building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
+    - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
 
 
 Ideas
@@ -111,3 +112,17 @@ Functionality not currently supported (FROM OLD MOD VERSION - BUT STILL GENERALL
             - This should be reduced by coasting trains and carriage add/remove logic.
             - Need to check/handle if it prevents the placing of blocking or dummy locos or ends up on the tunnel placement area.
             - Look at if we can easily detect when the train has fully moved on to the portal track and we can put the usage detection entity back down behind it before it has fully entered. Just lowers the chance of a train "sneaking" on to the portal tracks behind it. Will have to get distance from back carriage to transition signal until the train starts entering and then we can use its length to tell when its fully across the threshold. If its a short train and it pulls on to the portal and stops, we can't easily tell where the end carriage away from the Transition signal is without measuring distance ?
+
+
+
+Train acceleration:
+    local cruisingSpeed = max(0, abs(train.speed) - train_friction_force ÷ train_weight)
+    local accelerationRawSpeed = cruisingSpeed + (10 × number_of_locomotives_in_moving_direction × fuel_acceleration_bonus ÷ train_weight)
+    local accelerationWindSpeed = accelerationRawSpeed × (1 - air_resistance_of_front_rolling_stock ÷ (train_weight ÷ 1000))
+    local newSpeed = math.min(accelerationWindSpeed, max_forward/backward_speed)
+
+Train Breaking Distance:
+-- TrainBreakignForce = trains total breaking force * force's train_braking_force_bonus
+  local absSpeed = math.abs(train.speed)
+  local ticksToStop = absSpeed / ((trainBrakingForce + trainFrictionForce) / trainWeight)
+  local breakingDistance = math.max(ticksToStop / 2.0, 1.1) * absSpeed

@@ -100,6 +100,7 @@ local function OnStartup()
     CreateGlobals()
     OnLoad()
     --OnSettingChanged(nil)
+
     Force.OnStartup()
 
     TestManager.OnStartup()
