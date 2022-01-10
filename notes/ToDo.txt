@@ -67,6 +67,7 @@ TODO Future
         - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
         - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the enteringTrain is never "stopped" and so nothing should ever activate.
         - The idea of using the transitioning train rathr than a dummy train and adding a non movable carriage may resolve this.
+    - When the train can't leave the tunnel at speed see how far away the stopping point is and delay for that distance then try to release again. In general this will give a realistic outcome at near 0 more UPS usage. This isn't current vision though.
 
 
 Concept Changes

@@ -34,6 +34,7 @@ local PrototypeAttributes = require("utility/prototype-attributes")
 ---
 ---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
 ---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
+---@field leavingTrainForwards?  boolean|null @ If the leaving train is travelling forwards or not.
 ---
 ---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel.
 ---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain.
@@ -366,12 +367,15 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         return
     end
 
-    -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
+    -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed.
     local leavingTrain = managedTrain.leavingTrain
     leavingTrain.speed = managedTrain.trainLeavingSpeed
     TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
+    managedTrain.leavingTrainForwards = true
     if leavingTrain.speed == 0 then
-        leavingTrain.speed = 0 - managedTrain.trainLeavingSpeed
+        managedTrain.trainLeavingSpeed = 0 - managedTrain.trainLeavingSpeed
+        leavingTrain.speed = managedTrain.trainLeavingSpeed
+        managedTrain.leavingTrainForwards = false
     end
 
     -- Check if the train can leave at its full speed or not.
@@ -383,13 +387,19 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
         -- Calculate the delayed arrival time and schedule back to it.
         -- TODO
-        local delayedArrivalTick = game.tick + 1
+        local delayedArrivalTick = game.tick + 30
         EventScheduler.ScheduleEventOnce(delayedArrivalTick, "TrainManager.TrainUndergroundCompletedDelayed_Scheduled", managedTrain.id, {managedTrain = managedTrain})
 
         -- Reset the leaving trains speed and state as we don't want it to do anything yet.
         leavingTrain.speed = 0
         leavingTrain.manual_mode = true
-        managedTrain.trainLeavingSpeed = 0
+
+        -- Set a slow speed so the train pulls to the end of the tunnel in a braking way.
+        if managedTrain.leavingTrainForwards then
+            managedTrain.trainLeavingSpeed = 0.03
+        else
+            managedTrain.trainLeavingSpeed = -0.03
+        end
     end
 end
 
@@ -410,15 +420,16 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain, speedAutomaticNe
     -- Train has arrived and should be activated.
     local leavingTrain = managedTrain.leavingTrain
 
-    -- Some states can lead to this being set before the function is called, so only needs applying in some scenarios.
+    -- Some states can lead to this being set before the function is called, so only needs apply in some scenarios.
     if speedAutomaticNeedsDoing then
-        -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed. As the trian has 0 speed we can't tell its facing.
-        if managedTrain.trainLeavingSpeed ~= 0 then
-            leavingTrain.speed = managedTrain.trainLeavingSpeed
-        end
+        -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed.
+        leavingTrain.speed = managedTrain.trainLeavingSpeed
         TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
-        if managedTrain.trainLeavingSpeed ~= 0 and leavingTrain.speed == 0 then
-            leavingTrain.speed = 0 - managedTrain.trainLeavingSpeed
+        managedTrain.leavingTrainForwards = true
+        if leavingTrain.speed == 0 then
+            managedTrain.trainLeavingSpeed = 0 - managedTrain.trainLeavingSpeed
+            leavingTrain.speed = managedTrain.trainLeavingSpeed
+            managedTrain.leavingTrainForwards = false
         end
     end
 
