@@ -244,11 +244,18 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target, with just the last few ticks it climbing significantly as a % of current speed.
     if not managedTrain.enteringTrainReachdFullSpeed then
         -- If the train hasn't yet reached its full speed then work out the new speed.
-        local newSpeed = TrainManager.CalculateAcceleratedTrainSpeed(managedTrain, managedTrain.enteringTrainExpectedSpeed, managedTrain.enteringTrainForwards)
-        if managedTrain.enteringTrainExpectedSpeed == newSpeed then
+        local newAbsSpeed = TrainManager.CalculateAcceleratedTrainAbsoluteSpeed(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed))
+        if managedTrain.enteringTrainExpectedSpeed == newAbsSpeed then
             -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
             managedTrain.enteringTrainReachdFullSpeed = true
         end
+        local newSpeed
+        if managedTrain.enteringTrainForwards then
+            newSpeed = newAbsSpeed
+        else
+            newSpeed = 0 - newAbsSpeed
+        end
+
         managedTrain.enteringTrainExpectedSpeed = newSpeed
         enteringTrain.speed = newSpeed
     else
@@ -299,22 +306,26 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
     -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
     local tunnelTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
     -- Work out the distance the train will cover over time and thus how many ticks it will take to complete the distance.
-    local distanceTravelled, estimatedTrainReachedFullSpeed, speedThisTick, ticksTaken = 0, false, managedTrain.enteringTrainExpectedSpeed, 0
+    local distanceTravelled, newAbsSpeed, ticksTaken = 0, math.abs(managedTrain.enteringTrainExpectedSpeed), 0
+    local accelerationPerTick = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
     while distanceTravelled < tunnelTravelDistance do
         ticksTaken = ticksTaken + 1
-        if not estimatedTrainReachedFullSpeed then
-            -- If the train hasn't yet reached its full speed then work out the new speed.
-            local newSpeed = TrainManager.CalculateAcceleratedTrainSpeed(managedTrain, speedThisTick, managedTrain.enteringTrainForwards)
-            if speedThisTick == newSpeed then
-                -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
-                estimatedTrainReachedFullSpeed = true
-            end
-            speedThisTick = newSpeed
-        end
-        distanceTravelled = distanceTravelled + math.abs(speedThisTick)
+        --- Work out the speed of a train this tick as if accelerating. This doesn't match vanilla trains perfectly, but seems very close with vanilla trains. From https://wiki.factorio.com/Locomotive
+        newAbsSpeed = math.min((newAbsSpeed + accelerationPerTick) * managedTrain.trainAirResistanceReductionMultiplier, managedTrain.maxSpeed)
+        distanceTravelled = distanceTravelled + newAbsSpeed
     end
     managedTrain.traversalArrivalTick = game.tick + ticksTaken
-    managedTrain.trainLeavingSpeed = speedThisTick
+    if managedTrain.enteringTrainForwards then
+        managedTrain.trainLeavingSpeed = newAbsSpeed
+    else
+        managedTrain.trainLeavingSpeed = 0 - newAbsSpeed
+    end
+
+    -- Test function with simplified speed calculating, but still looping. Has lower UPS of around 50%, but lower accuracy and over-estimates outcome speed and thus under-estimates ticks.
+    --local estimatedSpeed1, estimatedTicks1 = TrainManager.EstimateTrainAbsoluteSpeedTicksForDistance(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed), tunnelTravelDistance)
+    -- Test functions to avoid looping entirely and uses simplified speed calculations. Has very low UPS, but lower accuracy and over-estimates outcome speed and thus under-estimates ticks. The estimated ticks can't account for max speed and so train can accelerate to infinite within its calculation.
+    --local estimatedTicks2 = TrainManager.EstimateTrainTicksForDistance(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed), tunnelTravelDistance)
+    --local estimatedSpeed2 = TrainManager.EstimateTrainSpeedTicksForTicks(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed), estimatedTicks2)
 
     -- Destroy entering train's entities as we have finished with them.
     for _, carriage in pairs(enteringTrain_carriages) do
@@ -379,6 +390,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     end
 
     -- Check if the train can leave at its full speed or not.
+    -- TODO: this fails when the train is going to approach a station and looks odd given trains breakign distances.
     if leavingTrain.state == defines.train_state.on_the_path then
         -- Train can leave at full speed.
         TrainManager.TrainUndergroundCompleted(managedTrain, false)
@@ -914,16 +926,50 @@ TrainManager.SetTrainToAuto = function(train, targetTrainStop)
     end
 end
 
---- Work out the speed of a train this tick as if accelerating. This doesn't match vaniall trains perfectly, but seems close with vanilla trains. From https://wiki.factorio.com/Locomotive
+--- Work out the speed of a train this tick as if accelerating. This doesn't match vanilla trains perfectly, but seems close with vanilla trains. From https://wiki.factorio.com/Locomotive
+-- Often this is copied in to code inline for repeated calling.
 ---@param managedTrain ManagedTrain
----@param initialSpeed double
----@param trainFacingForwards boolean @ If the train is heading forwards relative to it (positive speed).
----@return number speed
-TrainManager.CalculateAcceleratedTrainSpeed = function(managedTrain, initialSpeed, trainFacingForwards)
-    local newSpeed = math.min((math.max(0, (math.abs(initialSpeed) - managedTrain.trainWeightedFrictionForce)) + managedTrain.locomotiveAccelerationPower) * managedTrain.trainAirResistanceReductionMultiplier, managedTrain.maxSpeed)
-    if not trainFacingForwards then
-        newSpeed = 0 - newSpeed
+---@param initialSpeedAbs double @ Absolute initial speed
+---@return number absoluteSpeed
+TrainManager.CalculateAcceleratedTrainAbsoluteSpeed = function(managedTrain, initialSpeedAbs)
+    return math.min(((initialSpeedAbs + managedTrain.locomotiveAccelerationPower) - managedTrain.trainWeightedFrictionForce) * managedTrain.trainAirResistanceReductionMultiplier, managedTrain.maxSpeed)
+end
+
+--- Estimate train speed and distance covered after set number of ticks. Ignores air resistence so slightly over estimates each tick and this compounds.
+--- Note the 2 train speed estimation functions don't give the same results as each other.
+TrainManager.EstimateTrainAbsoluteSpeedDistanceForTicks = function(managedTrain, initialSpeedAbs, ticks)
+    local speedIncreasePerTick = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
+    local newSpeed = math.min(initialSpeedAbs + (speedIncreasePerTick * ticks), managedTrain.maxSpeed)
+    local distanceTravelled = (ticks * initialSpeedAbs) + (((newSpeed - initialSpeedAbs) * ticks) / 2)
+    return newSpeed, distanceTravelled
+end
+
+--- Estimate train speed and ticks for a train to cover a set distance. Ignores air resistence so very slightly over estimates each tick and this compounds.
+--- Note the 2 train speed estimation functions don't give the same results as each other.
+TrainManager.EstimateTrainAbsoluteSpeedTicksForDistance = function(managedTrain, currentSpeedAbs, targetDistance)
+    local distanceIncreasePerTick = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
+    local ticksTaken, distanceCovered = 0, 0
+    while distanceCovered < targetDistance do
+        ticksTaken = ticksTaken + 1
+        currentSpeedAbs = currentSpeedAbs + distanceIncreasePerTick
+        distanceCovered = distanceCovered + currentSpeedAbs
     end
+    local newSpeed = currentSpeedAbs
+    return newSpeed, ticksTaken
+end
+
+-- rearrange "d = 0.5*a*t^2 + v*t" for t via WolfRamAlpha.
+-- Is very fast, but doesn't account for max train speeds at all. Same under estimation as EstimateTrainAbsoluteSpeedTicksForDistance.
+TrainManager.EstimateTrainTicksForDistance = function(managedTrain, initialSpeedAbs, distance)
+    local acceleration = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
+    local ticks = (math.sqrt(2 * acceleration * distance + (initialSpeedAbs ^ 2)) - initialSpeedAbs) / acceleration
+    return math.ceil(ticks)
+end
+
+-- Is very fast. Same over estimation of speed as EstimateTrainAbsoluteSpeedTicksForDistance.
+TrainManager.EstimateTrainSpeedTicksForTicks = function(managedTrain, initialSpeedAbs, ticks)
+    local acceleration = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
+    local newSpeed = math.min(initialSpeedAbs + (acceleration * ticks), managedTrain.maxSpeed)
     return newSpeed
 end
 

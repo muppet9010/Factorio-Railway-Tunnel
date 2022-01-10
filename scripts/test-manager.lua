@@ -57,7 +57,8 @@ local TestsToRun = {
     --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
-    TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")}
+    TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
+    UpsManyShortTrains = {enabled = true, testScript = require("tests/ups_many_small_trains"), notInAllTests = true}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -94,13 +95,12 @@ local TestsToRun = {
 
 --- The test's script file as a table of interface and internal functions of this specific test.
 ---@class TestScript
----@field RunTime int @ How long the test runs for (ticks) before being failed as un-completed.
+---@field RunTime? int|null @ How long the test runs for (ticks) before being failed as un-completed. A nil value will never end unless the test logic completes or fails it. A non ending test is generally only used for demo/ups tests as a normal test will want a desired timeout in case of non action.
 ---@field RunLoopsMax? int|null @ How many times this tests will be run. For use by tests that have different setups per iteration. If not provided then the test is run 1 time.
 ---@field OnLoad function @ Anything the test needs registering OnLoad of the mod.
 ---@field GetTestDisplayName? function|null @ Let the test define its test name per run. For use when RunLoopsMax > 1. If not set then the TestName in the TestToRun object is used from Test Manager configuration.
 ---@field Start function @ Called to start the test.
 ---@field Stop function @ Called when the test is being stopped for any reason.
----@field EveryTick function @ Called every tick for the test to check its state and react.
 
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
