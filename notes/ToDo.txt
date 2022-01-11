@@ -77,6 +77,7 @@ Concept Changes
         - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well.
 	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
+    - Can we do TrainManager.TrainOnPortalTrackOngoing() say once per second rather than every tick. May need a change to a more expensive API check of the train rather than the signal. But this function is now a big UPS user.
 
 
 Ideas
