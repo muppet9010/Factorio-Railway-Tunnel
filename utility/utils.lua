@@ -2,6 +2,7 @@
 
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
+local PrototypeAttributes = require("utility/prototype-attributes")
 
 -- Copies a table and all of its children all the way down.
 ---@type fun(object:table):table
@@ -1767,6 +1768,114 @@ Utils.GetLeadingCarriageOfTrain = function(train, isFrontStockLeading)
     else
         return train.back_stock
     end
+end
+
+---@class UtilsTrainSpeedCalculationData @ Data the Utils functions need to calculate and estimate its future speed, time to cover distance, etc.
+---@field trainWeight double @ The total weight of the train.
+---@field trainFrictionForce double @ The total friction force of the train.
+---@field trainWeightedFrictionForce double @ The train's friction force divided by train weight.
+---@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add.
+---@field trainAirResistanceReductionMultiplier double @ The air resistance of the train (lead carriage in current direction).
+---@field maxSpeed double @ The max speed the train can achieve.
+
+--- Get the data other Utils functions needed for calculating and estimating a trains future speed, time to cover distance, etc.
+--- This is only accurate while the train is heading in the same direction as when this data was gathered.
+---@param train LuaTrain
+---@param train_speed double
+---@return UtilsTrainSpeedCalculationData
+Utils.GetTrainsSpeedCalculationData = function(train, train_speed)
+    ---@type UtilsTrainSpeedCalculationData
+    local trainData = {
+        trainWeight = train.weight
+    }
+
+    local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus = 0, 0, nil
+    local train_carriages = train.carriages
+    local trainForwards = train_speed > 0
+
+    -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
+    local minCarriageIndex, maxCarriageIndex, carriageIterator
+    if (train_speed > 0) then
+        minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #train_carriages, 1
+    elseif (train_speed < 0) then
+        minCarriageIndex, maxCarriageIndex, carriageIterator = #train_carriages, 1, -1
+    end
+
+    local firstCarriage = true
+    for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
+        local carriage = train_carriages[currentSourceTrainCarriageIndex]
+        local carriage_name, carriage_speed = carriage.name, carriage.speed
+
+        trainFrictionForce = trainFrictionForce + PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "friction_force")
+
+        if firstCarriage then
+            firstCarriage = false
+            trainData.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainData.trainWeight / 1000))
+            -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
+            if trainForwards then
+                trainData.maxSpeed = train.max_forward_speed
+            elseif not trainForwards then
+                trainData.maxSpeed = train.max_backward_speed
+            end
+        end
+
+        if carriage_speed == train_speed and carriage.type == "locomotive" then
+            -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
+            if fuelAccelerationBonus == nil then
+                local currentFuel = carriage.burner.inventory[1] ---@type LuaItemStack
+                if currentFuel ~= nil then
+                    fuelAccelerationBonus = currentFuel.prototype.fuel_acceleration_multiplier
+                else
+                    -- OVERHAUL: add some robust resolution for this....
+                    error("don't support loco with non simply identified fuel")
+                end
+            end
+
+            forwardFacingLocoCount = forwardFacingLocoCount + 1
+        end
+    end
+
+    trainData.trainFrictionForce = trainFrictionForce
+    trainData.trainWeightedFrictionForce = (trainData.trainFrictionForce / trainData.trainWeight)
+    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * (fuelAccelerationBonus / trainData.trainWeight)
+    return trainData
+end
+
+--- Work out the speed of a train this tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive
+-- Often this is copied in to code inline for repeated calling.
+---@param trainData UtilsTrainSpeedCalculationData
+---@param initialSpeedAbs double @ Absolute initial speed
+---@return number absoluteSpeed
+Utils.CalculateAcceleratedTrainAbsoluteSpeed = function(trainData, initialSpeedAbs)
+    return math.min(((initialSpeedAbs + trainData.locomotiveAccelerationPower) - trainData.trainWeightedFrictionForce) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
+end
+
+--- Is very fast, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
+--- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
+---@param trainData UtilsTrainSpeedCalculationData
+---@param initialSpeedAbs double
+---@param distance double
+---@return uint
+Utils.EstimateTrainTicksForDistance = function(trainData, initialSpeedAbs, distance)
+    local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbs
+    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local ticks = (math.sqrt(2 * acceleration * distance + (initialSpeedAbs ^ 2)) - initialSpeedAbs) / acceleration
+    return math.ceil(ticks)
+end
+
+--- Estimate train speed and distance covered after set number of ticks. Approximately accounts for air resistence, but final value will be a little off.
+--- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
+---@param trainData UtilsTrainSpeedCalculationData
+---@param initialSpeedAbs double
+---@param ticks uint
+---@return double speed
+---@return double distance
+Utils.EstimateTrainAbsoluteSpeedDistanceForTicks = function(trainData, initialSpeedAbs, ticks)
+    local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbs
+    local speedIncreasePerTick = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local newSpeed = math.min(initialSpeedAbs + (speedIncreasePerTick * ticks), trainData.maxSpeed)
+    local distanceTravelled = (ticks * initialSpeedAbs) + (((newSpeed - initialSpeedAbs) * ticks) / 2)
+    return newSpeed, distanceTravelled
 end
 
 return Utils

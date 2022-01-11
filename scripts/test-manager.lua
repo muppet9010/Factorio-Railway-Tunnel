@@ -58,7 +58,7 @@ local TestsToRun = {
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
-    UpsManyShortTrains = {enabled = true, testScript = require("tests/ups_many_small_trains"), notInAllTests = true}
+    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

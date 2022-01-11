@@ -9,7 +9,6 @@ local PlayerContainer = require("scripts/player-container")
 local Common = require("scripts/common")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
 local TrainManagerRemote = require("scripts/train-manager-remote")
-local PrototypeAttributes = require("utility/prototype-attributes")
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
@@ -18,19 +17,13 @@ local PrototypeAttributes = require("utility/prototype-attributes")
 ---@field enteringTrain? LuaTrain|null
 ---@field enteringTrainId? Id|null @ The enteringTrain LuaTrain id.
 ---@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint.
----@field enteringTrainExpectedSpeed double @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking.
----@field enteringTrainReachdFullSpeed boolean @ If the entering train has reached its full speed already.
+---@field enteringTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking.
+---@field enteringTrainReachdFullSpeed? boolean|null @ If the entering train has reached its full speed already.
 ---
----@field trainWeight double @ The total weight of the train.
----@field trainFrictionForce double @ The total friction force of the train.
----@field trainWeightedFrictionForce double @ The train's friction force divided by train weight.
----@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add.
----@field trainAirResistanceReductionMultiplier double @ The air resistance of the train (lead carriage in current direction).
----@field maxSpeed double @ The max speed the train can achieve.
----
----@field undergroundTrainHasPlayersRiding boolean @ if there are players riding in the underground train.
----@field traversalArrivalTick int @ the tick the train reaches the far end of the tunnel and is restarted.
----@field trainLeavingSpeed double @ the speed the train will be set too at the moment it starts leaving the tunnel.
+---@field trainSpeedCalculationData? UtilsTrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
+---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
+---@field traversalArrivalTick? int|null @ The tick the train reaches the far end of the tunnel and is restarted.
+---@field trainLeavingSpeed? double|null @ The speed the train will be set too at the moment it starts leaving the tunnel.
 ---
 ---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
 ---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
@@ -244,7 +237,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target, with just the last few ticks it climbing significantly as a % of current speed.
     if not managedTrain.enteringTrainReachdFullSpeed then
         -- If the train hasn't yet reached its full speed then work out the new speed.
-        local newAbsSpeed = TrainManager.CalculateAcceleratedTrainAbsoluteSpeed(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed))
+        local newAbsSpeed = Utils.CalculateAcceleratedTrainAbsoluteSpeed(managedTrain.trainSpeedCalculationData, math.abs(managedTrain.enteringTrainExpectedSpeed))
         if managedTrain.enteringTrainExpectedSpeed == newAbsSpeed then
             -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
             managedTrain.enteringTrainReachdFullSpeed = true
@@ -305,27 +298,16 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain)
     -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
     -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
     local tunnelTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
-    -- Work out the distance the train will cover over time and thus how many ticks it will take to complete the distance.
-    local distanceTravelled, newAbsSpeed, ticksTaken = 0, math.abs(managedTrain.enteringTrainExpectedSpeed), 0
-    local accelerationPerTick = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
-    while distanceTravelled < tunnelTravelDistance do
-        ticksTaken = ticksTaken + 1
-        --- Work out the speed of a train this tick as if accelerating. This doesn't match vanilla trains perfectly, but seems very close with vanilla trains. From https://wiki.factorio.com/Locomotive
-        newAbsSpeed = math.min((newAbsSpeed + accelerationPerTick) * managedTrain.trainAirResistanceReductionMultiplier, managedTrain.maxSpeed)
-        distanceTravelled = distanceTravelled + newAbsSpeed
-    end
-    managedTrain.traversalArrivalTick = game.tick + ticksTaken
+    -- Estimate how long it will take to complete the distance and then final speed.
+    local currentAbsSpeed = math.abs(managedTrain.enteringTrainExpectedSpeed)
+    local estimatedTicks = Utils.EstimateTrainTicksForDistance(managedTrain.trainSpeedCalculationData, currentAbsSpeed, tunnelTravelDistance)
+    local estimatedSpeed, _ = Utils.EstimateTrainAbsoluteSpeedDistanceForTicks(managedTrain.trainSpeedCalculationData, currentAbsSpeed, estimatedTicks)
+    managedTrain.traversalArrivalTick = game.tick + estimatedTicks
     if managedTrain.enteringTrainForwards then
-        managedTrain.trainLeavingSpeed = newAbsSpeed
+        managedTrain.trainLeavingSpeed = estimatedSpeed
     else
-        managedTrain.trainLeavingSpeed = 0 - newAbsSpeed
+        managedTrain.trainLeavingSpeed = 0 - estimatedSpeed
     end
-
-    -- Test function with simplified speed calculating, but still looping. Has lower UPS of around 50%, but lower accuracy and over-estimates outcome speed and thus under-estimates ticks.
-    local estimatedSpeed1, estimatedTicks1 = TrainManager.EstimateTrainAbsoluteSpeedTicksForDistance(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed), tunnelTravelDistance)
-    -- Test functions to avoid looping entirely and uses simplified speed calculations. Has very low UPS, but lower accuracy and over-estimates outcome speed and thus under-estimates ticks. The estimated ticks can't account for max speed and so train can accelerate to infinite within its calculation.
-    local estimatedTicks2 = TrainManager.EstimateTrainTicksForDistance(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed), tunnelTravelDistance)
-    local estimatedSpeed2, distanceTravelled2 = TrainManager.EstimateTrainAbsoluteSpeedDistanceForTicks(managedTrain, math.abs(managedTrain.enteringTrainExpectedSpeed), estimatedTicks2)
 
     -- Destroy entering train's entities as we have finished with them.
     for _, carriage in pairs(enteringTrain_carriages) do
@@ -585,56 +567,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     if traversingTunnel then
         managedTrain.enteringTrainExpectedSpeed = train_speed
         managedTrain.enteringTrainReachdFullSpeed = false
-
-        managedTrain.trainWeight = train.weight
-        local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus = 0, 0, nil
-        local train_carriages = train.carriages
-
-        -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
-        local minCarriageIndex, maxCarriageIndex, carriageIterator
-        if (train_speed > 0) then
-            minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #train_carriages, 1
-        elseif (train_speed < 0) then
-            minCarriageIndex, maxCarriageIndex, carriageIterator = #train_carriages, 1, -1
-        end
-
-        local firstCarriage = true
-        for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-            local carriage = train_carriages[currentSourceTrainCarriageIndex]
-            local carriage_name, carriage_speed = carriage.name, carriage.speed
-
-            trainFrictionForce = trainFrictionForce + PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "friction_force")
-
-            if firstCarriage then
-                firstCarriage = false
-                managedTrain.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (managedTrain.trainWeight / 1000))
-                -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
-                if trainForwards then
-                    managedTrain.maxSpeed = train.max_forward_speed
-                elseif not trainForwards then
-                    managedTrain.maxSpeed = train.max_backward_speed
-                end
-            end
-
-            if carriage_speed == train_speed and carriage.type == "locomotive" then
-                -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
-                if fuelAccelerationBonus == nil then
-                    local currentFuel = carriage.burner.inventory[1] ---@type LuaItemStack
-                    if currentFuel ~= nil then
-                        fuelAccelerationBonus = currentFuel.prototype.fuel_acceleration_multiplier
-                    else
-                        -- OVERHAUL: add some robust resolution for this....
-                        error("don't support loco with non simply identified fuel")
-                    end
-                end
-
-                forwardFacingLocoCount = forwardFacingLocoCount + 1
-            end
-        end
-
-        managedTrain.trainFrictionForce = trainFrictionForce
-        managedTrain.trainWeightedFrictionForce = (managedTrain.trainFrictionForce / managedTrain.trainWeight)
-        managedTrain.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * (fuelAccelerationBonus / managedTrain.trainWeight)
+        managedTrain.trainSpeedCalculationData = Utils.GetTrainsSpeedCalculationData(train, train_speed)
     end
 
     if traversingTunnel then
@@ -924,63 +857,6 @@ TrainManager.SetTrainToAuto = function(train, targetTrainStop)
         -- There was no target train stop, so no special handling needed.
         train.manual_mode = false
     end
-end
-
---- Work out the speed of a train this tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive
--- Often this is copied in to code inline for repeated calling.
----@param managedTrain ManagedTrain
----@param initialSpeedAbs double @ Absolute initial speed
----@return number absoluteSpeed
-TrainManager.CalculateAcceleratedTrainAbsoluteSpeed = function(managedTrain, initialSpeedAbs)
-    return math.min(((initialSpeedAbs + managedTrain.locomotiveAccelerationPower) - managedTrain.trainWeightedFrictionForce) * managedTrain.trainAirResistanceReductionMultiplier, managedTrain.maxSpeed)
-end
-
---- Estimate train speed and ticks for a train to cover a set distance by looping over the calculations. Approximately accounts for air resistence, but final value will be a little off.
---- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
----@param managedTrain ManagedTrain
----@param currentSpeedAbs double
----@param targetDistance double
----@return double speed
----@return uint ticks
-TrainManager.EstimateTrainAbsoluteSpeedTicksForDistance = function(managedTrain, currentSpeedAbs, targetDistance)
-    local airResistence = 1 - managedTrain.trainAirResistanceReductionMultiplier
-    local distanceIncreasePerTick = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce
-    local ticksTaken, distanceCovered = 0, 0
-    while distanceCovered < targetDistance do
-        ticksTaken = ticksTaken + 1
-        currentSpeedAbs = math.min(currentSpeedAbs + distanceIncreasePerTick - (airResistence * currentSpeedAbs), managedTrain.maxSpeed)
-
-        distanceCovered = distanceCovered + currentSpeedAbs
-    end
-    return currentSpeedAbs, ticksTaken
-end
-
---- Is very fast, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
---- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
----@param managedTrain ManagedTrain
----@param initialSpeedAbs double
----@param distance double
----@return uint
-TrainManager.EstimateTrainTicksForDistance = function(managedTrain, initialSpeedAbs, distance)
-    local initialSpeedAirResistence = (1 - managedTrain.trainAirResistanceReductionMultiplier) * initialSpeedAbs
-    local acceleration = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce - initialSpeedAirResistence
-    local ticks = (math.sqrt(2 * acceleration * distance + (initialSpeedAbs ^ 2)) - initialSpeedAbs) / acceleration
-    return math.ceil(ticks)
-end
-
---- Estimate train speed and distance covered after set number of ticks. Approximately accounts for air resistence, but final value will be a little off.
---- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
----@param managedTrain ManagedTrain
----@param initialSpeedAbs double
----@param ticks uint
----@return double speed
----@return double distance
-TrainManager.EstimateTrainAbsoluteSpeedDistanceForTicks = function(managedTrain, initialSpeedAbs, ticks)
-    local initialSpeedAirResistence = (1 - managedTrain.trainAirResistanceReductionMultiplier) * initialSpeedAbs
-    local speedIncreasePerTick = managedTrain.locomotiveAccelerationPower - managedTrain.trainWeightedFrictionForce - initialSpeedAirResistence
-    local newSpeed = math.min(initialSpeedAbs + (speedIncreasePerTick * ticks), managedTrain.maxSpeed)
-    local distanceTravelled = (ticks * initialSpeedAbs) + (((newSpeed - initialSpeedAbs) * ticks) / 2)
-    return newSpeed, distanceTravelled
 end
 
 return TrainManager
