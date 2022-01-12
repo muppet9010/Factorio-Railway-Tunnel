@@ -11,7 +11,7 @@ Mod Features
 - Trains will natively use tunnels just like any other track, no need to specially path via them. You can have a train stop part way in/out of a tunnel at a signal or station and then resume or reverse its journey.
 - Tunnels are built by placing the entrance and exit pieces (rails outwards) and then building underground tunnel between them. When a tunnel is complete rail signals will appear on both ends of the tunnel. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel.
 - Tunnels can not be entered by players, they are purely for trains to go under one another. Players riding in trains through tunnels stay on the surface to enjoy the view.
-- The tunnel parts can only be validly placed on the rail grid, however it isn't possible to snap these like regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted; A green square for buildable locations and a red square for blocked locations, based on ghost type placement.
+- The tunnel parts can only be validly placed on the rail grid, however it isn't possible to snap these like regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted, a green square for buildable locations and a red square for blocked locations, based on ghost type placement.
 
 
 Usage Notes

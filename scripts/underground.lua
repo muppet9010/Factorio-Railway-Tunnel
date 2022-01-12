@@ -427,7 +427,7 @@ Underground.UpdateUndergroundsForNewSegment = function(segment)
     end
 
     -- Just loop over the underground segments and find the ones with spare connection points. These are the ends.
-    -- There is a more effecient but more complicated way to do this; ignore this until it shows as a noticable UPS waste. Same more complicated scneario could be applied to when an underground or portal has an entity removed from it.
+    -- There is a more effecient but more complicated way to do this, ignore this until it shows as a noticable UPS waste. Same more complicated scneario could be applied to when an underground or portal has an entity removed from it.
     local underground = segment.underground
     underground.undergroundEndSegments = {}
     for _, thisSegment in pairs(underground.segments) do

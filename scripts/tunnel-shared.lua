@@ -5,7 +5,8 @@ local TunnelShared = {}
 ---@param builtEntity LuaEntity
 ---@return boolean
 TunnelShared.IsPlacementOnRailGrid = function(builtEntity)
-    if builtEntity.position.x % 2 == 0 or builtEntity.position.y % 2 == 0 then
+    local builtEntity_position = builtEntity.position
+    if builtEntity_position.x % 2 == 0 or builtEntity_position.y % 2 == 0 then
         return false
     else
         return true
@@ -50,8 +51,9 @@ TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highligh
             TunnelShared.HighlightValidPlacementPositionsOnRailGrid(placer, position, surface, entityName, ghostName, direction)
         end
     else
+        local builtEntity_position = builtEntity.position
         builtEntity.destroy()
-        game.print({"message.railway_tunnel-invalid_placement_by_script", errorEntityNameText, tostring(builtEntity.position.x), tostring(builtEntity.position.y)}, Colors.red)
+        game.print({"message.railway_tunnel-invalid_placement_by_script", errorEntityNameText, tostring(builtEntity_position.x), tostring(builtEntity_position.y)}, Colors.red)
     end
 end
 

@@ -23,7 +23,7 @@ Construction bot:
 Ghost placement of fast replacement and rotations
 -------------------------------------------------
 
-A player can fast replace an entity over itself with a different rotation if it supports fast replacement; But a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
+A player can fast replace an entity over itself with a different rotation if it supports fast replacement, but a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
 
 
 Tunnel Part Connections
@@ -55,4 +55,10 @@ Using entities that are killed by a train reaching a certain point allow us to n
 Death Event Detection
 ---------------------
 
-At present we don't subscribe to any common named prototype death events, only our custom ones. And so I don;t believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.
+At present we don't subscribe to any common named prototype death events, only our custom ones. And so I don't believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.
+
+
+Train Leaving Tunnel Gives Way
+------------------------------
+
+A train trying to leave a tunnel will tend to give way to other trains on the rail network. This is due to the tunnel train only being able to claim signal blocks once released, and every time it tries to leave and can't claim the signals for its speed it has to wait longer while it simulates slowing down in the tunnel.

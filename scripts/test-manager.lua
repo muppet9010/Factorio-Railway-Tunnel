@@ -35,7 +35,7 @@ local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
 
--- Add any new tests in to the table; set "enabled" true/false and the "testScript" path.
+-- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 ---@type table<TestName, TestToRun>
 local TestsToRun = {
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
@@ -51,7 +51,7 @@ local TestsToRun = {
     InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
-    --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")} -- DONT USE - test needs major overhaul as was designed for complex logic we don;t have to handle any more.
+    --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")} -- DONT USE - test needs major overhaul as was designed for complex logic we don't have to handle any more.
     --MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")}, -- DONT USE - test needs updating to new tunnel logic.
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
     --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
@@ -229,7 +229,7 @@ end
 
 -- Clean any previous entities off the map.
 TestManager.ClearMap_Scheduled = function()
-    -- Remove any trains first and then everything else; to avoid triggering tunnel removal destroying trains alerts.
+    -- Remove any trains first and then everything else, to avoid triggering tunnel removal destroying trains alerts.
     for _, entityTypeFilter in pairs({{"cargo-wagon", "locomotive", "fluid-wagon"}, {}}) do
         for _, entity in pairs(global.testManager.testSurface.find_entities_filtered({name = entityTypeFilter})) do
             entity.destroy({raise_destroy = true})
