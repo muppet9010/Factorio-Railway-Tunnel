@@ -76,6 +76,8 @@ local EndPortalType = {
 ---@field entity LuaEntity
 ---@field entity_position Position
 ---@field portal Portal
+---@field railEntity? LuaEntity|null @ If cached the rail entity this signal is on, or null if not cached.
+---@field railEntity_unitNumber? UnitNumber|null @ If cached the unit_number of the rail entity this signal is on, or null if not cached.
 
 ---@class PortalTransitionSignal : PortalSignal
 
@@ -576,6 +578,7 @@ Portal.On_PreTunnelCompleted = function(portals)
             force = force,
             direction = entryDirection
         }
+        local entrySignalOutEntity_railEntity = entrySignalOutEntity.get_connected_rails()[1]
         portal.entrySignals = {
             [TunnelSignalDirection.inSignal] = {
                 id = entrySignalInEntity.unit_number,
@@ -589,7 +592,9 @@ Portal.On_PreTunnelCompleted = function(portals)
                 entity = entrySignalOutEntity,
                 entity_position = entrySignalOutEntityPosition,
                 portal = portal,
-                direction = TunnelSignalDirection.outSignal
+                direction = TunnelSignalDirection.outSignal,
+                railEntity = entrySignalOutEntity_railEntity,
+                railEntity_unitNumber = entrySignalOutEntity_railEntity.unit_number
             }
         }
         entrySignalInEntity.connect_neighbour {wire = defines.wire_type.green, target_entity = entrySignalOutEntity}
@@ -704,14 +709,14 @@ Portal.BuildRailForPortalsParts = function(portal)
 
     -- Loop over the portal parts and add their rails.
     portal.portalRailEntities = {}
-    for _, portalPart in pairs(portal.portalEnds) do
-        for _, tracksPositionOffset in pairs(portalPart.typeData.tracksPositionOffset) do
-            PlaceRail(portalPart, tracksPositionOffset)
+    for _, portalEnd in pairs(portal.portalEnds) do
+        for _, tracksPositionOffset in pairs(portalEnd.typeData.tracksPositionOffset) do
+            PlaceRail(portalEnd, tracksPositionOffset)
         end
     end
-    for _, portalPart in pairs(portal.portalSegments) do
-        for _, tracksPositionOffset in pairs(portalPart.typeData.tracksPositionOffset) do
-            PlaceRail(portalPart, tracksPositionOffset)
+    for _, portalSegment in pairs(portal.portalSegments) do
+        for _, tracksPositionOffset in pairs(portalSegment.typeData.tracksPositionOffset) do
+            PlaceRail(portalSegment, tracksPositionOffset)
         end
     end
 end

@@ -3,8 +3,6 @@ OVERHAUL: this all needs reviewing and updating.
 Remote Interfaces & Custom Events
 =================
 
-OVERHAUL - This needs redoing after initial code so tests can be set up again.
-
 All remote interfaces are under the interface name "railway_tunnel".
 
 

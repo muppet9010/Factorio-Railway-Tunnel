@@ -233,7 +233,6 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
     if enteringTrain.state ~= defines.train_state.arrive_signal or enteringTrain.signal ~= managedTrain.entrancePortalTransitionSignal.entity then
         TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
-        -- TODO: If the train has entered the tracks (triggered the portal tracks train detector) we need to return to that state as the train is still on portal tracks now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals.
         return
     end
 
@@ -366,7 +365,7 @@ end
 ---@param event UtilityScheduledEventCallbackObject
 TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     ---@typelist ManagedTrain, LuaEntity
-    local managedTrain, previousBrakingTargetEntity = event.data.managedTrain, event.data.brakingTargetEntity
+    local managedTrain, previousBrakingTargetEntityId = event.data.managedTrain, event.data.brakingTargetEntityId
     if managedTrain == nil or managedTrain.primaryTrainPartName ~= PrimaryTrainState.underground then
         -- Something has happened to the train/tunnel being managed while this has been scheduled, so just give up.
         return
@@ -386,12 +385,12 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
     -- Train can't just leave at its current speed blindly, so work out how to proceed based on its state.
     local crawlAbsSpeed = 0.03 -- The speed for the train if its going to crawl forwards to the end of the portal.
-    local distanceBeyondTrainLeavingPosition, leavingTrainNewAbsoluteSpeed, scheduleFutureArrival, brakingTargetEntity = 0, nil, nil, nil
+    local distanceBeyondTrainLeavingPosition, leavingTrainNewAbsoluteSpeed, scheduleFutureArrival, brakingTargetEntityId = 0, nil, nil, nil
     if leavingTrain_state == defines.train_state.path_lost or leavingTrain_state == defines.train_state.no_schedule or leavingTrain_state == defines.train_state.no_path or leavingTrain_state == defines.train_state.destination_full then
         -- Train has no where to go.
 
         -- Set to pull up to the end of the portal and wait there.
-        local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.entity.get_connected_rails()[1] -- OVERHAUL - this rail could be cached at portal creation time with a bit of work.
+        local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.railEntity
         local schedule = leavingTrain.schedule
         table.insert(
             schedule.records,
@@ -406,37 +405,47 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
         scheduleFutureArrival = false
     elseif leavingTrain_state == defines.train_state.arrive_station then
-        -- Train needs to have been braking as its pulling up to its station, but we can easily get the distance from its path data.
+        -- Train needs to have been braking as its pulling up to its station/rail target, but we can easily get the distance from its path data.
+        local leavingTrain_pathEndStop, leavingTrain_pathEndRail = leavingTrain.path_end_stop, leavingTrain.path_end_rail
 
-        -- Check this isn't a second loop for the same target due to some bug in the braking maths.
-        brakingTargetEntity = leavingTrain.path_end_stop
-        local skipProcessingForDelay = false
-        if previousBrakingTargetEntity == brakingTargetEntity then
-            -- Is a repeat.
-            if global.debugRelease then
-                error("Looped on leaving train for same target station.")
-            else
-                -- Just let the mod continue to run, its not the end of the world. As npo main variables are changed from default the train will leave now.
-                skipProcessingForDelay = true
+        -- Handle the end of portal rail differently to a rail on the main network..
+        if leavingTrain_pathEndStop == nil and leavingTrain_pathEndRail ~= nil and leavingTrain_pathEndRail.unit_number == managedTrain.exitPortalEntrySignalOut.railEntity_unitNumber then
+            -- Its the end of portal rail so just crawl forwards.
+            leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
+            scheduleFutureArrival = false
+        else
+            -- Check this isn't a second loop for the same target due to some bug in the braking maths.
+            local brakingTargetEntity = leavingTrain_pathEndStop or leavingTrain_pathEndRail
+            brakingTargetEntityId = brakingTargetEntity.unit_number
+            local skipProcessingForDelay = false
+            if previousBrakingTargetEntityId == brakingTargetEntityId then
+                -- Is a repeat.
+                if global.debugRelease then
+                    error("Looped on leaving train for same target station.")
+                else
+                    -- Just let the mod continue to run, its not the end of the world. As npo main variables are changed from default the train will leave now.
+                    skipProcessingForDelay = true
+                end
             end
-        end
 
-        -- Do the processing assuming this isn't a repeat loop (it shouldn't be a repeat if maths works correctly).
-        if not skipProcessingForDelay then
-            local leavingTrain_path = leavingTrain.path
-            local leavingTrain_path_rails = leavingTrain_path.rails
-            distanceBeyondTrainLeavingPosition = leavingTrain_path.total_distance
-            distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - Utils.GetRailEntityLength(leavingTrain_path_rails[#leavingTrain_path_rails].type) -- Remove the last rail's length as we want to stop before this.
-            scheduleFutureArrival = true
+            -- Do the processing assuming this isn't a repeat loop (it shouldn't be a repeat if maths works correctly).
+            if not skipProcessingForDelay then
+                local leavingTrain_path = leavingTrain.path
+                local leavingTrain_path_rails = leavingTrain_path.rails
+                distanceBeyondTrainLeavingPosition = leavingTrain_path.total_distance
+                distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - Utils.GetRailEntityLength(leavingTrain_path_rails[#leavingTrain_path_rails].type) -- Remove the last rail's length as we want to stop before this.
+                scheduleFutureArrival = true
+            end
         end
     elseif leavingTrain_state == defines.train_state.arrive_signal then
         -- Train needs to have been braking as its pulling up to its signal.
         local leavingTrain_signal = leavingTrain.signal
-        brakingTargetEntity = leavingTrain_signal
+        local leavingTrain_signal_unitNumber = leavingTrain_signal.unit_number
+        brakingTargetEntityId = leavingTrain_signal_unitNumber
 
         -- Handle the end of portal signal differently to a signal on the main rail network.
-        if leavingTrain_signal == managedTrain.exitPortalEntrySignalOut then
-            -- Its the end of portal signal then just crawl forwards and work out the braking delay.
+        if leavingTrain_signal_unitNumber == managedTrain.exitPortalEntrySignalOut.id then
+            -- Its the end of portal signal so just crawl forwards.
             leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
             scheduleFutureArrival = false
         else
@@ -444,7 +453,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
             -- Check this isn't a second loop for the same target due to some bug in the braking maths.
             local skipProcessingForDelay = false
-            if previousBrakingTargetEntity == brakingTargetEntity then
+            if previousBrakingTargetEntityId == brakingTargetEntityId then
                 -- Is a repeat.
                 if global.debugRelease then
                     error("Looped on leaving train for same signal.")
@@ -478,12 +487,10 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
                 leavingTrain.schedule = schedule
                 leavingTrain.recalculate_path(true)
                 leavingTrain.manual_mode = false
-                local leavingTrain_path = leavingTrain.path
-                distanceBeyondTrainLeavingPosition = leavingTrain_path.total_distance
-                local leavingTrain_path_rails = leavingTrain_path.rails
-                distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - Utils.GetRailEntityLength(leavingTrain_path_rails[#leavingTrain_path_rails].type) -- Remove the last rail's length as we want to stop before this.
+                distanceBeyondTrainLeavingPosition = leavingTrain.path.total_distance
+                distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
                 table.remove(schedule.records, schedule.current)
-                -- Restore the trains state back to expected.
+                -- Restore the train to its origional state.
                 TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
 
                 scheduleFutureArrival = true
@@ -498,7 +505,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         -- Calculate the delayed arrival time and delay schedule to this. This will account for the full speed change and will account for if the train entered the tunnel overly fast, making the total duration and leaving speed correct.
 
         local currentForcesBrakingBonus = managedTrain.tunnel.force.train_braking_force_bonus
-        distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - 6 -- Remove the 3 rails in the end of the portal that is in train's path. Not entirely sure why this needs removing, but it does.
+        distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - 6 -- Remove the 3 rails at the end of the portal that are listed in train's path. The train is already on these and so they can't be braked over.
 
         -- Calculate how much distance and ticks need to be reviewed for the train at its current speed.
         local breakingDistanceToStop, _ = Utils.CalculateTrainBrakingStopDistanceTimeForSpeed(managedTrain.trainSpeedCalculationData, managedTrain.trainLeavingSpeedAbsolute, currentForcesBrakingBonus)
@@ -527,7 +534,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         if delayTicks > 0 then
             -- Schedule the next attempt at releasing the train.
             managedTrain.traversalArrivalTick = managedTrain.traversalArrivalTick + delayTicks
-            EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain, brakingTargetEntity = brakingTargetEntity})
+            EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain, brakingTargetEntityId = brakingTargetEntityId})
 
             -- Reset the leaving trains speed and state as we don't want it to do anything yet.
             leavingTrain.speed = 0
@@ -536,13 +543,14 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         end
     end
 
-    -- Set the leaving speed of the train and release it.
+    -- Set the new leaving speed to the train and release it.
     local leavingSpeedAbsolute = leavingTrainNewAbsoluteSpeed or managedTrain.trainLeavingSpeedAbsolute
     if managedTrain.leavingTrainForwards then
         leavingTrain.speed = leavingSpeedAbsolute
     else
         leavingTrain.speed = -leavingSpeedAbsolute
     end
+    TrainManager.TrainUndergroundCompleted(managedTrain)
 end
 
 ---@param managedTrain ManagedTrain
@@ -592,7 +600,7 @@ TrainManager.UpdateScheduleForTargetRailBeingTunnelRail = function(managedTrain,
                 -- The target rail is part of the currently used tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.
                 local schedule = train.schedule
                 local currentScheduleRecord = schedule.records[schedule.current]
-                local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.entity.get_connected_rails()[1] -- OVERHAUL - this rail could be cached at portal creation time with a bit of work.
+                local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.railEntity
                 currentScheduleRecord.rail = exitPortalEntryRail
                 schedule.records[schedule.current] = currentScheduleRecord
                 train.schedule = schedule
@@ -976,10 +984,11 @@ TrainManager.IsTrainHealthlyState = function(train)
     end
 end
 
---- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
+--- Sets the train to automatic and forces the train within a train stops limited train count if required.
 ---@param train LuaTrain
 ---@param targetTrainStop LuaEntity
 TrainManager.SetTrainToAuto = function(train, targetTrainStop)
+    --- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
     if targetTrainStop ~= nil and targetTrainStop.valid then
         local oldLimit = targetTrainStop.trains_limit
         targetTrainStop.trains_limit = targetTrainStop.trains_count + 1
