@@ -1770,6 +1770,32 @@ Utils.GetLeadingCarriageOfTrain = function(train, isFrontStockLeading)
     end
 end
 
+--- Checks the locomtive for its current fuel and returns it's prototype. Checks fuel inventories if nothing is currently burning.
+---@param loco LuaEntity
+---@return LuaItemPrototype|nil currentFuelPrototype @ Will be nil if therees no current fuel in the locomotive.
+Utils.GetLocomotivesCurrentFuelPrototype = function(loco)
+    local loco_burner = loco.burner
+
+    -- Check any currently burning fuel inventory first.
+    local currentFuelItem = loco_burner.currently_burning
+    if currentFuelItem ~= nil then
+        return currentFuelItem
+    end
+
+    -- Check the fuel inventories as this will be burnt next.
+    local burner_inventory = loco_burner.inventory
+    local currentFuelStack
+    for i = 1, #burner_inventory do
+        currentFuelStack = burner_inventory[i] ---@type LuaItemStack
+        if currentFuelStack ~= nil and currentFuelStack.valid_for_read then
+            return currentFuelStack.prototype
+        end
+    end
+
+    -- No fuel found.
+    return nil
+end
+
 ---@class UtilsTrainSpeedCalculationData @ Data the Utils functions need to calculate and estimate its future speed, time to cover distance, etc.
 ---@field trainWeight double @ The total weight of the train.
 ---@field trainFrictionForce double @ The total friction force of the train.
@@ -1824,12 +1850,9 @@ Utils.GetTrainsSpeedCalculationData = function(train, train_speed)
         if carriage_speed == train_speed and carriage.type == "locomotive" then
             -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
             if fuelAccelerationBonus == nil then
-                local currentFuel = carriage.burner.inventory[1] ---@type LuaItemStack
-                if currentFuel ~= nil then
-                    fuelAccelerationBonus = currentFuel.prototype.fuel_acceleration_multiplier
-                else
-                    -- OVERHAUL: add some robust resolution for this....
-                    error("don't support loco with non simply identified fuel")
+                local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
+                if currentFuelPrototype ~= nil then
+                    fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
                 end
             end
 
@@ -1927,12 +1950,11 @@ end
 Utils.CalculateTrainBrakingInitialSpeedForStopDistance = function(trainData, distance, forcesBrakingForceBonus)
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local ticks = math.sqrt(tickBrakingReduction * distance) / tickBrakingReduction
-    local initialAbsoluteSpeed = math.floor(ticks) * tickBrakingReduction * 1.25 -- TODO: * 1.25 is a hack to get the right numbers in my various tests.
+    local initialAbsoluteSpeed = math.sqrt(2 * tickBrakingReduction * distance)
     return initialAbsoluteSpeed
 end
 
----comment
+--- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance.
 ---@param trainData UtilsTrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param distance double

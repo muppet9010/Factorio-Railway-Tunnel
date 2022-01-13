@@ -58,7 +58,8 @@ Death Event Detection
 At present we don't subscribe to any common named prototype death events, only our custom ones. And so I don't believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.
 
 
-Train Leaving Tunnel Gives Way
-------------------------------
+Train Leaving Tunnel
+--------------------
 
-A train trying to leave a tunnel will tend to give way to other trains on the rail network. This is due to the tunnel train only being able to claim signal blocks once released, and every time it tries to leave and can't claim the signals for its speed it has to wait longer while it simulates slowing down in the tunnel.
+- A train trying to leave a tunnel will tend to give way to other trains on the rail network. This is due to the tunnel train only being able to claim signal blocks once released, and every time it tries to leave and can't claim the signals for its speed it has to wait longer while it simulates slowing down in the tunnel.
+- A train that can't leave at full speed will have its expected leaving speed recalculated and the time to traverse the tunnel set to fully account for this. This means while a train enters the tunnel at full speed regardless of the rail network state on the other side the total duration and leaving speed of using the tunnel will correct this.

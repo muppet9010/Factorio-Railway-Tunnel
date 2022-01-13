@@ -22,7 +22,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---
 ---@field trainSpeedCalculationData? UtilsTrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
----@field traversalTravelDistance double|null @ The length of the tunnel the train is traveeling through on this traversal.
+---@field traversalTravelDistance double|null @ The length of tunnel the train is travelling through on this traversal. This is entering position to leaving position.
 ---@field traversalInitialDuration? Tick|null @ The number of tick's the train takes to traverse the tunnel.
 ---@field traversalArrivalTick? Tick|null @ The tick the train reaches the far end of the tunnel and is restarted.
 ---@field trainLeavingSpeedAbsolute? double|null @ The absolute speed the train will be set too at the moment it starts leaving the tunnel.
@@ -30,7 +30,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---
 ---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
 ---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
----@field leavingTrainForwards?  boolean|null @ If the leaving train is travelling forwards or not.
+---@field leavingTrainForwards? boolean|null @ If the leaving train is travelling forwards or not. Populated on first setting of the leaving trains speed.
 ---
 ---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel.
 ---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain.
@@ -354,16 +354,9 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
     else
         -- Train arrival time has come.
 
-        -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed.
+        -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainForwards for later use.
         local leavingTrain = managedTrain.leavingTrain
-        leavingTrain.speed = managedTrain.trainLeavingSpeedAbsolute
-        TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
-        managedTrain.leavingTrainForwards = true
-        if leavingTrain.speed == 0 then
-            leavingTrain.speed = -managedTrain.trainLeavingSpeedAbsolute
-            managedTrain.leavingTrainForwards = false
-            leavingTrain.manual_mode = false -- Have to do after setting speed again to get the train state to update right now.
-        end
+        TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards")
 
         TrainManager.TrainUndergroundCompleted(managedTrain)
     end
@@ -378,27 +371,11 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         return
     end
 
-    -- On first run of this function we won't know what direciton the new train is facing, but on any delayed runs we know its facing.
-    -- Set the speed, then set to automatic. If the speed becomes 0 then the train is facing backwards to what we expect, so reverse the speed.
+    -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainForwards for later use.
     local leavingTrain = managedTrain.leavingTrain
-    if managedTrain.leavingTrainForwards == nil or managedTrain.leavingTrainForwards then
-        leavingTrain.speed = managedTrain.trainLeavingSpeedAbsolute
-    else
-        leavingTrain.speed = -managedTrain.trainLeavingSpeedAbsolute
-    end
-    TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
-    if managedTrain.leavingTrainForwards == nil then
-        -- Train hasn't tried to leae before so we don't actually know which way it is facing.
-        if leavingTrain.speed ~= 0 then
-            managedTrain.leavingTrainForwards = true
-        else
-            leavingTrain.speed = -managedTrain.trainLeavingSpeedAbsolute
-            managedTrain.leavingTrainForwards = false
-            leavingTrain.manual_mode = false -- Have to do after setting speed again to get the train state to update right now.
-        end
-    end
+    TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards")
 
-    -- Check if the train can just leave at its full speed and if so end.
+    -- Check if the train can just leave at its current speed and if so release it here.
     local leavingTrain_state = leavingTrain.state
     if leavingTrain_state == defines.train_state.on_the_path then
         -- Train can leave at full speed.
@@ -408,7 +385,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
     -- Train can't just leave at its current speed blindly, so work out how to proceed based on its state.
     local crawlAbsSpeed = 0.03 -- The speed for the train if its going to crawl forwards to the end of the portal.
-    local distanceBeyondPortalEnd, leavingTrainNewAbsoluteSpeed, scheduleFutureArrival = 0, nil, nil
+    local distanceBeyondTrainLeavingPosition, leavingTrainNewAbsoluteSpeed, scheduleFutureArrival = 0, nil, nil
     if leavingTrain_state == defines.train_state.path_lost or leavingTrain_state == defines.train_state.no_schedule or leavingTrain_state == defines.train_state.no_path or leavingTrain_state == defines.train_state.destination_full then
         -- Train has no where to go.
         -- Set to pull up to the end of the portal and wait there.
@@ -428,8 +405,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         scheduleFutureArrival = false
     elseif leavingTrain_state == defines.train_state.arrive_station then
         -- Train needs to have been braking as its pulling up to its station, but we can easily get the distance from its path data.
-        local leavingTrain_path = leavingTrain.path
-        distanceBeyondPortalEnd = leavingTrain_path.total_distance - leavingTrain_path.travelled_distance
+        distanceBeyondTrainLeavingPosition = leavingTrain.path.total_distance
         scheduleFutureArrival = true
     elseif leavingTrain_state == defines.train_state.arrive_signal then
         -- Train needs to have been braking as its pulling up to its signal.
@@ -446,13 +422,23 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
             local targetRails = leavingTrain_signal.get_connected_rails() -- A signal as the stopping target can be on multiple rails at once, however, only 1 will be in our path list.
             local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
 
-            -- Measure the track distance from the train to the stopping signal rail. This won't account for where on the rail the signal is, or where on the current rail the train is, but is close enough.
+            -- Measure the track distance from the train to the stopping signal rail. This is to the track before the signal as this is where the train stops.
+            -- TODO on this to look at setting a temporary path to the rail and checking its returned length.
             for i, railEntity in pairs(leavingTrain.path.rails) do
-                distanceBeyondPortalEnd = distanceBeyondPortalEnd + TrainManager.GetRailEntityLength(railEntity.type)
                 if targetRailUnitNumberAsKeys[railEntity.unit_number] then
                     -- One of the rails attached to the target entity has been reached in the path, so stop before we count it.
                     break
                 end
+                distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition + TrainManager.GetRailEntityLength(railEntity.type)
+            end
+
+            local pathRails = leavingTrain.path.rails
+            for i, railEntity in pairs(pathRails) do
+                if targetRailUnitNumberAsKeys[railEntity.unit_number] then
+                    -- One of the rails attached to the target entity has been reached in the path, so stop before we count it.
+                    break
+                end
+                --distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition + TrainManager.GetRailEntityLength(railEntity.type)
             end
 
             scheduleFutureArrival = true
@@ -463,34 +449,39 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
     -- Handle the next steps based on the processing.
     if scheduleFutureArrival then
-        -- Calculate the delayed arrival time and delay schedule to this.
+        -- Calculate the delayed arrival time and delay schedule to this. This will account for the full speed change and will account for if the train entered the tunnel overly fast, making the total duration and leaving speed correct.
+
         local currentForcesBrakingBonus = managedTrain.tunnel.force.train_braking_force_bonus
+        distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - 6 -- TODO: Just makes it work.... but not sure why so much is needed as 3 should be the right amount, or 4 for some padding.
 
         -- Calculate how much distance and ticks need to be reviewed for the train at its current speed.
         local breakingDistanceToStop, _ = Utils.CalculateTrainBrakingStopDistanceTimeForSpeed(managedTrain.trainSpeedCalculationData, managedTrain.trainLeavingSpeedAbsolute, currentForcesBrakingBonus)
-        local previousTunnelAccelerationDistanceNowBraking = (breakingDistanceToStop - distanceBeyondPortalEnd)
+        local previousTunnelAccelerationDistanceNowBraking = (breakingDistanceToStop - distanceBeyondTrainLeavingPosition)
 
         -- Work out how much acceleration ticks, speed and distance when initially entering the tunnel are within the new safe acceleration time period. The unsafe part of this includes excessive braking, but it shouldn't be too much and so is close enough.
-        local previousTicksAcceleratingThatNowArent = Utils.EstimateTrainTimeSpentAcceleratingToSpeedOverDistance(managedTrain.trainSpeedCalculationData, managedTrain.trainLeavingSpeedAbsolute, previousTunnelAccelerationDistanceNowBraking)
-        local ticksAccelerating = managedTrain.traversalInitialDuration - previousTicksAcceleratingThatNowArent
-        local _, newTunnelDistanceCovered = Utils.EstimateTrainAbsoluteSpeedDistanceForTicks(managedTrain.trainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, ticksAccelerating)
-        local spareTunnelDistance = managedTrain.traversalTravelDistance - newTunnelDistanceCovered
+        local previousTicksAcceleratingThatNowArentEstimated = Utils.EstimateTrainTimeSpentAcceleratingToSpeedOverDistance(managedTrain.trainSpeedCalculationData, managedTrain.trainLeavingSpeedAbsolute, previousTunnelAccelerationDistanceNowBraking)
+        local ticksAcceleratingEstimated = managedTrain.traversalInitialDuration - previousTicksAcceleratingThatNowArentEstimated
+        local _, newTunnelDistanceCoveredEstimated = Utils.EstimateTrainAbsoluteSpeedDistanceForTicks(managedTrain.trainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, ticksAcceleratingEstimated)
+        local spareTunnelDistance = managedTrain.traversalTravelDistance - newTunnelDistanceCoveredEstimated
 
-        -- Work out how many ticks within the tunnel it takes to cover the distance gap.
-        local requiredSpeedAtPortalEnd = Utils.CalculateTrainBrakingInitialSpeedForStopDistance(managedTrain.trainSpeedCalculationData, distanceBeyondPortalEnd, currentForcesBrakingBonus)
-        local ticksAceleratingAndBraking = Utils.EstimateTrainTicksForDistanceWithSameStartEndSpeed(managedTrain.trainSpeedCalculationData, requiredSpeedAtPortalEnd, spareTunnelDistance, currentForcesBrakingBonus)
+        -- Work out the speed we should be at when leaving the portal and save it for applying when leaving the tunnel.
+        local requiredSpeedAtPortalEnd = Utils.CalculateTrainBrakingInitialSpeedForStopDistance(managedTrain.trainSpeedCalculationData, distanceBeyondTrainLeavingPosition, currentForcesBrakingBonus)
+        managedTrain.trainLeavingSpeedAbsolute = requiredSpeedAtPortalEnd
+
+        -- Work out how many ticks within the tunnel it takes to cover the distance gap. We must start and end at the same speed over this distance, so accelerate and brake during it.
+        local ticksAceleratingAndBrakingEstimated = Utils.EstimateTrainTicksForDistanceWithSameStartEndSpeed(managedTrain.trainSpeedCalculationData, requiredSpeedAtPortalEnd, spareTunnelDistance, currentForcesBrakingBonus)
 
         -- Work out the delay for leaving the tunnel.
-        local delayTicks = ticksAccelerating + ticksAceleratingAndBraking - managedTrain.traversalInitialDuration
+        local delayTicks = ticksAcceleratingEstimated + ticksAceleratingAndBrakingEstimated - managedTrain.traversalInitialDuration
+        if delayTicks < 0 then
+            error("leaving train shouldn't be able to be rescheduled with negative delay compared to previous computing")
+        end
 
         -- If the new time is not the same as the old then we need to reschedule, this is the expected situation. However if the arrival times are the same then just let the code flow in to releasing the train now.
         if delayTicks > 0 then
             -- Schedule the next attempt at releasing the train.
             managedTrain.traversalArrivalTick = managedTrain.traversalArrivalTick + delayTicks
             EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain})
-
-            -- Apply the speed reduction to the stored train's speed for when it next tries to leave the tunnel.
-            managedTrain.trainLeavingSpeedAbsolute = requiredSpeedAtPortalEnd
 
             -- Reset the leaving trains speed and state as we don't want it to do anything yet.
             leavingTrain.speed = 0
@@ -926,7 +917,7 @@ TrainManager.IsTrainHealthlyState = function(train)
     end
 end
 
--- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
+--- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
 ---@param train LuaTrain
 ---@param targetTrainStop LuaEntity
 TrainManager.SetTrainToAuto = function(train, targetTrainStop)
@@ -938,6 +929,30 @@ TrainManager.SetTrainToAuto = function(train, targetTrainStop)
     else
         -- There was no target train stop, so no special handling needed.
         train.manual_mode = false
+    end
+end
+
+--- Sets a trains speed correctly when we are unsure of the trains direction. Utilises and updates the train facing forwards ManagedTrain field for quicker simplier usage.
+---@param train LuaTrain
+---@param absoluteSpeed double
+---@param managedTrain ManagedTrain
+---@param facingForwardsFieldName string @ i.e. leavingTrainForwards
+TrainManager.SetTrainSpeedInCorrectDirection = function(train, absoluteSpeed, managedTrain, facingForwardsFieldName)
+    if managedTrain[facingForwardsFieldName] == nil or managedTrain[facingForwardsFieldName] then
+        train.speed = managedTrain.trainLeavingSpeedAbsolute
+    else
+        train.speed = -managedTrain.trainLeavingSpeedAbsolute
+    end
+    TrainManager.SetTrainToAuto(train, managedTrain.dummyTrain.path_end_stop)
+    if managedTrain.leavingTrainForwards == nil then
+        -- Train hasn't tried to leave before so we don't actually know which way it is facing.
+        if train.speed ~= 0 then
+            managedTrain[facingForwardsFieldName] = true
+        else
+            train.speed = -absoluteSpeed
+            managedTrain[facingForwardsFieldName] = false
+            train.manual_mode = false -- Have to do after setting speed again to get the train state to update right now.
+        end
     end
 end
 
