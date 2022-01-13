@@ -1796,6 +1796,18 @@ Utils.GetLocomotivesCurrentFuelPrototype = function(loco)
     return nil
 end
 
+---@param railEntityType string @ Prototype name.
+---@return double
+Utils.GetRailEntityLength = function(railEntityType)
+    if railEntityType == "straight-rail" then
+        return 2
+    elseif railEntityType == "curved-rail" then
+        return 7.842081225095
+    else
+        error("not valid rail type: " .. railEntityType)
+    end
+end
+
 ---@class UtilsTrainSpeedCalculationData @ Data the Utils functions need to calculate and estimate its future speed, time to cover distance, etc.
 ---@field trainWeight double @ The total weight of the train.
 ---@field trainFrictionForce double @ The total friction force of the train.
@@ -1805,33 +1817,60 @@ end
 ---@field maxSpeed double @ The max speed the train can achieve.
 ---@field trainRawBrakingForce double @ The total braking force of the train ignoring any force bonus percentage from LuaForce.train_braking_force_bonus.
 
+---@class UtilsTrainCarriageData @ Data array of cached details on a train's carriage. Allows only obtaining required data pr carriage once. Only populate carriage data when required.
+---@field entity LuaEntity
+---@field prototypeName? string|null
+---@field speed? double|null
+
 --- Get the data other Utils functions needed for calculating and estimating a trains future speed, time to cover distance, etc.
 --- This is only accurate while the train is heading in the same direction as when this data was gathered.
+--- Either train_carriages or trainCarriagesDataArray needs to be provided.
 ---@param train LuaTrain
 ---@param train_speed double
+---@param train_carriages? LuaEntity[]|null
+---@param trainCarriagesDataArray? UtilsTrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
 ---@return UtilsTrainSpeedCalculationData
-Utils.GetTrainsSpeedCalculationData = function(train, train_speed)
+Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
     ---@type UtilsTrainSpeedCalculationData
     local trainData = {
         trainWeight = train.weight
     }
 
     local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce = 0, 0, nil, 0
-    local train_carriages = train.carriages
     local trainForwards = train_speed > 0
+
+    -- Work out initial data based on what carriage data type has been passed in.
+    local carriageCount
+    if trainCarriagesDataArray ~= nil then
+        carriageCount = #trainCarriagesDataArray
+    else
+        carriageCount = #train_carriages
+    end
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator
     if (train_speed > 0) then
-        minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #train_carriages, 1
+        minCarriageIndex, maxCarriageIndex, carriageIterator = 1, carriageCount, 1
     elseif (train_speed < 0) then
-        minCarriageIndex, maxCarriageIndex, carriageIterator = #train_carriages, 1, -1
+        minCarriageIndex, maxCarriageIndex, carriageIterator = carriageCount, 1, -1
     end
 
     local firstCarriage = true
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        local carriage = train_carriages[currentSourceTrainCarriageIndex]
-        local carriage_name, carriage_speed = carriage.name, carriage.speed
+        local carriageEntity, carraigeCachedData, carriage_name
+        if trainCarriagesDataArray ~= nil then
+            ---@type UtilsTrainCarriageData
+            carraigeCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
+            carriage_name = carraigeCachedData.prototypeName
+            if carriage_name == nil then
+                -- Data not known so obtain and cache.
+                carriage_name = carraigeCachedData.entity.name
+                carraigeCachedData.prototypeName = carriage_name
+            end
+        else
+            carriageEntity = train_carriages[currentSourceTrainCarriageIndex]
+            carriage_name = carriageEntity.name
+        end
 
         trainFrictionForce = trainFrictionForce + PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "friction_force")
         trainRawBrakingForce = trainRawBrakingForce + PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "braking_force")
@@ -1847,16 +1886,33 @@ Utils.GetTrainsSpeedCalculationData = function(train, train_speed)
             end
         end
 
-        if carriage_speed == train_speed and carriage.type == "locomotive" then
-            -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
-            if fuelAccelerationBonus == nil then
-                local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
-                if currentFuelPrototype ~= nil then
-                    fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
+        if carriage_name == "locomotive" then
+            local carriage_speed
+            if trainCarriagesDataArray ~= nil then
+                carriage_speed = carraigeCachedData.speed
+                if carriage_speed == nil then
+                    -- Data not known so obtain and cache.
+                    carriage_speed = carraigeCachedData.entity.speed
+                    carraigeCachedData.speed = carriage_speed
                 end
+            else
+                carriage_speed = carriageEntity.speed
             end
 
-            forwardFacingLocoCount = forwardFacingLocoCount + 1
+            if carriage_speed == train_speed then
+                -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
+                local carriage = carriageEntity or carraigeCachedData.entity
+                if fuelAccelerationBonus == nil then
+                    local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
+                    if currentFuelPrototype ~= nil then
+                        -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
+                        fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
+                    end
+                end
+
+                -- Coutn all forward moving loco's. Just assume they all have fuel.
+                forwardFacingLocoCount = forwardFacingLocoCount + 1
+            end
         end
     end
 
