@@ -299,8 +299,10 @@ Test.GenerateTestScenarios = function(testName)
         end
     end
 
-    -- Write out all tests to csv as debug.
-    Test.WriteTestScenariosToFile(testName)
+    -- Write out all tests to csv as debug if approperiate.
+    if DebugOutputTestScenarioDetails then
+        TestFunctions.WriteTestScenariosToFile(testName, {"targetType,tunnelUsageState,nextScheduleOrder,expectedFinalTrainState"}, Test.TestScenarios)
+    end
 end
 
 Test.CalculateExpectedResults = function(testScenario)
@@ -319,21 +321,6 @@ Test.CalculateExpectedResults = function(testScenario)
     end
 
     return expectedFinalTrainState
-end
-
-Test.WriteTestScenariosToFile = function(testName)
-    -- A debug function to write out the tests list to a csv for checking in excel.
-    if not DebugOutputTestScenarioDetails or game == nil then
-        -- game will be nil on loading a save.
-        return
-    end
-
-    local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#,targetType,tunnelUsageState,nextScheduleOrder,expectedFinalTrainState" .. "\r\n", false)
-
-    for testIndex, test in pairs(Test.TestScenarios) do
-        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.targetType) .. "," .. tostring(test.tunnelUsageState) .. "," .. tostring(test.nextScheduleOrder) .. "," .. tostring(test.expectedFinalTrainState) .. "\r\n", true)
-    end
 end
 
 return Test

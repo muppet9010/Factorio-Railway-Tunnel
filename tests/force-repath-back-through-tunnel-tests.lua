@@ -1010,8 +1010,10 @@ Test.GenerateTestScenarios = function(testName)
         end
     end
 
-    -- Write out all tests to csv as debug.
-    Test.WriteTestScenariosToFile(testName)
+    -- Write out all tests to csv as debug if approperiate.
+    if DebugOutputTestScenarioDetails then
+        TestFunctions.WriteTestScenariosToFile(testName, {"train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,scheduleTargetType,duplicateOutcomeTest,afterTrackRemovedResult,afterTrackReturnedResult"}, Test.TestScenarios)
+    end
 end
 
 ---@param startingSpeed double
@@ -1346,22 +1348,6 @@ Test.HandleBeforeCommittedUnknownOutcome = function(tunnelUsageEntry, testData)
     end
 
     game.print("newly calculated expected results: " .. testScenario.afterTrackRemovedResult .. " - " .. testScenario.afterTrackReturnedResult, Colors.cyan)
-end
-
-Test.WriteTestScenariosToFile = function(testName)
-    -- A debug function to write out the tests list to a csv for checking in excel.
-    if not DebugOutputTestScenarioDetails or game == nil then
-        -- game will be nil on loading a save.
-        return
-    end
-
-    -- Ignores playerInCarriageNumber
-    local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#,train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,scheduleTargetType,duplicateOutcomeTest,afterTrackRemovedResult,afterTrackReturnedResult" .. "\r\n", false)
-
-    for testIndex, test in pairs(Test.TestScenarios) do
-        game.write_file(fileName, tostring(testIndex) .. "," .. tostring(test.trainText) .. "," .. tostring(test.tunnelUsageType.name) .. "," .. tostring(test.reverseOnCarriageNumber) .. "," .. tostring(test.backwardsLocoCarriageNumber) .. "," .. tostring(test.forwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.backwardsPathingOptionAfterTunnelType) .. "," .. tostring(test.stationReservationCompetitorTrainExist) .. "," .. tostring(test.scheduleTargetType) .. "," .. tostring(test.duplicateOutcomeTest) .. "," .. tostring(test.afterTrackRemovedResult) .. "," .. tostring(test.afterTrackReturnedResult) .. "\r\n", true)
-    end
 end
 
 return Test

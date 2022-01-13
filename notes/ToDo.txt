@@ -12,14 +12,14 @@ DON'T COMMIT:
     - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
 
 
-TODO next
+TODO Now
 ----------------
     - Make tests for the train traversal time. Do the setups I used in saves, but also include the train without tunnel usage for a visual comparison. If close enough see about adding some rough percentage timing check on each test.
     - For 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this, or leave the entering train's lead locomotive (one that kills the detector) in place for a tick with 0 speed on manual (change force, invunerable, can't be deconned, etc). It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
     - An extension to the 1 tick delay issue on trains transitioning. The same applies to entering trains, if 2 trains both try to drive/path through the tunnel at the same tick I think they will both be allowed to start their journeys. The second will be rejected at the entrance entry signal, but will then be blocking the line. Only applies to bi-directional tunnel usage and needs special tests with facing off locos right on the end of the tunnel with slow acceleration. Needs a dedicated test to confirm behavour.
 
 
-TODO later
+TODO Soon
 ----------------
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
     - Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This area will have some above ground visual blocking graphics so train within it isn't visible. Both should be created when the portal is complete and not require a tunnel. Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
@@ -73,7 +73,7 @@ Concept Changes
         - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well.
 	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
-    - Can we do TrainManager.TrainOnPortalTrackOngoing() say once per second rather than every tick. May need a change to a more expensive API check of the train rather than the signal. But this function is now a big UPS user.
+    - Can we do TrainManager.TrainOnPortalTrackOngoing() say once per second rather than every tick. May need a change to a more expensive API check of the train rather than the signal. But this function is now a big UPS user. Same question for TrainManager.TrainLeavingOngoing().
 
 
 Ideas
