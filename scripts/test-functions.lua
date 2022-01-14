@@ -292,7 +292,7 @@ end
 ---    =   rear cargo wagon
 ---@alias TestFunctions_CarriageTextualRepresentation "<"|">"|"-"|"="
 
----@class TestFunctions_TrainSpecifiction
+---@class TestFunctions_TrainSpecifiction @ used to specify a trains details in short-hand. Is parsed for usage in to full table by TestFunctions.GetTrainCompositionFromTextualRepresentation().
 ---@field composition TestFunctions_CarriageTextualRepresentation[] @ Ordered front to back of the train.
 ---@field startingSpeed? double|null @ The speed the train starts at, defaults to 0. This is in relation to the orientation of "Forwards" as defined at the building stage.
 
@@ -387,17 +387,23 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
                 game.print("No player found to set as driver, test continuing regardless")
             end
         end
+    end
 
-        -- Set the speed on the last carriage.
-        if startingSpeed ~= nil and carriageNumber == #carriagesDetails then
-            if carriageDetails.facingForwards then
-                placedCarriage.speed = startingSpeed
-            else
-                placedCarriage.speed = -startingSpeed
-            end
+    local train = placedCarriage.train
+
+    -- Set the speed on the last carriage.
+    if startingSpeed ~= nil and startingSpeed ~= 0 then
+        train.speed = startingSpeed
+        local expectedSpeed
+        if carriagesDetails[#carriagesDetails].facingForwards then
+            expectedSpeed = startingSpeed
+        else
+            expectedSpeed = -startingSpeed
+        end
+        if placedCarriage.speed ~= expectedSpeed then
+            train.speed = -startingSpeed
         end
     end
-    local train = placedCarriage.train
 
     TestFunctions.MakeCarriagesUnique(locomotivesBuilt, cargoWagonsBuilt)
 

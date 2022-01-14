@@ -20,6 +20,12 @@ local TrainComposition = {
     },
     ["<---->"] = {
         composition = "<---->"
+    },
+    ["<<<<<<<<<>"] = {
+        composition = "<<<<<<<<<>"
+    },
+    ["<<-------->>"] = {
+        composition = "<<-------->>"
     }
 }
 local TunnelOversized = {
@@ -77,7 +83,6 @@ Test.GetTestDisplayName = function(testName)
 end
 
 -- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
--- TrainComposition,TunnelOversized,StartingSpeed,LeavingTrackCondition   trainComposition,tunnelOversized,startingSpeed,leavingTrackCondition
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
@@ -94,9 +99,10 @@ Test.Start = function(testName)
     if testScenario.tunnelOversized == TunnelOversized.portalOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
         portalSegments = portalSegments * 4
     end
-    local railCountEachEnd = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 10 -- Guess that 10 is safely far away at max speed for "clear" LeavingTrackCondition.
+    local railCountEachEnd = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 40 -- Seems that 40 is safely far away at max speed for "clear" LeavingTrackCondition.
 
-    -- TODO: all variable parts
+    -- Stores station and signal placement position X worked out during setup.
+    local nearPositionX, farPositionX
 
     -- Place the Tunnel Track's various standard parts, starting in middle of underground and going towards train, then in middle going towards end.
     -- Set the currentXPos before and after placing each entity, so its left on the entity border between them. This means nothing special is needed between entity types.
@@ -132,19 +138,33 @@ Test.Start = function(testName)
         testSurface.create_entity {name = "railway_tunnel-portal_end", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
         currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
 
+        if orientationCount == 2 then
+            -- Store the specific X position on the exit side of the track for these 2 possible placements.
+            nearPositionX = currentPos.x + 20
+            farPositionX = currentPos.x + 100
+        end
+
         -- Place the track to the required distance
         offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         for i = 1, railCountEachEnd do
             currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
-            testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
             currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Place the station on the exit side of the track.
         if orientationCount == 2 then
+            local railStopPosition
+            if testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation then
+                railStopPosition = {x = nearPositionX, y = currentPos.y}
+            elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farStation then
+                railStopPosition = {x = farPositionX, y = currentPos.y}
+            else
+                -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
+                railStopPosition = currentPos
+            end
             offset = Utils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
-            -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
-            tunnelEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(currentPos, offset), direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            tunnelEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(railStopPosition, offset), direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
             tunnelEndStation.backer_name = "End"
         end
     end
@@ -161,24 +181,81 @@ Test.Start = function(testName)
         offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         for i = 1, railCount do
             currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
-            testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
             currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Place the station on the exit side of the track.
         if orientationCount == 2 then
+            local railStopPosition
+            if testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation then
+                railStopPosition = {x = nearPositionX, y = currentPos.y}
+            elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farStation then
+                railStopPosition = {x = farPositionX, y = currentPos.y}
+            else
+                -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
+                railStopPosition = currentPos
+            end
             offset = Utils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
-            -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
-            aboveEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(currentPos, offset), direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            aboveEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(railStopPosition, offset), direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
             aboveEndStation.backer_name = "End"
         end
     end
 
-    -- Add sample test data for use in the sample EveryTick().
+    -- Add trains to both tracks.
+    local rainTileLength = #testScenario.trainCarriageDetails * 7
+    local trainStartXPos = -tunnelEndStation.position.x - rainTileLength -- The -tunnelEndStation.x gives us the end of the entrance rail (opposite end to the rail stop).
+    local startingSpeedValue
+    if testScenario.startingSpeed == StartingSpeed.none then
+        startingSpeedValue = 0
+    elseif testScenario.startingSpeed == StartingSpeed.half then
+        startingSpeedValue = 0.6
+    elseif testScenario.startingSpeed == StartingSpeed.full then
+        startingSpeedValue = 2
+    else
+        error("unrecognised StartignSpeed: " .. testScenario.startingSpeed)
+    end
+    local trainFuel = {name = "rocket-fuel", count = 10}
+    local tunnelTrain = TestFunctions.BuildTrain({x = trainStartXPos, y = tunnelTrackY}, testScenario.trainCarriageDetails, defines.direction.west, nil, startingSpeedValue, trainFuel)
+    tunnelTrain.schedule = {current = 1, records = {{station = "End"}}}
+    tunnelTrain.manual_mode = false
+    local aboveTrain = TestFunctions.BuildTrain({x = trainStartXPos, y = aboveTrackY}, testScenario.trainCarriageDetails, defines.direction.west, nil, startingSpeedValue, trainFuel)
+    aboveTrain.schedule = {current = 1, records = {{station = "End"}}}
+    aboveTrain.manual_mode = false
+
+    -- Set up the LeavingTrackConditions that need adhock stuff adding.
+    if testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
+        -- Put a loco just after the protal to close the portal's exit signal.
+        testSurface.create_entity {name = "train-stop", position = {x = nearPositionX, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "train-stop", position = {x = nearPositionX, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal then
+        -- Put a signal at the near position and a loco to close it just after.
+        testSurface.create_entity {name = "rail-signal", position = {x = nearPositionX - 0.5, y = tunnelTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "train-stop", position = {x = nearPositionX - 7, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "rail-signal", position = {x = nearPositionX - 0.5, y = aboveTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "train-stop", position = {x = nearPositionX - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farSignal then
+        -- Put a signal at the far position and a loco to close it just after.
+        testSurface.create_entity {name = "rail-signal", position = {x = farPositionX - 0.5, y = tunnelTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "train-stop", position = {x = farPositionX - 7, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "rail-signal", position = {x = farPositionX - 0.5, y = aboveTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "train-stop", position = {x = farPositionX - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    end
+
+    -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario.trainComposition
+    testData.tunnelEndStation = tunnelEndStation
+    testData.aboveEndStation = aboveEndStation
+    testData.tunnelTrainPreTunnel = tunnelTrain
+    testData.aboveTrain = aboveTrain
+    testData.nearPositionX = nearPositionX
+    testData.farPositionX = farPositionX
+    testData.tunnelTrackY = tunnelTrackY
+    testData.aboveTrackY = aboveTrackY
+    testData.noPath_trackRemoved = false
 
-    -- Schedule the sample EveryTick() to run each game tick.
+    -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -187,15 +264,36 @@ Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+-- TrainComposition,TunnelOversized,StartingSpeed,LeavingTrackCondition   trainComposition,tunnelOversized,startingSpeed,leavingTrackCondition
 -- Scheduled event function to check test state each tick.
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
-    --local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    --local testScenario = testData.testScenario
-    --TODO
-    if game.tick == -1 then
-        game.print(event.tick)
+    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local testScenario = testData.testScenario
+
+    -- LeavingTrackCondition.noPath only - track when to remove the rail to cause a noPath.
+    if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
+        if not testData.noPath_trackRemoved and not testData.tunnelTrain.valid then
+            -- Train has entered tunnel, remove the forwards path out of the tunnel on both rails.
+            testData.noPath_trackRemoved = true
+            local searchBoundingBox = {
+                left_top = {x = testData.nearPositionX - 0.5, y = testData.tunnelTrackY - 0.5},
+                right_bottom = {x = testData.nearPositionX + 0.5, y = testData.aboveTrackY + 0.5}
+            }
+
+            local railsFound = TestFunctions.GetTestSurface().find_entities_filtered {area = searchBoundingBox, name = "straight-rail"}
+            if #railsFound ~= 2 then
+                error("rails not found where expected")
+            else
+                for _, railFound in pairs(railsFound) do
+                    railFound.destroy()
+                end
+            end
+        end
     end
+
+    --TODO
+    -- Get the train when it leaves the tunnel and set as testData.tunnelTrainPreTunnel . Need to add tracking of the tunnel usage events, but should be much simplier now.
 end
 
 -- Generate the combinations of different tests required.

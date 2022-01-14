@@ -1991,17 +1991,19 @@ Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(train
     return ticks
 end
 
---- Calculates the braking distance and ticks for a train at a given speed to fully stop.
+--- Calculates the braking distance and ticks for a train at a given speed to brake to a required speed.
 ---@param trainData UtilsTrainSpeedCalculationData
----@param speedToDropAbsolute double @ the amount of speed that wants to be lost via braking.
+---@param initialSpeedAbsolute double
+---@param requiredSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
----@return double breakingDistance
 ---@return Tick ticksToStop @ Rounded up.
-Utils.CalculateBrakingTrainDistanceAndTimeForSpeedDrop = function(trainData, speedToDropAbsolute, forcesBrakingForceBonus)
+---@return double breakingDistance
+Utils.CalculateBrakingTrainDistanceAndTimeFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute, forcesBrakingForceBonus)
+    local speedToDropAbsolute = initialSpeedAbsolute - requiredSpeedAbsolute
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local ticksToStop = math.ceil(speedToDropAbsolute / ((trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight))
-    local breakingDistance = math.max(ticksToStop / 2.0, 1.1) * speedToDropAbsolute
-    return breakingDistance, ticksToStop
+    local breakingDistance = (ticksToStop * requiredSpeedAbsolute) + ((ticksToStop / 2.0) * speedToDropAbsolute)
+    return ticksToStop, breakingDistance
 end
 
 --- Calculates the train speed if it brakes for a time period.

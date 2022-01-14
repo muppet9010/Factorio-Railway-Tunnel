@@ -60,12 +60,12 @@ Test.Start = function(testName)
     -- The building bleuprint function returns 2 lists of what it built for easy caching and future reference in the test's execution.
     local _, _ = TestFunctions.BuildBlueprintFromString(blueprint, {x = 10, y = 0}, testName)
 
-    -- Add sample test data for use in the sample EveryTick().
+    -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.randomValue = math.random(1, 2)
     testData.testScenario = testScenario
 
-    -- Schedule the sample EveryTick() to run each game tick.
+    -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
