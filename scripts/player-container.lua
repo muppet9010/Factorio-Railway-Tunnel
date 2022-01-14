@@ -253,8 +253,8 @@ end
 
 -- OVERHAUL - has the managedTrain passed in to it now in calls to fix syntax errors.
 ---@param undergroundTrain LuaTrain
----@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 PlayerContainer.On_TunnelRemoved = function(undergroundTrain, killForce, killerCauseEntity)
     if 1 == 1 then
         --OVERHAUL: just skip this Module for now.

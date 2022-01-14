@@ -125,8 +125,8 @@ Tunnel.CompleteTunnel = function(portals, underground)
 end
 
 ---@param tunnel Tunnel
----@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 Tunnel.RemoveTunnel = function(tunnel, killForce, killerCauseEntity)
     MOD.Interfaces.TrainManager.On_TunnelRemoved(tunnel, killForce, killerCauseEntity)
     MOD.Interfaces.Portal.On_TunnelRemoved(tunnel.portals, killForce, killerCauseEntity)

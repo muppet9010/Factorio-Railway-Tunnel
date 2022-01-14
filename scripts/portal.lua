@@ -511,8 +511,8 @@ end
 
 --- Checks if a complete Portal has a connection at an internal position. If it does returns the objects, otherwise nil for all.
 ---@param portalInternalSurfacePositionString SurfacePositionString
----@return Portal|nil portal
----@return PortalEnd|nil portalEnd
+---@return Portal|null portal
+---@return PortalEnd|null portalEnd
 Portal.CanAPortalConnectAtItsInternalPosition = function(portalInternalSurfacePositionString)
     local portalTunnelInternalConnectionSurfacePositionObject = global.portals.portalTunnelInternalConnectionSurfacePositionStrings[portalInternalSurfacePositionString]
     if portalTunnelInternalConnectionSurfacePositionObject ~= nil and portalTunnelInternalConnectionSurfacePositionObject.portal.isComplete then
@@ -833,8 +833,8 @@ end
 
 -- Called by other functions when a portal part entity is removed and thus we need to remove the portal as part of this.
 ---@param removedPortalPart PortalPart
----@param killForce? LuaForce @ Populated if the entity is being removed due to it being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killForce? LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
 Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal part object itself so that the surfacePositions are removed before we re-create the remaining portal part's portals.
     global.portals.portalPartEntityIdToPortalPart[removedPortalPart.id] = nil
@@ -888,8 +888,8 @@ end
 
 -- Called from the Tunnel Manager when a tunnel that the portal was part of has been removed.
 ---@param portals Portal[]
----@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
     -- Cleanse the portal's fields that are only populated when they are part of a tunnel.
     for _, portal in pairs(portals) do

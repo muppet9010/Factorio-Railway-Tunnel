@@ -631,8 +631,8 @@ TrainManager.DestroyDummyTrain = function(managedTrain)
 end
 
 ---@param tunnelRemoved Tunnel
----@param killForce? LuaForce @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEntity)
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
@@ -752,7 +752,7 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param dontReleaseTunnel? boolean @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
+---@param dontReleaseTunnel? boolean|null @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, dontReleaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
         PlayerContainer.On_TerminateTunnelTrip(managedTrain)

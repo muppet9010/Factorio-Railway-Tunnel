@@ -88,7 +88,7 @@ BiomeTrees.AddBiomeTreeNearPosition = function(surface, position, distance)
         Logging.LogPrint("No position for new tree found", logNonPositives)
         return nil
     end
-    local newTree = surface.create_entity {name = treeType, position = newPosition, force = "neutral", raise_built = true}
+    local newTree = surface.create_entity {name = treeType, position = newPosition, force = "neutral", raise_built = true, create_build_effect_smoke = false}
     if newTree == nil then
         Logging.LogPrint("Failed to create tree at found position")
         return nil

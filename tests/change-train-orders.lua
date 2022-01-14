@@ -274,7 +274,7 @@ Test.BuildTrain = function(buildStation, trainType, origionalStation, targetType
     local placementPosition = Utils.ApplyOffsetToPosition(buildStation.position, {x = 0.5, y = -2}) -- offset to position first carriage correctly.
     for _, carriageDetails in pairs(carriagesDetails) do
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, {x = 0 - Common.GetCarriagePlacementDistance(carriageDetails.name), y = 0}) -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
-        placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force}
+        placedCarriage = surface.create_entity {name = carriageDetails.name, position = placementPosition, direction = Utils.OrientationToDirection(carriageDetails.orientation), force = force, raise_built = false, create_build_effect_smoke = false}
         if carriageDetails.name == "locomotive" then
             placedCarriage.insert({name = "rocket-fuel", count = 10})
         end

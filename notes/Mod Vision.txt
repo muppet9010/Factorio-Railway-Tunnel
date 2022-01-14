@@ -20,7 +20,7 @@ Expected behavour
 
 Known non ideal behavour
 ------------------------
-
+    - Scripts must use "raise_built" = true whne creating our tunnel parts, otherwise the mod doesn't know about them. This applies to our mod internally and any external mods. Same equivilence for when any mod removes one of our entities.
 
 
 PREDICTED UPS SAVINGS:

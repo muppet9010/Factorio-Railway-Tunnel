@@ -48,10 +48,10 @@ end
 ---@param surface LuaSurface
 ---@param positionedBoundingBox BoundingBox
 ---@param collisionBoxOnlyEntities boolean
----@param onlyForceAffected? LuaForce
+---@param onlyForceAffected? LuaForce|null
 ---@param onlyDestructible boolean
 ---@param onlyKillable boolean
----@param entitiesExcluded? LuaEntity[]
+---@param entitiesExcluded? LuaEntity[]|null
 ---@return table<int, LuaEntity>
 Utils.ReturnAllObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, onlyDestructible, onlyKillable, entitiesExcluded)
     local entitiesFound, filteredEntitiesFound = surface.find_entities(positionedBoundingBox), {}
@@ -84,11 +84,11 @@ end
 
 ---@param surface LuaSurface
 ---@param positionedBoundingBox BoundingBox
----@param killerEntity? LuaEntity
+---@param killerEntity? LuaEntity|null
 ---@param collisionBoxOnlyEntities boolean
 ---@param onlyForceAffected boolean
----@param entitiesExcluded? LuaEntity[]
----@param killerForce? LuaForce
+---@param entitiesExcluded? LuaEntity[]|null
+---@param killerForce? LuaForce|null
 Utils.KillAllKillableObjectsInArea = function(surface, positionedBoundingBox, killerEntity, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded, killerForce)
     if killerForce == nil then
         killerForce = "neutral"
@@ -104,10 +104,10 @@ end
 
 ---@param surface LuaSurface
 ---@param positionedBoundingBox BoundingBox
----@param killerEntity? LuaEntity
+---@param killerEntity? LuaEntity|null
 ---@param onlyForceAffected boolean
----@param entitiesExcluded? LuaEntity[]
----@param killerForce? LuaForce
+---@param entitiesExcluded? LuaEntity[]|null
+---@param killerForce? LuaForce|null
 Utils.KillAllObjectsInArea = function(surface, positionedBoundingBox, killerEntity, onlyForceAffected, entitiesExcluded, killerForce)
     if killerForce == nil then
         killerForce = "neutral"
@@ -129,7 +129,7 @@ end
 ---@param positionedBoundingBox BoundingBox
 ---@param collisionBoxOnlyEntities boolean
 ---@param onlyForceAffected boolean
----@param entitiesExcluded? LuaEntity[]
+---@param entitiesExcluded? LuaEntity[]|null
 Utils.DestroyAllKillableObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
         entity.destroy({dp_cliff_correction = true, raise_destroy = true})
@@ -139,7 +139,7 @@ end
 ---@param surface LuaSurface
 ---@param positionedBoundingBox BoundingBox
 ---@param onlyForceAffected boolean
----@param entitiesExcluded? LuaEntity[]
+---@param entitiesExcluded? LuaEntity[]|null
 Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, false, onlyForceAffected, false, false, entitiesExcluded)) do
         entity.destroy({dp_cliff_correction = true, raise_destroy = true})
@@ -707,7 +707,7 @@ end
 
 ---@param position Position
 ---@param boundingBox BoundingBox
----@param safeTiling? boolean @ If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
+---@param safeTiling? boolean|null @ If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
 ---@return boolean
 Utils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
     if safeTiling == nil or not safeTiling then
@@ -775,8 +775,8 @@ end
 
 -- Stringify a table in to a JSON text string. Options to make it pretty printable.
 ---@param targetTable table
----@param name? string @ If provided will appear as a "name:JSONData" output.
----@param singleLineOutput? boolean @ If provided and true removes all lines and spacing from the output.
+---@param name? string|null @ If provided will appear as a "name:JSONData" output.
+---@param singleLineOutput? boolean|null @ If provided and true removes all lines and spacing from the output.
 ---@return string
 Utils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
     singleLineOutput = singleLineOutput or false
@@ -886,8 +886,8 @@ end
 
 ---@param theTable table
 ---@param value StringOrNumber
----@param returnMultipleResults? boolean @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList? boolean @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults? boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList? boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return StringOrNumber[] @ table of keys.
 Utils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
     local keysFound = {}
@@ -914,8 +914,8 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults? boolean @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList? boolean @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults? boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList? boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return StringOrNumber[] @ table of keys.
 Utils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local keysFound = {}
@@ -942,8 +942,8 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults? boolean @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList? boolean @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults? boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList? boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return table[] @ table of values, which must be a table to have an inner key/value.
 Utils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local valuesFound = {}
@@ -1212,7 +1212,7 @@ end
 
 --- Tries to converts a non boolean to a boolean value.
 ---@param text string|int|boolean @ The input to check.
----@return boolean|nil @ If successful converted then the boolean of the value, or nil if not a convertable input.
+---@return boolean|null @ If successful converted then the boolean of the value, or nil if not a convertable input.
 Utils.ToBoolean = function(text)
     if text == nil then
         return nil
@@ -1470,7 +1470,7 @@ Utils.GetRenderPlayersForcesFromActioner = function(actioner)
     end
 end
 
----@param repeat_count? int @ Defaults to 1 if not provided
+---@param repeat_count? int|null @ Defaults to 1 if not provided
 ---@return Sprite
 Utils.EmptyRotatedSprite = function(repeat_count)
     return {
@@ -1493,7 +1493,7 @@ end
 ---@param trackingTable table @ Reference to an existing table that the function will populate.
 ---@param itemName string
 ---@param itemCount uint
----@return boolean|nil @ Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
+---@return boolean|null @ Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
 Utils.TrackBestFuelCount = function(trackingTable, itemName, itemCount)
     local itemPrototype = game.item_prototypes[itemName]
     local fuelValue = itemPrototype.fuel_value
@@ -1717,14 +1717,14 @@ Utils.DirectionToOrientation = function(directionValue)
     return directionValue / 8
 end
 
----@param directionValue defines.direction
+---@param directionValue defines.direction @ A number from 0-7.
 ---@return string
 Utils.DirectionValueToName = function(directionValue)
     local names = {[0] = "north", [1] = "northeast", [2] = "east", [3] = "southeast", [4] = "south", [5] = "southwest", [6] = "west", [7] = "northwest"}
     return names[directionValue]
 end
 
----@param directionValue defines.direction
+---@param directionValue defines.direction @ A number from 0-7.
 ---@return defines.direction
 Utils.LoopDirectionValue = function(directionValue)
     return Utils.LoopIntValueWithinRange(directionValue, 0, 7)
@@ -1738,7 +1738,7 @@ end
 
 ---@param entity LuaEntity
 ---@param killerForce LuaForce
----@param killerCauseEntity? LuaEntity
+---@param killerCauseEntity? LuaEntity|null
 Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     if killerCauseEntity ~= nil then
         entity.die(killerForce, killerCauseEntity)
@@ -1750,7 +1750,7 @@ end
 Utils.MaxTrainStopLimit = 4294967295 ---@type uint
 
 ---@param luaObject LuaBaseClass
----@return LuaBaseClass|nil
+---@return LuaBaseClass|null
 Utils.ReturnValidLuaObjectOrNil = function(luaObject)
     if luaObject == nil or not luaObject.valid then
         return nil
@@ -1772,7 +1772,7 @@ end
 
 --- Checks the locomtive for its current fuel and returns it's prototype. Checks fuel inventories if nothing is currently burning.
 ---@param loco LuaEntity
----@return LuaItemPrototype|nil currentFuelPrototype @ Will be nil if therees no current fuel in the locomotive.
+---@return LuaItemPrototype|null currentFuelPrototype @ Will be nil if therees no current fuel in the locomotive.
 Utils.GetLocomotivesCurrentFuelPrototype = function(loco)
     local loco_burner = loco.burner
 

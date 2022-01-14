@@ -7,6 +7,7 @@
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
+local Utils = require("utility/utils")
 
 -- Internal test types.
 ---@type table<string, TestFunctions_TrainSpecifiction> @ The key is generally the train specification composition text string with the speed if set.
@@ -27,7 +28,7 @@ local TunnelOversized = {
     undergroundOnly = "undergroundOnly",
     portalAndUnderground = "portalAndUnderground"
 }
-local StartingSpeeds = {
+local StartingSpeed = {
     none = "none",
     half = "half", -- Will be set to 0.6 as an approximate half speed.
     full = "full" -- Will be set to 2 as this will drop to the trains real max after 1 tick.
@@ -48,7 +49,7 @@ local DoMinimalTests = false -- The minimal test to prove the concept. Just does
 local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificTrainCompositionFilter = {} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificTunnelOversizedFilter = {} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificStartingSpeedsFilter = {} -- Pass in an array of StartingSpeeds keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificStartingSpeedFilter = {} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = true -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
@@ -72,23 +73,110 @@ end
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
-    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   StartingSpeeds: " .. testScenario.startingSpeeds .. "   -   " .. testScenario.leavingTrackCondition
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition.composition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   StartingSpeeds: " .. testScenario.startingSpeed .. "   -   " .. testScenario.leavingTrackCondition
 end
 
 -- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
--- TrainComposition,TunnelOversized,StartingSpeeds,LeavingTrackCondition   trainComposition,tunnelOversized,startingSpeeds,leavingTrackCondition
+-- TrainComposition,TunnelOversized,StartingSpeed,LeavingTrackCondition   trainComposition,tunnelOversized,startingSpeed,leavingTrackCondition
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNqN0tsKgzAMBuB3yXW98NBV+ypjDA/BBbRKW8dE+u6rCmMwBrkqafN/pTQbNMOCsyXjQW9A7WQc6OsGjnpTD/ueX2cEDeRxBAGmHvfK1jRAEECmwxfoNNwEoPHkCc/8Uax3s4wN2tjwSTofs/3DJwchYJ5cTE1mvypKiRSwxiWNeEcW2/MsC+LHzNhmzjZztpmyzYJr8knJJfkvv3BJ/gcpLqnYZMklqz9knNNjkvXX4At4onVnQ5kWqspUUclCyTyEN9IVCHU="
-    -- The building bleuprint function returns 2 lists of what it built for easy caching and future reference in the test's execution.
-    local _, _ = TestFunctions.BuildBlueprintFromString(blueprint, {x = 10, y = 0}, testName)
+    local tunnelTrackY, aboveTrackY, centerX, testSurface, testForce = -5, 5, 0, TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+    local tunnelEndStation, aboveEndStation, currentPos, offset
+
+    -- Work out how many tunnel parts are needed.
+    local tunnelSegments = 4
+    if testScenario.tunnelOversized == TunnelOversized.undergroundOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
+        tunnelSegments = tunnelSegments * 4
+    end
+    local portalSegments = math.ceil(#testScenario.trainCarriageDetails * 3.5)
+    if testScenario.tunnelOversized == TunnelOversized.portalOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
+        portalSegments = portalSegments * 4
+    end
+    local railCountEachEnd = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 10 -- Guess that 10 is safely far away at max speed for "clear" LeavingTrackCondition.
+
+    -- TODO: all variable parts
+
+    -- Place the Tunnel Track's various standard parts, starting in middle of underground and going towards train, then in middle going towards end.
+    -- Set the currentXPos before and after placing each entity, so its left on the entity border between them. This means nothing special is needed between entity types.
+    for orientationCount, baseOrientaton in pairs({0.25, 0.75}) do
+        local baseDirection = Utils.OrientationToDirection(baseOrientaton)
+        currentPos = {x = centerX, y = tunnelTrackY}
+
+        -- Place the underground segments.
+        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        for i = 1, tunnelSegments / 2 do
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            testSurface.create_entity {name = "railway_tunnel-underground_segment-straight", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        end
+
+        -- Place the blocked end portal part.
+        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -3})
+        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        testSurface.create_entity {name = "railway_tunnel-portal_end", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+
+        -- Place the portal segments.
+        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        for i = 1, portalSegments do
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            testSurface.create_entity {name = "railway_tunnel-portal_segment-straight", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        end
+
+        -- Place the entry end portal part.
+        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -3})
+        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        testSurface.create_entity {name = "railway_tunnel-portal_end", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+
+        -- Place the track to the required distance
+        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        for i = 1, railCountEachEnd do
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        end
+
+        -- Place the station on the exit side of the track.
+        if orientationCount == 2 then
+            offset = Utils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
+            -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
+            tunnelEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(currentPos, offset), direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            tunnelEndStation.backer_name = "End"
+        end
+    end
+
+    -- Place the Above Track's various standard parts, starting in middle of underground and going towards train, then in middle going towards end.
+    -- Set the currentXPos before and after placing each entity, so its left on the entity border between them. This means nothing special is needed between entity types.
+    for orientationCount, baseOrientaton in pairs({0.25, 0.75}) do
+        local baseDirection = Utils.OrientationToDirection(baseOrientaton)
+        currentPos = {x = centerX, y = aboveTrackY}
+
+        local railCount = (tunnelSegments / 2) + 3 + portalSegments + 3 + railCountEachEnd
+
+        -- Place the track to the required distance
+        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        for i = 1, railCount do
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        end
+
+        -- Place the station on the exit side of the track.
+        if orientationCount == 2 then
+            offset = Utils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
+            -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
+            aboveEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(currentPos, offset), direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            aboveEndStation.backer_name = "End"
+        end
+    end
 
     -- Add sample test data for use in the sample EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.randomValue = math.random(1, 2)
-    testData.testScenario = testScenario
+    testData.testScenario = testScenario.trainComposition
 
     -- Schedule the sample EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
@@ -102,8 +190,12 @@ end
 -- Scheduled event function to check test state each tick.
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario = testData.testScenario
+    --local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    --local testScenario = testData.testScenario
+    --TODO
+    if game.tick == -1 then
+        game.print(event.tick)
+    end
 end
 
 -- Generate the combinations of different tests required.
@@ -114,36 +206,37 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out what specific instances of each type to do.
-    local trainCompositionToTest, tunnelOversizedToTest, startingSpeedsToTest, leavingTrackConditionToTest
+    local trainCompositionToTest, tunnelOversizedToTest, startingSpeedToTest, leavingTrackConditionToTest
     if DoMinimalTests then
         trainCompositionToTest = {TrainComposition["<---->"]}
         tunnelOversizedToTest = {TunnelOversized.none}
-        startingSpeedsToTest = {StartingSpeeds.none, StartingSpeeds.full}
+        startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
         leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
     elseif DoSpecificTests then
         -- Adhock testing option.
         trainCompositionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainComposition, SpecificTrainCompositionFilter)
         tunnelOversizedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelOversized, SpecificTunnelOversizedFilter)
-        startingSpeedsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StartingSpeeds, SpecificStartingSpeedsFilter)
+        startingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StartingSpeed, SpecificStartingSpeedFilter)
         leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
     else
         -- Do whole test suite.
         trainCompositionToTest = TrainComposition
         tunnelOversizedToTest = TunnelOversized
-        startingSpeedsToTest = StartingSpeeds
+        startingSpeedToTest = StartingSpeed
         leavingTrackConditionToTest = LeavingTrackCondition
     end
 
     -- Work out the combinations of the various types that we will do a test for.
     for _, trainComposition in pairs(trainCompositionToTest) do
         for _, tunnelOversized in pairs(tunnelOversizedToTest) do
-            for _, startingSpeed in pairs(startingSpeedsToTest) do
+            for _, startingSpeed in pairs(startingSpeedToTest) do
                 for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
                     local scenario = {
                         trainComposition = trainComposition,
                         tunnelOversized = tunnelOversized,
                         startingSpeed = startingSpeed,
-                        leavingTrackCondition = leavingTrackCondition
+                        leavingTrackCondition = leavingTrackCondition,
+                        trainCarriageDetails = TestFunctions.GetTrainCompositionFromTextualRepresentation(trainComposition)
                     }
                     table.insert(Test.TestScenarios, scenario)
                     Test.RunLoopsMax = Test.RunLoopsMax + 1

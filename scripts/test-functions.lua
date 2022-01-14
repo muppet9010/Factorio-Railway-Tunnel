@@ -3,6 +3,7 @@ local Utils = require("utility/utils")
 local EventScheduler = require("utility/event-scheduler")
 local Events = require("utility/events")
 local Colors = require("utility/colors")
+local Common = require("scripts/common")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -283,6 +284,7 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
     return false
 end
 
+--- Used to specify a train carriage type as a human readable text string. The orientation of "Forwards" is defined at the building stage.
 ---    carriageSymbols:
 ---    <   forwards loco
 ---    >   rear loco
@@ -291,14 +293,115 @@ end
 ---@alias TestFunctions_CarriageTextualRepresentation "<"|">"|"-"|"="
 
 ---@class TestFunctions_TrainSpecifiction
----@field composition TestFunctions_CarriageTextualRepresentation[]
----@field startingSpeed? double|null @ The speed the train starts at, defaults to 0.
+---@field composition TestFunctions_CarriageTextualRepresentation[] @ Ordered front to back of the train.
+---@field startingSpeed? double|null @ The speed the train starts at, defaults to 0. This is in relation to the orientation of "Forwards" as defined at the building stage.
 
---- Works out the train carriages to be placed from the compositon text.
+--- Works out the train carriage details to be placed from the compositon text.
 ---@param trainSpecification TestFunctions_TrainSpecifiction
----@return
+---@return TestFunctions_TrainCarriageDetailsForBulding[] trainCarriageDetailsForBulding
 TestFunctions.GetTrainCompositionFromTextualRepresentation = function(trainSpecification)
-    local composition = trainSpecification.composition
+    local trainCarriageDetailsForBulding = {}
+    for i = 1, #trainSpecification.composition do
+        local text = string.sub(trainSpecification.composition, i, i)
+        local prototypeName, facingForwards
+        if text == "<" then
+            prototypeName = "locomotive"
+            facingForwards = true
+        elseif text == ">" then
+            prototypeName = "locomotive"
+            facingForwards = false
+        elseif text == "-" then
+            prototypeName = "cargo-wagon"
+            facingForwards = true
+        elseif text == "=" then
+            prototypeName = "cargo-wagon"
+            facingForwards = false
+        else
+            error("TestFunctions.GetTrainCompositionFromTextualRepresentation - unrecognised textual representation: '" .. tostring(text) .. "'")
+        end
+        table.insert(
+            trainCarriageDetailsForBulding,
+            {
+                prototypeName = prototypeName,
+                facingForwards = facingForwards
+            }
+        )
+    end
+    return trainCarriageDetailsForBulding
+end
+
+---@class TestFunctions_TrainCarriageDetailsForBulding
+---@field prototypeName string
+---@field facingForwards boolean
+
+--- Builds a train from a set starting position away from the "forwards" direction.
+---@param firstCarriageFrontLocation Position @ The front tip of the lead carriages collision box.
+---@param carriagesDetails TestFunctions_TrainCarriageDetailsForBulding[] @ The carriages to be built, listed front to back.
+---@param trainForwardsDirection defines.direction @ Only supports cardinal points.
+---@param playerInCarriageNumber? uint|null
+---@param startingSpeed? double|null @ This is in relation to the orientation of forwards.
+---@param locomotiveFuel? ItemStackIdentification|null @ Fuel put in all "locomotive" typed entities.
+---@return LuaTrain
+TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails, trainForwardsDirection, playerInCarriageNumber, startingSpeed, locomotiveFuel)
+    local placedCarriage  ---@type LuaEntity
+    local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+    local placementPosition = firstCarriageFrontLocation
+    local locomotivesBuilt, cargoWagonsBuilt = {}, {}
+    local trainReverseDirection = Utils.LoopDirectionValue(trainForwardsDirection + 4)
+    local trainForwardsOrientation = Utils.DirectionToOrientation(trainForwardsDirection)
+    for carriageNumber, carriageDetails in pairs(carriagesDetails) do
+        local carriageEndPositionOffset = Utils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.GetCarriagePlacementDistance(carriageDetails.prototypeName)})
+        -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
+        local carriageBuildDirection
+        if carriageDetails.facingForwards then
+            carriageBuildDirection = trainForwardsDirection
+        else
+            carriageBuildDirection = trainReverseDirection
+        end
+        placedCarriage = surface.create_entity {name = carriageDetails.prototypeName, position = placementPosition, direction = carriageBuildDirection, force = force, raise_built = false, create_build_effect_smoke = false}
+        local placedCarriage_type = placedCarriage.type
+        -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
+        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
+
+        -- Store what we built by type for use later.
+        if placedCarriage_type == "locomotive" then
+            table.insert(locomotivesBuilt, placedCarriage)
+        elseif placedCarriage_type == "cargo-wagon" then
+            table.insert(cargoWagonsBuilt, placedCarriage)
+        else
+            error("TestFunctions.BuildTrain - unsupported carriage type built: " .. placedCarriage_type)
+        end
+
+        -- Insert the fuel if approperiate.
+        if placedCarriage_type == "locomotive" and locomotiveFuel ~= nil then
+            placedCarriage.insert(locomotiveFuel)
+        end
+
+        -- Place the player in this carriage if set. Done here as we know the exact build order at this point.
+        if playerInCarriageNumber ~= nil and playerInCarriageNumber == carriageNumber then
+            local player = game.connected_players[1]
+            if player ~= nil then
+                placedCarriage.set_driver(player)
+            else
+                game.print("No player found to set as driver, test continuing regardless")
+            end
+        end
+
+        -- Set the speed on the last carriage.
+        if startingSpeed ~= nil and carriageNumber == #carriagesDetails then
+            if carriageDetails.facingForwards then
+                placedCarriage.speed = startingSpeed
+            else
+                placedCarriage.speed = -startingSpeed
+            end
+        end
+    end
+    local train = placedCarriage.train
+
+    TestFunctions.MakeCarriagesUnique(locomotivesBuilt, cargoWagonsBuilt)
+
+    return train
 end
 
 --- Searches the test surface for the first train found within the search bounding box.
@@ -396,10 +499,10 @@ end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
 --- Only needs calling if trains are being built manually/scripted, as TestFunctions.BuildBlueprintFromString() includes it.
----@param locomotives? LuaEntity[]
----@param cargoWagons? LuaEntity[]
----@param fluidWagons? LuaEntity[]
----@param artilleryWagons? LuaEntity[]
+---@param locomotives? LuaEntity[]|null
+---@param cargoWagons? LuaEntity[]|null
+---@param fluidWagons? LuaEntity[]|null
+---@param artilleryWagons? LuaEntity[]|null
 TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWagons, artilleryWagons)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
     if locomotives ~= nil then

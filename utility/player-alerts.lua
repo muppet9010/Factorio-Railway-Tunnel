@@ -35,7 +35,7 @@ end
 
 --- Add a custom alert to all players on the specific force.
 ---@param force LuaForce
----@param alertId Id|null @ A globally unique Id that we will use to track duplicate requests for the same alert. If nil is provided a sequential number shall be affixed to "auto" as the Id.
+---@param alertId? Id|null @ A globally unique Id that we will use to track duplicate requests for the same alert. If nil is provided a sequential number shall be affixed to "auto" as the Id.
 ---@param alertEntity LuaEntity
 ---@param alertSignalId SignalID
 ---@param alertMessage LocalisedString

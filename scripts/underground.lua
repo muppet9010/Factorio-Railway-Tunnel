@@ -272,7 +272,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
                 -- Create the top layer entity that has the desired graphics on it.
                 local topLayerEntityName = segmentTypeData.topLayerEntityName
                 if topLayerEntityName ~= nil then
-                    segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = builtEntity_position, force = force, direction = builtEntity_direction}
+                    segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = builtEntity_position, force = force, direction = builtEntity_direction, raise_built = false, create_build_effect_smoke = false}
                 end
             end
         end
@@ -294,12 +294,12 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
                     Utils.RotateOffsetAroundPosition(orientation, {x = 2, y = 0}, builtEntity_position)
                 }
             ) do
-                local placedRail = surface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection}
+                local placedRail = surface.create_entity {name = "railway_tunnel-crossing_rail-on_map", position = nextRailPos, force = force, direction = crossignRailDirection, raise_built = false, create_build_effect_smoke = false}
                 placedRail.destructible = false
                 segment.crossingRailEntities[placedRail.unit_number] = placedRail
             end
         else
-            segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = builtEntity_position, force = force}
+            segment.trainBlockerEntity = surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = builtEntity_position, force = force, raise_built = false, create_build_effect_smoke = false}
         end
     end
 
@@ -485,8 +485,8 @@ end
 
 --- Checks if an underground segment can connect at a free internal connection position. If it does returns the objects, otherwise nil for all.
 ---@param segmentInternalSurfacePositionString SurfacePositionString
----@return Underground|nil underground
----@return UndergroundSegment|nil segmentAtOtherEndOfUnderground
+---@return Underground|null underground
+---@return UndergroundSegment|null segmentAtOtherEndOfUnderground
 Underground.CanAnUndergroundConnectAtItsInternalPosition = function(segmentInternalSurfacePositionString)
     -- Uses the segment position rather than some underground ends' positions as an underground is never complete to flag these. Also entities can't overlap their internal positions so no risk of getting the wrong object.
     local segmentInternalSurfacePositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[segmentInternalSurfacePositionString]
@@ -505,8 +505,8 @@ end
 -- Checks if an underground segment can connect to a portal. Can provide a known portal to ignore, as single entity undergrounds will connect to 2 portals.
 ---@param segment UndergroundSegment
 ---@param portalToIgnore Portal
----@return Portal|nil portal
----@return PortalEnd|nil endPortalPart
+---@return Portal|null portal
+---@return PortalEnd|null endPortalPart
 Underground.CanUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
     for _, segmentFreeExternalSurfacePositionString in pairs(segment.nonConnectedExternalSurfacePositions) do
         local portal, endPortalPart = MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition(segmentFreeExternalSurfacePositionString)
@@ -530,14 +530,14 @@ Underground.On_PreTunnelCompleted = function(underground)
             local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
             local orientation = Utils.DirectionToOrientation(signalDirection)
             local position = Utils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, refPos)
-            local placedSignal = surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection}
+            local placedSignal = surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
             segment.signalEntities[placedSignal.unit_number] = placedSignal
         end
 
         -- Create the top layer entity that has the desired graphics on it.
         local topLayerEntityName = segment.typeData.topLayerEntityName
         if topLayerEntityName ~= nil then
-            segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = refPos, force = force, direction = directionValue}
+            segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = refPos, force = force, direction = directionValue, raise_built = false, create_build_effect_smoke = false}
         end
     end
 end
@@ -548,7 +548,7 @@ Underground.BuildRailForSegment = function(segment)
     segment.tunnelRailEntities = {}
     for _, tracksPositionOffset in pairs(segment.typeData.undergroundTracksPositionOffset) do
         local railPos = Utils.RotateOffsetAroundPosition(segment.entity_orientation, tracksPositionOffset.positionOffset, segment.entity_position)
-        local placedRail = segment.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, segment.entity_direction)}
+        local placedRail = segment.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, segment.entity_direction), raise_built = false, create_build_effect_smoke = false}
         placedRail.destructible = false
         segment.tunnelRailEntities[placedRail.unit_number] = placedRail
     end
@@ -663,7 +663,7 @@ Underground.ReplaceSegmentEntity = function(minedSegment)
     minedSegmentEntity.destroy() -- Destroy it so it can't be mined.
 
     -- Create the new entity and update the old segment object with it.
-    local newSegmentEntity = minedSegment.surface.create_entity {name = minedSegment.entity_name, position = minedSegment.entity_position, direction = minedSegment.entity_direction, force = minedSegment.force, player = minedSegmentEntity_lastUser}
+    local newSegmentEntity = minedSegment.surface.create_entity {name = minedSegment.entity_name, position = minedSegment.entity_position, direction = minedSegment.entity_direction, force = minedSegment.force, player = minedSegmentEntity_lastUser, raise_built = false, create_build_effect_smoke = false}
     newSegmentEntity.rotatable = false
     minedSegment.entity = newSegmentEntity
     minedSegment.id = newSegmentEntity.unit_number
@@ -684,8 +684,8 @@ end
 
 -- Called by other functions when a underground segment entity is removed and thus we need to update the underground for this change.
 ---@param removedSegment UndergroundSegment
----@param killForce? LuaForce @ Populated if the entity is being removed due to it being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killForce? LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
 Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntity)
     local removedUnderground = removedSegment.underground
 

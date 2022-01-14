@@ -12,24 +12,30 @@ DON'T COMMIT:
     - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
 
 
-TODO Now
+Now
+----------------
+    - Test all the old working tests as a change to tunnel leaving breaks some it seems.
+
+
+Bugs
 ----------------
     - For 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this, or leave the entering train's lead locomotive (one that kills the detector) in place for a tick with 0 speed on manual (change force, invunerable, can't be deconned, etc). It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
     - An extension to the 1 tick delay issue on trains transitioning. The same applies to entering trains, if 2 trains both try to drive/path through the tunnel at the same tick I think they will both be allowed to start their journeys. The second will be rejected at the entrance entry signal, but will then be blocking the line. Only applies to bi-directional tunnel usage and needs special tests with facing off locos right on the end of the tunnel with slow acceleration. Needs a dedicated test to confirm behavour.
-
-
-TODO Soon
-----------------
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
-    - Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This area will have some above ground visual blocking graphics so train within it isn't visible. Both should be created when the portal is complete and not require a tunnel. Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
     - Make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.
 	- A transitioning train can be marked for decon, it needs to prevent this in addition to being invunerable, not player selectable, notable to have its orders accessed/changed.
+    - The portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
+    - If a train has entered the tracks (triggered the portal tracks train detector) and then is upgraded to being tracked by signal approaching, but the train aborts its approach we currently Terminate the tunnel usage. However we need to return to the train on portal tracks state as the train is still there now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals. TrainManager.TrainApproachingOngoing()  the terminate logic at top of function.
+
+
+Features to add/change
+----------------
+    - Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This area will have some above ground visual blocking graphics so train within it isn't visible. Both should be created when the portal is complete and not require a tunnel. Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
     - At present all rail in the portals is shown as standard on map. Is this really desired as it used to not be like this.
     - With the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
     - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
     - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
-    - The portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
     - The current player container concept needs updating to calculate the player containers current position in the tunnel. As part of this move the player riding tests to their own test(s) and remove them from other tests. Cover:
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
         - Tunnel destroyed while player underground.
@@ -40,10 +46,9 @@ TODO Soon
         - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
         - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the enteringTrain is never "stopped" and so nothing should ever activate.
         - The idea of using the transitioning train rathr than a dummy train and adding a non movable carriage may resolve this.
-    - If a train has entered the tracks (triggered the portal tracks train detector) and then is upgraded to being tracked by signal approaching, but the train aborts its approach we currently Terminate the tunnel usage. However we need to return to the train on portal tracks state as the train is still there now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals. TrainManager.TrainApproachingOngoing()  the terminate logic at top of function.
 
 
-Future Plans
+Long Term Future plans
 ----------------
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
@@ -65,7 +70,7 @@ Future Plans
     - Look at if tiles (concrete) can be placed over tunnel segments or something done to allow them to be paved over (even if just a visual). Maybe have tunnel segments have below tile graphics and I place tunnel tiles down, keeping a record of the old tile. This lets people concrete over and remove concrete. If the tunnel segment is removed I return the stored origional tile name back.
 
 
-Concept Changes
+Concept changes
 ----------------
     - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
         - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
@@ -88,7 +93,7 @@ Ideas
 
 
 Functionality not currently supported (FROM OLD MOD VERSION - BUT STILL GENERALLY RELEVENT)
--------------------------------------
+----------------
     - Interlinked abnormal tunnel usage cases:
         - Things that end up in the exit portals placement areas.
             - When a leaving carriage tries to be placed, if it fails check what blocked it.

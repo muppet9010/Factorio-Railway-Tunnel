@@ -25,8 +25,7 @@ EmmyLua Class Defintions
 EmmyLua nil, null and ? for optional things.
 --------------------------------------------
 
-- Function optional arguments can have "?" appended to the end of the argument name and they show in intellisense nicely. No need for use of "null" in type.
-- Function returns can use nil as a return type as expected.
+- All uses of optional arguments//params/returns/etc should have "?" appended to the end of the name and have "|null" on the end of their field types.
+- While techncially some scenarios can support "nil" its easier to do the same everywhere.
 - "nil" doesn't work for anything other than function returns, so I added "null" as a placeholder.
-- Class defintions can have ? appeneded to field definitions, but they aren't clear in some usage cases so I also add the extra type of "null" to their field definitions as this fills the gaps in display usage.
-- Aliases don't support ? or "nil", so must have "null" used.
+- Aliases don't support ?, so can only have "null" set as one of the types.
