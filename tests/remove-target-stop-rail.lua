@@ -8,6 +8,28 @@ local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
+local TargetTypes = {
+    rail = "rail",
+    trainStop = "trainStop"
+}
+local TunnelUsageStates = {
+    startApproaching = "startApproaching",
+    startedEntering = "startedEntering",
+    fullyEntered = "fullyEntered",
+    startedLeaving = "startedLeaving",
+    fullyLeft = "fullyLeft"
+}
+local NextScheduleOrders = {
+    none = "none",
+    fowards = "forwards",
+    reversal = "reversal"
+}
+local FinalTrainStates = {
+    stoppedWhenFirstTargetRemoval = "stoppedWhenFirstTargetRemoval",
+    pulledToExitPortalEntry = "pulledToExitPortalEntry",
+    secondTargetReached = "secondTargetReached"
+}
+
 local DoMinimalTests = true -- The minimal test to prove the concept with a few varieties.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
@@ -35,28 +57,6 @@ Test.OnLoad = function(testName)
 end
 
 local blueprintString = "0eNqtmdlu4kAQRf+lnyGiF3fbfEA+IPM4GiEHOow1xka2IYMi/n3aIUqixEpOjXhh8XKr3LeOe3tS9/Uh7ruqGdTySVXrtunV8ueT6qttU9bjseG0j2qpqiHu1Ew15W7815VV/VieVsOhaWI9v3yt9m03lPWqP3QP5TrO93X63MUkfZ6pqtnEv2qpz79mKh2qhipeIj3/Oa2aw+4+dumC1xhDCtLM+6Hdp7j7tk+3tM2YUZKZF2GmTulqnaQ3VRfXl5N+pvqhvPxWd3HXHmMK/imIYUHy4vsgP2Jqs81t2z2W3aafCmb/o9U2E9kYfcnGfsrmWHbVSz56IgF3nQRMMRnffBs/e43fj829/T3Mx0S+cPVjiAlRz0UzLBq4qMWiORfVWLTAonmBRfWCq3KntOaq3CptuCr3Sluuys3SDqsGgVucqyBwi4MVBG5xsoLALY5WELjF2fLcLcPZ8twtw9ny3C3D2fLcLcPZ8twtw9nKBG5xtjKBW5ytTOAWZysTuMXZygRucbYcd8tythx3y2K2BGZZjJagriwmS4CAxWAJaLWYK8GLxWKsBO9Ai6kSvK4thkrQs1jMlKATdBgpQX/tMFGCoYXDRAlGQQ4TJRiwOUyUYGzpMFGCYbDDRAlG7A4TJZhcOEyUYB7kMFGCGVuGiRLMLTNMlGAWnGGiBPP1DBNVcKMyTJReCJzKuKrAKs9VBV69QVW363bXDtUxTkkWN4V9/1ZtuypJvazaLG7GU+MSXz/e0LXrP3GYPxxiPd56noqb86cRFEnBVXmVeEye1rxKvOaqvEr8G3vrstu288dym66d0PRfGzrOYKrmmA61XbqkOdT1VDjLH4IXpedYasGKH8dSC4rDwwY39ioNjjtBbQS1yGk0glrkNBrBGiun0fDiCBraaBfXsDEY/hC8FgOn0fLiCJxGy4sjZLTBw1UanPeeVlCLnEYrqEVOoxUUB6fR8eLIF2z84BxwUTB+yHnv6QRbLRxLx6sk51gKlpdyjqVgKSznnaRg2S7n9AmWGPOAtmFfE80+bTx+3Ia9i8fY9VGNm8zPG9bLd/vbMzWevNyaJ6cKE2yx8Dr48/kfaIwz2A=="
-
-local TargetTypes = {
-    rail = "rail",
-    trainStop = "trainStop"
-}
-local TunnelUsageStates = {
-    startApproaching = "startApproaching",
-    startedEntering = "startedEntering",
-    fullyEntered = "fullyEntered",
-    startedLeaving = "startedLeaving",
-    fullyLeft = "fullyLeft"
-}
-local NextScheduleOrders = {
-    none = "none",
-    fowards = "forwards",
-    reversal = "reversal"
-}
-local FinalTrainStates = {
-    stoppedWhenFirstTargetRemoval = "stoppedWhenFirstTargetRemoval",
-    pulledToExitPortalEntry = "pulledToExitPortalEntry",
-    secondTargetReached = "secondTargetReached"
-}
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)

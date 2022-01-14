@@ -9,6 +9,27 @@ local Utils = require("utility/utils")
 local Common = require("scripts/common")
 local TunnelRailEntityNames = Common.TunnelRailEntityNames
 
+local TargetTunnelRail = {
+    entrancePortalMiddle = "entrancePortalMiddle", -- An entrance portal track after the entry detector, but before the transition detector.
+    entrancePortalBlockingEnd = "entrancePortalBlockingEnd", -- An entrance portal track after the transition detector.
+    undergroundSegment = "undergroundSegment", -- An underground tunnel track.
+    exitPortalBlockingEnd = "exitPortalBlockingEnd", -- An exit portal track on the blocking side (inside/before) of the transition detector.
+    exitPortalMiddle = "exitPortalMiddle" -- An exit portal track before the entry detector, but after the transition detector.
+}
+local NextStopTypes = {
+    none = "none",
+    station = "station",
+    rail = "rail"
+}
+local ExpectedTunnelStopHandling = {
+    targetTunnelRail = "targetTunnelRail",
+    endOfTunnel = "endOfTunnel"
+}
+local FinalTrainStates = {
+    nextStopReached = "nextStopReached",
+    targetRailReached = "targetRailReached"
+}
+
 local DoMinimalTests = true -- The minimal test to prove the concept. Just goes to a tunnel segment, then to end station, as this triggered the origional issue.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
@@ -34,27 +55,6 @@ Test.OnLoad = function(testName)
 end
 
 local blueprintString = "0eNqtnN1y2kgUhN9F18il+df4Pk+xlXJhULyqgEQJ4Y3LxbtHGNsYdsDdOroJcVL0DPN1Hw2jI79mj6tdtenqps/uX7N60Tbb7P6f12xbPzXz1eHf+pdNld1ndV+ts1n2OF/83m2Gn7t5vfpv/vLQ75qmWuXHl4dN2/Xz1cN21/2aL6p8sxr+XFeD+H6W1c2y+pPdq/3sunwzX1fv4l/eovc/Z9mgUvd1dZze2w8vD81u/Vh1g+bnOxe77rla5m8Cs2zTbof3tM1hoEEnN+UsexletfOD+rLuqsXxv/1hUhei+lN02w96T//2V2XNh2w4l9UJWYPLKkLWwrI6ErIOlw2ErMdlHSEbcFkGWYnLMsgiLKsYZKrAdRlmSuG6DDSFB00x1BSeNMVgU3jUKGx41ChqeNQoaHjUKGZ41ChkcNQYVQ0HjVkCDceM4aXhkDHm0nDEmCRoOGBUbjUcMKrMaDhgVFXUcMCoIq7hgFHXHA0HjLpCGjhh1PXcwBGjdh8Gzhi1VzJwyKidnYFTRu1DDZwybtcMp8xQyOCUGQoZnDJDIYNTZqmvDnDKLIPMwimzDDILp8wyyCycMssgs3DKHIUMTpmjkMEpcxQyOGWOQganzFHI4JR5BpmDU+YZZA5OmWeQOThlnkHm4JR56pQCTlmgkMEpCxQyOGWBQganLFDI4JQFClnEzuxKe+XIzqSOlfCjj9MV0pzrhpQuHLIyXJFVKVkNnlvaz0UoAFWDqcbiJJqSsezkrD6fnE2pOnJyl6IuJerPTo7z99PlFPS7j0TZ4s4BhgqYchluCCchlbxTTQSWIqJLYT5nbMrLGacyEAr2kN14QFWRZeBSNHkMrOm4Xq5tygzBgGaIN5Y2BS2conaYbpNv+3aTOvf7KLDmosAO/t/28+Pfsx/NMksN4lBn2NP0/eX0k8t9Hr8vd4XebwdVw4xu3Icw7n+f5nne1fPr6QnhmxG31dPhtlP+gf/WjYURw5cTDG/GDx8nGF6NHr4s5MOr8exLNcHwYfzweoLhx1uvNBMMP956pZ1geIH1nHx4gfO8fHSB8SaoeQLfTVDyBLaboOKNd12UFzzB4PJyN37do7zYjbdclJe68WmL8kI3vtBEeZkTFNkoL3OCK0wMYzaTggt6vFrZds2y6p66dngFPvPVHZX+fgpxoimY0VNQRTFm3XUQjDhBZVOC4eW1zUjWW17djBMML69vRsJeXuFMFAwvL3FWYj35Vs5KrCffy1mJ9eSbOSuwnpLv5qzAekpe9ZzAemqCHZ3Aekpe9ZzAekpe9ZzEevKq5yTWk1c9L7GevOp5ifXkVc9LrCevel5gPS2vel5gPa3G7C6DALfW/GE9dNqt8KbHLwf2kDDeWBwCJUy0FjtKGG8uvs4yKYy3FwdFCeP33TwHD+/m9xQ8vAcy9xQ8vAsy9xQ8vA8y9xQ8vBMydxQ8vBcydxw8PHmOg0e09XPw8OQ5Dh5xx5uDhyfPUvAs0U1CwcM7I3NLwcN7I3NLwbPEU2sUPLw/MjccPDx5hoPn+ecCMWG+fwvT5Ru4MF04dyXlNbxRsqTWF++ULClDuBHdJpAunLmS4oY3S0aOG5y4yHGDAxc5bnDeIscNzlvkuOEPsRUUOLxr8u3UmhBWuDCFzmtcmGLnDS5MwfPEM20cPPypNsXBw59rUxy8U+5W7aJdt339XCVUdXHn/HmXVtvVg9r71/7i7vBl9fCLA7aHt3Tt4nfV57921epAZ58cGn/6TXG+wbOpKN8EPJua8k3As6kp33xpvryNN3yHV7N4A55eTVk24OnVlG8Cnl7N+QZPr+F8E0a0kZrLgzWflC75I7uE8s+jawaV0+82mWXPVbc9fqpy2GlHHWx0Njiz3/8Fcy3KpQ=="
-
-local TargetTunnelRail = {
-    entrancePortalMiddle = "entrancePortalMiddle", -- An entrance portal track after the entry detector, but before the transition detector.
-    entrancePortalBlockingEnd = "entrancePortalBlockingEnd", -- An entrance portal track after the transition detector.
-    undergroundSegment = "undergroundSegment", -- An underground tunnel track.
-    exitPortalBlockingEnd = "exitPortalBlockingEnd", -- An exit portal track on the blocking side (inside/before) of the transition detector.
-    exitPortalMiddle = "exitPortalMiddle" -- An exit portal track before the entry detector, but after the transition detector.
-}
-local NextStopTypes = {
-    none = "none",
-    station = "station",
-    rail = "rail"
-}
-local ExpectedTunnelStopHandling = {
-    targetTunnelRail = "targetTunnelRail",
-    endOfTunnel = "endOfTunnel"
-}
-local FinalTrainStates = {
-    nextStopReached = "nextStopReached",
-    targetRailReached = "targetRailReached"
-}
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)

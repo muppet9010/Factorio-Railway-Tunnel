@@ -36,7 +36,7 @@ local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test conti
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
----@type table<TestName, TestToRun>
+---@type table<TestManager_TestName, TestManager_TestToRun>
 local TestsToRun = {
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
     --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
@@ -58,7 +58,8 @@ local TestsToRun = {
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
-    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true}
+    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
+    LeavingTrainSpeedDurationChangeTests = {enabled = true, testScript = require("tests/leaving-train-speed-duration-change-tests")}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -73,8 +74,8 @@ local TestsToRun = {
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
----@class Test
----@field testName TestName
+---@class TestManager_Test
+---@field testName TestManager_TestName
 ---@field enabled boolean
 ---@field notInAllTests boolean
 ---@field runTime Tick
@@ -83,18 +84,16 @@ local TestsToRun = {
 ---@field finished boolean
 ---@field success boolean
 
----@class TestName:string
-
----@alias TestData table
+---@class TestManager_TestName:string
 
 --- A configuration object to define which tests should be run.
----@class TestToRun
+---@class TestManager_TestToRun
 ---@field enabled boolean @ If the test will be run.
 ---@field notInAllTests? boolean|null @ If TRUE then this test is not automatically included when the "AllTests" global option is enabled. For use by adhoc/non standard test scripts or demo scripts.
----@field testScript TestScript
+---@field testScript TestManager_TestScript
 
 --- The test's script file as a table of interface and internal functions of this specific test.
----@class TestScript
+---@class TestManager_TestScript
 ---@field RunTime? int|null @ How long the test runs for (ticks) before being failed as un-completed. A nil value will never end unless the test logic completes or fails it. A non ending test is generally only used for demo/ups tests as a normal test will want a desired timeout in case of non action.
 ---@field RunLoopsMax? int|null @ How many times this tests will be run. For use by tests that have different setups per iteration. If not provided then the test is run 1 time.
 ---@field OnLoad function @ Anything the test needs registering OnLoad of the mod.
@@ -107,8 +106,8 @@ TestManager.CreateGlobals = function()
     global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @ Used to flag when a save was started with tests already.
     global.testManager.testSurface = global.testManager.testSurface or nil ---@type LuaSurface
     global.testManager.playerForce = global.testManager.playerForce or nil ---@type LuaForce
-    global.testManager.testData = global.testManager.testData or {} ---@type table<TestName, TestData> @ Used by tests to store their local data.
-    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestName, Test> @ Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
+    global.testManager.testData = global.testManager.testData or {} ---@type table<TestManager_TestName, table> @ Used by tests to store their local data.
+    global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestManager_TestName, TestManager_Test> @ Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests ---@type boolean
     global.testManager.keepRunningTest = KeepRunningTest ---@type boolean
     global.testManager.continueTestAfterCompletioTicks = (ContinueTestAfterCompletionSeconds or 0) * 60 ---@type Tick
@@ -274,7 +273,7 @@ TestManager.RunTests_Scheduled = function()
 end
 
 --- Gets the test's internally generated display name.
----@param testName TestName
+---@param testName TestManager_TestName
 ---@return string
 TestManager.GetTestDisplayName = function(testName)
     local testScript = TestManager.GetTestScript(testName)
@@ -313,8 +312,8 @@ TestManager.OnPlayerCreatedMakeCharacter_Scheduled = function(event)
 end
 
 --- Called when the test script needs to be referenced as it can't be stored in global data.
----@param testName TestName
----@return TestScript @ The script lua file of this test.
+---@param testName TestManager_TestName
+---@return TestManager_TestScript @ The script lua file of this test.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
 end

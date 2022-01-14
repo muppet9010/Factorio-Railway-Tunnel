@@ -3,6 +3,11 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 
+local TrainScheduleStates = {
+    manualMode = "manualMode",
+    automaticNoSchedule = "automaticNoSchedule"
+}
+
 Test.RunTime = 600
 Test.RunLoopsMax = 0 -- Populated when script loaded.
 Test.TestScenarios = {} -- Populated when script loaded.
@@ -17,11 +22,6 @@ Test.OnLoad = function(testName)
 end
 
 local blueprintString = "0eNqtWu2OojAUfZf+hon9pr7KZmIQOy4ZBFPAWWN89y3rbMxGzd7b2z9DBOac0nvO6S16Ydtu9sfQ9hNbX1jbDP3I1j8ubGz3fd0t56bz0bM1ayd/YAXb1s3nfIyfQ912X/V5M81977vydtgchzDV3Wacw0fd+PLYxb8HH8GvBWv7nf/F1vz6XrB4qp1af+P68+G86efD1od4Q8H6+uAfOb7Bfb+LAzkOY0QY+mWIEbU0umDneORWR65dG3xzuywKdqpDW98+8WvxQCj+Qzj6/fIM5TjF6/uf0zN2nswu6ezaJbOrDOw2mV1nYE+vu8nALpPZbQb2dNVVdHaVrjqXgT1ddXyVgT5ddpxnoE/XHc8QdypdeDxD3sl05fEMgScJ0suQeJIgvQyRJwnSy5B5kiC9DKEnCNLLkHoiXXoiQ+oJQpOVIfVEuvSESOoqeXq5xcugm2MjHPZhiEfIU3PCpKtcYyDMvM41hnTnC5NpDAQ52ExDICRAleQBQunpiUfYV9HzLv3JJT3t0l0v6R1eusgkvb9LN5mkd3eElJH05o6Qs5Le2xFWGklv7ThBdPTOjrDSS3rMiXTVKXrOEfoqRQ86QlOp6ElH6KgVPeoI2wlFzzrCXkrRs46wkVT0rCPsohU96wivEBQ96wjvT5RL6SEJr6v0Pd7+PlC5MD9pVKuXk/oMl8NxNQZXwHElBlfCcTkGV4FxrcPgajguqm4Gjouqm4XjoupWwXFRdXNgXIOpmwH7TWHKZsB2U6jRgt2mMZNrwGbTGC0YsNc0RroGbDWNKhnYaRpVMrDRDKpkYJ8ZVMnANjOYklmwywymZBbsMlQmWLDLUBFmwS5DJa4Fuwy1QFiwy1DrmQW7DLX82rvLuqEZDsPUnvwjZiXenPx3GobQRqzvjmz1tlxcfvsxLv8RhubTT+XH7Lvla9TrM2KwD1FtigX7ENVVVWAfoprA6u7Dpg77ofyq9/HeR1AHmv7+FE8NId7Uz133jA9sUFSPXIENWmG0WYEN6jASqcAGdSiJGFgtnclUS/D66FCSBPvSoSQC9qXDSMSBfclXGI04Dsd9LZL3WyRGkPuv5+JG1ofxdkPFlXXCKqeV1fJ6/Q0is0Ty"
-
-local TrainScheduleStates = {
-    manualMode = "manualMode",
-    automaticNoSchedule = "automaticNoSchedule"
-}
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)

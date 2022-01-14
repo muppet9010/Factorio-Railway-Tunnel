@@ -18,51 +18,6 @@ local Utils = require("utility/utils")
 local Common = require("scripts/common")
 local Colors = require("utility/colors")
 
-local DoMinimalTests = true -- If TRUE only a few reverse concept tests are done. Intended for regular use as part of all tests.
-local ExcludeDuplicateOutcomeTests = false -- If TRUE skips some believed duplicate outcome tests where the result is "expected" to be the same as others (redundant). Full test suite should be run occasioanlly, but shouldn't be needed for smaller code changes. When TRUE Skips all player riding tests as these concepts are included in some other tests.
-local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
-
-local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
-local SpecificTrainTypesFilter = {"<-------------->"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
-local SpecificTunnelUsageTypesFilter = {"carriageLeaving"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
-local SpecificReverseOnCarriageNumberFilter = {6} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
-local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
-local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
-local SpecificStationReservationCompetitorTrainExists = {true} -- Pass in array of TRUE/FALSE (boolean) to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
-local SpecificScheduleTargetTypesFilter = {"station"} -- Pass in array of ScheduleTargetTypes to do just those specific schedule target type tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
-local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is TRUE.
-
-local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
-
-Test.RunTime = 1800
-Test.RunLoopsMax = 0 -- Populated when script loaded.
-Test.TestScenarios = {} -- Populated when script loaded.
---[[
-    {
-        trainText = trainType.text so the train makeup in symbols.
-        carriages = fully populated list of carriage requirements from trainType.carriages.
-        tunnelUsageType = TunnelUsageTypes object reference for the test.
-        reverseOnCarriageNumber = the carriage number to reverse the train on. For non perCarriage tests (TunnelUsageType) this value will be ignored.
-        backwardsLocoCarriageNumber = the carriage number of the backwards facing loco. Will be 0 for trains with no backwards locos.
-        playerInCarriageNumber = the carriage number that the player is riding in, or nil for none.
-        forwardsPathingOptionAfterTunnelType = the forwards pathing option after track removal option of this test.
-        backwardsPathingOptionAfterTunnelType = the backwards pathing option after track removal option of this test.
-        stationReservationCompetitorTrainExist = if theres a competitor train for the single train stop reservation slot (TRUE/FALSE).
-        scheduleTargetType = the ScheduleTargetTypes for this test.
-        afterTrackRemovedResult = the expected result of this test (ResultStates) after the track is removed.
-        afterTrackReturnedResult = the expected result of this test (ResultStates) after the track is returned (if it is).
-        startingSpeed = the starting speed of the train in the test. Some trains need to start moving to reach the tunnel in the desired state.
-    }
-]]
-Test.OnLoad = function(testName)
-    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
-    Test.GenerateTestScenarios(testName) -- Call here so its always populated.
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
-end
-
--- Blueprint is just track, tunnel and stations. No train as these are dynamicly placed.
-local blueprintString = "0eNqtXNtu4kgU/Bc/Q+TTV3deV/sDu4+rCDHgyVgDNrJNZqOIf18bTELYJlR5/JIACcWh61RfTlf3W/Jts893dVG2yeNbUqyqskke/3lLmuK5XG7619rXXZ48JkWbb5NZUi63/bN6WWySwywpynX+b/Iohxn0ll/L10W7L8t8Mz/9Wuyqul1uFs2+/r5c5fPdpvu5zbtoPsDV4WmWdC8VbZGfgjs+eV2U++23vO4+/f0zVvv6JV/Pj9HNkl3VdO+pyj6kDmeu3Cx57X5r1YGvizpfnf7q+uivMBWIKVkcU0cw9Ttm03Zwzz/am5GGE6oKn1F9BNXAqGLjqBJBtTCqlgHV34/V8ajhfrt6lCs1YLpDBCXDY9MDjr3/jQOP6u9/Y0lx2DPp+n6wIjysBaJVOKwfYAWIVvOwGogWF5QeZCqATMXSsNeNEI3Wkckv2WdQGwP1cKxm0KkA6peMhwXkL7jGzKAxAZSrUh4WkK5CRyszjCxyNbKoGCiuMGPjTRCNVZOjIBSr+TQlmA/ThgioezjHah7s/SFLWXokhBrhQ2E9ajlv2mr3xYglV31M9/amXZ4eJ3+W6+6t22W57yY9R7hmsSm2RXvjK3m0rfR7W6nrtoqSkGHA1pC4AcP1wuHqFCIh0wAHf58e/ZU3ef1yfPhHtd3l3edVdfe3up97/j8AVLaih1mmpPdnmRrXrbznlwDNhQ+Ncp5rQrjEZFN5ApeQrrIEriNwNYHrCVyGN3yEFGF4CwQuwZtJCVyCNyMELsGbIfQmBG+G0FtK8GYIvaUMb4TeUoY3Qm8pwxuht5ThDddbYGjD5RYI1iyutkCQZnGxBYIzi2stEJRZXGoZQZnFlZYxlOFCyxjKcJ1lDGW4zDKGMlxlnqEMV5knKHO4yjxBmcNV5gnKHK4yT1DmcJU5gjKHq8wxlOEqcwxluMocQxmuMsdQhqvMMpThKrMEZR5XmSUo87jKLEGZV3ThGoLldwQgWFxlzCLN4ypj1mgeVxmzRPO4ypgVmidWaAxlxAKNoCxL+ZIYAksszwjKMmZ1RsDiKiMYy3CRMYThGmP4IvbdCFRiUUagwgJjQGF5Ed8/wOIiqAqwtIisCrCwCAEEWFaMWAMsK6ZnCbCsmG4wwLJi+uwAy4oZYAIsK2Y0DLCumKFbUlhZzETjWBkCYT0DC6uLmcQd62NgnyUMLCwwTVEGK0xTlMES0xRlsMY0RRksMkNRBqvMMJThJhLDUCbgTllfzYztk0W3+HELiWHyALeQGCYPcAuJZfIAt5BYKg9gjVkqD2CNWYoyWGOWogzWGFOTEdxEwlSQRMEjGVPvEtxGwlTnRMEqY2qJomCVeYoyWGWeogxWmacog1XmKcpglXmKMlhlzP6CXLhDNtWq2lZt8ZJHMN0FZlUXHczgCUkf+kbv/cpN/791tfqZt/Pv+3zTD7+H6GfCEmR2YAR3hDD7RYIbQpjdLcH9IMxenOB2kEClCSzBQFEGSzBQlMESDBRlsASZHW9hnCDnOTViGb1wgnztgAvp2VEWrg1lLgqs2MmUv29BlAsjyNe+On0z2rgn2aD2MzP4fA0SrQWn6u6MGUUhTB/DAkXiQOyM8QZMRraV+9xUJgoaqKZygMna8pIJCCzrVLw27cbd64pa1SFGYMGtHIMEETO4NSNOHK1vb5dHrKQvy7pYfiGrC9NHPIQmf+7PON2PYVh4j4nBTRaDHh2DnyyG8VxkU8UwSHBMDGGyGPzYGC5cLb8bw+icdDJZDKNz8sIv87sxjM5Jp6eKQY3OSWcmi2F8Tk7WT6rxOTlZP6nG5+Rk/aQan5OT9ZMyPicn6ydldE76yfpJGZ2TfrJ+UkbnpJ+sn5TROekn6ydHp6SfrJscn5F2mgntDV0qIALsBNxQb78uF1yfvYqfrxLCryU3ht7oIoMxbN0YTuO4gT4KBeEylq0bw14cV+ijUBiuoo9CYbiaPgqF4Rr6KBSGa+mjUBiuo49CYbiePgqF4Wb0USgMN9BHoSDckNJHoTBcoY9CYbiKPgqF4Wr2KBQGa9ijUBisJb0LGKojXQYYqidNBhhqRnoMMNRAluQQVIX7uawlUIUtF0OoivQXYKiatBdgqIZ0F2ColjQXYKiO9BZgqJ60FmCoGekswFADaSyAUHEXlyfYwm8C8gRbuIvLE2zhJq6MYAv3cGUMW5bc3sdQHbm7j6F6cnMfQ83IvX0MNZBb+xAq7t4KBFu4eYuYESncu0VM3xRu3WImmwq3bjFzY4Vbt5ipvMKtW8zKQ+HWLWahpHDrFrOuU7h1i1mGKp3isARluDuLWeQr3J3F1CQU7s5iSigKd2cxFR+Fu7OYApXC3VlMPU3h7iym/KdwdxZTrVS4O0s0QRnuzhJNUIZf0yOaoAy3ZokmKMMv6RFDUIbf0SOGoQxXmWEow1VmGMpwlRmGMlxllqEMVxlT5sANXcLUOfD7eYQpdOD38whT6cBNXcKUOvD7eYSpdeD38whT7MDv5xGm2oHfzyM3yx1Ps6RZ/cjX+81wmfaHY75/Ljq9+I/TVeDEzYmz5NeyaBerqlwfwzl9RPcBu2WdL4Z7wau6+7/hcVtse6d+W6x+Nv3dO4en41Xiny7M7F57Ornzuxc+7iufJS953Zy+Vtb1VkF5HVIn3h0O/wFPaX3g"
-
 -- Orientation 0.75 is forwards, 0.25 is backwards. As the trains are all heading east to west (left).
 -- Long trains should be 6+ carriages long as otherwise when initially entering they never go longer than the backwards track point (never block their own reverse path).
 -- 16 long train will have 1 rear carriage entering tunnel still when pulled to front.
@@ -444,6 +399,51 @@ local ResultStates = {
     stopPostTunnel = "stopPostTunnel", -- is leaving/left the tunnel when path removed and can't get back to station. Its beyond the front of portal position so just stops where it is. May or not have fully left the tunnel when this occurs.
     beforeCommittedUnknownOutcome = "beforeCommittedUnknownOutcome" -- Is a variable result as we can't calculate which one before run time.
 }
+
+local DoMinimalTests = true -- If TRUE only a few reverse concept tests are done. Intended for regular use as part of all tests.
+local ExcludeDuplicateOutcomeTests = false -- If TRUE skips some believed duplicate outcome tests where the result is "expected" to be the same as others (redundant). Full test suite should be run occasioanlly, but shouldn't be needed for smaller code changes. When TRUE Skips all player riding tests as these concepts are included in some other tests.
+local DoPlayerInCarriageTests = false -- If true then player riding in carriage tests are done. Normally FALSE as needing to test a player riding in carriages is a specific test requirement and adds a lot of pointless tests otherwise.
+
+local DoSpecificTrainTests = false -- If enabled does the below specific train tests, rather than the main test suite. Used for adhock testing.
+local SpecificTrainTypesFilter = {"<-------------->"} -- Pass in array of TrainTypes text (---<---) to do just those. Leave as nil or empty table for all train types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificTunnelUsageTypesFilter = {"carriageLeaving"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTrainTests is TRUE.
+local SpecificReverseOnCarriageNumberFilter = {6} -- Pass in an array of carriage numbers to reverse on to do just those specific carriage tests. Leave as nil or empty table for all carriages in train. Only used when DoSpecificTrainTests is TRUE.
+local SpecificForwardsPathingOptionAfterTunnelTypesFilter = {"none"} -- Pass in array of ForwardsPathingOptionAfterTunnelTypes keys to do just those specific forwards pathing option tests. Leave as nil or empty table for all forwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificBackwardsPathingOptionAfterTunnelTypesFilter = {"immediate"} -- Pass in array of BackwardsPathingOptionAfterTunnelTypes keys to do just those specific backwards pathing option tests. Leave as nil or empty table for all backwards pathing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificStationReservationCompetitorTrainExists = {true} -- Pass in array of TRUE/FALSE (boolean) to do just those specific reservation competitor train exists tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificScheduleTargetTypesFilter = {"station"} -- Pass in array of ScheduleTargetTypes to do just those specific schedule target type tests. Leave as nil or empty table for both combinations of the reservation competitor existing tests. Only used when DoSpecificTrainTests is TRUE.
+local SpecificPlayerInCarriageTypesFilter = {"none"} -- Pass in array of PlayerInCarriageTypes keys to do just those. Leave as nil or empty table it will honour the main "DoPlayerInCarriageTests" setting to dictate if player riding in train tests are done. This specific setting is only used when DoSpecificTrainTests is TRUE.
+
+local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
+
+Test.RunTime = 1800
+Test.RunLoopsMax = 0 -- Populated when script loaded.
+Test.TestScenarios = {} -- Populated when script loaded.
+--[[
+    {
+        trainText = trainType.text so the train makeup in symbols.
+        carriages = fully populated list of carriage requirements from trainType.carriages.
+        tunnelUsageType = TunnelUsageTypes object reference for the test.
+        reverseOnCarriageNumber = the carriage number to reverse the train on. For non perCarriage tests (TunnelUsageType) this value will be ignored.
+        backwardsLocoCarriageNumber = the carriage number of the backwards facing loco. Will be 0 for trains with no backwards locos.
+        playerInCarriageNumber = the carriage number that the player is riding in, or nil for none.
+        forwardsPathingOptionAfterTunnelType = the forwards pathing option after track removal option of this test.
+        backwardsPathingOptionAfterTunnelType = the backwards pathing option after track removal option of this test.
+        stationReservationCompetitorTrainExist = if theres a competitor train for the single train stop reservation slot (TRUE/FALSE).
+        scheduleTargetType = the ScheduleTargetTypes for this test.
+        afterTrackRemovedResult = the expected result of this test (ResultStates) after the track is removed.
+        afterTrackReturnedResult = the expected result of this test (ResultStates) after the track is returned (if it is).
+        startingSpeed = the starting speed of the train in the test. Some trains need to start moving to reach the tunnel in the desired state.
+    }
+]]
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+    Test.GenerateTestScenarios(testName) -- Call here so its always populated.
+    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
+end
+
+-- Blueprint is just track, tunnel and stations. No train as these are dynamicly placed.
+local blueprintString = "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"
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)

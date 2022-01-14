@@ -11,6 +11,33 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 
+local TrainStates = {
+    none = "none",
+    startApproaching = "startApproaching",
+    enteringCarriageRemoved = "enteringCarriageRemoved",
+    fullyEntered = "fullyEntered",
+    startedLeaving = "startedLeaving",
+    fullyLeft = "fullyLeft"
+}
+local TunnelParts = {
+    entrancePortal = "entrancePortal",
+    tunnelSegment = "tunnelSegment",
+    exitPortal = "exitPortal"
+}
+local RemovalActions = {
+    mine = "mine",
+    destroy = "destroy"
+}
+local FinalTunnelStates = {
+    complete = "complete",
+    broken = "broken"
+}
+local FinalTrainStates = {
+    complete = "complete",
+    halfDestroyed = "halfDestroyed", -- Train is only a 1-1. So when partially in/out there will be just 1 carriage on the surface.
+    fullyDestroyed = "fullyDestroyed"
+}
+
 local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
@@ -39,33 +66,6 @@ Test.OnLoad = function(testName)
 end
 
 local blueprintString = "0eNqtml1P4kAUhv/LXINhPjof3O9v2IuNIRVHbLa0pC3uGsN/31b8IAvG5xhv1ELnnUOfPtKcmSd1U+/zrquaQS2fVLVum14tfz2pvto0ZT29NjzuslqqashbNVNNuZ2OurKq/5SPq2HfNLmeH3+tdm03lPWq33d35TrPd/X4c5vH6MNMVc1t/quW+jBD4SdDzOF6psaUaqjysbjng8dVs9/e5G7MfBs5jEObeT+0uzFt1/bjkLaZ5hlj5nY871EtbRijb6sur49v+pnqh/L4t/qZ+6nasynMFz757XkNryWksxIeyq56KUJfmN9+Mn+fN9OFfi1gNZ21Wndt31fN5sNyinCxHPNpOU5WzscFpC8WUHxTAV5/sQD/PTdE/CqB8DZ/P930m/th/qzNx7f9/1NcCI041CQcmnhowKF6wVMLnqp5quWphqdyVtriVM1hacdTBbQKniqg5XmqgBY3SwtocbUEsLhanJXhZnFUhovFSRnuFQdlsFaCTCyV4MNjpQSUsFBaIJQJPFVQa+Spgps/8VTuqcVKacEXgNU8ldOyhqdyWpZbJXgIsI6nCmhhs7Tg0cpyt6yAFnfLCmhxt6yAFnfLclqOu+U4LcfdcpyW4245Tstxtxyn5bhbTkCLu1UIaHG3CgEt7lYhoMXdKgS0uFsFp1VwtzynVXC3PKdVcLc8p1VwtzynVXC3vIAWdysIaHG3goAWdysIaHG3goAWdytwWp67FTktz92KnJbnbkVOy3O3IqfluVtRQIu7lQS0uFtJQIu7lQS0uFtJQIu7lTitgN0yC04raJ7KaQXDUzmtYHkqpxUcTxXQwm4ZQcMteJ4qoBV4qoBW5KkCWomnclqRuyXoZUTulqCXEd/dqtt1u22H6iFfigxXi2RPHzTarhqzXpZfFlfTW9MSZT+N6Nr17zzM7/a5ntYhDpcm5voJmiiR6ydookSun6CJEj279NZ9cumN9NJzQyULY9xQQfcmckMF3ZvEDRV0bxI3VNC9SfzbT9C9SVw/QfcmObTN4LVQp8+WdN+3Gfwop20G1+NL6/t8u69f9jW8qzIdj/++oj8557gv43yrwlnsFPy8o2J5srtjph5y1x9LidqFZIJNC6+DPxz+AeZROY0="
-
-local TrainStates = {
-    none = "none",
-    startApproaching = "startApproaching",
-    enteringCarriageRemoved = "enteringCarriageRemoved",
-    fullyEntered = "fullyEntered",
-    startedLeaving = "startedLeaving",
-    fullyLeft = "fullyLeft"
-}
-local TunnelParts = {
-    entrancePortal = "entrancePortal",
-    tunnelSegment = "tunnelSegment",
-    exitPortal = "exitPortal"
-}
-local RemovalActions = {
-    mine = "mine",
-    destroy = "destroy"
-}
-local FinalTunnelStates = {
-    complete = "complete",
-    broken = "broken"
-}
-local FinalTrainStates = {
-    complete = "complete",
-    halfDestroyed = "halfDestroyed", -- Train is only a 1-1. So when partially in/out there will be just 1 carriage on the surface.
-    fullyDestroyed = "fullyDestroyed"
-}
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)

@@ -10,6 +10,21 @@ local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 local Common = require("scripts/common")
 
+local TrainTypes = {
+    shortForwards = "shortForwards",
+    longFowards = "longForwards",
+    shortDual = "shortDual",
+    longDual = "longDual"
+}
+local TargetTypes = {
+    trainStop = "trainStop",
+    rail = "rail"
+}
+local TargetDirections = {
+    forwards = "forwards",
+    backwards = "backwards"
+}
+
 local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
@@ -36,21 +51,6 @@ Test.OnLoad = function(testName)
 end
 
 local blueprintString = "0eNqtm89u20YchN9lzxLA35LcPzr20GsfoAgMRmJdojIlkJQTw9C7hzLTxG5Y95ugF5uSwW9XGA+0Ozt8dh+Pl/Y8dP3kds+u25/60e1+f3Zjd983x9t709O5dTvXTe2D27i+ebi9Gpru+Kl5upsufd8et8uvu/NpmJrj3XgZ/mj27fZ8nH8+tDP6unFdf2g/u51dNwj+6hZ//bBxM6WbunaZ3MuLp7v+8vCxHWbmtzun+dZ+O06n80w7n8b5llN/G2fGbK3KG/c0X9Qz+9AN7X75a9i4cWqWa/frafjUDIfR3eb5j3H8t3HG20D3f07bl6m+M1T5dii/Qi0FasTUSqDWmFoL1BJTg0A1TI2cWnK1kkDlamWBytWyQsByucwELNfLBHt5LpgJ/vJcMRMM5gXJBId5QTLBYl6QTPCYCZIJJjNBMsFlxiXzgsuMS+YFlxmXzAsuK7hkXnBZwSXzgssKQTLBZYUgmeCyQpCMuywLinGTZUEw7rHM9Sq5xTKXq+QOy1ytkhssCYtE7q/E1Sq5vZKgFndXEtTi5kqCWtxbUVCLeysKanFvRa5Wxb0VuVrVd2/tL8Nje/g3ZkgL079llmtM7qywfH57C7U1KDdWKNeg9Rq0UqElmCm3VbA16OpMA9SpXnQKb5FxDRm17fh7u/Hfhu5+vmqOa9vxKv1EHHFYmcnX9Xn8YSKPzdA17yiS/58JrI/v/3P8upADiQj2+CYHEoTq5UCCUEs5kCDUSg4kCLWWAwlCDXIgQahRDiQINcl5BKFmOY4A1FDIaQShmhxGEKqXswhCLeUoglArOYkg1FoOIgg1yDkEoUY5hiDUJKcQhJrlEAJQYyFnEIRqcgRBqF5OIAi1lAMIQq3k/IFQazV+INCgpg8EGtXwgUCTmj0QaFajBwBNhZo8EKipwQOBejV3INBSjR0ItFJTBwKt1dCBQIOaORBoVCMHAk1q4kCgQjiChcrcUQELlbmjAhYqy9kIgcrZCIFWaoxBoNxRNReKO6rmQnFH1Vwo7qiaC8UdVWOhrMCWUqDYUvzjW4EtxYV6WcxBaORQbCn+z/+ymGXQIAiFLRUEobClgiAUtlQQhMKW4l8nxlse/IvPeMeDf0Ubb3jwxYTxfgdf9hhvd0RBKOyoJAiFHZUEobCjkiAUdlQShMKO4lse440Ovjkz3ufg20jjbQ6+4TXe5eBbc+NNjiwIhR0l5B3GaxxCNmO8xSHkSMZbHELmZbzFIeRzxlscQpZovMUh5J7GWxxCRmu8xSHkycZbHEL2bbzFIeT0xlscwpmC8RaHcP5hvMUhnNUYb3EI50rGWxzCGZhV3Fv8vM54j0M4WzRe5BDOQY03OYQzW+NVDuF82V51Od4rXvw90fxD3eB77+KXZv/X18cgPmyWpzN2r54U2bjHdhiX25JVMftY5iJYDNfrFzquhcI="
-
-local TrainTypes = {
-    shortForwards = "shortForwards",
-    longFowards = "longForwards",
-    shortDual = "shortDual",
-    longDual = "longDual"
-}
-local TargetTypes = {
-    trainStop = "trainStop",
-    rail = "rail"
-}
-local TargetDirections = {
-    forwards = "forwards",
-    backwards = "backwards"
-}
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)

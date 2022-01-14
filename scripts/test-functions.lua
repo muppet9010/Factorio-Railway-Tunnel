@@ -17,15 +17,15 @@ local Colors = require("utility/colors")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 --- Gets the test's internal data object reference. Recrated each test start.
----@param testName TestName
----@return TestData
+---@param testName TestManager_TestName
+---@return table TestData
 TestFunctions.GetTestDataObject = function(testName)
     return global.testManager.testData[testName]
 end
 
 --- Gets the test manager's test object reference. Persists across tests.
----@param testName TestName
----@return Test
+---@param testName TestManager_TestName
+---@return TestManager_Test
 TestFunctions.GetTestMangaerObject = function(testName)
     return global.testManager.testsToRun[testName]
 end
@@ -43,7 +43,7 @@ TestFunctions.GetTestForce = function()
 end
 
 --- Complete the current test. arguments: the test name.
----@param testName TestName
+---@param testName TestManager_TestName
 TestFunctions.TestCompleted = function(testName)
     game.print("Completed Test", Colors.lightgreen)
     MOD.Interfaces.TestManager.LogTestOutcome("Test Completed")
@@ -61,7 +61,7 @@ TestFunctions.TestCompleted = function(testName)
 end
 
 --- Fail the current test. arguments: the test name, the text reason that is shown on screen.
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param errorText string
 TestFunctions.TestFailed = function(testName, errorText)
     game.print("Failure Message: " .. errorText, Colors.red)
@@ -81,7 +81,7 @@ TestFunctions.TestFailed = function(testName, errorText)
 end
 
 --- Register a unique name and function for future event scheduling. Must be called from a test's OnLoad() and is a pre-requisite for any events to be scheduled during a test Start().
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event, used when triggering it.
 ---@param testFunction function @ Function thats called when the event is triggered.
 TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, testFunction)
@@ -91,7 +91,7 @@ end
 
 --- Schedule an event named function once at a given tick. To be called from Start().
 ---@param tick Tick
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
 ---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 ---@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
@@ -105,7 +105,7 @@ TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, insta
 end
 
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
 ---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 ---@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
@@ -118,7 +118,7 @@ TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instan
 end
 
 --- Remove any instances of future scheduled once events. To be called from Stop().
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to remove the schedule of.
 ---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
@@ -127,7 +127,7 @@ TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
 end
 
 --- Remove any instances of future scheduled every tick events. To be called from Stop().
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to remove the schedule of.
 ---@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
@@ -136,7 +136,7 @@ TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instance
 end
 
 --- Register a unique name and function to react to a named event. Will only trigger when this test is active. Must be called from OnLoad() and Start().
----@param testName TestName
+---@param testName TestManager_TestName
 ---@param eventName defines.events @ The Factorio event to react to.
 ---@param testFunctionName string @ Unique name of this event function handler.
 ---@param testFunction function @ Function to be triggered when the event occurs.
@@ -175,11 +175,11 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
     return listToTest
 end
 
----@class TrainSnapshot
+---@class TestFunctions_TrainSnapshot
 ---@field carriageCount uint @ how many carriages are in this train.
----@field carriages CarriageSnapshot[]
+---@field carriages TestFunctions_CarriageSnapshot[]
 
----@class CarriageSnapshot
+---@class TestFunctions_CarriageSnapshot
 ---@field name string @ Entity prototype name
 ---@field health float @ How much health the carriage has.
 ---@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front.
@@ -188,20 +188,20 @@ end
 
 --- Returns an abstract meta data of a train to be compared later.
 ---@param train LuaTrain
----@return TrainSnapshot
+---@return TestFunctions_TrainSnapshot
 TestFunctions.GetSnapshotOfTrain = function(train)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.
 
-    ---@type TrainSnapshot
+    ---@type TestFunctions_TrainSnapshot
     local snapshot = {
         carriageCount = #train.carriages,
-        carriages = {} ---@type CarriageSnapshot[]
+        carriages = {} ---@type TestFunctions_CarriageSnapshot[]
     }
     local previousCarriageOrientation, previousCarriageFacingFowards = train.front_stock.orientation, true
     for _, realCarriage in pairs(train.carriages) do
-        ---@type CarriageSnapshot
+        ---@type TestFunctions_CarriageSnapshot
         local snapCarriage = {
             name = realCarriage.name,
             health = realCarriage.health
@@ -231,8 +231,8 @@ TestFunctions.GetSnapshotOfTrain = function(train)
 end
 
 --- Compares 2 train snapshots to see if they are the same train structure. If Optional "allowPartialCurrentSnapshot" argument is true then the current snapshot can be one end of the origonal train.
----@param origionalTrainSnapshot TrainSnapshot
----@param currentTrainSnapshot TrainSnapshot
+---@param origionalTrainSnapshot TestFunctions_TrainSnapshot
+---@param currentTrainSnapshot TestFunctions_TrainSnapshot
 ---@param allowPartialCurrentSnapshot boolean
 ---@return boolean
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
@@ -268,7 +268,7 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
                 else
                     currentCarriageCount = (carriageNumber - #currentSnapshotCarriages) + 1
                 end
-                difference = TestFunctions._CarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
+                difference = TestFunctions._DoCarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
                 if difference then
                     break
                 end
@@ -281,6 +281,24 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
 
     -- All combinations tested and none have 0 differences, so train snapshots don't match.
     return false
+end
+
+---    carriageSymbols:
+---    <   forwards loco
+---    >   rear loco
+---    -   forwards cargo wagon
+---    =   rear cargo wagon
+---@alias TestFunctions_CarriageTextualRepresentation "<"|">"|"-"|"="
+
+---@class TestFunctions_TrainSpecifiction
+---@field composition TestFunctions_CarriageTextualRepresentation[]
+---@field startingSpeed? double|null @ The speed the train starts at, defaults to 0.
+
+--- Works out the train carriages to be placed from the compositon text.
+---@param trainSpecification TestFunctions_TrainSpecifiction
+---@return
+TestFunctions.GetTrainCompositionFromTextualRepresentation = function(trainSpecification)
+    local composition = trainSpecification.composition
 end
 
 --- Searches the test surface for the first train found within the search bounding box.
@@ -312,7 +330,7 @@ end
 --- Builds a given blueprint string centered on the given position. Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 ---@param blueprintString string
 ---@param position Position
----@param testName TestName
+---@param testName TestManager_TestName
 ---@return LuaEntity[] placedEntities @ all build entities
 ---@return table<string, LuaEntity[]> placedEntitiesByGroup @ the key entities built grouped on their prototype type or prototype name. Currently: locomotive, cargo-wagon, fluid-wagon, artillery-wagon, train-stop, railway_tunnel-portal_end, railway_tunnel-underground_segment-straight.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
@@ -486,11 +504,11 @@ TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelPro
     end
 end
 
----@param carriage1 CarriageSnapshot
----@param carriage2 CarriageSnapshot
+---@param carriage1 TestFunctions_CarriageSnapshot
+---@param carriage2 TestFunctions_CarriageSnapshot
 ---@param reverseFacingForwardsCarriage2 boolean
 ---@return string
-TestFunctions._CarriageSnapshotsMatch = function(carriage1, carriage2, reverseFacingForwardsCarriage2)
+TestFunctions._DoCarriageSnapshotsMatch = function(carriage1, carriage2, reverseFacingForwardsCarriage2)
     if carriage1 == nil then
         return "carriage1 is nil"
     elseif carriage2 == nil then

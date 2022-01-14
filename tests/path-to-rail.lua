@@ -5,7 +5,6 @@ local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
 Test.RunTime = 1800
-Test.RunLoopsMax = 1
 
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
