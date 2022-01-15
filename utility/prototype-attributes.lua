@@ -6,7 +6,7 @@ MOD.UTILITYPrototypeAttributes = MOD.UTILITYPrototypeAttributes or {} ---@type U
 
 --- Returns the request attribute of a prototype.
 --- Obtains from the Lua global variable caches if present, otherwise obtains the result and caches it before returning it.
----@param prototypeType PrototypeAttributes.PrototypeTypes
+---@param prototypeType UtilityPrototypeAttributes_PrototypeTypes
 ---@param prototypeName string
 ---@param attributeName string
 ---@return any @ attribute value, can include nil.
@@ -54,7 +54,7 @@ PrototypeAttributes.GetAttribute = function(prototypeType, prototypeName, attrib
     end
 end
 
----@class PrototypeAttributes.PrototypeTypes @ not all prototype types are supported at present as not needed before.
+---@class UtilityPrototypeAttributes_PrototypeTypes @ not all prototype types are supported at present as not needed before.
 PrototypeAttributes.PrototypeTypes = {
     entity = "entity",
     item = "item",

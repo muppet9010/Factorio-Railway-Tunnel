@@ -439,7 +439,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 -- Blueprint is just track, tunnel and stations. No train as these are dynamicly placed.
@@ -522,34 +522,25 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationStart = stationStart
-    testData.stationEnd = stationEnd
-    testData.stationReservationCompetitorStart = stationReservationCompetitorStart
-    testData.forwardsTrackToRemove = forwardsTrackToRemove
-    testData.forwardsTrackRemoved = false
-    testData.forwardsTrackToAddPosition = forwardsTrackToAddPosition
-    testData.backwardsTrackToAddPosition = backwardsTrackToAddPosition
-    testData.trackAdded = false
-    testData.enteringPortal = enteringPortal
-    testData.leavingPortal = leavingPortal
-    testData.train = train
-    testData.reservationCompetitorTrain = reservationCompetitorTrain
-    testData.reservationCompetitorTrainCarriage1StartingPosition = reservationCompetitorTrainCarriage1StartingPosition
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.managedTrainId = 0 -- Tracks current managed train id for tunnel usage.
-    testData.oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
     testData.testScenario = testScenario
-    testData.actions = {}
-    --[[
-        A list of actions and how many times they have occured. Populated as the events come in.
-        [actionName] = {
-            name = the action name string, same as the key in the table.
-            count = how many times the event has occured.
-            recentChangeReason = the last change reason text for this action if there was one. Only occurs on single fire actions.
-        }
-    --]]
-    testData.lastActionEntry = nil -- Populated during run with {name, changeReason}
-    testData.tunnelUsageEntry = nil -- Populated during run with {enteringTrain, leavingTrain}
+    testData.bespoke = {
+        stationStart = stationStart,
+        stationEnd = stationEnd,
+        stationReservationCompetitorStart = stationReservationCompetitorStart,
+        forwardsTrackToRemove = forwardsTrackToRemove,
+        forwardsTrackRemoved = false,
+        forwardsTrackToAddPosition = forwardsTrackToAddPosition,
+        backwardsTrackToAddPosition = backwardsTrackToAddPosition,
+        trackAdded = false,
+        enteringPortal = enteringPortal,
+        leavingPortal = leavingPortal,
+        train = train,
+        reservationCompetitorTrain = reservationCompetitorTrain,
+        reservationCompetitorTrainCarriage1StartingPosition = reservationCompetitorTrainCarriage1StartingPosition,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        managedTrainId = 0, -- Tracks current managed train id for tunnel usage.
+        oldManagedTrainId = 0 -- Tracks any old (replaced) managed train id's for ignoring their events (not erroring as unexpected).
+    }
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -558,6 +549,7 @@ Test.Stop = function(testName)
 end
 
 Test.TunnelUsageChanged = function(event)
+    -- OVERHAUL - functionised
     local testName, testData = event.testName, TestFunctions.GetTestDataObject(event.testName)
 
     if testData.managedTrainId == 0 and (event.action == "startApproaching" or event.action == "onPortalTrack") then
@@ -609,10 +601,11 @@ Test.ResetTunnelUsageDetails = function(testData)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario = testData.testScenario
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
-    if not testData.forwardsTrackRemoved then
+    if not testDataBespoke.forwardsTrackRemoved then
         if Test.ShouldForwardsRailBeRemoved(testData) then
             -- This is the correct state to remove the rail.
 
@@ -622,34 +615,34 @@ Test.EveryTick = function(event)
             end
 
             game.print("train reached track removal state")
-            testData.forwardsTrackToRemove.destroy()
-            testData.forwardsTrackRemoved = true
+            testDataBespoke.forwardsTrackToRemove.destroy()
+            testDataBespoke.forwardsTrackRemoved = true
         end
         return -- End the tick loop here every time we check for the track removal. Regardless of if its removed or not.
     end
 
-    local endStationTrain = testData.stationEnd.get_stopped_train()
+    local endStationTrain = testDataBespoke.stationEnd.get_stopped_train()
     if endStationTrain == nil and testScenario.scheduleTargetType == ScheduleTargetTypes.rail then
         -- Check for a train that has just stopped at this position (rail scheduleTargetType).
-        local trainAtStationArea = TestFunctions.GetTrainInArea({left_top = testData.stationEnd.position, right_bottom = Utils.ApplyOffsetToPosition(testData.stationEnd.position, {x = 3, y = 3})})
+        local trainAtStationArea = TestFunctions.GetTrainInArea({left_top = testDataBespoke.stationEnd.position, right_bottom = Utils.ApplyOffsetToPosition(testDataBespoke.stationEnd.position, {x = 3, y = 3})})
         if trainAtStationArea ~= nil and trainAtStationArea.state == defines.train_state.wait_station then
             endStationTrain = trainAtStationArea
         end
     end
 
-    if not testData.trackAdded then
+    if not testDataBespoke.trackAdded then
         -- Check state for when track should be added every tick. Intentionally wait a tick after adding before the next check.
         local trackShouldBeAddedNow = Test.CheckTrackRemovedState(endStationTrain, testData.testScenario.afterTrackRemovedResult, testData, testName)
 
         if trackShouldBeAddedNow then
             -- The main train has reched the expected state after the forwards track was removed. We now add any track back in to let the train try and recover. Done after the second state check so the main trian has a tick to change its state before inspection.
             local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
-            testData.trackAdded = true
+            testDataBespoke.trackAdded = true
             if testData.testScenario.forwardsPathingOptionAfterTunnelType == ForwardsPathingOptionAfterTunnelTypes.delayed then
-                surface.create_entity({name = "straight-rail", position = testData.forwardsTrackToAddPosition, direction = defines.direction.east, force = force, raise_built = false, create_build_effect_smoke = false})
+                surface.create_entity({name = "straight-rail", position = testDataBespoke.forwardsTrackToAddPosition, direction = defines.direction.east, force = force, raise_built = false, create_build_effect_smoke = false})
             end
             if testData.testScenario.backwardsPathingOptionAfterTunnelType == BackwardsPathingOptionAfterTunnelTypes.delayed then
-                surface.create_entity({name = "straight-rail", position = testData.backwardsTrackToAddPosition, direction = defines.direction.north, force = force, raise_built = false, create_build_effect_smoke = false})
+                surface.create_entity({name = "straight-rail", position = testDataBespoke.backwardsTrackToAddPosition, direction = defines.direction.north, force = force, raise_built = false, create_build_effect_smoke = false})
             end
             game.print("after track REMOVED result reached: " .. testData.testScenario.afterTrackRemovedResult)
         end
@@ -692,16 +685,17 @@ end
 
 Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData, testName)
     -- Initial state monitoring after the the forwards track was removed and before any track added back.
+    local testDataBespoke = testData.bespoke
 
     if expectedResult == ResultStates.notReachTunnel then
         -- This outcome can be checked instantly after the path out of tunnel broken. As the train never entered the tunnel the old testData.train reference should be valid still.
         -- Depending on exactly where the train stopped its makeup and its length it may/not be able to reach the end station. So can't check this at present.
-        if testData.train == nil or not testData.train.valid then
+        if testDataBespoke.train == nil or not testDataBespoke.train.valid then
             TestFunctions.TestFailed(testName, "train reference should still exist from test start")
             return false
         else
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(testData.train)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(testDataBespoke.train)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "train has differences")
                 return false
             end
@@ -718,22 +712,22 @@ Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData
             end
         end
     elseif expectedResult == ResultStates.pullToFrontOfTunnel then
-        local inspectionArea = {left_top = {x = testData.leavingPortal.position.x - 20, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x - 18, y = testData.leavingPortal.position.y}} -- Inspection area needs to find trains that have pulled to the end of the tunnel.
+        local inspectionArea = {left_top = {x = testDataBespoke.leavingPortal.position.x - 20, y = testDataBespoke.leavingPortal.position.y}, right_bottom = {x = testDataBespoke.leavingPortal.position.x - 18, y = testDataBespoke.leavingPortal.position.y}} -- Inspection area needs to find trains that have pulled to the end of the tunnel.
         local trainFound = TestFunctions.GetTrainInArea(inspectionArea)
         if not trainFound then
             return false
         end
-        if testData.reservationCompetitorTrain ~= nil then
+        if testDataBespoke.reservationCompetitorTrain ~= nil then
             -- Reservation should be taken by other train.
             if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
                 -- The reservation competitor train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
-                if testData.reservationCompetitorTrain ~= nil and testData.reservationCompetitorTrain.state == defines.train_state.destination_full then
+                if testDataBespoke.reservationCompetitorTrain ~= nil and testDataBespoke.reservationCompetitorTrain.state == defines.train_state.destination_full then
                     TestFunctions.TestFailed(testName, "reservation competitor train should have got a reservation to the end station as the main train lost its")
                     return
                 end
                 return true
             elseif endStationTrain ~= nil then
-                if endStationTrain.id ~= testData.reservationCompetitorTrain.id then
+                if endStationTrain.id ~= testDataBespoke.reservationCompetitorTrain.id then
                     -- If a train other than the reservation competitor train reaches the end station something has gone wrong. The reservation competitor train can move in this test as the main train's path and reservation is expected to be lost.
                     TestFunctions.TestFailed(testName, "train reached end station")
                     return false
@@ -756,19 +750,19 @@ Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData
         end
     elseif expectedResult == ResultStates.reachStation then
         if endStationTrain ~= nil then
-            if testData.reservationCompetitorTrain ~= nil then
+            if testDataBespoke.reservationCompetitorTrain ~= nil then
                 -- Extra tests if there was a competitor train.
-                if not Utils.ArePositionsTheSame(testData.reservationCompetitorTrain.front_stock.position, testData.reservationCompetitorTrainCarriage1StartingPosition) then
+                if not Utils.ArePositionsTheSame(testDataBespoke.reservationCompetitorTrain.front_stock.position, testDataBespoke.reservationCompetitorTrainCarriage1StartingPosition) then
                     TestFunctions.TestFailed(testName, "reservation competitor train wasn't where it started")
                     return false
                 end
-                if testData.reservationCompetitorTrain.state ~= defines.train_state.destination_full then
+                if testDataBespoke.reservationCompetitorTrain.state ~= defines.train_state.destination_full then
                     TestFunctions.TestFailed(testName, "reservation competitor train wasn't in desitination full state")
                     return false
                 end
             end
             local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(endStationTrain)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "train reached station, but with train differences")
                 return false
             end
@@ -778,21 +772,21 @@ Test.CheckTrackRemovedState = function(endStationTrain, expectedResult, testData
             TestFunctions.TestCompleted(testName)
         end
     elseif expectedResult == ResultStates.stopPostTunnel then
-        local inspectionArea = {left_top = {x = testData.leavingPortal.position.x + 5, y = testData.leavingPortal.position.y}, right_bottom = {x = testData.leavingPortal.position.x + 10, y = testData.leavingPortal.position.y}} -- Inspection area needs to find trains that were fully left and then just stopped dead. So a carraige will be right after leaving the portal if the train stopped at this time.
+        local inspectionArea = {left_top = {x = testDataBespoke.leavingPortal.position.x + 5, y = testDataBespoke.leavingPortal.position.y}, right_bottom = {x = testDataBespoke.leavingPortal.position.x + 10, y = testDataBespoke.leavingPortal.position.y}} -- Inspection area needs to find trains that were fully left and then just stopped dead. So a carraige will be right after leaving the portal if the train stopped at this time.
         local trainFound = TestFunctions.GetTrainInArea(inspectionArea)
         if not trainFound then
             return false
         end
-        if testData.reservationCompetitorTrain ~= nil then
+        if testDataBespoke.reservationCompetitorTrain ~= nil then
             if trainFound.state == defines.train_state.destination_full and trainFound.speed == 0 then
                 -- The reservation competitor train will have taken the reservation and so the main train is in the reservation queue when it stops. The main train won't realise its going to no path until it tries to get a reservation which it never will as the target train stop will always be fully reserved.
-                if testData.reservationCompetitorTrain.state == defines.train_state.destination_full then
+                if testDataBespoke.reservationCompetitorTrain.state == defines.train_state.destination_full then
                     TestFunctions.TestFailed(testName, "reservation competitor train should have got a reservation to the end station as the main train lost its")
                     return false
                 end
                 return true
             elseif endStationTrain ~= nil then
-                if endStationTrain.id ~= testData.reservationCompetitorTrain.id then
+                if endStationTrain.id ~= testDataBespoke.reservationCompetitorTrain.id then
                     -- If a train other than the reservation competitor train reaches the end station something has gone wrong. The reservation competitor train can move in this test as the main train's path and reservation is expected to be lost.
                     TestFunctions.TestFailed(testName, "train reached end station")
                     return
@@ -811,24 +805,26 @@ end
 
 Test.CheckTrackAddedState = function(endStationTrain, expectedResult, testData, testName)
     -- Initial state monitoring after some track is added back.
+    local testDataBespoke = testData.bespoke
+
     if expectedResult == ResultStates.notReachTunnel then
         -- This outcome can be checked instantly after the track is added back. As the train never entered the tunnel the old testData.train reference should be valid still.
-        if testData.train == nil or not testData.train.valid then
+        if testDataBespoke.train == nil or not testDataBespoke.train.valid then
             TestFunctions.TestFailed(testName, "train reference should still exist from test start")
             return false
         else
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(testData.train)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(testDataBespoke.train)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "train has differences")
                 return false
             end
         end
 
         -- Check that no action has been started. We should still be sitting idle before the tunnel never moving based on this expected state for after track added.
-        if testData.managedTrainId ~= 0 then
+        if testDataBespoke.managedTrainId ~= 0 then
             TestFunctions.TestFailed(testName, "train shouldn't have started using tunnel")
             return
-        elseif testData.train.state == defines.train_state.no_path or testData.train.state == defines.train_state.destination_full then
+        elseif testDataBespoke.train.state == defines.train_state.no_path or testDataBespoke.train.state == defines.train_state.destination_full then
             return true
         else
             -- The train shouldn't get in a moving state based on this expected end result.
@@ -1294,6 +1290,7 @@ end
 Test.HandleBeforeCommittedUnknownOutcome = function(tunnelUsageEntry, testData)
     -- Handle the weird case when the final state couldn't be calculated in advance. So look at where the train is as initial track is removed and then update its expected result to compare against. This result will only be present for Abort Before Committed trains and the train test allows reversing.
     local testScenario = testData.testScenario
+    local testDataBespoke = testData.bespoke
 
     local rearCarriage
     if tunnelUsageEntry.enteringTrain.speed > 0 then
@@ -1305,7 +1302,7 @@ Test.HandleBeforeCommittedUnknownOutcome = function(tunnelUsageEntry, testData)
     -- Some tests have a known initial track removed expected result, but then not the track added expected result.
     if testScenario.afterTrackRemovedResult == ResultStates.beforeCommittedUnknownOutcome then
         -- The backest safe carriage position is 5 carriages to enter the tunnel or a carriage position 25 tiles from the portal position.
-        if rearCarriage.position.x > (testData.enteringPortal.position.x + 25) then
+        if rearCarriage.position.x > (testDataBespoke.enteringPortal.position.x + 25) then
             -- Rear of train position prevents use of reversing track.
             testScenario.afterTrackRemovedResult = ResultStates.notReachTunnel
         else
@@ -1326,7 +1323,7 @@ Test.HandleBeforeCommittedUnknownOutcome = function(tunnelUsageEntry, testData)
         if testScenario.forwardsPathingOptionAfterTunnelType == ForwardsPathingOptionAfterTunnelTypes.delayed then
             trainHasPathAfterTrackAdded = true
         elseif testScenario.backwardsPathingOptionAfterTunnelType == BackwardsPathingOptionAfterTunnelTypes.delayed then
-            if rearCarriage.position.x > (testData.enteringPortal.position.x + 25) then
+            if rearCarriage.position.x > (testDataBespoke.enteringPortal.position.x + 25) then
                 -- Rear of train position prevents use of reversing track.
                 trainHasPathAfterTrackAdded = false
             else

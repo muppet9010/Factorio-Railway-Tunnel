@@ -46,10 +46,12 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.otherTrain = otherTrain
-    testData.tunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelTrain)
-    testData.stationEnd = stationEnd
-    testData.otherStationStart = otherStationStart
+    testData.bespoke = {
+        otherTrain = otherTrain,
+        tunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelTrain),
+        stationEnd = stationEnd,
+        otherStationStart = otherStationStart
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -59,24 +61,26 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local stationEndTrain = testData.stationEnd.get_stopped_train(testData.stationEnd)
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local stationEndTrain = testDataBespoke.stationEnd.get_stopped_train(testDataBespoke.stationEnd)
 
     if stationEndTrain ~= nil then
-        if stationEndTrain.id == testData.otherTrain.id then
+        if stationEndTrain.id == testDataBespoke.otherTrain.id then
             TestFunctions.TestFailed(testName, "other train reached end station before tunnel train")
             return
         end
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEndTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.tunnelTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.tunnelTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "tunnel train has differences after tunnel use")
             return
         end
-        if testData.otherStationStart.trains_count ~= 1 then
+        if testDataBespoke.otherStationStart.trains_count ~= 1 then
             TestFunctions.TestFailed(testName, "other start station didn't have 1 train scheduled (other trian waiting) to it")
             return
         end
-        if testData.otherTrain.state ~= defines.train_state.destination_full then
+        if testDataBespoke.otherTrain.state ~= defines.train_state.destination_full then
             TestFunctions.TestFailed(testName, "other train wasn't in desitination full state")
             return
         end

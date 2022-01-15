@@ -58,8 +58,10 @@ local TestsToRun = {
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
+    LeavingTrainSpeedDurationChangeTests = {enabled = true, testScript = require("tests/leaving-train-speed-duration-change-tests")},
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
-    LeavingTrainSpeedDurationChangeTests = {enabled = true, testScript = require("tests/leaving-train-speed-duration-change-tests")}
+    TemplateSingleInstance = {enabled = false, testScript = require("tests/__template_single_instance"), notInAllTests = true},
+    TemplateMultiInstance = {enabled = false, testScript = require("tests/__template_multi_instance"), notInAllTests = true}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -101,12 +103,29 @@ local TestsToRun = {
 ---@field Start function @ Called to start the test.
 ---@field Stop function @ Called when the test is being stopped for any reason.
 
+--- The base object for storing test data during a test iteration run between ticks. It will have additional test specific fields set within it by the script.
+---@class TestManager_TestData
+---@field bespoke table<string, any> @ The bespoke test data for only this test will be registered under here.
+---@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction> @ A list of the tunnel usage change actions and some meta data on them.
+---@field lastAction? TunnelUsageAction|null @ The last tunnel usage change action reported or nil if none.
+---@field tunnelUsageEntry? TestManager_TunnelUsageTrains|null @ The current LuaTrains using the tunnel by their usage state.
+---@field testScenario? table<string, any>|null @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
+
+---@class TestManager_TunnelUsageChangeAction
+---@field name TunnelUsageAction @ The action name string, same as the key in the table.
+---@field count uint @ How many times the event has occured.
+---@field recentChangeReason TunnelUsageChangeReason @ The last change reason text for this action if there was one. Only occurs on single fire actions.
+
+---@class TestManager_TunnelUsageTrains @ A list of the tunnel usage train types and a referecne to the LuaTrain they refer to. For quick access of the train and checking on its high level state.
+---@field enteringTrain? LuaTrain
+---@field leavingTrain? LuaTrain
+
 TestManager.CreateGlobals = function()
     global.testManager = global.testManager or {}
     global.testManager.testProcessStarted = global.testManager.testProcessStarted or false ---@type boolean @ Used to flag when a save was started with tests already.
     global.testManager.testSurface = global.testManager.testSurface or nil ---@type LuaSurface
     global.testManager.playerForce = global.testManager.playerForce or nil ---@type LuaForce
-    global.testManager.testData = global.testManager.testData or {} ---@type table<TestManager_TestName, table> @ Used by tests to store their local data.
+    global.testManager.testData = global.testManager.testData or {} ---@type table<TestManager_TestName, TestManager_TestData> @ Used by tests to store their local data.
     global.testManager.testsToRun = global.testManager.testsToRun or {} ---@type table<TestManager_TestName, TestManager_Test> @ Holds management state data on the test, but the test scripts always have to be obtained from the TestsToRun local object. Can't store lua functions in global data.
     global.testManager.justLogAllTests = JustLogAllTests ---@type boolean
     global.testManager.keepRunningTest = KeepRunningTest ---@type boolean
@@ -196,7 +215,7 @@ TestManager.OnStartup = function()
     end
 end
 
----@param event UtilityScheduledEventCallbackObject
+---@param event UtilityScheduledEvent_CallbackObject
 TestManager.WaitForPlayerThenRunTests_Scheduled = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
@@ -253,7 +272,7 @@ TestManager.RunTests_Scheduled = function()
             if global.testManager.justLogAllTests then
                 game.write_file("RailwayTunnel_Tests.txt", TestManager.GetTestDisplayName(testName) .. "   =   ", true)
             end
-            global.testManager.testData[testName] = {} -- Reset for every test run as this is the test's internal data object.
+            global.testManager.testData[testName] = TestManager.CreateTestDataObject() -- Reset for every test iteration as this is the test's internal data object.
             TestManager.GetTestScript(testName).Start(testName)
             if test.runTime ~= nil then
                 EventScheduler.ScheduleEventOnce(game.tick + test.runTime, "TestManager.WaitForPlayerThenRunTests_Scheduled", nil, {currentTestName = testName})
@@ -294,7 +313,7 @@ TestManager.OnPlayerCreated = function(event)
     TestManager.OnPlayerCreatedMakeCharacter_Scheduled({instanceId = player.index})
 end
 
----@param event UtilityScheduledEventCallbackObject
+---@param event UtilityScheduledEvent_CallbackObject
 TestManager.OnPlayerCreatedMakeCharacter_Scheduled = function(event)
     -- Add a character since it was lost in surface destruction. Then go to Map Editor, that way if we leave map editor we have a character to return to.
     local player = game.get_player(event.instanceId)
@@ -347,6 +366,15 @@ TestManager.PrepPlayersForNextTest = function()
             player.zoom = PlayerStartingZoom
         end
     end
+end
+
+---@return TestManager_TestData
+TestManager.CreateTestDataObject = function()
+    ---@type TestManager_TestData
+    local testData = {
+        actions = {}
+    }
+    return testData
 end
 
 return TestManager

@@ -294,8 +294,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
         endPortal.connectedToUnderground = false
     elseif portalTypeData.partType == PortalPartType.portalSegment then
         -- Placed entity is a segment.
-        ---@typelist SegmentPortalTypeData, PortalSegment
-        local segmentPortalTypeData, segmentPortal = portalTypeData, portalPartObject
+        local segmentPortalTypeData = portalTypeData ---@type SegmentPortalTypeData
+        local segmentPortal = portalPartObject ---@type PortalSegment
         if segmentPortalTypeData.segmentShape == SegmentShape.straight then
             segmentPortal.segmentShape = segmentPortalTypeData.segmentShape
             segmentPortal.frontInternalPosition = Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = -0.5}, builtEntity_position)
@@ -497,7 +497,6 @@ end
 ---@param portal Portal
 Portal.CheckAndHandleTunnelCompleteFromPortal = function(portal)
     for portalExternalSurfacePositionString, portalTunnelExternalConnectionSurfacePositionObject in pairs(portal.portalTunneExternalConnectionSurfacePositionStrings) do
-        ---@typelist Underground, UndergroundSegment, UndergroundSegment
         local underground, otherEndSegment = MOD.Interfaces.Underground.CanAnUndergroundConnectAtItsInternalPosition(portalExternalSurfacePositionString)
         if underground ~= nil then
             local foundPortal, foundEndPortalPart = MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal(otherEndSegment, portal)
@@ -533,8 +532,8 @@ Portal.On_PreTunnelCompleted = function(portals)
     -- Add all the bits to each portal that only appear when the portal is part of a completed tunnel.
     for _, portal in pairs(portals) do
         -- Work out which portal end is the blocked end.
-        ---@typelist PortalEnd, PortalEnd
-        local entryPortalEnd, blockedPortalEnd
+        local entryPortalEnd  ---@type PortalEnd
+        local blockedPortalEnd  ---@type PortalEnd
         for _, endPortalPart in pairs(portal.portalEnds) do
             if endPortalPart.connectedToUnderground then
                 blockedPortalEnd = endPortalPart
@@ -1082,7 +1081,7 @@ Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
     return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled(nil, portal, retry)
 end
 
----@param event UtilityScheduledEventCallbackObject
+---@param event UtilityScheduledEvent_CallbackObject
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
@@ -1286,7 +1285,7 @@ Portal.SetTrainToManualNextTick = function(train, currentTick)
 end
 
 --- Set the train to manual.
----@param event UtilityScheduledEventCallbackObject
+---@param event UtilityScheduledEvent_CallbackObject
 Portal.SetTrainToManual_Scheduled = function(event)
     local train = event.data.train ---@type LuaTrain
     if train.valid then
@@ -1325,10 +1324,11 @@ Portal.StopTrainAsTooLong = function(train, portal, alertEntity, currentTick)
 end
 
 --- Checks a train until it is no longer stopped and then removes the alert associated with it.
----@param event UtilityScheduledEventCallbackObject
+---@param event UtilityScheduledEvent_CallbackObject
 Portal.CheckIfTooLongTrainStillStopped_Scheduled = function(event)
-    ---@typelist LuaTrain, LuaEntity, Id
-    local train, alertEntity, alertId = event.data.train, event.data.alertEntity, event.data.alertId
+    local train = event.data.train ---@type LuaTrain
+    local alertEntity = event.data.alertEntity ---@type LuaEntity
+    local alertId = event.data.alertId ---@type Id
     local trainStopped = true
 
     if not train.valid then

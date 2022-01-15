@@ -1,5 +1,3 @@
-OVERHAUL: this all needs reviewing and updating.
-
 Remote Interfaces & Custom Events
 =================
 
@@ -40,17 +38,11 @@ Get a custom event id via a remote interface call that can be registered to be n
         - onPortalTrack: When the train has initially moved on to the tunnel portals tracks. This may be on route to use the tunnel or may be just moving on to some tracks within the portal. Either way the tunnel and the other portal are now reserved for this train. If the train leaves the portal track without using the tunnel the terminated action will be raised with a "changeReason" of "portalTrackReleased". If the train moves in to use the tunnel then the "startApproaching" or action will be raised when the train reserves the inner transition signals.
         - startApproaching: When the train has first reserved the tunnel by pathing across the inner end of a tunnel portal. The tunnel is reserved. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
         - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
-        - reversedDuringUse: Raised if while the train was using the tunnel something happened to cause the train to start to reverse back out. Will be raised for the new tunnel usage and include the "replacedtunnelUsageId" attribute with the old usage id in it. The "changeReason" attribute will include the specific cause.
-        - startedEntering: Raised when the train starts to enter and the first carriage of the "enteringTrain" has been removed. Will occur on the same tick as the first instance of "enteringCarriageRemoved".
-        - enteringCarriageRemoved: Raised each time a carriage is removed from the train entering the tunnel. Event occurs after the carriage is removed and so for the last carriage removal event the "enteringTrain" attribute will have a nil value as the train will entirely have gone.
-        - fullyEntered: Raised after the train has fully entered the tunnel. Occurs at the same point as the last "enteringCarriageRemoved" action event.
-        - startedLeaving: Raised when the train starts to leave and the first carriage for the "leavingTrain" has been placed. Will occur on the same tick as the first instance of "leavingCarriageAdded".
-        - leavingCarriageAdded: Raised each time a carriage is added to the train leaving the tunnel. Happens after the carriage is added.
-        - fullyLeft: Raised when the train has fully left the tunnel, but is still using the portal & tracks at this time. When the train has finished with the portal and its tracks the "terminated" action will be raised. Occurs at the same point as the last "leavingCarriageAdded" action event.
+        - entered: Raised when the train enters the tunnel and is removed from the entrance portal on the map.
+        - leaving: Raised when the train has left the tunnel and starts to path away from the exit portal. When the train has finished leaving the portal and its tracks the "terminated" action will be raised.
     - changeReason: the cause of the change (STRING):
         - reversedAfterLeft: Raised for "terminated" action. Occurs when a train has fullyLeft, but not released the tunnel and then reverses back down the tunnel. The new tunnel usage event for "startApproaching" action will have the "replacedtunnelUsageId" attribute populated. This old tunnel usage has completed with this event.
         - abortedApproach: Raised for "terminated" action. Occurs when a train aborts its approach before it starts to enter the tunnel, but after it has reserved the tunnel and the "startApproaching" action evet has been raised.
-        - forwardPathLost: Raised for "reversedDuringUse" action. Is just to clarify why the train reversed during its use, in this case as the path out of the tunnel was lost and so the train had to reverse up the tunnel to reach its destination.
         - completedTunnelUsage: Raised for "terminated" action. The train finished leaving the portal tracks and the tunnel has been unlocked ready for future use. This is the successful completed clarification on the "terminated" action.
         - tunnelRemoved: Raised once a tunnel is removed (destroyed) while the train is using it.
         - portalTrackReleased: Raised when a train that had entered a tunnels portal rails leaves without using the tunnel.

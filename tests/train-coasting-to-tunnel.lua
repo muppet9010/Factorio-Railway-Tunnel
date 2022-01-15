@@ -49,7 +49,6 @@ Test.Start = function(testName)
 
     -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000
-    ---@typelist uint, LuaEntity
     for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
         if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
             entrancePortalEntryPortalEnd = portalEntity
@@ -58,8 +57,10 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.train = train
-    testData.entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd
+    testData.bespoke = {
+        train = train,
+        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -69,9 +70,11 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    ---@typelist LuaTrain, LuaEntity
-    local train, entrancePortalEntryPortalEnd = testData.train, testData.entrancePortalEntryPortalEnd
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local train = testDataBespoke.train ---@type LuaTrain
+    local entrancePortalEntryPortalEnd = testDataBespoke.entrancePortalEntryPortalEnd ---@type LuaEntity
     if not train.valid then
         TestFunctions.TestFailed(testName, "Train entered the tunnel which it never should")
         return

@@ -4,12 +4,18 @@ local TrainManagerRemote = {}
 local Utils = require("utility/utils")
 local Events = require("utility/events")
 
----@class TunnelUsageEntry
+---@class RemoteTunnelUsageEntry
 ---@field tunnelUsageId Id
 ---@field primaryState PrimaryTrainState
 ---@field enteringTrain LuaTrain
 ---@field leavingTrain LuaTrain
 ---@field tunnelId Id
+
+---@class RemoteTunnelUsageChanged : RemoteTunnelUsageEntry
+---@field name string @ The custom event name that this event is bveing raised for. Used by the Events library to find the remote Id to publish it under.
+---@field action TunnelUsageAction
+---@field changeReason TunnelUsageChangeReason
+---@field replacedtunnelUsageId Id
 
 TrainManagerRemote.CreateGlobals = function()
     global.trainManager.eventsToRaise = global.trainManager.eventsToRaise or {} ---@type table[] @ Events are raised at end of tick to avoid other mods interupting this mod's process and breaking things.
@@ -26,6 +32,7 @@ TrainManagerRemote.ProcessTicksEvents = function()
     end
 end
 
+--- The managedTrainID is passed in from caller, whether than be from the caller's context or by the caller from already being set in the tableToPopulate as the tunnelUsageId value.
 ---@param tableToPopulate table
 ---@param managedTrainId Id
 TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(tableToPopulate, managedTrainId)
@@ -49,6 +56,7 @@ end
 TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedtunnelUsageId)
     -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
     -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.
+    ---@type RemoteTunnelUsageChanged
     local data = {
         tunnelUsageId = managedTrainId,
         name = "RailwayTunnel.TunnelUsageChanged",
@@ -60,7 +68,7 @@ TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeR
 end
 
 ---@param managedTrainId Id
----@return TunnelUsageEntry
+---@return RemoteTunnelUsageEntry
 TrainManagerRemote.GetTunnelUsageEntry = function(managedTrainId)
     local tunnelUsageEntry = {}
     TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrainId)
@@ -68,7 +76,7 @@ TrainManagerRemote.GetTunnelUsageEntry = function(managedTrainId)
 end
 
 ---@param trainId Id
----@return TunnelUsageEntry
+---@return RemoteTunnelUsageEntry
 TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
     local trackedTrainIdObject = global.trainManager.trainIdToManagedTrain[trainId]
     if trackedTrainIdObject == nil then

@@ -206,8 +206,8 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
 
     -- Check if this is a fast replacement and if it is handle eveything special ready for standard built entity function logic.
     local fastReplacedSegmentByPosition = global.undergrounds.segmentSurfacePositions[surfacePositionString]
-    ---@typelist UndergroundSegment, FastReplaceChange
-    local fastReplacedSegment, newSegmentTypeBuilt = nil, true
+    local fastReplacedSegment  ---@type UndergroundSegment
+    local newSegmentTypeBuilt = true ---@type FastReplaceChange
     if fastReplacedSegmentByPosition ~= nil then
         fastReplacedSegment = fastReplacedSegmentByPosition.segment
 

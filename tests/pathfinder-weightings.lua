@@ -24,7 +24,9 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationEnd = stationEnd
+    testData.bespoke = {
+        stationEnd = stationEnd
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -34,12 +36,14 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local stationEndTrain = testData.stationEnd.get_stopped_train()
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local stationEndTrain = testDataBespoke.stationEnd.get_stopped_train()
 
     -- Check that enough trains got within 40 tiles (west) of the end station. Should be 3 of the 5 make it.
     if stationEndTrain ~= nil then
-        local inspectionArea = {left_top = {x = testData.stationEnd.position.x - 40, y = testData.stationEnd.position.y - 2}, right_bottom = {x = testData.stationEnd.position.x + 2, y = testData.stationEnd.position.y + 2}}
+        local inspectionArea = {left_top = {x = testDataBespoke.stationEnd.position.x - 40, y = testDataBespoke.stationEnd.position.y - 2}, right_bottom = {x = testDataBespoke.stationEnd.position.x + 2, y = testDataBespoke.stationEnd.position.y + 2}}
         local locosNearBy = TestFunctions.GetTestSurface().count_entities_filtered {area = inspectionArea, name = "locomotive"}
         if locosNearBy >= 3 then
             TestFunctions.TestCompleted(testName)

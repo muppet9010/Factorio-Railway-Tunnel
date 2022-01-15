@@ -47,7 +47,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 local blueprintString = "0eNqtm89u20YchN9lzxLA35LcPzr20GsfoAgMRmJdojIlkJQTw9C7hzLTxG5Y95ugF5uSwW9XGA+0Ozt8dh+Pl/Y8dP3kds+u25/60e1+f3Zjd983x9t709O5dTvXTe2D27i+ebi9Gpru+Kl5upsufd8et8uvu/NpmJrj3XgZ/mj27fZ8nH8+tDP6unFdf2g/u51dNwj+6hZ//bBxM6WbunaZ3MuLp7v+8vCxHWbmtzun+dZ+O06n80w7n8b5llN/G2fGbK3KG/c0X9Qz+9AN7X75a9i4cWqWa/frafjUDIfR3eb5j3H8t3HG20D3f07bl6m+M1T5dii/Qi0FasTUSqDWmFoL1BJTg0A1TI2cWnK1kkDlamWBytWyQsByucwELNfLBHt5LpgJ/vJcMRMM5gXJBId5QTLBYl6QTPCYCZIJJjNBMsFlxiXzgsuMS+YFlxmXzAsuK7hkXnBZwSXzgssKQTLBZYUgmeCyQpCMuywLinGTZUEw7rHM9Sq5xTKXq+QOy1ytkhssCYtE7q/E1Sq5vZKgFndXEtTi5kqCWtxbUVCLeysKanFvRa5Wxb0VuVrVd2/tL8Nje/g3ZkgL079llmtM7qywfH57C7U1KDdWKNeg9Rq0UqElmCm3VbA16OpMA9SpXnQKb5FxDRm17fh7u/Hfhu5+vmqOa9vxKv1EHHFYmcnX9Xn8YSKPzdA17yiS/58JrI/v/3P8upADiQj2+CYHEoTq5UCCUEs5kCDUSg4kCLWWAwlCDXIgQahRDiQINcl5BKFmOY4A1FDIaQShmhxGEKqXswhCLeUoglArOYkg1FoOIgg1yDkEoUY5hiDUJKcQhJrlEAJQYyFnEIRqcgRBqF5OIAi1lAMIQq3k/IFQazV+INCgpg8EGtXwgUCTmj0QaFajBwBNhZo8EKipwQOBejV3INBSjR0ItFJTBwKt1dCBQIOaORBoVCMHAk1q4kCgQjiChcrcUQELlbmjAhYqy9kIgcrZCIFWaoxBoNxRNReKO6rmQnFH1Vwo7qiaC8UdVWOhrMCWUqDYUvzjW4EtxYV6WcxBaORQbCn+z/+ymGXQIAiFLRUEobClgiAUtlQQhMKW4l8nxlse/IvPeMeDf0Ubb3jwxYTxfgdf9hhvd0RBKOyoJAiFHZUEobCjkiAUdlQShMKO4lse440Ovjkz3ufg20jjbQ6+4TXe5eBbc+NNjiwIhR0l5B3GaxxCNmO8xSHkSMZbHELmZbzFIeRzxlscQpZovMUh5J7GWxxCRmu8xSHkycZbHEL2bbzFIeT0xlscwpmC8RaHcP5hvMUhnNUYb3EI50rGWxzCGZhV3Fv8vM54j0M4WzRe5BDOQY03OYQzW+NVDuF82V51Od4rXvw90fxD3eB77+KXZv/X18cgPmyWpzN2r54U2bjHdhiX25JVMftY5iJYDNfrFzquhcI="
@@ -80,22 +80,14 @@ Test.Start = function(testName)
     local train = Test.BuildTrain(stationBackwards, testScenario.trainType, stationOrigional, testScenario.targetType)
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationOrigional = stationOrigional
-    testData.stationForwards = stationForwards
-    testData.stationBackwards = stationBackwards
-    testData.train = train
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.trainOrdersChanged = false
     testData.testScenario = testScenario
-    testData.actions = {}
-    --[[
-        A list of actions and how many times they have occured. Populated as the events come in.
-        [actionName] = {
-            name = the action name string, same as the key in the table.
-            count = how many times the event has occured.
-            recentChangeReason = the last change reason text for this action if there was one. Only occurs on single fire actions.
-        }
-    --]]
+    testData.bespoke = {
+        stationForwards = stationForwards,
+        stationBackwards = stationBackwards,
+        train = train,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        trainOrdersChanged = false
+    }
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -104,16 +96,17 @@ Test.Stop = function(testName)
 end
 
 Test.TunnelUsageChanged = function(event)
+    -- OVERHAUL - this is now functionised at base level.
     local testData = TestFunctions.GetTestDataObject(event.testName)
-    local testScenario = testData.testScenario
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
-    if not testData.trainOrdersChanged and event.action == "startedLeaving" then
+    if not testDataBespoke.trainOrdersChanged and event.action == "startedLeaving" then
         local leavingTrain = event.leavingTrain
         local schedule, newRecord, targetStation = leavingTrain.schedule, nil, nil
         if testScenario.targetDirection == TargetDirections.forwards then
-            targetStation = testData.stationForwards
+            targetStation = testDataBespoke.stationForwards
         elseif testScenario.targetDirection == TargetDirections.backwards then
-            targetStation = testData.stationBackwards
+            targetStation = testDataBespoke.stationBackwards
         else
             error("Unsupported testScenario.targetDirection: " .. testScenario.targetDirection)
         end
@@ -148,19 +141,19 @@ Test.TunnelUsageChanged = function(event)
         leavingTrain.schedule = schedule
 
         game.print("train leaving, so orders changed")
-        testData.trainOrdersChanged = true
+        testDataBespoke.trainOrdersChanged = true
     end
 end
 
 Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario = testData.testScenario
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
     local targetStationRail
     if testScenario.targetDirection == TargetDirections.forwards then
-        targetStationRail = testData.stationForwards.connected_rail
+        targetStationRail = testDataBespoke.stationForwards.connected_rail
     elseif testScenario.targetDirection == TargetDirections.backwards then
-        targetStationRail = testData.stationBackwards.connected_rail
+        targetStationRail = testDataBespoke.stationBackwards.connected_rail
     end
 
     -- Check for the train in the right state at the track of the target station. This detects both targetType of station and rail.
@@ -169,7 +162,7 @@ Test.EveryTick = function(event)
     if trainFound and trainFound.state == defines.train_state.wait_station then
         -- Train has stopped fully at this spot, so is arrived as we want.
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainFound)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
             TestFunctions.TestFailed(testName, "train arrived at new orders, but not identical")
             return
         end

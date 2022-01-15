@@ -16,7 +16,6 @@ Test.Start = function(testName)
 
     -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000
-    ---@typelist uint, LuaEntity
     for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
         if portalEntity.position.x > entrancePortalEntryPortalEndXPos then
             entrancePortalEntryPortalEnd = portalEntity
@@ -42,14 +41,15 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.train = train
-    testData.entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd
-    testData.eastTrainStop = eastTrainStop
-    testData.player = player
-
-    testData.ticksStopped = 0
-    testData.trainStoppedAtTunnelEntrance = false
-    testData.trainStartedFromTunnelEntrance = false
+    testData.bespoke = {
+        train = train,
+        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd,
+        eastTrainStop = eastTrainStop,
+        player = player,
+        ticksStopped = 0,
+        trainStoppedAtTunnelEntrance = false,
+        trainStartedFromTunnelEntrance = false
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -59,10 +59,14 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
 
-    ---@typelist LuaTrain, LuaEntity, LuaEntity, LuaPlayer
-    local train, entrancePortalEntryPortalEnd, eastTrainStop, player = testData.train, testData.entrancePortalEntryPortalEnd, testData.eastTrainStop, testData.player
+    local train = testDataBespoke.train ---@type LuaTrain
+    local entrancePortalEntryPortalEnd = testDataBespoke.entrancePortalEntryPortalEnd ---@type LuaEntity
+    local eastTrainStop = testDataBespoke.eastTrainStop ---@type LuaEntity
+    local player = testDataBespoke.player ---@type LuaPlayer
 
     -- Check the train still exists.
     if not train.valid then
@@ -71,14 +75,14 @@ Test.EveryTick = function(event)
     end
 
     -- Check if we are at the stage of the test when we look for the train at the tunnel entrance.
-    if testData.trainStartedFromTunnelEntrance == false then
+    if testDataBespoke.trainStartedFromTunnelEntrance == false then
         local trainFoundAtPortalEntrance = TestFunctions.GetTrainInArea({left_top = {x = entrancePortalEntryPortalEnd.position.x + 3, y = entrancePortalEntryPortalEnd.position.y}, right_bottom = {x = entrancePortalEntryPortalEnd.position.x + 4, y = entrancePortalEntryPortalEnd.position.y}})
 
         -- See if the train has stopped at the tunnel entrance.
         if trainFoundAtPortalEntrance ~= nil and trainFoundAtPortalEntrance.speed == 0 then
             -- On the first occurence do the setup for this stage.
-            if testData.ticksStopped == 0 then
-                testData.trainStoppedAtTunnelEntrance = true
+            if testDataBespoke.ticksStopped == 0 then
+                testDataBespoke.trainStoppedAtTunnelEntrance = true
 
                 -- The alert should appear instantly.
                 local playerAlerts = player.get_alerts {entity = entrancePortalEntryPortalEnd}
@@ -90,11 +94,11 @@ Test.EveryTick = function(event)
             end
 
             -- Every tick in this stage do the same process.
-            testData.ticksStopped = testData.ticksStopped + 1
+            testDataBespoke.ticksStopped = testDataBespoke.ticksStopped + 1
 
             -- If the train has been stopped for 5 seconds then this stage should be finished.
-            if testData.ticksStopped > 300 then
-                testData.trainStartedFromTunnelEntrance = true
+            if testDataBespoke.ticksStopped > 300 then
+                testDataBespoke.trainStartedFromTunnelEntrance = true
 
                 -- Send the train away from the tunnel to a train stop behind it.
                 train.schedule = {
@@ -109,7 +113,7 @@ Test.EveryTick = function(event)
     end
 
     -- Train is at the stage whre it heads away from the tunnel.
-    if testData.trainStartedFromTunnelEntrance then
+    if testDataBespoke.trainStartedFromTunnelEntrance then
         -- Check if the train has reached the station.
         if eastTrainStop.get_stopped_train() ~= nil then
             -- The alert should have vanished by now.

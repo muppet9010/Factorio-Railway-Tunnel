@@ -36,11 +36,13 @@ Test.Start = function(testName)
     }
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.farWestRailReached = false
-    testData.farEastRailReached = false
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.farWestRail = farWestRail
-    testData.farEastRail = farEastRail
+    testData.bespoke = {
+        farWestRailReached = false,
+        farEastRailReached = false,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        farWestRail = farWestRail,
+        farEastRail = farEastRail
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -50,28 +52,30 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local westTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
-    local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
-    if westTrain ~= nil and not testData.farWestRailReached then
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local westTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+    local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+    if westTrain ~= nil and not testDataBespoke.farWestRailReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached west rail, but with train differences")
             return
         end
         game.print("train reached west rail")
-        testData.farWestRailReached = true
+        testDataBespoke.farWestRailReached = true
     end
-    if eastTrain ~= nil and not testData.farEastRailReached then
+    if eastTrain ~= nil and not testDataBespoke.farEastRailReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached east rail, but with train differences")
             return
         end
         game.print("train reached east rail")
-        testData.farEastRailReached = true
+        testDataBespoke.farEastRailReached = true
     end
-    if testData.farWestRailReached and testData.farEastRailReached then
+    if testDataBespoke.farWestRailReached and testDataBespoke.farEastRailReached then
         TestFunctions.TestCompleted(testName)
     end
 end

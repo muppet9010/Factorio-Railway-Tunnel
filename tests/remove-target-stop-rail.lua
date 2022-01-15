@@ -53,7 +53,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 local blueprintString = "0eNqtmdlu4kAQRf+lnyGiF3fbfEA+IPM4GiEHOow1xka2IYMi/n3aIUqixEpOjXhh8XKr3LeOe3tS9/Uh7ruqGdTySVXrtunV8ueT6qttU9bjseG0j2qpqiHu1Ew15W7815VV/VieVsOhaWI9v3yt9m03lPWqP3QP5TrO93X63MUkfZ6pqtnEv2qpz79mKh2qhipeIj3/Oa2aw+4+dumC1xhDCtLM+6Hdp7j7tk+3tM2YUZKZF2GmTulqnaQ3VRfXl5N+pvqhvPxWd3HXHmMK/imIYUHy4vsgP2Jqs81t2z2W3aafCmb/o9U2E9kYfcnGfsrmWHbVSz56IgF3nQRMMRnffBs/e43fj829/T3Mx0S+cPVjiAlRz0UzLBq4qMWiORfVWLTAonmBRfWCq3KntOaq3CptuCr3Sluuys3SDqsGgVucqyBwi4MVBG5xsoLALY5WELjF2fLcLcPZ8twtw9ny3C3D2fLcLcPZ8twtw9nKBG5xtjKBW5ytTOAWZysTuMXZygRucbYcd8tythx3y2K2BGZZjJagriwmS4CAxWAJaLWYK8GLxWKsBO9Ai6kSvK4thkrQs1jMlKATdBgpQX/tMFGCoYXDRAlGQQ4TJRiwOUyUYGzpMFGCYbDDRAlG7A4TJZhcOEyUYB7kMFGCGVuGiRLMLTNMlGAWnGGiBPP1DBNVcKMyTJReCJzKuKrAKs9VBV69QVW363bXDtUxTkkWN4V9/1ZtuypJvazaLG7GU+MSXz/e0LXrP3GYPxxiPd56noqb86cRFEnBVXmVeEye1rxKvOaqvEr8G3vrstu288dym66d0PRfGzrOYKrmmA61XbqkOdT1VDjLH4IXpedYasGKH8dSC4rDwwY39ioNjjtBbQS1yGk0glrkNBrBGiun0fDiCBraaBfXsDEY/hC8FgOn0fLiCJxGy4sjZLTBw1UanPeeVlCLnEYrqEVOoxUUB6fR8eLIF2z84BxwUTB+yHnv6QRbLRxLx6sk51gKlpdyjqVgKSznnaRg2S7n9AmWGPOAtmFfE80+bTx+3Ia9i8fY9VGNm8zPG9bLd/vbMzWevNyaJ6cKE2yx8Dr48/kfaIwz2A=="
@@ -154,25 +154,17 @@ Test.Start = function(testName)
     train.schedule = trainSchedule
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationRemove = stationRemove
-    testData.stationSecondForwards = stationSecondForwards
-    testData.stationSecondReverse = stationSecondReverse
-    testData.entrancePortal = entrancePortal
-    testData.exitPortal = exitPortal
-    testData.train = train
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.firstTargetRemoved = false
     testData.testScenario = testScenario
-    testData.actions = {}
-    --[[
-        A list of actions and how many times they have occured. Populated as the events come in.
-        [actionName] = {
-            name = the action name string, same as the key in the table.
-            count = how many times the event has occured.
-            recentChangeReason = the last change reason text for this action if there was one. Only occurs on single fire actions.
-        }
-    --]]
-    testData.tunnelUsageEntry = nil -- Populated on tunnel usage events.
+    testData.bespoke = {
+        stationRemove = stationRemove,
+        stationSecondForwards = stationSecondForwards,
+        stationSecondReverse = stationSecondReverse,
+        entrancePortal = entrancePortal,
+        exitPortal = exitPortal,
+        train = train,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        firstTargetRemoved = false
+    }
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -181,6 +173,7 @@ Test.Stop = function(testName)
 end
 
 Test.TunnelUsageChanged = function(event)
+    -- OVERHAUL - functionised
     local testData = TestFunctions.GetTestDataObject(event.testName)
     local testScenario = testData.testScenario
 
@@ -201,16 +194,17 @@ Test.TunnelUsageChanged = function(event)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario = testData.testScenario
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
-    if not testData.firstTargetRemoved then
+    if not testDataBespoke.firstTargetRemoved then
         -- Wait for the tunnel usage state to trigger the removal.
         return
     end
 
     if testScenario.expectedFinalTrainState == FinalTrainStates.stoppedWhenFirstTargetRemoval then
-        local train = testData.train -- Check for train pre entering.
+        local train = testDataBespoke.train -- Check for train pre entering.
         if train == nil or not train.valid then
             -- Try to get the leaving train. No other states should have this outcome.
             train = testData.tunnelUsageEntry.leavingTrain
@@ -218,7 +212,7 @@ Test.EveryTick = function(event)
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then
                 local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "train stopped doesn't match origional")
                     return
                 end
@@ -228,13 +222,13 @@ Test.EveryTick = function(event)
         end
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.pulledToExitPortalEntry then
         -- Train should be sent to the end of the exit portal as no path anywhere else.
-        local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.exitPortal.position, {x = -22, y = 0}))
+        local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.exitPortal.position, {x = -22, y = 0}))
         if atrainAtExitTunnelEntryRail ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
             if atrainAtExitTunnelEntryRail.state == defines.train_state.wait_station or atrainAtExitTunnelEntryRail.state == defines.train_state.no_schedule then
                 -- Current train will be a part of the full train, rest will still be in the tunnel.
                 local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(atrainAtExitTunnelEntryRail)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, true) then
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, true) then
                     TestFunctions.TestFailed(testName, "part of train at end of portal doesn't match origional")
                     return
                 end
@@ -244,13 +238,13 @@ Test.EveryTick = function(event)
         end
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.secondTargetReached then
         -- Try both second stations, only one will end up with a train.
-        local stationSecondTrain = testData.stationSecondForwards.get_stopped_train()
+        local stationSecondTrain = testDataBespoke.stationSecondForwards.get_stopped_train()
         if stationSecondTrain == nil then
-            stationSecondTrain = testData.stationSecondReverse.get_stopped_train()
+            stationSecondTrain = testDataBespoke.stationSecondReverse.get_stopped_train()
         end
         if stationSecondTrain ~= nil then
             local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot, false) then
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                 TestFunctions.TestFailed(testName, "train at second station doesn't match origional")
                 return
             end

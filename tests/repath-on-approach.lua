@@ -49,13 +49,15 @@ Test.Start = function(testName)
     local repathTrain, loopTrain = eastMostLoco.train, westMostLoco.train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationLoopEndReached = false
-    testData.stationRepathEndNotTunnelReached = false
-    testData.repathTrain = repathTrain
-    testData.loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain)
-    testData.stationRepathEndViaTunnel = stationRepathEndViaTunnel
-    testData.stationRepathEndNotTunnel = stationRepathEndNotTunnel
-    testData.stationLoopEnd = stationLoopEnd
+    testData.bespoke = {
+        stationLoopEndReached = false,
+        stationRepathEndNotTunnelReached = false,
+        repathTrain = repathTrain,
+        loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain),
+        stationRepathEndViaTunnel = stationRepathEndViaTunnel,
+        stationRepathEndNotTunnel = stationRepathEndNotTunnel,
+        stationLoopEnd = stationLoopEnd
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -65,8 +67,10 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local repathTrain, stationRepathEndViaTunnelTrain, stationRepathEndNotTunnelTrain, stationLoopEndTrain = testData.repathTrain, testData.stationRepathEndViaTunnel.get_stopped_train(), testData.stationRepathEndNotTunnel.get_stopped_train(), testData.stationLoopEnd.get_stopped_train()
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local repathTrain, stationRepathEndViaTunnelTrain, stationRepathEndNotTunnelTrain, stationLoopEndTrain = testDataBespoke.repathTrain, testDataBespoke.stationRepathEndViaTunnel.get_stopped_train(), testDataBespoke.stationRepathEndNotTunnel.get_stopped_train(), testDataBespoke.stationLoopEnd.get_stopped_train()
 
     if repathTrain == nil or not repathTrain.valid then
         -- The train should never change as it shouldn't use the tunnel.
@@ -74,26 +78,26 @@ Test.EveryTick = function(event)
         return
     end
 
-    if stationRepathEndNotTunnelTrain ~= nil and not testData.stationRepathEndNotTunnelReached then
+    if stationRepathEndNotTunnelTrain ~= nil and not testDataBespoke.stationRepathEndNotTunnelReached then
         game.print("repathed train reached non tunnel usage end station")
-        testData.stationRepathEndNotTunnelReached = true
+        testDataBespoke.stationRepathEndNotTunnelReached = true
     end
     if stationRepathEndViaTunnelTrain ~= nil then
         -- The train should never reach this specific station as it shouldn't use the tunnel. The loop train doesn't stop at this station.
         TestFunctions.TestFailed(testName, "repathed train used tunnel and reached wrong station")
         return
     end
-    if stationLoopEndTrain ~= nil and not testData.stationLoopEndReached then
+    if stationLoopEndTrain ~= nil and not testDataBespoke.stationLoopEndReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationLoopEndTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.loopTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.loopTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "loop train has differences after tunnel use")
             return
         end
         game.print("loop train reached post tunnel station")
-        testData.stationLoopEndReached = true
+        testDataBespoke.stationLoopEndReached = true
     end
 
-    if testData.stationRepathEndNotTunnelReached and testData.stationLoopEndReached then
+    if testDataBespoke.stationRepathEndNotTunnelReached and testDataBespoke.stationLoopEndReached then
         TestFunctions.TestCompleted(testName)
         return
     end

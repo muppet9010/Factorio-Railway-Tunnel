@@ -62,7 +62,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "Test.TunnelUsageChanged", Test.TunnelUsageChanged)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 local blueprintString = "0eNqtml1P4kAUhv/LXINhPjof3O9v2IuNIRVHbLa0pC3uGsN/31b8IAvG5xhv1ELnnUOfPtKcmSd1U+/zrquaQS2fVLVum14tfz2pvto0ZT29NjzuslqqashbNVNNuZ2OurKq/5SPq2HfNLmeH3+tdm03lPWq33d35TrPd/X4c5vH6MNMVc1t/quW+jBD4SdDzOF6psaUaqjysbjng8dVs9/e5G7MfBs5jEObeT+0uzFt1/bjkLaZ5hlj5nY871EtbRijb6sur49v+pnqh/L4t/qZ+6nasynMFz757XkNryWksxIeyq56KUJfmN9+Mn+fN9OFfi1gNZ21Wndt31fN5sNyinCxHPNpOU5WzscFpC8WUHxTAV5/sQD/PTdE/CqB8DZ/P930m/th/qzNx7f9/1NcCI041CQcmnhowKF6wVMLnqp5quWphqdyVtriVM1hacdTBbQKniqg5XmqgBY3SwtocbUEsLhanJXhZnFUhovFSRnuFQdlsFaCTCyV4MNjpQSUsFBaIJQJPFVQa+Spgps/8VTuqcVKacEXgNU8ldOyhqdyWpZbJXgIsI6nCmhhs7Tg0cpyt6yAFnfLCmhxt6yAFnfLclqOu+U4LcfdcpyW4245Tstxtxyn5bhbTkCLu1UIaHG3CgEt7lYhoMXdKgS0uFsFp1VwtzynVXC3PKdVcLc8p1VwtzynVXC3vIAWdysIaHG3goAWdysIaHG3goAWdytwWp67FTktz92KnJbnbkVOy3O3IqfluVtRQIu7lQS0uFtJQIu7lQS0uFtJQIu7lTitgN0yC04raJ7KaQXDUzmtYHkqpxUcTxXQwm4ZQcMteJ4qoBV4qoBW5KkCWomnclqRuyXoZUTulqCXEd/dqtt1u22H6iFfigxXi2RPHzTarhqzXpZfFlfTW9MSZT+N6Nr17zzM7/a5ntYhDpcm5voJmiiR6ydookSun6CJEj279NZ9cumN9NJzQyULY9xQQfcmckMF3ZvEDRV0bxI3VNC9SfzbT9C9SVw/QfcmObTN4LVQp8+WdN+3Gfwop20G1+NL6/t8u69f9jW8qzIdj/++oj8557gv43yrwlnsFPy8o2J5srtjph5y1x9LidqFZIJNC6+DPxz+AeZROY0="
@@ -115,26 +115,19 @@ Test.Start = function(testName)
     local train = placedEntitiesByGroup["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationEast = stationEast
-    testData.stationWest = stationWest
-    testData.entrancePortal = entrancePortal
-    testData.exitPortal = exitPortal
-    testData.tunnelSegmentToRemove = tunnelSegmentToRemove
-    testData.train = train
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.tunnelPartRemoved = false
-    testData.westReached = false
-    testData.eastReached = false
     testData.testScenario = testScenario
-    testData.actions = {}
-    --[[
-        A list of actions and how many times they have occured. Populated as the events come in.
-        [actionName] = {
-            name = the action name string, same as the key in the table.
-            count = how many times the event has occured.
-            recentChangeReason = the last change reason text for this action if there was one. Only occurs on single fire actions.
-        }
-    --]]
+    testData.bespoke = {
+        stationEast = stationEast,
+        stationWest = stationWest,
+        entrancePortal = entrancePortal,
+        exitPortal = exitPortal,
+        tunnelSegmentToRemove = tunnelSegmentToRemove,
+        train = train,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        tunnelPartRemoved = false,
+        westReached = false,
+        eastReached = false
+    }
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -143,6 +136,7 @@ Test.Stop = function(testName)
 end
 
 Test.TunnelUsageChanged = function(event)
+    -- OVERHAUL: functionised
     local testData = TestFunctions.GetTestDataObject(event.testName)
 
     -- Record the action for later reference.
@@ -160,23 +154,24 @@ Test.TunnelUsageChanged = function(event)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario = testData.testScenario
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
-    if not testData.tunnelPartRemoved then
-        if Test.ShouldTunnelPartBeRemoved(testData) then
+    if not testDataBespoke.tunnelPartRemoved then
+        if Test.ShouldTunnelPartBeRemoved(testDataBespoke) then
             -- This is the correct state to remove the tunnel part.
             game.print("train reached tunnel part removal state")
             local entityToDestroy, otherTunnelEntity
             if testScenario.tunnelPart == TunnelParts.entrancePortal then
-                entityToDestroy = testData.entrancePortal
-                otherTunnelEntity = testData.tunnelSegmentToRemove
+                entityToDestroy = testDataBespoke.entrancePortal
+                otherTunnelEntity = testDataBespoke.tunnelSegmentToRemove
             elseif testScenario.tunnelPart == TunnelParts.exitPortal then
-                entityToDestroy = testData.exitPortal
-                otherTunnelEntity = testData.tunnelSegmentToRemove
+                entityToDestroy = testDataBespoke.exitPortal
+                otherTunnelEntity = testDataBespoke.tunnelSegmentToRemove
             elseif testScenario.tunnelPart == TunnelParts.tunnelSegment then
-                entityToDestroy = testData.tunnelSegmentToRemove
-                otherTunnelEntity = testData.entrancePortal
+                entityToDestroy = testDataBespoke.tunnelSegmentToRemove
+                otherTunnelEntity = testDataBespoke.entrancePortal
             else
                 error("Unrecognised tunnelPart for test scenario: " .. testScenario.tunnelPart)
             end
@@ -192,7 +187,7 @@ Test.EveryTick = function(event)
             else
                 error("Unrecognised removal action: " .. testScenario.removalAction)
             end
-            testData.tunnelPartRemoved = true
+            testDataBespoke.tunnelPartRemoved = true
 
             -- Check the Tunnel Details API returns the expected results for one of the non removed entities
             local tunnelObject = remote.call("railway_tunnel", "get_tunnel_details_for_entity", otherTunnelEntity.unit_number)
@@ -210,7 +205,7 @@ Test.EveryTick = function(event)
             end
 
             -- Check if the trains/tunnel usage existance meets expectations.
-            if not Test.CheckTrainPostTunnelPartRemoval(testData, testName, tunnelObject) then
+            if not Test.CheckTrainPostTunnelPartRemoval(testDataBespoke, testName, tunnelObject) then
                 return -- Function raised any TestFailed() internally.
             end
             game.print("Train in expected state post tunnel part removal.")
@@ -232,12 +227,12 @@ Test.EveryTick = function(event)
 
     -- Keep on checking the outcomes that have working tunnel usages to confirm the train reaches the stations as expected.
     if testScenario.trainState == TrainStates.none then
-        if testData.train == nil or not testData.train.valid then
+        if testDataBespoke.train == nil or not testDataBespoke.train.valid then
             -- Train should still exist as it never entered the tunnel
             TestFunctions.TestFailed(testName, "Train doesn't exist, but it shouldn't have entered the tunnel.")
             return
         end
-        if testData.train.state == defines.train_state.no_path then
+        if testDataBespoke.train.state == defines.train_state.no_path then
             -- Train should have no path as tunnel is invalid.
             TestFunctions.TestCompleted(testName)
             return
@@ -247,25 +242,25 @@ Test.EveryTick = function(event)
             return
         end
     else
-        if not testData.westReached then
-            local stationWestTrain = testData.stationWest.get_stopped_train()
+        if not testDataBespoke.westReached then
+            local stationWestTrain = testDataBespoke.stationWest.get_stopped_train()
             if stationWestTrain ~= nil then
                 local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train at west station not identical")
                     return
                 end
-                testData.westReached = true
+                testDataBespoke.westReached = true
             end
-        elseif not testData.eastReached then
-            local stationEastTrain = testData.stationEast.get_stopped_train()
+        elseif not testDataBespoke.eastReached then
+            local stationEastTrain = testDataBespoke.stationEast.get_stopped_train()
             if stationEastTrain ~= nil then
                 local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train at east station not identical")
                     return
                 end
-                testData.eastReached = true
+                testDataBespoke.eastReached = true
             end
         else
             TestFunctions.TestCompleted(testName)
@@ -288,8 +283,9 @@ Test.ShouldTunnelPartBeRemoved = function(testData)
 end
 
 Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject)
+    local testDataBespoke = testData.bespoke
     local testScenario = testData.testScenario
-    local inspectionArea = {left_top = {x = testData.stationWest.position.x, y = testData.stationWest.position.y}, right_bottom = {x = testData.stationEast.position.x, y = testData.stationEast.position.y}} -- Inspection area needs to find trains that are anywhere on the tracks between the stations
+    local inspectionArea = {left_top = {x = testDataBespoke.stationWest.position.x, y = testDataBespoke.stationWest.position.y}, right_bottom = {x = testDataBespoke.stationEast.position.x, y = testDataBespoke.stationEast.position.y}} -- Inspection area needs to find trains that are anywhere on the tracks between the stations
     local trainOnSurface = TestFunctions.GetTrainInArea(inspectionArea)
     local tunnelUsageEntry
     if tunnelObject ~= nil then
@@ -302,7 +298,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             -- Train is using the underground so it must be complete. There may be a surface train, but it will be incomplete and so check underground first.
             if tunnelUsageEntry.undergroundTrain ~= nil then
                 local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.undergroundTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train underground not identical")
                     return false
                 end
@@ -311,7 +307,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
         elseif trainOnSurface ~= nil then
             -- Train isn't underground and so the surface train must be complete.
             local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                 TestFunctions.TestFailed(testName, "Train on surface not identical")
                 return false
             end
@@ -336,7 +332,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             return false
         end
         local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
-        if TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentSnapshot, false) then
+        if TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
             TestFunctions.TestFailed(testName, "Train on surface is the same, but should be partial")
             return false
         end

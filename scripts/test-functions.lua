@@ -19,7 +19,7 @@ local Common = require("scripts/common")
 
 --- Gets the test's internal data object reference. Recrated each test start.
 ---@param testName TestManager_TestName
----@return table TestData
+---@return TestManager_TestData
 TestFunctions.GetTestDataObject = function(testName)
     return global.testManager.testData[testName]
 end
@@ -174,6 +174,37 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
         error("blank list output from TestFunctions.ApplySpecificFilterToListByKeyName()")
     end
     return listToTest
+end
+
+--- Registers for tunnel usage change notifications to be recorded in the Test Data object's default fields.
+---@param testName string
+TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
+    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions.RecordTunnelUsageChanges", TestFunctions.RecordTunnelUsageChanges)
+end
+
+---@class TestFunctions_RemoteTunnelUsageChangedEvent : RemoteTunnelUsageChanged
+---@field testName string
+
+--- Records a tunnel usage change event's details to the test's Test Data object for usage within the test script.
+---@param event TestFunctions_RemoteTunnelUsageChangedEvent
+TestFunctions.RecordTunnelUsageChanges = function(event)
+    local testData = TestFunctions.GetTestDataObject(event.testName)
+
+    -- Record the action for later reference.
+    local actionListEntry = testData.actions[event.action]
+    if actionListEntry then
+        actionListEntry.count = actionListEntry.count + 1
+        actionListEntry.recentChangeReason = event.changeReason
+    else
+        testData.actions[event.action] = {
+            name = event.action,
+            count = 1,
+            recentChangeReason = event.changeReason
+        }
+    end
+
+    testData.lastAction = event.action
+    testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, leavingTrain = event.leavingTrain}
 end
 
 ---@class TestFunctions_TrainSnapshot
@@ -436,12 +467,21 @@ TestFunctions.GetTrainAtPosition = function(searchPosition)
     end
 end
 
+---@class TestFunctions_PlacedEntitiesByGroup @ The key entities built by TestFunctions.BuildBlueprintFromString() grouped on their prototype type or prototype name.
+---@field locomotive LuaEntity[]
+---@field cargo-wagon LuaEntity[]
+---@field fluid-wagon LuaEntity[]
+---@field artillery-wagon LuaEntity[]
+---@field train-stop LuaEntity[]
+---@field railway_tunnel-portal_end LuaEntity[]
+---@field rrailway_tunnel-underground_segment-straight LuaEntity[]
+
 --- Builds a given blueprint string centered on the given position. Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 ---@param blueprintString string
 ---@param position Position
 ---@param testName TestManager_TestName
 ---@return LuaEntity[] placedEntities @ all build entities
----@return table<string, LuaEntity[]> placedEntitiesByGroup @ the key entities built grouped on their prototype type or prototype name. Currently: locomotive, cargo-wagon, fluid-wagon, artillery-wagon, train-stop, railway_tunnel-portal_end, railway_tunnel-underground_segment-straight.
+---@return TestFunctions_PlacedEntitiesByGroup placedEntitiesByGroup @ the key entities built grouped on their prototype type or prototype name.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
     -- This is the lists of entity types that will be unique tracked and returned for easy accessing by test functions. Adding low instance types per BP is fine if multiple test needs them, but anything thats in a BP in high quantity (ie. rail) should be obtained within the test by Utils.GetTableValueWithInnerKeyValue() and may be lower UPS.
     ---@type table<string, LuaEntity[]>
@@ -478,8 +518,9 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
     end
     itemStack.clear()
 
-    ---@typelist table<number, LuaEntity>, table<number, LuaEntity>, table<number, LuaEntity>
-    local pass2Ghosts, fuelProxies, placedEntities = {}, {}, {}
+    local pass2Ghosts = {} ---@type table<number, LuaEntity>
+    local fuelProxies = {} ---@type table<number, LuaEntity>
+    local placedEntities = {} ---@type table<number, LuaEntity>
 
     -- Try to revive all the ghosts. Some may fail and we will try these again as a second pass.
     for _, ghost in pairs(ghosts) do

@@ -14,6 +14,7 @@ Test.RunTime = 3600
 -- Any scheduled event types for the test must be Registered here. Most tests will want an event every tick to check the test progress.
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 -- OPTIONAL, can exclude the attribute. If present it will be called when starting a test and the returned name used, otherwise the test name as defined in test-manager.lua is used.
@@ -23,13 +24,22 @@ end
 
 -- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 Test.Start = function(testName)
-    local blueprint = "0eNqN0tsKgzAMBuB3yXW98NBV+ypjDA/BBbRKW8dE+u6rCmMwBrkqafN/pTQbNMOCsyXjQW9A7WQc6OsGjnpTD/ueX2cEDeRxBAGmHvfK1jRAEECmwxfoNNwEoPHkCc/8Uax3s4wN2tjwSTofs/3DJwchYJ5cTE1mvypKiRSwxiWNeEcW2/MsC+LHzNhmzjZztpmyzYJr8knJJfkvv3BJ/gcpLqnYZMklqz9knNNjkvXX4At4onVnQ5kWqspUUclCyTyEN9IVCHU="
+    local blueprint = "0eNq1WMtu2zAQ/JWAZykQuXz6I3rpsQgMRWYdorJk6JHWMPzvpSQ3NuJNom0UH2wL5M6Qo1lKu0f2WPZ+34SqY6sj2/i2aMK+C3XFVoyn/K5r8lDd5dXmruurypcsYaGoq5atfhxZG7ZVXg6B3WHvY0To/C7OqPLdcBVDy9/5YT1Fpvu66fJy7asNO0WUauP/sBU/JbNwrkLEjJCyLupd3YVnfxUIaOBzaLo+Ly+x04xUXEXK00PCfNWFLvhp6+PFYV31u0ffxG1gzAnb122YxDyyYeUqYQe2SnXcAqubEEHyaThLWFGXdTNMjF/ZvYLxozmX1oIUwiqu9ACwHYaFk5wbrRxABtpmkjsnuDVx/HEczyBeK8PBgAOnuOQ6OwPkw4RsmqCtjRjaxhHtLGgplLFcqGHrUdB2XE9d/PJd+rOPd3+lToOIr3YvLtoNftk+del4z94WAIWBF5jRdWnb1XsEw7xgJJHvLCD7Ft31xBBUSV4cYItTZBiOwWgqjHIYjCH5Takbv92r147jkx+0jn9s9JY1zloxmOHsOamFkYpnmVDO2Cza0liXjZYaPWeMUNJlAFzLYYIwIMF8ieEsWUWDwTgyDLoanpFxUItxTsZBPcbJ+ShRk3Eg46Ayc3IKSlxncg5KXGdyEkpcZzPjUfcmJpjo+U1ofDENRpGe8yacE5RjfPYDvtZvdzEm/berd8iBTO6WI4/4H9GJbDE64WbQ8eXozAw6sRydot5JAcuRk20k5HLknEyuPpOwnJywQr/F18f3ymbb1PH3ZsfjWbQumrptQ7V9Zz0ww2jmf1bwDuec1LXLcs5JX/eVQs9IaMg+9SiYQbDYATXjDsJix9OcnS12HKkZZIsdP+TDANRS1I5MrRczD/nMBbMYN/lhA/YTWUk/7oFaTwj0tVJSywmBvuVKajUh0JduSS0mBFoDSGotIdCSRFJLCcAlplYSgEtMLSQAl9hQYXCJqVUx4BJTXYwXR4rqYrxWU1QX46WjoroYr2QV1cV4Ya2oLsbrfEV1Md52UFQX410QZea172DCuD1dL72873WP9/IU1eJD3+chQhdPftOX597tpWU2XPPEXM2Y+trISm46jQ8D8Nh1Xl010eNDwjftOFFYLo0TRjolzSD9XyErxQk="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
-    local _, _ = TestFunctions.BuildBlueprintFromString(blueprint, {x = 10, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
+
+    -- Get the "South" train stop of the 2 train stops we know are in the BP.
+    local southTrainStop = placedEntitiesByGroup["train-stop"][1]
+    if southTrainStop.backer_name ~= "South" then
+        southTrainStop = placedEntitiesByGroup["train-stop"][2]
+    end
 
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.randomValue = math.random(1, 2)
+    testData.bespoke = {
+        announcedTunnelUsage = false,
+        southTrainStop = southTrainStop
+    }
 
     -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
@@ -43,15 +53,22 @@ end
 -- EXAMPLE - scheduled event function to check test state each tick.
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
 
-    if game.tick > 300 then
-        game.print("Test Data Random Number: " .. testData.randomValue)
-        if testData.randomValue > 0 then
-            TestFunctions.TestCompleted(testName)
-        else
-            TestFunctions.TestFailed(testName, "abstract reason")
-        end
+    if testData.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+        testDataBespoke.announcedTunnelUsage = true
+        game.print("train has completed tunnel trip")
+    end
+
+    if not testDataBespoke.southTrainStop.valid then
+        TestFunctions.TestFailed(testName, "South station was removed")
+    end
+
+    if testDataBespoke.southTrainStop.get_stopped_train() ~= nil then
+        game.print("train reached South station, so stop test")
+        TestFunctions.TestCompleted(testName)
     end
 end
 

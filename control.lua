@@ -37,12 +37,12 @@ local function OnLoad()
                 return tunnelUsageChangedEventId
             end,
             ---@param managedTrainId Id
-            ---@return TunnelUsageEntry
+            ---@return RemoteTunnelUsageEntry
             get_tunnel_usage_entry_for_id = function(managedTrainId)
                 return TrainManagerRemote.GetTunnelUsageEntry(managedTrainId)
             end,
             ---@param trainId Id
-            ---@return TunnelUsageEntry
+            ---@return RemoteTunnelUsageEntry
             get_tunnel_usage_entry_for_train = function(trainId)
                 return TrainManagerRemote.GetATrainsTunnelUsageEntry(trainId)
             end,

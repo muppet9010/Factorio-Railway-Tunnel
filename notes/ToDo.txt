@@ -14,7 +14,8 @@ DON'T COMMIT:
 
 Now
 ----------------
-    - Test all the old working tests as a change to tunnel leaving breaks some it seems.
+    -- Run the existing working tests to make sure my bulk updates hasn't broken them.
+    -- Finish the leaving speed duration change test and the functionalisation of common test bits.
 
 
 Bugs

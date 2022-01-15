@@ -37,13 +37,15 @@ Test.Start = function(testName)
     local repathTrain = placedEntitiesByGroup["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationSouthReached = false
-    testData.stationNorthReached = false
-    testData.repathTrain = repathTrain
-    testData.repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain)
-    testData.stationSouthEndViaTunnel = stationSouthEndViaTunnel
-    testData.stationSouthEndNotTunnel = stationSouthEndNotTunnel
-    testData.stationNorth = stationNorth
+    testData.bespoke = {
+        stationSouthReached = false,
+        stationNorthReached = false,
+        repathTrain = repathTrain,
+        repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain),
+        stationSouthEndViaTunnel = stationSouthEndViaTunnel,
+        stationSouthEndNotTunnel = stationSouthEndNotTunnel,
+        stationNorth = stationNorth
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -53,34 +55,36 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testData.stationSouthEndViaTunnel.get_stopped_train(), testData.stationSouthEndNotTunnel.get_stopped_train(), testData.stationNorth.get_stopped_train()
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testDataBespoke.stationSouthEndViaTunnel.get_stopped_train(), testDataBespoke.stationSouthEndNotTunnel.get_stopped_train(), testDataBespoke.stationNorth.get_stopped_train()
 
-    if stationSouthEndViaTunnelTrain ~= nil and not testData.stationSouthReached then
+    if stationSouthEndViaTunnelTrain ~= nil and not testDataBespoke.stationSouthReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.repathTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at south station has differences")
             return
         end
         game.print("train reached tunnel usage south station")
-        testData.stationSouthReached = true
+        testDataBespoke.stationSouthReached = true
     end
     if stationSouthEndNotTunnelTrain ~= nil then
         -- The train should never reach this specific station as it should use the tunnel.
         TestFunctions.TestFailed(testName, "train didn't use tunnel and reached wrong south station")
         return
     end
-    if stationNorthTrain ~= nil and not testData.stationNorthReached then
+    if stationNorthTrain ~= nil and not testDataBespoke.stationNorthReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.repathTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at north station has differences")
             return
         end
         game.print("train reached north station")
-        testData.stationNorthReached = true
+        testDataBespoke.stationNorthReached = true
     end
 
-    if testData.stationSouthReached and testData.stationNorthReached then
+    if testDataBespoke.stationSouthReached and testDataBespoke.stationNorthReached then
         TestFunctions.TestCompleted(testName)
         return
     end

@@ -1808,7 +1808,7 @@ Utils.GetRailEntityLength = function(railEntityType)
     end
 end
 
----@class UtilsTrainSpeedCalculationData @ Data the Utils functions need to calculate and estimate its future speed, time to cover distance, etc.
+---@class Utils_TrainSpeedCalculationData @ Data the Utils functions need to calculate and estimate its future speed, time to cover distance, etc.
 ---@field trainWeight double @ The total weight of the train.
 ---@field trainFrictionForce double @ The total friction force of the train.
 ---@field trainWeightedFrictionForce double @ The train's friction force divided by train weight.
@@ -1817,7 +1817,7 @@ end
 ---@field maxSpeed double @ The max speed the train can achieve.
 ---@field trainRawBrakingForce double @ The total braking force of the train ignoring any force bonus percentage from LuaForce.train_braking_force_bonus.
 
----@class UtilsTrainCarriageData @ Data array of cached details on a train's carriage. Allows only obtaining required data pr carriage once. Only populate carriage data when required.
+---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriage. Allows only obtaining required data pr carriage once. Only populate carriage data when required.
 ---@field entity LuaEntity
 ---@field prototypeName? string|null
 ---@field speed? double|null
@@ -1828,10 +1828,10 @@ end
 ---@param train LuaTrain
 ---@param train_speed double
 ---@param train_carriages? LuaEntity[]|null
----@param trainCarriagesDataArray? UtilsTrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
----@return UtilsTrainSpeedCalculationData
+---@param trainCarriagesDataArray? Utils_TrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
+---@return Utils_TrainSpeedCalculationData
 Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
-    ---@type UtilsTrainSpeedCalculationData
+    ---@type Utils_TrainSpeedCalculationData
     local trainData = {
         trainWeight = train.weight
     }
@@ -1859,7 +1859,7 @@ Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriag
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         local carriageEntity, carraigeCachedData, carriage_name
         if trainCarriagesDataArray ~= nil then
-            ---@type UtilsTrainCarriageData
+            ---@type Utils_TrainCarriageData
             carraigeCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
             carriage_name = carraigeCachedData.prototypeName
             if carriage_name == nil then
@@ -1925,7 +1925,7 @@ end
 
 --- Calculates the speed of a train for 1 tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive
 -- Often this is copied in to code inline for repeated calling.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@return number absoluteSpeed
 Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initialSpeedAbsolute)
@@ -1934,7 +1934,7 @@ end
 
 --- Estimates how long an accelerating train takes to cover a distance, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param distance double
 ---@return Tick ticks @ Rounded up.
@@ -1947,7 +1947,7 @@ end
 
 --- Estimates train speed and distance covered after set number of ticks. Approximately accounts for air resistence, but final value will be a little off.
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param ticks Tick
 ---@return double finalSpeedAbsolute
@@ -1961,7 +1961,7 @@ Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks = function(trainData, in
 end
 
 --- Estimate how long it takes in ticks and distance for a train to accelerate from a starting speed to a final speed.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param requiredSpeedAbsolute double
 ---@return Tick ticksTaken @ Rounded up.
@@ -1975,7 +1975,7 @@ Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed = functio
 end
 
 --- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param distance double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
@@ -1992,7 +1992,7 @@ Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(train
 end
 
 --- Calculates the braking distance and ticks for a train at a given speed to brake to a required speed.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param requiredSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
@@ -2007,7 +2007,7 @@ Utils.CalculateBrakingTrainDistanceAndTimeFromInitialToFinalSpeed = function(tra
 end
 
 --- Calculates the train speed if it brakes for a time period.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param currentSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@param ticksToBrake Tick
@@ -2020,7 +2020,7 @@ Utils.CalculateBrakingTrainSpeedForTime = function(trainData, currentSpeedAbsolu
 end
 
 --- Estimate a trains intial speed at the start of a stopping distance.
----@param trainData UtilsTrainSpeedCalculationData
+---@param trainData Utils_TrainSpeedCalculationData
 ---@param distance double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@return double initialAbsoluteSpeed

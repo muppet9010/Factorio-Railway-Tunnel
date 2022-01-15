@@ -73,6 +73,7 @@ Test.TestScenarios = {}
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 -- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
@@ -244,16 +245,18 @@ Test.Start = function(testName)
 
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.testScenario = testScenario.trainComposition
-    testData.tunnelEndStation = tunnelEndStation
-    testData.aboveEndStation = aboveEndStation
-    testData.tunnelTrainPreTunnel = tunnelTrain
-    testData.aboveTrain = aboveTrain
-    testData.nearPositionX = nearPositionX
-    testData.farPositionX = farPositionX
-    testData.tunnelTrackY = tunnelTrackY
-    testData.aboveTrackY = aboveTrackY
-    testData.noPath_trackRemoved = false
+    testData.testScenario = testScenario
+    testData.bespoke = {
+        tunnelEndStation = tunnelEndStation,
+        aboveEndStation = aboveEndStation,
+        tunnelTrainPreTunnel = tunnelTrain,
+        aboveTrain = aboveTrain,
+        nearPositionX = nearPositionX,
+        farPositionX = farPositionX,
+        tunnelTrackY = tunnelTrackY,
+        aboveTrackY = aboveTrackY,
+        noPath_trackRemoved = false
+    }
 
     -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
@@ -268,17 +271,18 @@ end
 -- Scheduled event function to check test state each tick.
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario = testData.testScenario
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
     -- LeavingTrackCondition.noPath only - track when to remove the rail to cause a noPath.
     if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
-        if not testData.noPath_trackRemoved and not testData.tunnelTrain.valid then
+        if not testDataBespoke.noPath_trackRemoved and not testDataBespoke.tunnelTrain.valid then
             -- Train has entered tunnel, remove the forwards path out of the tunnel on both rails.
-            testData.noPath_trackRemoved = true
+            testDataBespoke.noPath_trackRemoved = true
             local searchBoundingBox = {
-                left_top = {x = testData.nearPositionX - 0.5, y = testData.tunnelTrackY - 0.5},
-                right_bottom = {x = testData.nearPositionX + 0.5, y = testData.aboveTrackY + 0.5}
+                left_top = {x = testDataBespoke.nearPositionX - 0.5, y = testDataBespoke.tunnelTrackY - 0.5},
+                right_bottom = {x = testDataBespoke.nearPositionX + 0.5, y = testDataBespoke.aboveTrackY + 0.5}
             }
 
             local railsFound = TestFunctions.GetTestSurface().find_entities_filtered {area = searchBoundingBox, name = "straight-rail"}
@@ -293,7 +297,7 @@ Test.EveryTick = function(event)
     end
 
     --TODO
-    -- Get the train when it leaves the tunnel and set as testData.tunnelTrainPreTunnel . Need to add tracking of the tunnel usage events, but should be much simplier now.
+    -- Get the train when it leaves the tunnel and set as testDataBespoke.tunnelTrainPreTunnel . Need to add tracking of the tunnel usage events, but should be much simplier now.
 end
 
 -- Generate the combinations of different tests required.

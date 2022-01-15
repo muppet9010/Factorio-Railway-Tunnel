@@ -27,8 +27,10 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.train = train
-    testData.trainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.stationTarget = stationTarget
+    testData.bespoke = {
+        trainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        stationTarget = stationTarget
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -38,12 +40,14 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local stationTargetTrain = testData.stationTarget.get_stopped_train()
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local stationTargetTrain = testDataBespoke.stationTarget.get_stopped_train()
 
     if stationTargetTrain ~= nil then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationTargetTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.trainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train has differences after tunnel use")
             return
         end

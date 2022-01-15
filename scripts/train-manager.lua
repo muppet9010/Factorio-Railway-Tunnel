@@ -19,9 +19,9 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint.
 ---@field enteringTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking.
 ---@field enteringTrainReachdFullSpeed? boolean|null @ If the entering train has reached its full speed already.
----@field enteringTrainCarriagesCachedData? UtilsTrainCarriageData[]|null @ The cached carriage details of the entering train as we obtain them.
+---@field enteringTrainCarriagesCachedData? Utils_TrainCarriageData[]|null @ The cached carriage details of the entering train as we obtain them.
 ---
----@field trainSpeedCalculationData? UtilsTrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
+---@field trainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
 ---@field traversalTravelDistance double|null @ The length of tunnel the train is travelling through on this traversal. This is entering position to leaving position.
 ---@field traversalInitialDuration? Tick|null @ The number of tick's the train takes to traverse the tunnel.
@@ -362,10 +362,10 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
 end
 
 --- Run when the train is scheduled to arrive at the end of the tunnel.
----@param event UtilityScheduledEventCallbackObject
+---@param event UtilityScheduledEvent_CallbackObject
 TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
-    ---@typelist ManagedTrain, LuaEntity
-    local managedTrain, previousBrakingTargetEntityId = event.data.managedTrain, event.data.brakingTargetEntityId
+    local managedTrain = event.data.managedTrain ---@type ManagedTrain
+    local previousBrakingTargetEntityId = event.data.brakingTargetEntityId ---@type LuaEntity
     if managedTrain == nil or managedTrain.primaryTrainPartName ~= PrimaryTrainState.underground then
         -- Something has happened to the train/tunnel being managed while this has been scheduled, so just give up.
         return
@@ -674,8 +674,8 @@ end
 ---@param upgradeManagedTrain ManagedTrain @ An existing ManagedTrain object that is being updated/overwritten with fresh data.
 ---@return ManagedTrain
 TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransitionSignal, traversingTunnel, upgradeManagedTrain)
-    ---@typelist Id, double
-    local train_id, train_speed = train.id, train.speed
+    local train_id = train.id ---@type Id
+    local train_speed = train.speed ---@type double
     if train_speed == 0 then
         error("TrainManager.CreateManagedTrainObject() doesn't support 0 speed\ntrain id: " .. train_id)
     end
@@ -707,7 +707,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         managedTrain.enteringTrainExpectedSpeed = train_speed
         managedTrain.enteringTrainReachdFullSpeed = false
         -- Start building up the carriage data cache for later use.
-        ---@type UtilsTrainCarriageData[]
+        ---@type Utils_TrainCarriageData[]
         local enteringTrainCarriagesCachedData = {}
         for i, carriage in pairs(train.carriages) do
             enteringTrainCarriagesCachedData[i] = {entity = carriage}
@@ -891,8 +891,8 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, sa
     end
 
     -- Create an intial clone of the carriage away from the train, flip its orientation, then clone the carriage to the right place. Saves having to disconnect the train and reconnect it.
-    ---@typelist LuaEntity, LuaEntity
-    local tempCarriage, sourceCarriage
+    local tempCarriage ---@type LuaEntity
+    local sourceCarriage ---@type LuaEntity
     if haveToFlipCarriage then
         tempCarriage = refCarriage.clone {position = safeCarriageFlipPosition, surface = targetSurface, create_build_effect_smoke = false}
         if tempCarriage.orientation == requiredOrientation then

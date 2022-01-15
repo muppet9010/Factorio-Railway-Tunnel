@@ -40,11 +40,13 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.westStationReached = false
-    testData.eastStationReached = false
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.trainStopWest = trainStopWest
-    testData.trainStopEast = trainStopEast
+    testData.bespoke = {
+        westStationReached = false,
+        eastStationReached = false,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        trainStopWest = trainStopWest,
+        trainStopEast = trainStopEast
+    }
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -54,27 +56,29 @@ Test.Stop = function(testName)
 end
 
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()
-    if westTrain ~= nil and not testData.westStationReached then
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
+    local westTrain, eastTrain = testDataBespoke.trainStopWest.get_stopped_train(), testDataBespoke.trainStopEast.get_stopped_train()
+    if westTrain ~= nil and not testDataBespoke.westStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached west station, but with train differences")
             return
         end
         game.print("train reached west station")
-        testData.westStationReached = true
+        testDataBespoke.westStationReached = true
     end
-    if eastTrain ~= nil and not testData.eastStationReached then
+    if eastTrain ~= nil and not testDataBespoke.eastStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached east station, but with train differences")
             return
         end
         game.print("train reached east station")
-        testData.eastStationReached = true
+        testDataBespoke.eastStationReached = true
     end
-    if testData.westStationReached and testData.eastStationReached then
+    if testDataBespoke.westStationReached and testDataBespoke.eastStationReached then
         TestFunctions.TestCompleted(testName)
     end
 end
