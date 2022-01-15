@@ -31,7 +31,7 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---
 ---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
 ---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
----@field leavingTrainForwards? boolean|null @ If the leaving train is travelling forwards or not. Populated on first setting of the leaving trains speed.
+---@field leavingTrainForwards? boolean|null @ If the leaving train is travelling forwards or not. Populated on first setting of the leaving trains speed. Can be returned to nil if when setting the trains speed its found the train isn't in a state to know its direction any more.
 ---
 ---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel.
 ---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain.
@@ -355,7 +355,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
 
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainForwards for later use.
         local leavingTrain = managedTrain.leavingTrain
-        TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards")
+        TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards", managedTrain.dummyTrain.path_end_stop)
 
         TrainManager.TrainUndergroundCompleted(managedTrain)
     end
@@ -373,7 +373,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
     -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainForwards for later use.
     local leavingTrain = managedTrain.leavingTrain
-    TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards")
+    TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards", managedTrain.dummyTrain.path_end_stop)
 
     -- Check if the train can just leave at its current speed and if so release it here.
     local leavingTrain_state = leavingTrain.state
@@ -387,9 +387,8 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local crawlAbsSpeed = 0.03 -- The speed for the train if its going to crawl forwards to the end of the portal.
     local distanceBeyondTrainLeavingPosition, leavingTrainNewAbsoluteSpeed, scheduleFutureArrival, brakingTargetEntityId = 0, nil, nil, nil
     if leavingTrain_state == defines.train_state.path_lost or leavingTrain_state == defines.train_state.no_schedule or leavingTrain_state == defines.train_state.no_path or leavingTrain_state == defines.train_state.destination_full then
-        -- Train has no where to go.
+        -- Train has no where to go so just pull to the end of the tunnel and then return to its regular broken state.
 
-        -- Set to pull up to the end of the portal and wait there.
         local exitPortalEntryRail = managedTrain.exitPortalEntrySignalOut.railEntity
         local schedule = leavingTrain.schedule
         table.insert(
@@ -553,10 +552,17 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
 
     -- Set the new leaving speed to the train and release it.
     local leavingSpeedAbsolute = leavingTrainNewAbsoluteSpeed or managedTrain.trainLeavingSpeedAbsolute
-    if managedTrain.leavingTrainForwards then
+    if managedTrain.leavingTrainForwards == true then
         leavingTrain.speed = leavingSpeedAbsolute
-    else
+    elseif managedTrain.leavingTrainForwards == false then
         leavingTrain.speed = -leavingSpeedAbsolute
+    else
+        -- Train facing not resolvable at previous setting time.
+        TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, leavingSpeedAbsolute, managedTrain, "leavingTrainForwards", leavingTrain.path_end_stop)
+        if managedTrain.leavingTrainForwards == nil then
+            -- Train facing neededed to have been fixed by now.
+            error("unknown leaving train facing when trying to set its speed to release it from the tunnel")
+        end
     end
     TrainManager.TrainUndergroundCompleted(managedTrain)
 end
@@ -1011,23 +1017,28 @@ end
 --- Sets a trains speed correctly when we are unsure of the trains direction. Utilises and updates the train facing forwards ManagedTrain field for quicker simplier usage.
 ---@param train LuaTrain
 ---@param absoluteSpeed double
----@param managedTrain ManagedTrain
+---@param facingForwardsFieldContainer table @ is the train's ManagedTrain object in these use cases, but left generic intentionally.
 ---@param facingForwardsFieldName string @ i.e. leavingTrainForwards
-TrainManager.SetTrainSpeedInCorrectDirection = function(train, absoluteSpeed, managedTrain, facingForwardsFieldName)
-    if managedTrain[facingForwardsFieldName] == nil or managedTrain[facingForwardsFieldName] then
-        train.speed = managedTrain.trainLeavingSpeedAbsolute
+---@param schedulePathEndStop? LuaEntity|null @ Just pass through the targeted schedule end stop value and it will be handled.
+TrainManager.SetTrainSpeedInCorrectDirection = function(train, absoluteSpeed, facingForwardsFieldContainer, facingForwardsFieldName, schedulePathEndStop)
+    if facingForwardsFieldContainer[facingForwardsFieldName] == nil or facingForwardsFieldContainer[facingForwardsFieldName] then
+        train.speed = absoluteSpeed
     else
-        train.speed = -managedTrain.trainLeavingSpeedAbsolute
+        train.speed = -absoluteSpeed
     end
-    TrainManager.SetTrainToAuto(train, managedTrain.dummyTrain.path_end_stop)
-    if managedTrain.leavingTrainForwards == nil then
+    TrainManager.SetTrainToAuto(train, schedulePathEndStop)
+    if facingForwardsFieldContainer[facingForwardsFieldName] == nil then
         -- Train hasn't tried to leave before so we don't actually know which way it is facing.
         if train.speed ~= 0 then
-            managedTrain[facingForwardsFieldName] = true
+            facingForwardsFieldContainer[facingForwardsFieldName] = true
         else
             train.speed = -absoluteSpeed
-            managedTrain[facingForwardsFieldName] = false
+            facingForwardsFieldContainer[facingForwardsFieldName] = false
             train.manual_mode = false -- Have to do after setting speed again to get the train state to update right now.
+            if train.speed == 0 then
+                -- Train state not suitable to hold speed in either direction. Set facing back to unknown and it will be handled by the main process functions.
+                facingForwardsFieldContainer[facingForwardsFieldName] = nil
+            end
         end
     end
 end

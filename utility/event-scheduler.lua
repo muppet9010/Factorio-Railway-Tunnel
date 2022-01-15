@@ -57,6 +57,7 @@ end
 
 --- Schedules an event name to run once at a set tick.
 --- Called from OnStartup() or from some other event or trigger to schedule an event.
+--- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param eventTick Tick| @ eventTick of nil will be next tick, current or past ticks will fail. eventTick of -1 is a special input for current tick when used by events that run before the Factorio on_tick event, i.e. a custom input (key pressed for action) handler.
 ---@param eventName string @ The event name used to lookup the function to call, as registered with EventScheduler.RegisterScheduledEventType().
 ---@param instanceId? StringOrNumber|null @ Defaults to empty string if none was provided. Must be unique so leaving blank is only safe if no duplicate scheduling of an eventName.
@@ -135,6 +136,7 @@ end
 --- Schedules an event name to run each tick.
 --- Called from OnStartup() or from some other event or trigger to schedule an event to fire every tick from now on until cancelled.
 --- Good if you need to pass data back with each firing and the event is going to be stopped/started. If its going to run constantly then betetr to just register for the on_tick event handler via the Events utlity class.
+--- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param eventName string @ The event name used to lookup the function to call, as registered with EventScheduler.RegisterScheduledEventType().
 ---@param instanceId? StringOrNumber|null @ Defaults to empty string if none was provided.
 ---@param eventData? table|null @ Custom table of data that will be returned to the triggered function when called as the "data" attribute.

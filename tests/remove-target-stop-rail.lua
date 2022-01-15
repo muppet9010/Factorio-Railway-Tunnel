@@ -176,23 +176,25 @@ Test.TunnelUsageChanged = function(event)
     -- OVERHAUL - functionised
     local testData = TestFunctions.GetTestDataObject(event.testName)
     local testScenario = testData.testScenario
+    local testDataBespoke = testData.bespoke
 
-    if not testData.firstTargetRemoved and testScenario.tunnelUsageState == TunnelUsageStates[event.action] then
+    if not testDataBespoke.firstTargetRemoved and testScenario.tunnelUsageState == TunnelUsageStates[event.action] then
         -- Is the state we are wanting to act upon.
         if testScenario.targetType == TargetTypes.trainStop then
-            testData.stationRemove.destroy()
+            testDataBespoke.stationRemove.destroy()
             game.print("Removed target schedule station.")
         elseif testScenario.targetType == TargetTypes.rail then
-            testData.stationRemove.connected_rail.destroy()
+            testDataBespoke.stationRemove.connected_rail.destroy()
             game.print("Removed target schedule rail.")
         else
             error("Unsupported testScenario.targetType: " .. testScenario.targetType)
         end
-        testData.firstTargetRemoved = true
+        testDataBespoke.firstTargetRemoved = true
         testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, leavingTrain = event.leavingTrain}
     end
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)

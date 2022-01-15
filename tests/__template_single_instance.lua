@@ -50,7 +50,8 @@ Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
--- EXAMPLE - scheduled event function to check test state each tick.
+-- Scheduled event function to check test state each tick.
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId

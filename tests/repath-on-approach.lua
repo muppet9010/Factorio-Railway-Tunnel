@@ -66,10 +66,11 @@ Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testDataBespoke = testData.bespoke
     local repathTrain, stationRepathEndViaTunnelTrain, stationRepathEndNotTunnelTrain, stationLoopEndTrain = testDataBespoke.repathTrain, testDataBespoke.stationRepathEndViaTunnel.get_stopped_train(), testDataBespoke.stationRepathEndNotTunnel.get_stopped_train(), testDataBespoke.stationLoopEnd.get_stopped_train()
 
     if repathTrain == nil or not repathTrain.valid then

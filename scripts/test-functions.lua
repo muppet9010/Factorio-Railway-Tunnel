@@ -80,6 +80,12 @@ TestFunctions.TestFailed = function(testName, errorText)
         EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests_Scheduled")
     end
 end
+--- Goes in to the test log file after the equals sign on the current row. For rare cases a test wants to inject log data in for doign full test runs to file.
+--- Can be called in all cases and will only write if "justLogAllTests" is enabled.
+---@param text string
+TestFunctions.LogTestDataToTestRow = function(text)
+    MOD.Interfaces.TestManager.LogTestDataToTestRow(text)
+end
 
 --- Register a unique name and function for future event scheduling. Must be called from a test's OnLoad() and is a pre-requisite for any events to be scheduled during a test Start().
 ---@param testName TestManager_TestName
@@ -91,13 +97,13 @@ TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, te
 end
 
 --- Schedule an event named function once at a given tick. To be called from Start().
+--- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param tick Tick
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
----@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
+---@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData? table|null @ Data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, instanceId, eventData)
-    -- instanceId and eventData are optional.
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
         instanceId = testName
@@ -106,10 +112,11 @@ TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, insta
 end
 
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
+--- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
----@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData table @ OPTIONAL - data table passed back in to the handler function when triggered.
+---@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData? table|null @ Data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instanceId, eventData)
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
@@ -121,7 +128,7 @@ end
 --- Remove any instances of future scheduled once events. To be called from Stop().
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to remove the schedule of.
----@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledOnceEvents(completeName, instanceId)
@@ -130,7 +137,7 @@ end
 --- Remove any instances of future scheduled every tick events. To be called from Stop().
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to remove the schedule of.
----@param instanceId string @ OPTIONAL - Unique id for this scheduled once event. Uses testName if not provided.
+---@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledEventFromEachTick(completeName, instanceId)
@@ -141,7 +148,7 @@ end
 ---@param eventName defines.events @ The Factorio event to react to.
 ---@param testFunctionName string @ Unique name of this event function handler.
 ---@param testFunction function @ Function to be triggered when the event occurs.
----@param filterData EventFilter @ OPTIONAL - Factorio event filter to be used.
+---@param filterData? EventFilter|null @ Factorio event filter to be used.
 TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterData)
     -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
@@ -158,7 +165,7 @@ end
 
 --- Used to apply an optional filter list of keys against a full list. Includes error catching for passing in bad (empty) filter list.
 ---@param fullList table
----@param filterList table
+---@param filterList? table|null
 ---@return table
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
     local listToTest
@@ -265,7 +272,7 @@ end
 --- Compares 2 train snapshots to see if they are the same train structure. If Optional "allowPartialCurrentSnapshot" argument is true then the current snapshot can be one end of the origonal train.
 ---@param origionalTrainSnapshot TestFunctions_TrainSnapshot
 ---@param currentTrainSnapshot TestFunctions_TrainSnapshot
----@param allowPartialCurrentSnapshot boolean
+---@param allowPartialCurrentSnapshot? boolean|null
 ---@return boolean
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.

@@ -28,7 +28,7 @@ local ForceTestsFullSuite = false -- If true each test will do their full range,
 local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "railway_tunnel_toggle_debug_state" command.
 
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
-local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures.
+local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures. Results written to a text file in: script-output/RailwayTunnel_Tests.txt
 
 local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
@@ -58,7 +58,7 @@ local TestsToRun = {
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
     --ChangeTrainOrders = {enabled = false, testScript = require("tests/change-train-orders")}, -- DONT USE - test needs updating to new tunnel logic.
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
-    LeavingTrainSpeedDurationChangeTests = {enabled = true, testScript = require("tests/leaving-train-speed-duration-change-tests")},
+    LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     TemplateSingleInstance = {enabled = false, testScript = require("tests/__template_single_instance"), notInAllTests = true},
     TemplateMultiInstance = {enabled = false, testScript = require("tests/__template_multi_instance"), notInAllTests = true}
@@ -146,6 +146,7 @@ TestManager.OnLoad = function()
     MOD.Interfaces.TestManager = MOD.Interfaces.TestManager or {}
     MOD.Interfaces.TestManager.GetTestScript = TestManager.GetTestScript
     MOD.Interfaces.TestManager.LogTestOutcome = TestManager.LogTestOutcome
+    MOD.Interfaces.TestManager.LogTestDataToTestRow = TestManager.LogTestDataToTestRow
 
     -- Run any active tests OnLoad function.
     for testName, testToRun in pairs(TestsToRun) do
@@ -335,6 +336,14 @@ end
 ---@return TestManager_TestScript @ The script lua file of this test.
 TestManager.GetTestScript = function(testName)
     return TestsToRun[testName].testScript
+end
+
+--- Goes in to the test log file after the equals sign on the current row.
+---@param text string
+TestManager.LogTestDataToTestRow = function(text)
+    if global.testManager.justLogAllTests then
+        game.write_file("RailwayTunnel_Tests.txt", "   " .. text .. "   -   ", true)
+    end
 end
 
 ---@param text string

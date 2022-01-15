@@ -90,6 +90,7 @@ Test.Stop = function(testName)
 end
 
 -- Scheduled event function to check test state each tick.
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId
@@ -107,6 +108,7 @@ Test.EveryTick = function(event)
 
     if testDataBespoke.southTrainStop.get_stopped_train() ~= nil then
         game.print("train reached South station, so stop test")
+        game.print("test letter: " .. testScenario.firstLetter)
         TestFunctions.TestCompleted(testName)
     end
 end

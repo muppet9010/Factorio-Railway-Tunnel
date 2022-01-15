@@ -145,6 +145,7 @@ Test.TunnelUsageChanged = function(event)
     end
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
     local testScenario, testDataBespoke = testData.testScenario, testData.bespoke

@@ -15,7 +15,6 @@ DON'T COMMIT:
 Now
 ----------------
     -- Run the existing working tests to make sure my bulk updates hasn't broken them.
-    -- Finish the leaving speed duration change test and the functionalisation of common test bits.
 
 
 Bugs

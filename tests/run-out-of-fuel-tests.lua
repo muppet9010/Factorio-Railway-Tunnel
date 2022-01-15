@@ -107,6 +107,7 @@ Test.TunnelUsageChanged = function(event)
     testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, undergroundTrain = event.undergroundTrain, leavingTrain = event.leavingTrain}
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)

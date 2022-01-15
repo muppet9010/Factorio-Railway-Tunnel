@@ -600,6 +600,7 @@ Test.ResetTunnelUsageDetails = function(testData)
     testData.actions = {}
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
