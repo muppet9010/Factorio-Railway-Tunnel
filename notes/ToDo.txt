@@ -14,7 +14,6 @@ DON'T COMMIT:
 
 Now
 ----------------
-    -- Run the existing working tests to make sure my bulk updates hasn't broken them.
 
 
 Bugs
@@ -31,8 +30,8 @@ Bugs
 
 Features to add/change
 ----------------
-    - Clickable on portal area's will raise a dialogue showing max supported train length for this and the other end (if exists). This area will have some above ground visual blocking graphics so train within it isn't visible. Both should be created when the portal is complete and not require a tunnel. Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
-    - At present all rail in the portals is shown as standard on map. Is this really desired as it used to not be like this.
+    - Add some placeholder Portal graphics to hide the train and rail images in the portal base layer. A closed portal (blocked graphics both ends) should appear when the portal is complete, with the open end graphics being applied when the tunnel is complete.
+    - Clickable on portal area's will raise a dialogue showing max supported train length for this end and if theres a tunnel the other end as well. Should be created when the portal is complete and not require a tunnel. Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
     - With the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
     - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
     - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
@@ -50,6 +49,7 @@ Features to add/change
 
 Long Term Future plans
 ----------------
+    - Review leaving train arrival time and speed again and work to reduce varations to the regular train. Will need to account for excessive speeds entering the tunnel and it seems to break more aggressively leaving the tunnel at present.
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.

@@ -131,17 +131,17 @@ local PortalTypeData = {
         trainWaitingAreaTilesLength = 0,
         tracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
                 positionOffset = {x = 0, y = -2},
                 baseDirection = defines.direction.north
             },
             {
-                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             },
             {
-                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
                 positionOffset = {x = 0, y = 2},
                 baseDirection = defines.direction.north
             }
@@ -155,7 +155,7 @@ local PortalTypeData = {
         trainWaitingAreaTilesLength = 2,
         tracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-portal_rail-on_map",
+                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             }
@@ -699,19 +699,25 @@ Portal.BuildRailForPortalsParts = function(portal)
     -- The function to place rail called within this function only.
     ---@param portalPart PortalPart
     ---@param tracksPositionOffset PortalPartTrackPositionOffset
-    local PlaceRail = function(portalPart, tracksPositionOffset)
+    ---@param entityNameOverride? string|null @ If set this entity name is placed rather than the one defined in the tracksPositionOffset argument.
+    local PlaceRail = function(portalPart, tracksPositionOffset, entityNameOverride)
         local railPos = Utils.RotateOffsetAroundPosition(portalPart.entity_orientation, tracksPositionOffset.positionOffset, portalPart.entity_position)
-        local placedRail = portal.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = portal.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, portalPart.entity_direction)}
+        local placedRail = portal.surface.create_entity {name = entityNameOverride or tracksPositionOffset.trackEntityName, position = railPos, force = portal.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, portalPart.entity_direction)}
         placedRail.destructible = false
         portal.portalRailEntities[placedRail.unit_number] = placedRail
     end
 
-    -- Loop over the portal parts and add their rails.
+    --Will populate during the internal function.
     portal.portalRailEntities = {}
-    for _, portalEnd in pairs(portal.portalEnds) do
-        for _, tracksPositionOffset in pairs(portalEnd.typeData.tracksPositionOffset) do
-            PlaceRail(portalEnd, tracksPositionOffset)
-        end
+
+    -- Force the entry portal to have on-map rails.
+    for _, tracksPositionOffset in pairs(portal.entryPortalEnd.typeData.tracksPositionOffset) do
+        PlaceRail(portal.entryPortalEnd, tracksPositionOffset, "railway_tunnel-portal_rail-on_map")
+    end
+
+    -- Loop over the remaining portal parts and add their "underground" rails.
+    for _, tracksPositionOffset in pairs(portal.blockedPortalEnd.typeData.tracksPositionOffset) do
+        PlaceRail(portal.blockedPortalEnd, tracksPositionOffset)
     end
     for _, portalSegment in pairs(portal.portalSegments) do
         for _, tracksPositionOffset in pairs(portalSegment.typeData.tracksPositionOffset) do

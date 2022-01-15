@@ -26,7 +26,6 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.train = train
     testData.bespoke = {
         trainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
         stationTarget = stationTarget

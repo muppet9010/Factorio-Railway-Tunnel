@@ -1,7 +1,7 @@
 --[[
     Tests that run different train types, tunnel compositions, starting speeds and leaving track scenarios. Confirms that the mod completes the activities and provides a non tunnel identical track and train for visual speed comparison.
     Repathing back through the tunnel is handled by force-repath-back-through-tunnel-tests.lua as there are a lot of combinations for it.
-    Note: this is a slower test to run as it places varying numbers of entities everywhere so no BP's are currently used in it.
+    Note: this is a slower test to run as it places varying numbers of entities everywhere so no BP's are currently used in it. Advised to run logging results to text file when all iterations are used and run Facotrio outside of the debugger so its much faster.
 --]]
 --
 

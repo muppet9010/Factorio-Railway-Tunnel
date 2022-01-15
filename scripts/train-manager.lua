@@ -607,8 +607,8 @@ TrainManager.UpdateScheduleForTargetRailBeingTunnelRail = function(managedTrain,
     local targetTrainStop, targetRail = train.path_end_stop, train.path_end_rail
     if targetTrainStop == nil and targetRail ~= nil then
         local targetRail_name = targetRail.name
-        if targetRail_name == "railway_tunnel-invisible_rail-on_map_tunnel" or targetRail_name == "railway_tunnel-portal_rail-on_map" then
-            -- The target rail is the type used by a portal/segment for underground rail, so check if it belongs to the just used tunnel.
+        if Common.TunnelRailEntityNames[targetRail_name] ~= nil then
+            -- The target rail is the type used by a portal/segment for rail, so check if it belongs to the just used tunnel.
             local targetRail_unitNumber = targetRail.unit_number
             if managedTrain.tunnel.tunnelRailEntities[targetRail_unitNumber] ~= nil or managedTrain.tunnel.portalRailEntities[targetRail_unitNumber] ~= nil then
                 -- The target rail is part of the currently used tunnel, so update the schedule rail to be the one at the end of the portal and just leave the train to do its thing from there.

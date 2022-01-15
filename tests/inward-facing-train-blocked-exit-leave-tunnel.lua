@@ -60,10 +60,12 @@ end
 
 Test.DestroyBlockingWagon = function(event)
     -- The main train should have completed its tunnel trip north and have completely stopped at the blocking wagon at this point.
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke
 
     -- The main train will have its lead loco around 30 tiles below the blocking wagon if stopped at the signal.
-    local inspectionArea = {left_top = {x = testData.blockingWagon.position.x, y = testData.blockingWagon.position.y + 25}, right_bottom = {x = testData.blockingWagon.position.x, y = testData.blockingWagon.position.y + 35}}
+    local inspectionArea = {left_top = {x = testDataBespoke.blockingWagon.position.x, y = testDataBespoke.blockingWagon.position.y + 25}, right_bottom = {x = testDataBespoke.blockingWagon.position.x, y = testDataBespoke.blockingWagon.position.y + 35}}
     local locosInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = "locomotive", limit = 1}
     if #locosInInspectionArea ~= 1 then
         TestFunctions.TestFailed(testName, "1 loco not found around expected point")
@@ -77,15 +79,15 @@ Test.DestroyBlockingWagon = function(event)
         return
     end
 
-    if Utils.GetDistanceSingleAxis(leadingCarriage.position, testData.blockingWagon.position, "y") > 25 then
+    if Utils.GetDistanceSingleAxis(leadingCarriage.position, testDataBespoke.blockingWagon.position, "y") > 25 then
         TestFunctions.TestFailed(testName, "train not stopped at expected position for blocking wagon signal")
         return
     end
 
     game.print("train stopped at blocking wagon signal")
-    testData.blockingWagonReached = true
+    testDataBespoke.blockingWagonReached = true
 
-    testData.blockingWagon.destroy()
+    testDataBespoke.blockingWagon.destroy()
 end
 
 ---@param event UtilityScheduledEvent_CallbackObject
