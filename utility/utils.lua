@@ -1780,7 +1780,7 @@ end
 
 --- Checks the locomtive for its current fuel and returns it's prototype. Checks fuel inventories if nothing is currently burning.
 ---@param loco LuaEntity
----@return LuaItemPrototype|null currentFuelPrototype @ Will be nil if therees no current fuel in the locomotive.
+---@return LuaItemPrototype|null currentFuelPrototype @ Will be nil if there's no current fuel in the locomotive.
 Utils.GetLocomotivesCurrentFuelPrototype = function(loco)
     local loco_burner = loco.burner
 
@@ -1831,14 +1831,21 @@ end
 ---@field speed? double|null
 
 --- Get the data other Utils functions needed for calculating and estimating a trains future speed, time to cover distance, etc.
---- This is only accurate while the train is heading in the same direction as when this data was gathered.
+--- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.
+--- Assumes all forward facing locomotives have the same fuel as the first one found. If no fuel is found in any locomotive then a default value of 1 is used and the return "noFuelFound" will indicate this,
 --- Either train_carriages or trainCarriagesDataArray needs to be provided.
 ---@param train LuaTrain
----@param train_speed double
+---@param train_speed double @ Must not be 0 (stationary train).
 ---@param train_carriages? LuaEntity[]|null
 ---@param trainCarriagesDataArray? Utils_TrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
----@return Utils_TrainSpeedCalculationData
+---@return Utils_TrainSpeedCalculationData trainSpeedCalculationData
+---@return boolean noFuelFound @ TRUE if no fuel was found in any forward facing locomotive. Generally FALSE is returned when all is normal.
 Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
+    if train_speed == 0 then
+        -- We can't work out what way is forward for counting locomotives that can assist with acceleration.
+        error("Utils.GetTrainsSpeedCalculationData() doesn't work for 0 speed train")
+    end
+
     ---@type Utils_TrainSpeedCalculationData
     local trainData = {
         trainWeight = train.weight
@@ -1907,7 +1914,11 @@ Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriag
                 carriage_speed = carriageEntity.speed
             end
 
-            if carriage_speed == train_speed then
+            -- Only process locomotives that are powering the trains movement.
+            if carriage_speed > 0 then
+                -- Count all forward moving loco's. Just assume they all have the same fuel to avoid inspecting each one.
+                forwardFacingLocoCount = forwardFacingLocoCount + 1
+
                 -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
                 local carriage = carriageEntity or carraigeCachedData.entity
                 if fuelAccelerationBonus == nil then
@@ -1917,18 +1928,21 @@ Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriag
                         fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
                     end
                 end
-
-                -- Coutn all forward moving loco's. Just assume they all have fuel.
-                forwardFacingLocoCount = forwardFacingLocoCount + 1
             end
         end
     end
 
     trainData.trainFrictionForce = trainFrictionForce
     trainData.trainWeightedFrictionForce = (trainData.trainFrictionForce / trainData.trainWeight)
-    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * (fuelAccelerationBonus / trainData.trainWeight)
+    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainData.trainWeight)
     trainData.trainRawBrakingForce = trainRawBrakingForce
-    return trainData
+
+    local noFuelFound = false
+    if fuelAccelerationBonus == nil then
+        noFuelFound = true
+    end
+
+    return trainData, noFuelFound
 end
 
 --- Calculates the speed of a train for 1 tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive

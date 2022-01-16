@@ -1,14 +1,15 @@
 --[[
-    A series of tests that has the train running out of fuel and stopping at various points in its tunnel usage. The tunnel should detect this and keep on giving it more fuel until it has fully left the tunnel. Does combinations for:
-        noFuelPoint: startedEntering, fullyEntered, startedLeaving
+    A series of tests that has the train running out of fuel and stopping at various points in its tunnel usage. Does combinations for:
+        noFuelPoint: onPortalTrack, asEntering, asLeaving
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
+local Common = require("scripts/common")
 
 local NoFuelPoints = {
-    startedEntering = "startedEntering",
-    fullyEntered = "fullyEntered",
-    startedLeaving = "startedLeaving"
+    onPortalTrack = "onPortalTrack",
+    asEntering = "asEntering",
+    asLeaving = "asLeaving"
 }
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
@@ -22,20 +23,23 @@ Test.TestScenarios = {} -- Populated when script loaded.
         noFuelPoint = the TargetTunnelRail of this test.
     }
 ]]
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios() -- Call here so its always populated.
     TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
-local blueprintString = "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"
+local blueprintString = "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"
 
+---@param testName string
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.noFuelPoint
 end
 
+---@param testName string
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
@@ -55,11 +59,11 @@ Test.Start = function(testName)
 
     -- Set starting fuel based on desired no fuel stopping point.
     local woodCount
-    if testScenario.noFuelPoint == NoFuelPoints.startedEntering then
+    if testScenario.noFuelPoint == NoFuelPoints.onPortalTrack then
         woodCount = 7
-    elseif testScenario.noFuelPoint == NoFuelPoints.fullyEntered then
+    elseif testScenario.noFuelPoint == NoFuelPoints.asEntering then
         woodCount = 8
-    elseif testScenario.noFuelPoint == NoFuelPoints.startedLeaving then
+    elseif testScenario.noFuelPoint == NoFuelPoints.asLeaving then
         woodCount = 9
     else
         error("Unsupported testScenario.noFuelPoint: " .. testScenario.noFuelPoint)
@@ -76,61 +80,62 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     testData.bespoke = {
         stationEnd = stationEnd,
-        train = train,
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+        enteringtrain = train,
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        trainhasStartedMoving = false
     }
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
-end
-
-Test.TunnelUsageChanged = function(event)
-    -- OVERHAUL: functionalised
-    local testData = TestFunctions.GetTestDataObject(event.testName)
-
-    -- Record the action for later reference.
-    local actionListEntry = testData.actions[event.action]
-    if actionListEntry then
-        actionListEntry.count = actionListEntry.count + 1
-        actionListEntry.recentChangeReason = event.changeReason
-    else
-        testData.actions[event.action] = {
-            name = event.action,
-            count = 1,
-            recentChangeReason = event.changeReason
-        }
-    end
-
-    testData.lastAction = event.action
-    testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, undergroundTrain = event.undergroundTrain, leavingTrain = event.leavingTrain}
 end
 
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
-    -- Check the leaving train for when it stops, otherise ignore it.
-    if testData.tunnelUsageEntry == nil then
+    -- The train starts stationary, so we only want to start checking its state and if its stopped after it has started moving first.
+    if not testDataBespoke.trainhasStartedMoving then
+        if testDataBespoke.enteringtrain.speed ~= 0 then
+            testDataBespoke.trainhasStartedMoving = true
+        else
+            return
+        end
+    end
+
+    if testScenario.noFuelPoint == NoFuelPoints.onPortalTrack then
+        -- Train should stop on the entrance portal tracks.
+        if testDataBespoke.enteringtrain == nil or not testDataBespoke.enteringtrain.valid then
+            TestFunctions.TestFailed(testName, "train traversed through tunnel, but should have stopped short on the protal tracks.")
+        elseif testDataBespoke.enteringtrain.speed == 0 then
+            if testData.lastAction == nil then
+                TestFunctions.TestFailed(testName, "train should have reserved tunnel when crossing on to portal tracks.")
+            elseif testData.lastAction == Common.TunnelUsageAction.onPortalTrack then
+                TestFunctions.TestCompleted(testName)
+            else
+                TestFunctions.TestFailed(testName, "train shouldn't have used the tunnel in any any way than be on portal tracks.")
+            end
+        end
+        -- If train is still moving then wait until later.
         return
     end
+
+    -- Wait for when the train has started leaving the tunnel.
+    if testData.actions[Common.TunnelUsageAction.leaving] == nil then
+        return
+    end
+
+    -- Wait for when the leaving train stops.
     local leavingTrain = testData.tunnelUsageEntry.leavingTrain
     if leavingTrain == nil or leavingTrain.speed ~= 0 then
         return
     end
 
-    -- If stopped it should have fully pulled out of the tunnel and be complete.
-    if testData.actions["fullyLeft"] == nil then
-        TestFunctions.TestFailed(testName, "train stopped, but hasn't fully left tunnel yet.")
-        return
-    end
-    if testData.actions["terminated"] ~= nil then
-        TestFunctions.TestFailed(testName, "train tunnel usage terminated, train should have stopped in fullyLeft state.")
-        return
-    end
+    -- At present if a train reaches the transition point of the entrance portal with no fuel it is treated equally to a train that has fuel for the transition. So the results for running nout of fuel as entering and as leaving are currently equal.
     local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(leavingTrain)
     if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
         TestFunctions.TestFailed(testName, "train not identical to starting, but is stopped.")

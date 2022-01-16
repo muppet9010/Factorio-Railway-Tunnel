@@ -26,7 +26,7 @@ Ghost placement of fast replacement and rotations
 A player can fast replace an entity over itself with a different rotation if it supports fast replacement, but a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
 
 
-Tunnel Part Connections
+Tunnel part connections
 -----------------------
 
 Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. A part's internal connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look in its external connection point to see if there is another part to connect to, this is 1 tile infront of its internal connection points. As all parts have alteast 1 tile padding to the sides of the connection points and must be placed on the rail grid (2x2 tiles) its impossible to place a part at a side angle to another part.
@@ -46,20 +46,29 @@ Events
 - Use of on_pre_player_mined_item over on_player_mined_entity for portal and underground mining detection and undo logic. This is an historic decision and both events support entity type filtering. Appears to have been done as with the pre event in invalid removal situations we can destroy the old entity when we replace it. This destroying of the old entity prevents it being mined and so any mod reacting to the standard mined_entity event won't know about the attempt we blocked and undid. An alternative preivously considered was to make the entities non minable while the tunnel was in use, but this is a lot of API calls on every tunnel usage.
 
 
-Train Detector Usage
+Train detector usage
 --------------------
 
 Using entities that are killed by a train reaching a certain point allow us to not track distances each tick, thus being significantly lower in UPS overall. They also trigger when the train reaches that exact spot, meaning no over run is possible before we have reviewed the situation and taken the desired action. This results in no need for padding within the portal for fast moving trains and should let us support infinitely fast trains.
 
 
-Death Event Detection
+Death event detection
 ---------------------
 
 At present we don't subscribe to any common named prototype death events, only our custom ones. And so I don't believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.
 
 
-Train Leaving Tunnel
+Train leaving tunnel
 --------------------
 
 - A train trying to leave a tunnel will tend to give way to other trains on the rail network. This is due to the tunnel train only being able to claim signal blocks once released, and every time it tries to leave and can't claim the signals for its speed it has to wait longer while it simulates slowing down in the tunnel.
 - A train that can't leave at full speed will have its expected leaving speed recalculated and the time to traverse the tunnel set to fully account for this. This means while a train enters the tunnel at full speed regardless of the rail network state on the other side the total duration and leaving speed of using the tunnel will correct this.
+
+
+Train with no fuel
+------------------
+
+- If a train with no fuel is on a schedule and has speed to reach the tunnel train detectors we treat it equally to as if it had fuel.  This is the simpliest handling as requires no additional logic and is a very minor edge case, as the train will just run out of fuel on the other side of the tunnel somewhere.
+- This does mean a train with no fuel that starts approaching will accelerate towards the tunnel.
+- The leaving train will depart at the expected speed and traversing time of a fueled train.
+- This will generally resolves the issue of trying to re-fuel a train sitting in a portal, as with this approach frequently the train will escape the portal and thus easily accessible.
