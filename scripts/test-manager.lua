@@ -52,7 +52,7 @@ local TestsToRun = {
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     --ForceRepathBackThroughTunnelTests = {enabled = false, testScript = require("tests/force-repath-back-through-tunnel-tests")} -- DONT USE - test needs major overhaul as was designed for complex logic we don't have to handle any more.
-    --MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")}, -- DONT USE - test needs updating to new tunnel logic.
+    MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
     --RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")} -- DONT USE - test needs updating to new tunnel logic.
     --RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")}, -- DONT USE - this logic doesn't exist any more
@@ -221,8 +221,8 @@ TestManager.WaitForPlayerThenRunTests_Scheduled = function(event)
     local currentTestName = event.data.currentTestName -- Only populated if this event was scheduled with the tests RunTime attribute.
     if currentTestName ~= nil then
         TestManager.GetTestScript(currentTestName).Stop(currentTestName)
-        game.print("Test NOT Completed: " .. TestManager.GetTestDisplayName(currentTestName), Colors.red)
-        TestManager.LogTestOutcome("Test NOT Completed")
+        game.print("Test timed out: " .. TestManager.GetTestDisplayName(currentTestName), Colors.red)
+        TestManager.LogTestOutcome("Test timed out")
         local testObject = global.testManager.testsToRun[currentTestName]
         if not global.testManager.justLogAllTests then
             testObject.finished = true

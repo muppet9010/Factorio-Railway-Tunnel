@@ -1,23 +1,24 @@
 --[[
-    A series of tests that mines the tunnel during various states of use and confirms that the tunnel ends up in the expected state.
-    Tests the below combinations end in an expected outcome:
-        - Train state: none, startApproaching, enteringCarriageRemoved, fullyEntered, startedLeaving, fullyLeft.
+    A series of tests that mines and destroys the tunnel parts during various states of use and confirms that the tunnel and train ends up in the expected state.
+    Tests that the below combinations end in the expected outcome:
+        - Train state: none, startApproaching, partiallyOnPortalTrack, entered, leaving.
         - Tunnel part: entrancePortal, tunnelSegment, exitPortal.
         - Removal action: mine, destroy
     Tunnel checks:
         - Check that the tunnel has an expected result from the API after part is removed. If it was mined and in use at the time the part should be replaced.
-        - Check that the tunnel can/can't be used in both directions based on if the tunnel part was replaced or the train is left with no path to its destination.
+        - Check that the tunnel can/can't be used in both directions based on if the tunnel part was healed (automatically replaced) for an invalid mining or if the train is left with no path to its destination.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
+local Common = require("scripts/common")
 
+-- These must be the same name as Common.TunnelUsageAction, with the exception of "none" and "partiallyOnPortalTrack".
 local TrainStates = {
-    none = "none",
-    startApproaching = "startApproaching",
-    enteringCarriageRemoved = "enteringCarriageRemoved",
-    fullyEntered = "fullyEntered",
-    startedLeaving = "startedLeaving",
-    fullyLeft = "fullyLeft"
+    none = "none", -- Removal occurs before tunnel is used at all.
+    startApproaching = Common.TunnelUsageAction.startApproaching,
+    partiallyOnPortalTrack = "partiallyOnPortalTrack", -- Removal occurs when the entry train detector is killed. No published event for this as we have reserved the track from distance already.
+    entered = Common.TunnelUsageAction.entered,
+    leaving = Common.TunnelUsageAction.leaving
 }
 local TunnelParts = {
     entrancePortal = "entrancePortal",
@@ -28,24 +29,25 @@ local RemovalActions = {
     mine = "mine",
     destroy = "destroy"
 }
+
+local DoMinimalTests = false -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
+
+local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrainStateFilter = {} -- Pass in array of TrainStates keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelPartFilter = {} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
+local SpecificRemovalActionFilter = {} -- Pass in array of RemovalActions keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
+
+local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
+
 local FinalTunnelStates = {
     complete = "complete",
     broken = "broken"
 }
 local FinalTrainStates = {
     complete = "complete",
-    halfDestroyed = "halfDestroyed", -- Train is only a 1-1. So when partially in/out there will be just 1 carriage on the surface.
+    partDestroyed = "partDestroyed",
     fullyDestroyed = "fullyDestroyed"
 }
-
-local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
-
-local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainStateFilter = {"startApproaching"} -- Pass in array of TrainStates keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelPartFilter = {"entrancePortal"} -- Pass in array of TunnelUsageTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
-local SpecificRemovalActionFilter = {"mine"} -- Pass in array of RemovalActions keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
-
-local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
@@ -56,26 +58,30 @@ Test.TestScenarios = {} -- Populated when script loaded.
         tunnelPart = the TunnelParts of this test.
         removalAction = the RemovalActions of this test.
         expectedTunnelState = the FinalTunnelStates of this test. Either complete or broken.
-        expectedTrainState = the FinalTrainStates of this test. Either complete, halfDestroyed or fullyDestroyed. Train is a 1-1 so when half in/out there will be just 1 carriage left.
+        expectedTrainState = the FinalTrainStates of this test. Either complete, partDestroyed or fullyDestroyed. Train is a 1-1 so when half in/out there will be just 1 carriage left.
     }
 ]]
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
     TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
-local blueprintString = "0eNqtml1P4kAUhv/LXINhPjof3O9v2IuNIRVHbLa0pC3uGsN/31b8IAvG5xhv1ELnnUOfPtKcmSd1U+/zrquaQS2fVLVum14tfz2pvto0ZT29NjzuslqqashbNVNNuZ2OurKq/5SPq2HfNLmeH3+tdm03lPWq33d35TrPd/X4c5vH6MNMVc1t/quW+jBD4SdDzOF6psaUaqjysbjng8dVs9/e5G7MfBs5jEObeT+0uzFt1/bjkLaZ5hlj5nY871EtbRijb6sur49v+pnqh/L4t/qZ+6nasynMFz757XkNryWksxIeyq56KUJfmN9+Mn+fN9OFfi1gNZ21Wndt31fN5sNyinCxHPNpOU5WzscFpC8WUHxTAV5/sQD/PTdE/CqB8DZ/P930m/th/qzNx7f9/1NcCI041CQcmnhowKF6wVMLnqp5quWphqdyVtriVM1hacdTBbQKniqg5XmqgBY3SwtocbUEsLhanJXhZnFUhovFSRnuFQdlsFaCTCyV4MNjpQSUsFBaIJQJPFVQa+Spgps/8VTuqcVKacEXgNU8ldOyhqdyWpZbJXgIsI6nCmhhs7Tg0cpyt6yAFnfLCmhxt6yAFnfLclqOu+U4LcfdcpyW4245Tstxtxyn5bhbTkCLu1UIaHG3CgEt7lYhoMXdKgS0uFsFp1VwtzynVXC3PKdVcLc8p1VwtzynVXC3vIAWdysIaHG3goAWdysIaHG3goAWdytwWp67FTktz92KnJbnbkVOy3O3IqfluVtRQIu7lQS0uFtJQIu7lQS0uFtJQIu7lTitgN0yC04raJ7KaQXDUzmtYHkqpxUcTxXQwm4ZQcMteJ4qoBV4qoBW5KkCWomnclqRuyXoZUTulqCXEd/dqtt1u22H6iFfigxXi2RPHzTarhqzXpZfFlfTW9MSZT+N6Nr17zzM7/a5ntYhDpcm5voJmiiR6ydookSun6CJEj279NZ9cumN9NJzQyULY9xQQfcmckMF3ZvEDRV0bxI3VNC9SfzbT9C9SVw/QfcmObTN4LVQp8+WdN+3Gfwop20G1+NL6/t8u69f9jW8qzIdj/++oj8557gv43yrwlnsFPy8o2J5srtjph5y1x9LidqFZIJNC6+DPxz+AeZROY0="
+local blueprintString = "0eNq1ms1y2jAUhd9Fa8hYkiVZ7PsMXXQyjAMq8dTYjG3SMhnevTakJQ1O+6G4K359juyj7yJf9Cweyn3YNUXVicWzKFZ11YrFl2fRFpsqL4f3usMuiIUourAVM1Hl2+FVkxfl9/yw7PZVFcr5rm66vFyGai2OM1FU6/BDLORxhnReHaKO9zMRqq7oinAex+nFYVnttw+h6TV/H9n1h1bztqt3vdqubvtD6mrw6WXmmZ+JQ//YD0Gsiyaszh/amWi7/PxcfA5tJ4YhvrFQ4CSvHdOz47XhU94UL5ZyxE3/w60Nm21/SH+i/eebx27M2sRZpxNY6zhrM4G1jLO2H7fWkVm7CazdmLX6p3U2gbWJs/YTWOs4a5lEsax8pJ18z27fl7dm09T949X5zofvLldN3bZFtRkbTuSFlypmOGMDiL38eqoByMgBpP8lEBk7P0zUdJSR9V1OUOpkZJWVE9S6yCorJ6h1LtJ6gloXCbtKJiizkdZygnkWaa0+bB05wZWOYTmSZHWpY38UqfdXvm+v5Jio4aIOi1ouarCo46Iai2ZcVGJRj0UdDkonXBQHpSUXxUFpxUVxUFpzURyU5kRZHhQnyvKgOFGWB8WJsjwoTpTlQXGiDA4q5UQZHFTKiTI4qJQTZXBQKSaKX1HMk8TRpxgnyU8d0yR5RhgmyScTZknyjDBKCmdkMEkKZ2QwSApnZDBHCmdkMEYKZ2QwR5pnhDnSPCPMkeYZYY40zwhzpHlGmKMUZ2QxRynOyGKOUpyRxRylOCOLOUpxRhZzZHhGmCP+U2wxR3zNYDFHfHFjMUd8FWYxR3y56DBHfF3rMEd8Ae4wR/xOwWGO+C2Nwxzxey+HOeI3iQ5zxO9mHeaI33Y7zBHvDzjMEW9kZJgj3nHJMEe8NZRhjngPK8Mc8WZbhjnyPCPMkecZYY48zwhz5HlGmCPPM8IcyQSH5BMuilPykovimLziojgnr7koDsrf0GzgQfFuA283eN5u4P0Gz/sNvOHgecOBdxz8haiyXtXbuiuewoii0neJ169+meum6KVe/hFJ7oZPhn1D7XBAU6++hW7+dR/KYdYcR//359TxXseJeqqquSrnjvc7TsWEXHqd/P3Sq5svPYeTt1pOZYyqeq7K8dQ3TBPOp75hmnBA9Q3ThP/m8aaLlBw/3naRkm3++zVQffVn8mXv36d82Pt337+1egzrffmy2fBCyvC6r149Rq++dN4Yeb2B8Ep3UD7tc1y82l45E0+hac9jyWTqvHKpN6kz+nj8CeO13jU="
 
+---@param testName string
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainState .. "     " .. testScenario.tunnelPart .. "     " .. testScenario.removalAction .. "     Expected result: " .. testScenario.expectedTunnelState .. " tunnel - " .. testScenario.expectedTrainState .. " train"
 end
 
+---@param testName string
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
+    local surface = TestFunctions.GetTestSurface()
 
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
@@ -89,27 +95,24 @@ Test.Start = function(testName)
         end
     end
 
-    -- Get the portals.
-    local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-tunnel_portal_surface"]) do
-        if portalEntity.position.x > entrancePortalXPos then
-            entrancePortal = portalEntity
-            entrancePortalXPos = portalEntity.position.x
+    -- Get the portals, we will just use the 2 most extreme end parts. Entrance portal is easten one.
+    local entrancePortalPart, entrancePortalXPos, exitPortalPart, exitPortalXPos = nil, -100000, nil, 100000
+    for _, portalEndEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
+        if portalEndEntity.position.x > entrancePortalXPos then
+            entrancePortalPart = portalEndEntity
+            entrancePortalXPos = portalEndEntity.position.x
         end
-        if portalEntity.position.x < exitPortalXPos then
-            exitPortal = portalEntity
-            exitPortalXPos = portalEntity.position.x
+        if portalEndEntity.position.x < exitPortalXPos then
+            exitPortalPart = portalEndEntity
+            exitPortalXPos = portalEndEntity.position.x
         end
     end
 
-    -- Get the eastern most segment. Its touching a portal and has the othe segments to its west.
-    local tunnelSegmentToRemove, tunnelSegmentXPos = nil, -1000000
-    for _, semmentEntity in pairs(placedEntitiesByGroup["railway_tunnel-underground_segment-straight"]) do
-        if semmentEntity.position.x > tunnelSegmentXPos then
-            tunnelSegmentToRemove = semmentEntity
-            tunnelSegmentXPos = semmentEntity.position.x
-        end
-    end
+    -- Get any tunnel segment.
+    local tunnelSegmentToRemove = placedEntitiesByGroup["railway_tunnel-underground_segment-straight"][1]
+
+    -- Get the entrancePortal's entry train detector.
+    local entrancePortalTrainDetector = surface.find_entities_filtered {area = {top_left = {x = entrancePortalPart.position.x - 3, y = entrancePortalPart.position.y - 3}, right_bottom = {x = entrancePortalPart.position.x + 3, y = entrancePortalPart.position.y + 3}}, name = "railway_tunnel-portal_entry_train_detector_1x1", limit = 1}[1]
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
     local train = placedEntitiesByGroup["locomotive"][1].train
@@ -119,8 +122,9 @@ Test.Start = function(testName)
     testData.bespoke = {
         stationEast = stationEast,
         stationWest = stationWest,
-        entrancePortal = entrancePortal,
-        exitPortal = exitPortal,
+        entrancePortalPart = entrancePortalPart,
+        entrancePortalTrainDetector = entrancePortalTrainDetector,
+        exitPortalPart = exitPortalPart,
         tunnelSegmentToRemove = tunnelSegmentToRemove,
         train = train,
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
@@ -131,26 +135,9 @@ Test.Start = function(testName)
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
-end
-
-Test.TunnelUsageChanged = function(event)
-    -- OVERHAUL: functionised
-    local testData = TestFunctions.GetTestDataObject(event.testName)
-
-    -- Record the action for later reference.
-    local actionListEntry = testData.actions[event.action]
-    if actionListEntry then
-        actionListEntry.count = actionListEntry.count + 1
-        actionListEntry.recentChangeReason = event.changeReason
-    else
-        testData.actions[event.action] = {
-            name = event.action,
-            count = 1,
-            recentChangeReason = event.changeReason
-        }
-    end
 end
 
 ---@param event UtilityScheduledEvent_CallbackObject
@@ -160,19 +147,19 @@ Test.EveryTick = function(event)
     local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
 
     if not testDataBespoke.tunnelPartRemoved then
-        if Test.ShouldTunnelPartBeRemoved(testDataBespoke) then
+        if Test.ShouldTunnelPartBeRemoved(testData) then
             -- This is the correct state to remove the tunnel part.
             game.print("train reached tunnel part removal state")
             local entityToDestroy, otherTunnelEntity
             if testScenario.tunnelPart == TunnelParts.entrancePortal then
-                entityToDestroy = testDataBespoke.entrancePortal
+                entityToDestroy = testDataBespoke.entrancePortalPart
                 otherTunnelEntity = testDataBespoke.tunnelSegmentToRemove
             elseif testScenario.tunnelPart == TunnelParts.exitPortal then
-                entityToDestroy = testDataBespoke.exitPortal
+                entityToDestroy = testDataBespoke.exitPortalPart
                 otherTunnelEntity = testDataBespoke.tunnelSegmentToRemove
             elseif testScenario.tunnelPart == TunnelParts.tunnelSegment then
                 entityToDestroy = testDataBespoke.tunnelSegmentToRemove
-                otherTunnelEntity = testDataBespoke.entrancePortal
+                otherTunnelEntity = testDataBespoke.entrancePortalPart
             else
                 error("Unrecognised tunnelPart for test scenario: " .. testScenario.tunnelPart)
             end
@@ -191,7 +178,8 @@ Test.EveryTick = function(event)
             testDataBespoke.tunnelPartRemoved = true
 
             -- Check the Tunnel Details API returns the expected results for one of the non removed entities
-            local tunnelObject = remote.call("railway_tunnel", "get_tunnel_details_for_entity", otherTunnelEntity.unit_number)
+            ---@type RemoteTunnelDetails
+            local tunnelObject = remote.call("railway_tunnel", "get_tunnel_details_for_entity_unit_number", otherTunnelEntity.unit_number)
             local apiResultAsExpected
             if testScenario.expectedTunnelState == FinalTunnelStates.complete then
                 apiResultAsExpected = tunnelObject ~= nil
@@ -206,13 +194,13 @@ Test.EveryTick = function(event)
             end
 
             -- Check if the trains/tunnel usage existance meets expectations.
-            if not Test.CheckTrainPostTunnelPartRemoval(testDataBespoke, testName, tunnelObject) then
+            if not Test.CheckTrainPostTunnelPartRemoval(testData, testName, tunnelObject) then
                 return -- Function raised any TestFailed() internally.
             end
             game.print("Train in expected state post tunnel part removal.")
 
             -- Complete the tests that end after the tunnel part removal.
-            if testScenario.expectedTrainState == FinalTrainStates.fullyDestroyed or testScenario.expectedTrainState == FinalTrainStates.halfDestroyed then
+            if testScenario.expectedTrainState == FinalTrainStates.fullyDestroyed or testScenario.expectedTrainState == FinalTrainStates.partDestroyed then
                 TestFunctions.TestCompleted(testName)
                 return
             end
@@ -270,11 +258,23 @@ Test.EveryTick = function(event)
     end
 end
 
+---@param testData TestManager_TestData
+---@return boolean
 Test.ShouldTunnelPartBeRemoved = function(testData)
     local testScenario = testData.testScenario
+    local testDataBespoke = testData.bespoke
     if testScenario.trainState == TrainStates.none then
+        -- Always the right time with "none" train state requirement.
         return true
+    elseif testScenario.trainState == TrainStates.partiallyOnPortalTrack then
+        -- Check if the portaltrain detector has been collided with yet to know if the train has reached the portal.
+        if not testDataBespoke.entrancePortalTrainDetector.valid then
+            return true
+        else
+            return false
+        end
     else
+        -- All other train states check if they have been reported as being reached yet.
         if testData.actions[testScenario.trainState] ~= nil and testData.actions[testScenario.trainState].count == 1 then
             return true
         else
@@ -283,6 +283,10 @@ Test.ShouldTunnelPartBeRemoved = function(testData)
     end
 end
 
+---@param testData TestManager_TestData
+---@param testName string
+---@param tunnelObject RemoteTunnelDetails
+---@return boolean trainStateOk
 Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject)
     local testDataBespoke = testData.bespoke
     local testScenario = testData.testScenario
@@ -326,7 +330,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             return false
         end
         return true
-    elseif testScenario.expectedTrainState == FinalTrainStates.halfDestroyed then
+    elseif testScenario.expectedTrainState == FinalTrainStates.partDestroyed then
         -- Confirm that theres a partial train on the surface.
         if trainOnSurface == nil then
             TestFunctions.TestFailed(testName, "Should be a partial train on the surface")
@@ -341,6 +345,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
     end
 end
 
+---@param testName string
 Test.GenerateTestScenarios = function(testName)
     if global.testManager.forceTestsFullSuite then
         DoMinimalTests = false
@@ -349,7 +354,7 @@ Test.GenerateTestScenarios = function(testName)
     local trainStatesToTest, tunnelPartsToTest, removalActionsToTest
     if DoMinimalTests then
         -- Minimal tests.
-        trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.enteringCarriageRemoved] = TrainStates.enteringCarriageRemoved}
+        trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.partiallyOnPortalTrack] = TrainStates.partiallyOnPortalTrack, [TrainStates.leaving] = TrainStates.leaving}
         tunnelPartsToTest = {TunnelParts.entrancePortal}
         removalActionsToTest = RemovalActions
     elseif DoSpecificTests then
@@ -381,13 +386,14 @@ Test.GenerateTestScenarios = function(testName)
 
     -- Write out all tests to csv as debug if approperiate.
     if DebugOutputTestScenarioDetails then
-        TestFunctions.WriteTestScenariosToFile(testName, {"trainState,tunnelPart,removalAction,expectedTunnelState,expectedTrainState"}, Test.TestScenarios)
+        TestFunctions.WriteTestScenariosToFile(testName, {"trainState", "tunnelPart", "removalAction", "expectedTunnelState", "expectedTrainState"}, Test.TestScenarios)
     end
 end
 
 Test.CalculateExpectedResults = function(testScenario)
     local expectedTunnelState, expectedTrainState
 
+    -- Work out expected tunnel state.
     if testScenario.removalAction == RemovalActions.mine then
         -- Mine actions end tunnel states are affected by where the train is (blocking the mine action).
         if testScenario.trainState == TrainStates.none then
@@ -404,6 +410,7 @@ Test.CalculateExpectedResults = function(testScenario)
         error("invalid testScenario.removalAction: " .. testScenario.removalAction)
     end
 
+    -- Work out expected train state.
     if testScenario.removalAction == RemovalActions.mine then
         -- Mine action, so the train will always be either intact or complete using the tunnel.
         expectedTrainState = FinalTrainStates.complete
@@ -411,12 +418,9 @@ Test.CalculateExpectedResults = function(testScenario)
         -- Destroy action.
         if testScenario.trainState == TrainStates.none or testScenario.trainState == TrainStates.startApproaching then
             expectedTrainState = FinalTrainStates.complete
-        elseif testScenario.trainState == TrainStates.fullyLeft and testScenario.tunnelPart ~= TunnelParts.exitPortal then
-            -- Train has fully left and is on the exit portal. So as long as this portal isn't destroyed the train will be fine.
-            expectedTrainState = FinalTrainStates.complete
-        elseif (testScenario.trainState == TrainStates.enteringCarriageRemoved and testScenario.tunnelPart ~= TunnelParts.entrancePortal) or (testScenario.trainState == TrainStates.startedLeaving and testScenario.tunnelPart ~= TunnelParts.exitPortal) then
-            -- Train will be half underground when the other portal/tunnel segment is removed. So only half the train will be lost as well as the tunnel.
-            expectedTrainState = FinalTrainStates.halfDestroyed
+        elseif testScenario.trainState == TrainStates.partiallyOnPortalTrack then
+            -- Train will be part on the portal when any portal/tunnel segment is removed. So only part of the train will be lost as well as all the tunnel and portal tracks.
+            expectedTrainState = FinalTrainStates.partDestroyed
         else
             -- Train is lost entirely with the tunnels loss.
             expectedTrainState = FinalTrainStates.fullyDestroyed

@@ -14,10 +14,12 @@ DON'T COMMIT:
 
 Now
 ----------------
+    - Fix the old tests to make sure nothing is broken and not known about.
 
 
 Bugs
 ----------------
+    - The portal train length should remove the trains start and end connection distance. As a 6 tile portal should accept a single loco.
     - For 1 tick the entrance entry signal goes to green as theres no entering train there and the circuit controlled source signal from the leaving exit signal takes a tick to update. I think we need to put in an entity in the entrance portal earlier to prevent this, or leave the entering train's lead locomotive (one that kills the detector) in place for a tick with 0 speed on manual (change force, invunerable, can't be deconned, etc). It shows on the PathfinderWeightings test. This was an issue before as well, the timing just never triggered in the test. If we decide to commit the train to using the tunnel once it triggers the entry train detector then we can clone the train 1 tick before we destroy the old train, thus resolving this in passing.
     - An extension to the 1 tick delay issue on trains transitioning. The same applies to entering trains, if 2 trains both try to drive/path through the tunnel at the same tick I think they will both be allowed to start their journeys. The second will be rejected at the entrance entry signal, but will then be blocking the line. Only applies to bi-directional tunnel usage and needs special tests with facing off locos right on the end of the tunnel with slow acceleration. Needs a dedicated test to confirm behavour.
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
@@ -26,6 +28,7 @@ Bugs
 	- A transitioning train can be marked for decon, it needs to prevent this in addition to being invunerable, not player selectable, notable to have its orders accessed/changed.
     - The portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
     - If a train has entered the tracks (triggered the portal tracks train detector) and then is upgraded to being tracked by signal approaching, but the train aborts its approach we currently Terminate the tunnel usage. However we need to return to the train on portal tracks state as the train is still there now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals. TrainManager.TrainApproachingOngoing()  the terminate logic at top of function.
+    - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
 
 
 Features to add/change
@@ -33,7 +36,6 @@ Features to add/change
     - Add some placeholder Portal graphics to hide the train and rail images in the portal base layer. A closed portal (blocked graphics both ends) should appear when the portal is complete, with the open end graphics being applied when the tunnel is complete.
     - Clickable on portal area's will raise a dialogue showing max supported train length for this end and if theres a tunnel the other end as well. Should be created when the portal is complete and not require a tunnel. Add an option to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
     - With the aggressive placement of portal track entry detection entity if a train is stopped on entry (coasting, too long, etc) it is on portal rails. The loco will be destroyed on mining, but not trigger the signals or the portal in use check. Consider how to handle or acceept (and document).
-    - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
     - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behavor is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
     - The current player container concept needs updating to calculate the player containers current position in the tunnel. As part of this move the player riding tests to their own test(s) and remove them from other tests. Cover:
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.

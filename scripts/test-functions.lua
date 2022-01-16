@@ -178,7 +178,7 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
         end
     end
     if Utils.IsTableEmpty(listToTest) then
-        error("blank list output from TestFunctions.ApplySpecificFilterToListByKeyName()")
+        error("blank list output from TestFunctions.ApplySpecificFilterToListByKeyName(). Check input arguments.")
     end
     return listToTest
 end
@@ -481,7 +481,7 @@ end
 ---@field artillery-wagon LuaEntity[]
 ---@field train-stop LuaEntity[]
 ---@field railway_tunnel-portal_end LuaEntity[]
----@field rrailway_tunnel-underground_segment-straight LuaEntity[]
+---@field railway_tunnel-underground_segment-straight LuaEntity[]
 
 --- Builds a given blueprint string centered on the given position. Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 ---@param blueprintString string
@@ -588,7 +588,7 @@ end
 --- A debug function to write out the test's testScenario's details to a csv for manually checking in excel.
 ---@param testName string @ Used in the file name and appended with "-TestScenarios.csv".
 ---@param keysToRecord string[] @ The name of the data keys to be recorded from the testScenarios object. The first column is always the testScenario index value.
----@param testScenarios table
+---@param testScenarios table @ The test scenario table.
 TestFunctions.WriteTestScenariosToFile = function(testName, keysToRecord, testScenarios)
     -- game will be nil on loading a save.
     if game == nil then
@@ -596,12 +596,12 @@ TestFunctions.WriteTestScenariosToFile = function(testName, keysToRecord, testSc
     end
 
     local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#," .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n", false)
+    game.write_file(fileName, "#, " .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n", false)
 
     for testIndex, test in pairs(testScenarios) do
         local testScenarioLogText = ""
         for _, key in pairs(keysToRecord) do
-            testScenarioLogText = testScenarioLogText .. "," .. tostring(test[key])
+            testScenarioLogText = testScenarioLogText .. ", " .. tostring(test[key])
         end
         game.write_file(fileName, tostring(testIndex) .. testScenarioLogText .. "\r\n", true)
     end

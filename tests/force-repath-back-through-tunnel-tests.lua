@@ -1009,7 +1009,7 @@ Test.GenerateTestScenarios = function(testName)
 
     -- Write out all tests to csv as debug if approperiate.
     if DebugOutputTestScenarioDetails then
-        TestFunctions.WriteTestScenariosToFile(testName, {"train,tunnelUsage,reverseNumber,lastBackwardsLoco,forwardsPathingOption,backwardsPathingOption,competitorTrain,scheduleTargetType,duplicateOutcomeTest,afterTrackRemovedResult,afterTrackReturnedResult"}, Test.TestScenarios)
+        TestFunctions.WriteTestScenariosToFile(testName, {"train", "tunnelUsage", "reverseNumber", "lastBackwardsLoco", "forwardsPathingOption", "backwardsPathingOption", "competitorTrain", "scheduleTargetType", "duplicateOutcomeTest", "afterTrackRemovedResult", "afterTrackReturnedResult"}, Test.TestScenarios)
     end
 end
 

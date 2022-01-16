@@ -297,7 +297,7 @@ Test.GenerateTestScenarios = function(testName)
 
     -- Write out all tests to csv as debug if approperiate.
     if DebugOutputTestScenarioDetails then
-        TestFunctions.WriteTestScenariosToFile(testName, {"targetType,tunnelUsageState,nextScheduleOrder,expectedFinalTrainState"}, Test.TestScenarios)
+        TestFunctions.WriteTestScenariosToFile(testName, {"targetType", "tunnelUsageState", "nextScheduleOrder", "expectedFinalTrainState"}, Test.TestScenarios)
     end
 end
 

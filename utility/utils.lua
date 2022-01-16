@@ -725,6 +725,9 @@ Utils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
     end
 end
 
+--- Returns the item name for the provided entity.
+---@param entity LuaEntity
+---@return string
 Utils.GetEntityReturnedToInventoryName = function(entity)
     if entity.prototype.mineable_properties ~= nil and entity.prototype.mineable_properties.products ~= nil and #entity.prototype.mineable_properties.products > 0 then
         return entity.prototype.mineable_properties.products[1].name
@@ -733,6 +736,9 @@ Utils.GetEntityReturnedToInventoryName = function(entity)
     end
 end
 
+--- Makes a list of the input table's keys in their current order.
+---@param aTable table
+---@return StringOrNumber[]
 Utils.TableKeyToArray = function(aTable)
     local newArray = {}
     for key in pairs(aTable) do
@@ -741,6 +747,7 @@ Utils.TableKeyToArray = function(aTable)
     return newArray
 end
 
+--- Makes a comma seperated text string from a table's keys. Includes spaces after each comma.
 ---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.
 Utils.TableKeyToCommaString = function(aTable)
     local newString = ""
@@ -757,6 +764,7 @@ Utils.TableKeyToCommaString = function(aTable)
     return newString
 end
 
+--- Makes a comma seperated text string from a table's values. Includes spaces after each comma.
 ---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.
 Utils.TableValueToCommaString = function(aTable)
     local newString = ""
