@@ -27,7 +27,8 @@ local baseBlockerPrototype = {
     picture = Utils.EmptyRotatedSprite(),
     map_color = {0, 0, 0, 0}, -- No map color ever.
     friendly_map_color = {0, 0, 0, 0}, -- No map color ever.
-    enemy_map_color = {0, 0, 0, 0} -- No map color ever.
+    enemy_map_color = {0, 0, 0, 0}, -- No map color ever.
+    health = 1 -- Minimal health so the train's speed is reduced the minimum on collision.
 }
 
 local portalEntryTrainDetector1x1 = Utils.DeepCopy(baseBlockerPrototype)

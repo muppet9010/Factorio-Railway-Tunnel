@@ -80,7 +80,16 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails = TrainManager.GetTrainIdsManagedTrainDetails
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
-    EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
+    EventScheduler.RegisterScheduledEventType(
+        "TrainManager.TrainUndergroundCompleted_Scheduled",
+        function(event)
+            if global.debugRelease then
+                Logging.RunFunctionAndCatchErrors(TrainManager.TrainUndergroundCompleted_Scheduled, event)
+            else
+                TrainManager.TrainUndergroundCompleted_Scheduled(event)
+            end
+        end
+    )
 end
 
 -------------------------------------------------------------------------------
@@ -166,6 +175,7 @@ TrainManager.ProcessManagedTrains = function(eventData)
     TrainManagerRemote.ProcessTicksEvents()
 end
 
+--- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrains().
 ---@param managedTrain ManagedTrain
 TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     -- We only need to handle one of these per tick as the transition between these states is either triggered externally or requires no immediate checking of the next state in the same tick as the transition.
@@ -191,6 +201,7 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
 end
 
 -- This tracks a train once it triggers the entry train detector, until it reserves the Transition signal of the Entrance portal or leaves the portal track (turn around and leave). Turning around could be caused by either manaul driving or from an extreme edge case of track removal ahead as the train is entering and there being a path backwards available. No state change or control of the train is required or applied at this stage.
+--- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrain().
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
@@ -225,7 +236,8 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
     end
 end
 
--- The train is approaching the transition signal so maintain its speed.
+--- The train is approaching the transition signal so maintain its speed.
+--- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrain().
 ---@param managedTrain ManagedTrain
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local enteringTrain = managedTrain.enteringTrain ---@type LuaTrain
@@ -341,6 +353,7 @@ end
 
 --- Runs each tick for when we need to track a train while underground in detail.
 --- Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
+--- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrain().
 ---@param managedTrain ManagedTrain
 ---@param currentTick Tick
 TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
@@ -362,6 +375,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
 end
 
 --- Run when the train is scheduled to arrive at the end of the tunnel.
+--- This is run within a debug logging wrapper when called by the event scheduler.
 ---@param event UtilityScheduledEvent_CallbackObject
 TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local managedTrain = event.data.managedTrain ---@type ManagedTrain
@@ -557,7 +571,8 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     elseif managedTrain.leavingTrainForwards == false then
         leavingTrain.speed = -leavingSpeedAbsolute
     else
-        -- Train facing not resolvable at previous setting time.
+        -- Train facing not resolvable at previous setting time so have to do it again now from a possibly weird train state.
+        leavingTrain.manual_mode = true -- Set train back to a safe state that we can test applying the speed as it will still have a state that errors on backwards speeds.
         TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, leavingSpeedAbsolute, managedTrain, "leavingTrainForwards", leavingTrain.path_end_stop)
         if managedTrain.leavingTrainForwards == nil then
             -- Train facing neededed to have been fixed by now.

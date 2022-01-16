@@ -48,12 +48,12 @@ Features to add/change
         - Can't use active state on rolling stock.
         - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
         - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the enteringTrain is never "stopped" and so nothing should ever activate.
-        - The idea of using the transitioning train rathr than a dummy train and adding a non movable carriage may resolve this.
+        - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this.
 
 
 Long Term Future plans
 ----------------
-    - Review leaving train arrival time and speed again and work to reduce varations to the regular train. Will need to account for excessive speeds entering the tunnel and it seems to break more aggressively leaving the tunnel at present.
+    - Review leaving train arrival time and speed again and work to reduce varation to the regular train time. Will probably need to account for excessive speeds entering the tunnel. Review performance of the test and make it run fast on the big trains/setups if possible.
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.

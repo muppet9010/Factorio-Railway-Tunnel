@@ -173,7 +173,7 @@ local EntryEndPortalSetup = {
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
 local BlockingEndPortalSetup = {
     dummyLocomotiveDistance = 1.8, -- as far back in to the end portal without touching the blocking locomotive.
-    transitionUsageDetectorEntityDistance = 4.1, -- can't go further back as otherwise the entering train will release the signal and thus the tunnel.
+    transitionUsageDetectorEntityDistance = 4.5, -- Some rail carriages have shorter collision boxes than others. Found 4.3 needed over 4.1 to safely trigger on cargo wagons before they stop before the transition signal, as they're smaller than locomotives. 4.5 is still safe for trains entering and leaving.
     transitionSignalsDistance = 2.5,
     transitionSignalBlockingLocomotiveDistance = -1.3, -- As far away from entry end as possible, but can't stick out beyond the portal's collision box.
     blockedInvisibleSignalsDistance = -1.5 -- Keep this a tile away from the edge so that we don't have to worry about any signals in tunnel segments (as signals can't be adjacant).
