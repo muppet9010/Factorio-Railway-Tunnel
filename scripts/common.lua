@@ -47,6 +47,18 @@ Common.GetCarriageConnectedLength = function(carriageEntityName)
     end
 end
 
+-- Gets the gap that the carriage has at one end of its entity when it connects to another carriage.
+---@param carriageEntityName string @ The entity name.
+---@return double
+Common.GetCarriageInterConnectionGap = function(carriageEntityName)
+    -- For now we assume all unknown carriages have a combined gap of 1 for both ends as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
+    -- This is the: (carriages connected length - double connection distance) / 2 as only 1 end of the entities total gap.
+    -- vaniall wagons: ( (3+4) - (3*2) ) / 2
+    if carriageEntityName ~= nil then
+        return 0.5 -- Half of vanilla carriages 1 gap total.
+    end
+end
+
 ---@class TunnelSignalDirection
 Common.TunnelSignalDirection = {
     inSignal = "inSignal",

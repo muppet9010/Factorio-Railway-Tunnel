@@ -46,7 +46,7 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel = Tunnel.TrainFinishedEnteringTunnel
     MOD.Interfaces.Tunnel.TrainReleasedTunnel = Tunnel.TrainReleasedTunnel
     MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
-    MOD.Interfaces.Tunnel.CanTrainUseTunnel = Tunnel.CanTrainUseTunnel
+    MOD.Interfaces.Tunnel.CanTrainFitInTunnel = Tunnel.CanTrainFitInTunnel
 
     local rollingStockFilter = {
         {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
@@ -365,21 +365,30 @@ Tunnel.OnPlayerRotatedEntity = function(event)
     TunnelShared.EntityErrorMessage(game.get_player(event.player_index), {"message.railway_tunnel-dont_rotate_tunnel_parts"}, rotatedEntity.surface, rotatedEntity.position)
 end
 
--- Checks if the tunnel can accept the train. Currently just checks lengths.
+-- Checks if the train can fit within the tunnel's max allowed length.
 ---@param train LuaTrain
 ---@param tunnel Tunnel
 ---@return boolean
-Tunnel.CanTrainUseTunnel = function(train, tunnel)
-    -- Check the trains length against the max tunnel length.
+Tunnel.CanTrainFitInTunnel = function(train, tunnel)
     local trainLength = 0
-    for _, carriage in pairs(train.carriages) do
-        trainLength = trainLength + Common.GetCarriageConnectedLength(carriage.name)
+    local carriage_name
+    for i, carriage in pairs(train.carriages) do
+        carriage_name = carriage.name
+        trainLength = trainLength + Common.GetCarriageConnectedLength(carriage_name)
+        -- Remove the first carriages front gap as nothing will be connected to it.
+        if i == 1 then
+            trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+        end
     end
+    -- Remove the last carriages rear gap as nothing will be connected to it.
+    trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+
+    -- Check if the train can fit.
     if trainLength > tunnel.maxTrainLengthTiles then
         return false
+    else
+        return true
     end
-
-    return true
 end
 
 return Tunnel

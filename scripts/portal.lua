@@ -994,8 +994,9 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     end
     local train = carriageEnteringPortalTrack.train
 
-    -- Check the tunnel will conceptually accept the train.
-    if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
+    -- Check and handle if train can't fit in the tunnel's length.
+    if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
+        -- Note that we call this on a leaving train when we don't need to, but would be messy code to delay this check in to all of the branches.
         Portal.StopTrainAsTooLong(train, portal, portal.entryPortalEnd.entity, event.tick)
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
         return
@@ -1167,8 +1168,8 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
     end
     local train = carriageAtTransitionOfPortalTrack.train
 
-    -- Check the tunnel will conceptually accept the train.
-    if not MOD.Interfaces.Tunnel.CanTrainUseTunnel(train, portal.tunnel) then
+    -- Check and handle if train can't fit in the tunnel's length.
+    if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
         Portal.StopTrainAsTooLong(train, portal, portal.blockedPortalEnd.entity, event.tick)
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return

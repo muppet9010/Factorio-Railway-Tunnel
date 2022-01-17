@@ -12,7 +12,7 @@ local Commands = require("utility/commands")
 local PlayerAlerts = require("utility/player-alerts")
 
 local function CreateGlobals()
-    global.debugRelease = false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
+    global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
 
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
