@@ -226,7 +226,7 @@ Test.EveryTick = function(event)
         local train = testDataBespoke.train -- Check for train pre entering.
         if train == nil or not train.valid then
             -- Try to get the leaving train. No other states should have this outcome.
-            train = testData.tunnelUsageEntry.leavingTrain
+            train = testData.train
         end
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then

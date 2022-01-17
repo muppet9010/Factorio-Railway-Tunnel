@@ -1,18 +1,3 @@
-TODO: move to main concept change ideas area.
-PORTAL USAGE TRAIN DETECTOR ENTITY FUNCTIONALITY POTENTIAL CHANGE
-----------------
-Once the entry train detector is triggered do we want to commit the train to entering the tunnel?
-DO COMMIT:
-    - If we did we could create the dummy train at this point, rather than at traversing time.
-    - Set the approaching train to manual and force its speed. Also stop player from affecting its schedule in any way.
-    - Would replace TrainManager.TrainOnPortalTrackOngoing() with calling TrainManager.TrainApproachingOngoing() and letting that manage it.
-    - This probably won't have any UPS impact overall, but should make the logic simplier for edge cases.
-    - Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
-    - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
-DON'T COMMIT:
-    - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
-
-
 Now
 ----------------
 
@@ -46,7 +31,7 @@ Features to add/change
     - Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots.
         - Can't use active state on rolling stock.
         - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
-        - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the enteringTrain is never "stopped" and so nothing should ever activate.
+        - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate.
         - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this.
 
 
@@ -87,6 +72,16 @@ Concept changes
 	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
     - Can we do TrainManager.TrainOnPortalTrackOngoing() say once per second rather than every tick. May need a change to a more expensive API check of the train rather than the signal. But this function is now a big UPS user. Same question for TrainManager.TrainLeavingOngoing().
+    - Commit train to use tunnel upon triggering portal entry train detector.
+        Pros:
+            - If we did we could create the dummy train at this point, rather than at traversing time.
+            - Set the approaching train to manual and force its speed. Also stop player from affecting its schedule in any way.
+            - Would replace TrainManager.TrainOnPortalTrackOngoing() with calling TrainManager.TrainApproachingOngoing() and letting that manage it.
+            - This probably won't have any UPS impact overall, but should make the logic simplier for edge cases.
+            - Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
+            - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
+        Cons:
+            - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
 
 
 Ideas

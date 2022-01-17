@@ -7,20 +7,17 @@ All remote interfaces are under the interface name "railway_tunnel".
 
 Tunnel Usage Entry Object Attributes
 ----------------
-TODO
 The common attributes that are returned giving details about a tunnel usage entry by many of the mods events and remote interfaces. If the tunnel usage has completed then these values will all be nil.
 - tunnelUsageId = id of the tunnel usage details (INT). Always present.
 - primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
-- enteringTrain = LuaTrain of the train still entering the tunnel if it exists, otherwise nil. Exists from "startApproaching" to the final "enteringCarriageRemoved" and "fullyEntered" action events.
-- leavingTrain = LuaTrain of the train leaving the tunnel if it exists, otherwise nil. Exists from the " startedLeaving" and first "leavingCarriageAdded" action events until the tunnel usage is "terminated". So may be a partally leaving train up to the full train until "fullyLeft".
+- train = LuaTrain of the train entering or leaving the tunnel. Will be nil while primaryState is "underground".
 - tunnelId = id of the tunnel the train is using. Can use this to get tunnel details via remote interface: get_tunnel_details_for_id
 
 
 
 Tunnel Usage Changed Event
 --------------
-TODO
-Get a custom event id via a remote interface call that can be registered to be notified when a tunnel usage instance's state changes. The event will be raised for all changes to tunnel usage primaryState and changes to trains composition, i.e. when a carriage is added or removed from either the entering or leaving train.
+Get a custom event id via a remote interface call that can be registered to be notified when a tunnel usage instance's state changes. The event will be raised for all changes to tunnel usage primaryState.
 
 **Remote interface to get custom event id**
 - Interface Name: get_tunnel_usage_changed_event_id
@@ -37,9 +34,9 @@ Get a custom event id via a remote interface call that can be registered to be n
     - action: the action that occured (STRING):
         - onPortalTrack: When the train has initially moved on to the tunnel portals tracks. This may be on route to use the tunnel or may be just moving on to some tracks within the portal. Either way the tunnel and the other portal are now reserved for this train. If the train leaves the portal track without using the tunnel the terminated action will be raised with a "changeReason" of "portalTrackReleased". If the train moves in to use the tunnel then the "startApproaching" or action will be raised when the train reserves the inner transition signals.
         - startApproaching: When the train has first reserved the tunnel by pathing across the inner end of a tunnel portal. The tunnel is reserved. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
-        - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
         - entered: Raised when the train enters the tunnel and is removed from the entrance portal on the map.
         - leaving: Raised when the train has left the tunnel and starts to path away from the exit portal. When the train has finished leaving the portal and its tracks the "terminated" action will be raised.
+        - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
     - changeReason: the cause of the change (STRING):
         - reversedAfterLeft: Raised for "terminated" action. Occurs when a train has fullyLeft, but not released the tunnel and then reverses back down the tunnel. The new tunnel usage event for "startApproaching" action will have the "replacedtunnelUsageId" attribute populated. This old tunnel usage has completed with this event.
         - abortedApproach: Raised for "terminated" action. Occurs when a train aborts its approach before it starts to enter the tunnel, but after it has reserved the tunnel and the "startApproaching" action evet has been raised.

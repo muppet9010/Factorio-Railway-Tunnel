@@ -356,7 +356,7 @@ Test.EveryTick = function(event)
 
     -- Capture the leaving train when it first emerges.
     if testDataBespoke.tunnelTrainPostTunnel == nil and testData.lastAction == Common.TunnelUsageAction.leaving then
-        testDataBespoke.tunnelTrainPostTunnel = testData.tunnelUsageEntry.leavingTrain
+        testDataBespoke.tunnelTrainPostTunnel = testData.train
     end
 
     -- Monitor the train times when they stop.

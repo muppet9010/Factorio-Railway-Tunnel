@@ -292,7 +292,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
     local testScenario = testData.testScenario
     local inspectionArea = {left_top = {x = testDataBespoke.stationWest.position.x, y = testDataBespoke.stationWest.position.y}, right_bottom = {x = testDataBespoke.stationEast.position.x, y = testDataBespoke.stationEast.position.y}} -- Inspection area needs to find trains that are anywhere on the tracks between the stations
     local trainOnSurface = TestFunctions.GetTrainInArea(inspectionArea)
-    local tunnelUsageEntry
+    local tunnelUsageEntry  ---@type RemoteTunnelUsageEntry
     if tunnelObject ~= nil then
         tunnelUsageEntry = remote.call("railway_tunnel", "get_tunnel_usage_entry_for_id", tunnelObject.tunnelUsageId)
     end
@@ -301,8 +301,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
         -- We expect the train to exist so either: the train is on the surface and identical, or it is using the tunnel at present.
         if tunnelUsageEntry ~= nil then
             -- Train is using the underground so it must be complete. There may be a surface train, but it will be incomplete and so check underground first.
-            if tunnelUsageEntry.undergroundTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.undergroundTrain)
+            if tunnelUsageEntry.train ~= nil then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.train)
                 if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train underground not identical")
                     return false

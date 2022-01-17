@@ -130,7 +130,7 @@ Test.EveryTick = function(event)
     end
 
     -- Wait for when the leaving train stops.
-    local leavingTrain = testData.tunnelUsageEntry.leavingTrain
+    local leavingTrain = testData.train
     if leavingTrain == nil or leavingTrain.speed ~= 0 then
         return
     end

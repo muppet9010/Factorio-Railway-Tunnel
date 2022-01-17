@@ -87,10 +87,10 @@ Common.TunnelUsageParts = {
 ---@class TunnelUsageAction
 Common.TunnelUsageAction = {
     startApproaching = "startApproaching", ---@type TunnelUsageAction
-    terminated = "terminated", ---@type TunnelUsageAction
+    onPortalTrack = "onPortalTrack", ---@type TunnelUsageAction
     entered = "entered", ---@type TunnelUsageAction
     leaving = "leaving", ---@type TunnelUsageAction
-    onPortalTrack = "onPortalTrack" ---@type TunnelUsageAction
+    terminated = "terminated" ---@type TunnelUsageAction
 }
 
 -- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
