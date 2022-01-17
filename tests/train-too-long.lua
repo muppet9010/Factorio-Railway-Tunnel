@@ -5,12 +5,14 @@ local TestFunctions = require("scripts/test-functions")
 
 Test.RunTime = 1000
 
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
 local blueprintString = "0eNqtWtty2jAU/Bc9QwZdLfHeb+hDJ5NxQCWeGpuxDSmT4d8rBxqSQJs9Bz0lxvaurN09Ohi9iMd6Gzdd1Qxi/iKqRdv0Yv7jRfTVqinr8bNhv4liLqohrsVENOV6POrKqn4u9w/DtmliPd203VDWD31crWMzTPshnV89DeIwEVWzjL/FXB4mEOi7W9ThfiISXDVU8Tio14P9Q7NdP8YuYb7dOfI1ibbdJLRN26db2mbkSTDTIkzEPl1tioS9rLq4OJ51E9EP5fF/8T3243AvONQXjxyb5RVKW5wow0fKhLYru+pEKq/waeoUXyHXXHKTgVxyye3t5CZwyV0GcrbmRQZyyyX3GcjZhgsZyNmGk7Pb2TXbcVJmYGdbTqoM7GzPyQxVTrNNJzOUOc13XYY6p/iuy1DoFN91GSqd4rsuQ6lTfNdlqHWK7TqVodZJtutUhlon2a5TGWqdZLtOaVYHKflS/7O8bVNf3a26Nv1Fnpk/4TbTCPiT7jKNgB13VWQaAd8HPs8I+AMIHOezNde3lzh2gdO3Fzh+4PXt9U2yfa5vb+X4tVXf3snxlxV9eyPHX1G142SL373oczn7+zjT19c1/3nd8pnkGqzHYQsCbMBhLQ5rZjisJsBKHFYSYBUM6wiSGY3DEiQzBoelSGZxWIpkDoelSAanTFGmFg6ZovgAzpgmzICFI6YJclk4YZrgLQsHTBPUsnC+NEEtC8fLUNSC02UoasHhMhS14GwZilpwtgxFLThblqCWg7NlCWo5OFuWoJaDs2UJajk4W5agloOzRVkLHJwtysLl4GxRVlkHZ4vSEjg4W5T+xcHZojRbBZwtSmdYwNmitLEFnC1Kz13A2aJ8QSjO2arbRbtuh2oXLyG9vgv6wxy0XZWgTt9oZnfjufHH5n68oWsXv+Iw/bmN9fgr0OEaL5w+T3EJnD5PcQmcPk9xCZw+T3HJOX2Lslu10+dyla69fBMzQwRtdumjtkvXNNu6vvbjJhxLTzClh2MZCObwcCwDwRxegxNe5JlweC0MBC96OI2B4EUPpzFQzAGnUc4o7vBQIZQz84WOilgJfcCfh+DLMMNhCU4JEoclWCUoHJbglQCvmVISvBIMtDHqDdPKi9eB541R38pxY9R9+mjxFJfb+rQV62zC8Tgt096/u+a4hezT5qr7EeV1x9f83a6zidjFrj/yemmKoAoTrCmsPhz+AFVR8KI="
 
+---@param testName string
 Test.Start = function(testName)
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
 
@@ -54,6 +56,7 @@ Test.Start = function(testName)
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end

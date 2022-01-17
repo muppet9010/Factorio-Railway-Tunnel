@@ -51,6 +51,7 @@ Test.TestScenarios = {} -- Populated when script loaded.
         expectedFinalTrainState = the FinalTrainStates calculated for this test.
     }
 ]]
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName) -- Call here so its always populated.
@@ -59,12 +60,14 @@ end
 
 local blueprintString = "0eNqtW9tu2koU/Rc/Q+U9Vw8f0A/oeTw6ihyYUqvGRrYhJ4r4945L2qCE0rU38xICNmvhWRePR/ZL8dge4n5ouqlYvRTNuu/GYvXvSzE2265u58+m530sVkUzxV2xKB7r9ffDPr0f6qZ9qp8fpkPXxXZ5fnnY98NUtw/jYfhar+Ny36a/u5jAT4ui6Tbx/2JFp/8WRfqomZp45vr55vmhO+we45B2WBRdvZs5p0TSLcep3yfmfT+mr/Td/JsSzJK0XhTP8z+UwDfNENfnzW5RjFN9/r/4Enf9MSb6DzQKpFEWoPknppHbfO6Hp3rYjNfo9G+6dyP3OmSx21xhr8KZPHzgPtZD88pOV+jMX+jGuJ11SUedtm+/Tde4rZDbZuDWQm6XgZuE3P5+bi/Vu8rA7YXcIQO31GtUZiCXmo0oA7nUbaTuJ3dSu5HOQC71G2UoNyc2XIZ2c2LDZag3JzZchn6zYsNlKDgrNlyGhrNSw6kMDWelhlMZGs5KDacyNJyRGk5laDgjNZzK0HBGbDgrmqoascx/LLVDumIYtkOfXpEj1uLh9qIj1uJUZSgzJTZ2hjJT0pHWGcpMSY2tM5SZkmquM5SZkkZMZygzkhpOZygzEhsuw3SNxIbLMF0jseEyTNdIbLgMDSf2W47rUemyS47JmpQ7Q71JzWYytJvUa+b+chNT319t4hG/v9jERru/1sT5ur/UxCuq91eauE5NkExQxect+9Zivw5mOfPeWoV/R6KuwRIDlnBYhcP+YdZ8FVYzYD0OaxiwFoe1DFiGZI4By5DM47DEkKxiwDIkCwxYXDLHSBnhkjlGygiXzDFSVuKSOUbKSlwyx0hZyZCMkbKSIRkjZSVDMjxlgaEYHrLAEAzPWMD18njEAi6XhxPG6C4P54vRsx5OF+Oc4OFsMc5fHk4W41zr4Vwx5gUeThVjDuPhUDHmWx7OlMaFquBIaVyoCk6UxoWq4EQZXKgKTpTBhargRBmGUHCiDEMoOFGGIRScKMsQCk6UZQgFJ8riQgU4URYXKsCJsrhQAU6Uw4UKcKIcLlSAE+UYQsGJcgyh4EQ5hlBviWr7db/rp+YYr6zC6E9BX9560w9NQnpdGSg/zZvm+/7Gef+hX3+P0/LrIbbzbTena7Rw5jzDH3DmPO4PKuHQectAhVPnPQP1LXbretj2y6d6m3b+gFmVt+Wcp2NNd0wf9UPapTu07VU6OJA+MA4CTmRFDFQ4khXHHA4ccJ9nwOHzX8XxIhzGiuNFOI0VwxwEpzEwzHFxe95NGYPJIiPBZ0fGtSYRnEbGdTERnEbGNTxd3Bt3c8BTT+YZcfjcGThmhOPIWYwhqnBYjj8CDsswyMVdZ7dmEKllACUZUwhS+OIKYz2QlMJhGV5RcDo5a62kDA7L8IqyOCzHKw6H5UjmoSc0fv9U/w7z4/MZX+IxDmMs5idQfj7Psrp4/GVRzBvPX63I+KC8CdZ4q0+nH1VIKUU="
 
+---@param testName string
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.targetType .. "     " .. testScenario.tunnelUsageState .. "     " .. tostring(testScenario.nextScheduleOrder) .. "     Expected result: " .. testScenario.expectedFinalTrainState
 end
 
+---@param testName string
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
@@ -179,6 +182,7 @@ Test.Start = function(testName)
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -270,6 +274,7 @@ Test.EveryTick = function(event)
     end
 end
 
+---@param testName string
 Test.GenerateTestScenarios = function(testName)
     if global.testManager.forceTestsFullSuite then
         DoMinimalTests = false
@@ -313,6 +318,7 @@ Test.GenerateTestScenarios = function(testName)
     end
 end
 
+---@param testScenario table
 Test.CalculateExpectedResults = function(testScenario)
     local expectedFinalTrainState
 

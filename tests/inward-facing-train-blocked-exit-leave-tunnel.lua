@@ -9,11 +9,13 @@ Test.RunTime = 1800
 
 local blueprintString = "0eNqtW9tu4kgQ/Zd+hsjVVzcfMS/7uIoiB3qINcZGvmQ2ivLv2w7sBO1UZ6qUegEZzDmm6vSxCx9e1WO3pPPY9rPavap2P/ST2v39qqb22Dfd+tr8ck5qp9o5ndRGPTb7H8s5b49N2/1sXh7mpe9Tt708PZyHcW66h2kZvzf7tD13+fGUMvjbRrX9If2jdvB2v1H5pXZu04XrfePloV9Oj2nMO2xU35xWzmnOLMenebuSZfLzMOVPDf16WBnJuo16UbttjG9vm99g9C+YFaXfTvNwRjDCL4xN5msub6lv+Xs8KQTVsA8uYAdn2TAOg3FsGIPBeDYMYDCBC1OjjavZMGiJIxsGLTFUbBy0xsCWdY0WGTQXJ6BVBraSA1pmYEs54HVmazngdWaLOeB1ZqvZ43Vmy9njdWbr2aN11mw9e7TO+kPP+2Y8DtufzTF/tIji4p2LJvd+o4axzWBXq63WE8Nz3h7GvFu/dB1Gxha9R5uq2aJ3+LmFLXqHNlWzRe/wprJF7/CmskXv8DqzRW/xOrNFb9E6G7boLVpnwzZxi9bZfOj5f9dR1wuo1B/KmGa9Vnluxva6hABjMH9gmNJxvTDb/vc9PqFzBDorR2cIdE6ODgh0XoxOU3oX5OgCga6Wo6NIJcrREaRiKzk6glQsiNEBQSpWy9ERpGLlXAUIUrFyrgIUqci5ClCkIucqFKXImQpFKHKeQtGJnKUQZOLkHIWgEidmKBQyMTuh1NF84SKIoEFXdI+lP6TxOA75mVE+Sv2cLCWlil6WkrDcXJClpPSylqUkGKaLopSUiwdfyVIS5ONBlpIgH69lKQny8UaWkiAfL+s+lDHFy7oPZRDzsu5DGTW9rPsYinxk3Ycyv3tZ97EE+QRZ97EE+QRZ97EE+YSv/PRiCZ0LYjOSo1RQbERylOKJTUiOsOyC2IDkKH0TG5A8ZbGJDUieohKxAckTVFKLDUieoJJabEDyBJXUYhNSIKikFvOSQFBJLeYlgaISMS8JFJWIeUmgqETMS2qKSsS8pKaoRMxLaoJKopiX1ASVRDEvqQkqiWJeEgkqiV/5uSVSWsW9KYrndiL3nihU6D3I6Nk46L26GNg46L3DWLNx8FxLZOPgwYSKe1MUAE9KVMAGwqMblWYDFTI7hg2Ehy4qywYqFJutal0oNlvWulBstq51odhsYetCsT+U3Q374TTM7XP65MdRfWexQMldfn9NK07r/uOw/5Hm7fcldSsDnsxiLwSNN5md8QKDN5kd8gJTCJ2xF4LBm3wT86LEfcDET5rzx7wPsNNgYHBNseNg+chxIPZysYXespeLLfQ28lpiPd4SUkPYsTHAEzSg2WsEj/QAOxMGeMYIbkJhFNtxplhGjumwI2TgCnlQ9lLBs1/ADpGBK7SYvVRcocXspeIKLWZfM+H5QbgJkn2aKjdXlHWeOrRj2l/etLcZ87+GBc+YAztmBnhGEwx7jeChUTDs88iaYr3PX3f/lA5Ld036f6yvdXs94efVd7PX5a8HSAr/t6rdr+Dv/0nY3fyFIc8oaZzed9R1No6og43OhlXx/wKoxJcr"
 
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     TestFunctions.RegisterTestsScheduledEventType(testName, "DestroyBlockingWagon", Test.DestroyBlockingWagon)
 end
 
+---@param testName string
 Test.Start = function(testName)
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
@@ -53,11 +55,13 @@ Test.Start = function(testName)
     TestFunctions.ScheduleTestsOnceEvent(game.tick + 600, testName, "DestroyBlockingWagon", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsOnceEvent(testName, "DestroyBlockingWagon", testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.DestroyBlockingWagon = function(event)
     -- The main train should have completed its tunnel trip north and have completely stopped at the blocking wagon at this point.
     local testName = event.instanceId
