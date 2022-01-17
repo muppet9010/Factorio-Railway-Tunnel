@@ -4,6 +4,7 @@ local TrainManagerRemote = {}
 local Utils = require("utility/utils")
 local Events = require("utility/events")
 
+-- TODO: this should just be train
 ---@class RemoteTunnelUsageEntry
 ---@field tunnelUsageId Id
 ---@field primaryState PrimaryTrainState
@@ -44,6 +45,7 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
     -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
     tableToPopulate.tunnelUsageId = managedTrainId
     tableToPopulate.primaryState = managedTrain.primaryTrainPartName
+    --TODO: this should just be train
     tableToPopulate.enteringTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.enteringTrain)
     tableToPopulate.leavingTrain = Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
     tableToPopulate.tunnelId = managedTrain.tunnel.id

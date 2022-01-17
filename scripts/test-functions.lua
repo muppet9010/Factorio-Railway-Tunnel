@@ -211,6 +211,7 @@ TestFunctions.RecordTunnelUsageChanges = function(event)
     end
 
     testData.lastAction = event.action
+    --TODO
     testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, leavingTrain = event.leavingTrain}
 end
 

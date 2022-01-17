@@ -1010,7 +1010,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
             local managedTrain = trainIdToManagedTrain.managedTrain
             if managedTrain.tunnel.id == portal.tunnel.id then
                 -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
+                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
                     -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entry portal track. This is healthy activity.
                     return
                 elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
@@ -1183,7 +1183,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
             local managedTrain = trainIdToManagedTrain.managedTrain
             if managedTrain.tunnel.id == portal.tunnel.id then
                 -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.enteringTrain then
+                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
                     -- Train had reserved the tunnel via signals at distance and is now ready to fully enter the tunnel.
                     MOD.Interfaces.TrainManager.TrainEnterTunnel(managedTrain, event.tick)
                     Portal.AddTransitionUsageDetectionEntityToPortal(portal)

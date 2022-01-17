@@ -10,7 +10,7 @@ A managed train is a train using a tunnel. The manage train has a direction of t
 Variable Naming
 ---------------
 
-A variable that references a LuaObject's field is named as: objectName_fieldName   i.e.  enteringTrain_speed
+A variable that references a LuaObject's field is named as: objectName_fieldName   i.e.  approachingTrain_speed
 
 
 

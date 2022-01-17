@@ -78,7 +78,7 @@ Common.PrimaryTrainState = {
 -- A specific LuaTrain's role within its parent managed train object.
 ---@class TunnelUsageParts
 Common.TunnelUsageParts = {
-    enteringTrain = "enteringTrain", ---@type TunnelUsageParts
+    approachingTrain = "approachingTrain", ---@type TunnelUsageParts
     leavingTrain = "leavingTrain", ---@type TunnelUsageParts
     portalTrackTrain = "portalTrackTrain" ---@type TunnelUsageParts
 }

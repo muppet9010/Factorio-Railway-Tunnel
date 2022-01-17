@@ -1,3 +1,4 @@
+TODO: move to main concept change ideas area.
 PORTAL USAGE TRAIN DETECTOR ENTITY FUNCTIONALITY POTENTIAL CHANGE
 ----------------
 Once the entry train detector is triggered do we want to commit the train to entering the tunnel?

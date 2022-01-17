@@ -7,7 +7,7 @@ All remote interfaces are under the interface name "railway_tunnel".
 
 Tunnel Usage Entry Object Attributes
 ----------------
-
+TODO
 The common attributes that are returned giving details about a tunnel usage entry by many of the mods events and remote interfaces. If the tunnel usage has completed then these values will all be nil.
 - tunnelUsageId = id of the tunnel usage details (INT). Always present.
 - primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
@@ -19,7 +19,7 @@ The common attributes that are returned giving details about a tunnel usage entr
 
 Tunnel Usage Changed Event
 --------------
-
+TODO
 Get a custom event id via a remote interface call that can be registered to be notified when a tunnel usage instance's state changes. The event will be raised for all changes to tunnel usage primaryState and changes to trains composition, i.e. when a carriage is added or removed from either the entering or leaving train.
 
 **Remote interface to get custom event id**
