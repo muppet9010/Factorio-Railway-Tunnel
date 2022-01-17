@@ -1,11 +1,9 @@
 Now
 ----------------
-
+    - If 2 trains both try to path through the tunnel at the same tick from opposite directions of the tunnel they will both be allowed to start their journeys. As the entrance signals take a tick to have their non availability updated to the other portals entrance signals. Thus both portals entrance signals in the same tick believe the tunnel is free and both allow their trains to reserve a path in to the tunnel. At present the state causes an intentional error in the portal code.
 
 Bugs
 ----------------
-
-    - An extension to the 1 tick delay issue on trains transitioning. The same applies to entering trains, if 2 trains both try to drive/path through the tunnel at the same tick I think they will both be allowed to start their journeys. The second will be rejected at the entrance entry signal, but will then be blocking the line. Only applies to bi-directional tunnel usage and needs special tests with facing off locos right on the end of the tunnel with slow acceleration. Needs a dedicated test to confirm behavour. Make a new test where they both start perfectly equal distance from their near portal.
 	- Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
     - Make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.

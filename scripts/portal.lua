@@ -595,7 +595,6 @@ Portal.On_PreTunnelCompleted = function(portals)
                 railEntity_unitNumber = entrySignalOutEntity_railEntity.unit_number
             }
         }
-        entrySignalInEntity.connect_neighbour {wire = defines.wire_type.green, target_entity = entrySignalOutEntity}
 
         -- Cache the objects details for later use.
         portal.dummyLocomotivePosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}, blockedPortalEnd.entity_position)
