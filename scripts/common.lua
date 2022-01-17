@@ -80,8 +80,7 @@ Common.PrimaryTrainState = {
 Common.TunnelUsageParts = {
     enteringTrain = "enteringTrain", ---@type TunnelUsageParts
     leavingTrain = "leavingTrain", ---@type TunnelUsageParts
-    portalTrackTrain = "portalTrackTrain", ---@type TunnelUsageParts
-    dummyTrain = "dummyTrain" ---@type TunnelUsageParts
+    portalTrackTrain = "portalTrackTrain" ---@type TunnelUsageParts
 }
 
 -- The train's state - Used by the train manager remote for state notifications to remote interface calls.

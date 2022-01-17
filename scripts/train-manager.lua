@@ -23,6 +23,12 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 ---@field enteringTrainCarriagesCachedData? Utils_TrainCarriageData[]|null @ The cached carriage details of the entering train as we obtain them. Not cleared when train enters tunnel.
 ---@field entrancePortalCarriageClosingEntrySignal LuaEntity @ The carraige of the entering train left behind on the entrance portal to keep the signals closed when the entering train is cloned to the leaving portal. Not cleared when train enters tunnel.
 ---
+---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel. Cleared when the train enters the tunnel.
+---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain. Cleared when the train enters the tunnel.
+---@field portalTrackTrainInitiallyForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection. Cleared when the train enters the tunnel.
+---@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet. Cleared when the train enters the tunnel.
+---
+---@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
 ---@field trainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
 ---@field traversalTravelDistance double|null @ The length of tunnel the train is travelling through on this traversal. This is entering position to leaving position.
@@ -31,17 +37,9 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 ---@field trainLeavingSpeedAbsolute? double|null @ The absolute speed the train will be set too at the moment it starts leaving the tunnel.
 ---@field traversalInitialSpeedAbsolute? double|null @ The absolute speed the train was going at when it started its traversal.
 ---
----@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface.
----@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
----@field leavingTrainForwards? boolean|null @ If the leaving train is travelling forwards or not. Populated on first setting of the leaving trains speed. Can be returned to nil if when setting the trains speed its found the train isn't in a state to know its direction any more.
----
----@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel. Cleared when the train enters the tunnel.
----@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain. Cleared when the train enters the tunnel.
----@field portalTrackTrainInitiallyForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection. Cleared when the train enters the tunnel.
----@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet. Cleared when the train enters the tunnel.
----
----@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
----@field dummyTrainId? Id|null @ The LuaTrain ID of the dummy train.
+---@field leavingTrain? LuaTrain|null @ The train created leaving the tunnel on the world surface. This is populated when the train starts traversing the tunnel.
+---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train. This is populated when the train starts traversing the tunnel.
+---@field leavingTrainForwards? boolean|null @ If the leaving train is travelling forwards or not. Populated on first setting of the leaving trains speed. Can be returned to nil if when setting the trains speed its found the train isn't in a state to know its direction any more. This is initially populated when the train starts traversing the tunnel.
 ---
 ---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal. -- OVERHAUL - not used by anything any more other than in its populating function. Remove in any final tidyup if still not used.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
@@ -309,13 +307,6 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     managedTrain.primaryTrainPartName = PrimaryTrainState.underground
     managedTrain.targetTrainStop = enteringTrain.path_end_stop
     managedTrain.dummyTrain = TrainManager.CreateDummyTrain(managedTrain.exitPortal, enteringTrain.schedule, managedTrain.targetTrainStop, false)
-    local dummyTrainId = managedTrain.dummyTrain.id
-    managedTrain.dummyTrainId = dummyTrainId
-    global.trainManager.trainIdToManagedTrain[dummyTrainId] = {
-        trainId = dummyTrainId,
-        managedTrain = managedTrain,
-        tunnelUsagePart = TunnelUsageParts.dummyTrain
-    }
 
     -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
     -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
@@ -655,22 +646,16 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.DestroyDummyTrain = function(managedTrain)
     -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
-    if managedTrain.dummyTrain ~= nil then
-        global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil -- TODO: we don't need this any more
-        if managedTrain.dummyTrain.valid then
-            managedTrain.dummyTrain.front_stock.destroy()
-        end
+    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
+        managedTrain.dummyTrain.front_stock.destroy()
     end
     managedTrain.dummyTrain = nil
-    managedTrain.dummyTrainId = nil -- TODO: we don't need this any more
 end
 
 -- Remove the carriage that was forcing closed the entrance portal entry signal if its still present.
 TrainManager.DestroyEntrancePortalCarriageClosingEntrySignal = function(managedTrain)
-    if managedTrain.entrancePortalCarriageClosingEntrySignal ~= nil then
-        if managedTrain.entrancePortalCarriageClosingEntrySignal.valid then
-            managedTrain.entrancePortalCarriageClosingEntrySignal.destroy()
-        end
+    if managedTrain.entrancePortalCarriageClosingEntrySignal ~= nil and managedTrain.entrancePortalCarriageClosingEntrySignal.valid then
+        managedTrain.entrancePortalCarriageClosingEntrySignal.destroy()
     end
     managedTrain.entrancePortalCarriageClosingEntrySignal = nil
 end
@@ -686,14 +671,6 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEn
                 if managedTrain.enteringTrain ~= nil and managedTrain.enteringTrain.valid then
                     managedTrain.enteringTrain.manual_mode = true
                     managedTrain.enteringTrain.speed = 0
-
-                    -- Try to recover a schedule to the entering train.
-                    -- TODO: not needed any more ?
-                    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
-                        managedTrain.enteringTrain.schedule = managedTrain.dummyTrain.schedule
-                    elseif managedTrain.leavingTrain ~= nil and managedTrain.leavingTrain.valid then
-                        managedTrain.enteringTrain.schedule = managedTrain.leavingTrain.schedule
-                    end
                 end
             end
             if managedTrain.leavingTrainId ~= nil then
