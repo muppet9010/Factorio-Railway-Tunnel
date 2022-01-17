@@ -7,19 +7,21 @@ local Logging = require("utility/logging")
 local EventScheduler = require("utility/event-scheduler")
 local PlayerContainer = require("scripts/player-container")
 local Common = require("scripts/common")
-local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
 local TrainManagerRemote = require("scripts/train-manager-remote")
+local TunnelShared = require("scripts/tunnel-shared")
+local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainState
 ---
----@field enteringTrain? LuaTrain|null
----@field enteringTrainId? Id|null @ The enteringTrain LuaTrain id.
----@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint.
----@field enteringTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking.
----@field enteringTrainReachdFullSpeed? boolean|null @ If the entering train has reached its full speed already.
----@field enteringTrainCarriagesCachedData? Utils_TrainCarriageData[]|null @ The cached carriage details of the entering train as we obtain them.
+---@field enteringTrain? LuaTrain|null @ Ref to the entering train. Cleared when the train enters the tunnel.
+---@field enteringTrainId? Id|null @ The enteringTrain LuaTrain id. Cleared when the train enters the tunnel.
+---@field enteringTrainForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint. Cleared when the train enters the tunnel.
+---@field enteringTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while entering the tunnel if it wasn't breaking. Cleared when the train enters the tunnel.
+---@field enteringTrainReachdFullSpeed? boolean|null @ If the entering train has reached its full speed already. Cleared when the train enters the tunnel.
+---@field enteringTrainCarriagesCachedData? Utils_TrainCarriageData[]|null @ The cached carriage details of the entering train as we obtain them. Not cleared when train enters tunnel.
+---@field entrancePortalCarriageClosingEntrySignal LuaEntity @ The carraige of the entering train left behind on the entrance portal to keep the signals closed when the entering train is cloned to the leaving portal. Not cleared when train enters tunnel.
 ---
 ---@field trainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
@@ -33,10 +35,10 @@ local TrainManagerRemote = require("scripts/train-manager-remote")
 ---@field leavingTrainId? Id|null @ The LuaTrain ID of the leaving train.
 ---@field leavingTrainForwards? boolean|null @ If the leaving train is travelling forwards or not. Populated on first setting of the leaving trains speed. Can be returned to nil if when setting the trains speed its found the train isn't in a state to know its direction any more.
 ---
----@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel.
----@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain.
----@field portalTrackTrainInitiallyForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection.
----@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet.
+---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel. Cleared when the train enters the tunnel.
+---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain. Cleared when the train enters the tunnel.
+---@field portalTrackTrainInitiallyForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint when it initially triggers the portal track usage detection. Cleared when the train enters the tunnel.
+---@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet. Cleared when the train enters the tunnel.
 ---
 ---@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
 ---@field dummyTrainId? Id|null @ The LuaTrain ID of the dummy train.
@@ -68,7 +70,7 @@ TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1 ---@type Id
     global.trainManager.managedTrains = global.trainManager.managedTrains or {} ---@type table<Id, ManagedTrain>
-    global.trainManager.trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain or {} ---@type table<Id, TrainIdToManagedTrain> @ Used to track trainIds to managedTrainEntries. When the trainId is detected as changing via event the global object is updated to stay up to date.
+    global.trainManager.trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain or {} ---@type table<Id, TrainIdToManagedTrain> @ Used to track trainIds to managedTrainEntries.
 end
 
 TrainManager.OnLoad = function()
@@ -326,10 +328,20 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     managedTrain.traversalArrivalTick = tick + estimatedTicks
     managedTrain.trainLeavingSpeedAbsolute = estimatedSpeedAbsolute
 
-    -- Destroy entering train's entities as we have finished with them.
-    for _, carriage in pairs(enteringTrain.carriages) do
-        carriage.destroy()
+    -- Destroy entering train's entities as we have finished with them, apart from 1 carriage that we will use to keep the signals closed as there's a delay in the circuit wires betwene the 2 portals signals updating both to be closed.
+    local enteringTrain_carriages = enteringTrain.carriages
+    for i = 2, #enteringTrain_carriages do
+        enteringTrain_carriages[i].destroy()
     end
+    -- Cache and handle the carriage we are using to keep the signals closed.
+    managedTrain.entrancePortalCarriageClosingEntrySignal = enteringTrain_carriages[1]
+    local entrancePortalCarriageClosingEntrySignal_train = managedTrain.entrancePortalCarriageClosingEntrySignal.train
+    entrancePortalCarriageClosingEntrySignal_train.manual_mode = true
+    TunnelShared.SetTrainToManualNextTick(entrancePortalCarriageClosingEntrySignal_train, entrancePortalCarriageClosingEntrySignal_train.id, tick)
+    entrancePortalCarriageClosingEntrySignal_train.speed = 0
+    managedTrain.entrancePortalCarriageClosingEntrySignal.force = global.force.tunnelForce
+
+    -- Clear data thats no longer valid.
     global.trainManager.trainIdToManagedTrain[managedTrain.enteringTrainId] = nil
     managedTrain.enteringTrain = nil
     managedTrain.enteringTrainId = nil
@@ -586,12 +598,14 @@ end
 TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Train has arrived and needs tidying up.
 
+    -- Handle any players riding in the train.
     if managedTrain.undergroundTrainHasPlayersRiding then
         PlayerContainer.TransferPlayerFromContainerForClonedUndergroundCarriage(nil, nil)
     end
 
     -- Tidy up for the leaving train and propigate state updates.
     TrainManager.DestroyDummyTrain(managedTrain)
+    TrainManager.DestroyEntrancePortalCarriageClosingEntrySignal(managedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.leaving
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
 end
@@ -641,14 +655,24 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.DestroyDummyTrain = function(managedTrain)
     -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
-    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
-        global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
-        managedTrain.dummyTrain.front_stock.destroy()
-    elseif managedTrain.dummyTrainId ~= nil then
-        global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil
+    if managedTrain.dummyTrain ~= nil then
+        global.trainManager.trainIdToManagedTrain[managedTrain.dummyTrainId] = nil -- TODO: we don't need this any more
+        if managedTrain.dummyTrain.valid then
+            managedTrain.dummyTrain.front_stock.destroy()
+        end
     end
     managedTrain.dummyTrain = nil
-    managedTrain.dummyTrainId = nil
+    managedTrain.dummyTrainId = nil -- TODO: we don't need this any more
+end
+
+-- Remove the carriage that was forcing closed the entrance portal entry signal if its still present.
+TrainManager.DestroyEntrancePortalCarriageClosingEntrySignal = function(managedTrain)
+    if managedTrain.entrancePortalCarriageClosingEntrySignal ~= nil then
+        if managedTrain.entrancePortalCarriageClosingEntrySignal.valid then
+            managedTrain.entrancePortalCarriageClosingEntrySignal.destroy()
+        end
+    end
+    managedTrain.entrancePortalCarriageClosingEntrySignal = nil
 end
 
 ---@param tunnelRemoved Tunnel
@@ -664,6 +688,7 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEn
                     managedTrain.enteringTrain.speed = 0
 
                     -- Try to recover a schedule to the entering train.
+                    -- TODO: not needed any more ?
                     if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
                         managedTrain.enteringTrain.schedule = managedTrain.dummyTrain.schedule
                     elseif managedTrain.leavingTrain ~= nil and managedTrain.leavingTrain.valid then
@@ -802,6 +827,7 @@ TrainManager.RemoveManagedTrainEntry = function(managedTrain)
     end
 
     TrainManager.DestroyDummyTrain(managedTrain)
+    TrainManager.DestroyEntrancePortalCarriageClosingEntrySignal(managedTrain)
 
     if managedTrain.portalTrackTrain and managedTrain.portalTrackTrain.valid and global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrain.id] and global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrain.id].managedTrain.id == managedTrain.id then
         global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrain.id] = nil

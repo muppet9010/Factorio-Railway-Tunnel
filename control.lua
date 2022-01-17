@@ -10,6 +10,7 @@ local PlayerContainer = require("scripts/player-container")
 local Events = require("utility/events")
 local Commands = require("utility/commands")
 local PlayerAlerts = require("utility/player-alerts")
+local TunnelShared = require("scripts/tunnel-shared")
 
 local function CreateGlobals()
     global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
@@ -80,6 +81,7 @@ local function OnLoad()
     )
 
     -- Call the module's OnLoad functions.
+    TunnelShared.OnLoad()
     TrainManager.OnLoad()
     Tunnel.OnLoad()
     Portal.OnLoad()

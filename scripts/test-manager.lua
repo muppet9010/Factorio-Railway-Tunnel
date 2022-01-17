@@ -46,8 +46,8 @@ local TestsToRun = {
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
     PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-    --TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")} -- hits known issue where tunnel signals have 1 tick open at transition point.
-    --PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")}, -- hits known issue where tunnel signals have 1 tick open at transition point.
+    TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+    PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},

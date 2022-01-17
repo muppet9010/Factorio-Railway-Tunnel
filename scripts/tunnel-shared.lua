@@ -1,6 +1,11 @@
 local Utils = require("utility/utils")
 local Colors = require("utility/colors")
+local EventScheduler = require("utility/event-scheduler")
 local TunnelShared = {}
+
+TunnelShared.OnLoad = function()
+    EventScheduler.RegisterScheduledEventType("TunnelShared.SetTrainToManual_Scheduled", TunnelShared.SetTrainToManual_Scheduled)
+end
 
 ---@param builtEntity LuaEntity
 ---@return boolean
@@ -129,6 +134,23 @@ TunnelShared.DestroyCarriagesOnRailEntityList = function(railEntityList, killFor
     local carriagesFound = refEntity.surface.find_entities_filtered {area = searchArea, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
     for _, carriage in pairs(carriagesFound) do
         Utils.EntityDie(carriage, killForce, killerCauseEntity)
+    end
+end
+
+--- Schedule a train to be set to manual next tick. Can be needed as sometimes the Factorio game engine will restart a stopped train upon collision.
+---@param train LuaTrain
+---@param train_id Id
+---@param currentTick Tick
+TunnelShared.SetTrainToManualNextTick = function(train, train_id, currentTick)
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.SetTrainToManual_Scheduled", train_id, {train = train})
+end
+
+--- Set the train to manual.
+---@param event UtilityScheduledEvent_CallbackObject
+TunnelShared.SetTrainToManual_Scheduled = function(event)
+    local train = event.data.train ---@type LuaTrain
+    if train.valid then
+        train.manual_mode = true
     end
 end
 

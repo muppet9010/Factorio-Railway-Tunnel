@@ -222,7 +222,6 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
-    EventScheduler.RegisterScheduledEventType("Portal.SetTrainToManual_Scheduled", Portal.SetTrainToManual_Scheduled)
     EventScheduler.RegisterScheduledEventType("Portal.CheckIfTooLongTrainStillStopped_Scheduled", Portal.CheckIfTooLongTrainStillStopped_Scheduled)
 
     local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
@@ -993,18 +992,18 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
         return
     end
     local train = carriageEnteringPortalTrack.train
+    local train_id = train.id
 
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
         -- Note that we call this on a leaving train when we don't need to, but would be messy code to delay this check in to all of the branches.
-        Portal.StopTrainAsTooLong(train, portal, portal.entryPortalEnd.entity, event.tick)
+        Portal.StopTrainAsTooLong(train, train_id, portal, portal.entryPortalEnd.entity, event.tick)
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
         return
     end
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local train_id = train.id
         local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
         if trainIdToManagedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
@@ -1167,17 +1166,17 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
         return
     end
     local train = carriageAtTransitionOfPortalTrack.train
+    local train_id = train.id
 
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
-        Portal.StopTrainAsTooLong(train, portal, portal.blockedPortalEnd.entity, event.tick)
+        Portal.StopTrainAsTooLong(train, train_id, portal, portal.blockedPortalEnd.entity, event.tick)
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return
     end
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local train_id = train.id
         local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
         if trainIdToManagedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
@@ -1284,33 +1283,18 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
     end
 end
 
---- Schedule a train to be set to manual next tick. Can be needed as sometimes the Factorio game engine will restart a stopped train upon collision.
----@param train LuaTrain
----@param currentTick Tick
-Portal.SetTrainToManualNextTick = function(train, currentTick)
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "Portal.SetTrainToManual_Scheduled", train.id, {train = train})
-end
-
---- Set the train to manual.
----@param event UtilityScheduledEvent_CallbackObject
-Portal.SetTrainToManual_Scheduled = function(event)
-    local train = event.data.train ---@type LuaTrain
-    if train.valid then
-        train.manual_mode = true
-    end
-end
-
 --- Train can't enter the portal so stop it, set it to manual and alert the players.
 ---@param train LuaTrain
+---@param train_id Id
 ---@param portal Portal
 ---@param alertEntity LuaEntity
 ---@param currentTick Tick
-Portal.StopTrainAsTooLong = function(train, portal, alertEntity, currentTick)
+Portal.StopTrainAsTooLong = function(train, train_id, portal, alertEntity, currentTick)
     -- Stop the train.
     train.speed = 0
     train.manual_mode = true
     -- Have to set the train to be stopped next tick as the Factorio game engine will restart a stopped train upon collision.
-    Portal.SetTrainToManualNextTick(train, currentTick)
+    TunnelShared.SetTrainToManualNextTick(train, train_id, currentTick)
 
     -- Show a text message at the tunnel entrance for a short period.
     rendering.draw_text {
@@ -1324,10 +1308,10 @@ Portal.StopTrainAsTooLong = function(train, portal, alertEntity, currentTick)
     }
 
     -- Add the alert for the tunnel force.
-    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train.id, alertEntity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
+    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
 
     -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", train.id, {train = train, alertEntity = alertEntity, alertId = alertId})
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId})
 end
 
 --- Checks a train until it is no longer stopped and then removes the alert associated with it.
