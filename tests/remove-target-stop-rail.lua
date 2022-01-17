@@ -1,23 +1,24 @@
 --[[
     A series of tests that removes the target train stop and rail while the tunnel is in use. Covers:
         - TargetTypes = rail, trainStop
-        - TunnelUsageStates = startApproaching, startedEntering, fullyEntered, startedLeaving, fullyLeft.
+        - TunnelUsageStates = startApproaching, onPortalTrack, entered, leaving, partlyLeftExitPortalTracks.
         - NextScheduleOrder = none, forwards, reversal.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
+local Common = require("scripts/common")
 
 local TargetTypes = {
     rail = "rail",
     trainStop = "trainStop"
 }
 local TunnelUsageStates = {
-    startApproaching = "startApproaching",
-    startedEntering = "startedEntering",
-    fullyEntered = "fullyEntered",
-    startedLeaving = "startedLeaving",
-    fullyLeft = "fullyLeft"
+    startApproaching = Common.TunnelUsageAction.startApproaching,
+    onPortalTrack = "onPortalTrack", -- Have to detect manually in the test from the entrance portal's entry train detector's death.
+    entered = "entered", -- When the entering train is removed the train is traversing (physcially sitting idle in the exit portal).
+    leaving = Common.TunnelUsageAction.leaving, -- When the train starts actively leaving the exit portal.
+    partlyLeftExitPortalTracks = "partlyLeftExitPortalTracks" -- Have to detect manually in the test from the exit portal's entry train detector's death.
 }
 local NextScheduleOrders = {
     none = "none",
@@ -33,9 +34,9 @@ local FinalTrainStates = {
 local DoMinimalTests = true -- The minimal test to prove the concept with a few varieties.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTargetTypesFilter = {"trainStop"} -- Pass in array of TargetTypes keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelUsageStatesFilter = {"fullyEntered"} -- Pass in array of TunnelUsageStates keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
-local SpecificNextScheduleOrdersFilter = {"reversal"} -- Pass in array of TRUE/FALSE (boolean) to do just those specific Next Schedule Order tests. Leave as nil or empty table for both combinations. Only used when DoSpecificTrainTests is TRUE.
+local SpecificTargetTypesFilter = {} -- Pass in array of TargetTypes keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelUsageStatesFilter = {} -- Pass in array of TunnelUsageStates keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
+local SpecificNextScheduleOrdersFilter = {} -- Pass in array of TRUE/FALSE (boolean) to do just those specific Next Schedule Order tests. Leave as nil or empty table for both combinations. Only used when DoSpecificTrainTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -56,7 +57,7 @@ Test.OnLoad = function(testName)
     TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
-local blueprintString = "0eNqtmdlu4kAQRf+lnyGiF3fbfEA+IPM4GiEHOow1xka2IYMi/n3aIUqixEpOjXhh8XKr3LeOe3tS9/Uh7ruqGdTySVXrtunV8ueT6qttU9bjseG0j2qpqiHu1Ew15W7815VV/VieVsOhaWI9v3yt9m03lPWqP3QP5TrO93X63MUkfZ6pqtnEv2qpz79mKh2qhipeIj3/Oa2aw+4+dumC1xhDCtLM+6Hdp7j7tk+3tM2YUZKZF2GmTulqnaQ3VRfXl5N+pvqhvPxWd3HXHmMK/imIYUHy4vsgP2Jqs81t2z2W3aafCmb/o9U2E9kYfcnGfsrmWHbVSz56IgF3nQRMMRnffBs/e43fj829/T3Mx0S+cPVjiAlRz0UzLBq4qMWiORfVWLTAonmBRfWCq3KntOaq3CptuCr3Sluuys3SDqsGgVucqyBwi4MVBG5xsoLALY5WELjF2fLcLcPZ8twtw9ny3C3D2fLcLcPZ8twtw9nKBG5xtjKBW5ytTOAWZysTuMXZygRucbYcd8tythx3y2K2BGZZjJagriwmS4CAxWAJaLWYK8GLxWKsBO9Ai6kSvK4thkrQs1jMlKATdBgpQX/tMFGCoYXDRAlGQQ4TJRiwOUyUYGzpMFGCYbDDRAlG7A4TJZhcOEyUYB7kMFGCGVuGiRLMLTNMlGAWnGGiBPP1DBNVcKMyTJReCJzKuKrAKs9VBV69QVW363bXDtUxTkkWN4V9/1ZtuypJvazaLG7GU+MSXz/e0LXrP3GYPxxiPd56noqb86cRFEnBVXmVeEye1rxKvOaqvEr8G3vrstu288dym66d0PRfGzrOYKrmmA61XbqkOdT1VDjLH4IXpedYasGKH8dSC4rDwwY39ioNjjtBbQS1yGk0glrkNBrBGiun0fDiCBraaBfXsDEY/hC8FgOn0fLiCJxGy4sjZLTBw1UanPeeVlCLnEYrqEVOoxUUB6fR8eLIF2z84BxwUTB+yHnv6QRbLRxLx6sk51gKlpdyjqVgKSznnaRg2S7n9AmWGPOAtmFfE80+bTx+3Ia9i8fY9VGNm8zPG9bLd/vbMzWevNyaJ6cKE2yx8Dr48/kfaIwz2A=="
+local blueprintString = "0eNqtW9tu2koU/Rc/Q+U9Vw8f0A/oeTw6ihyYUqvGRrYhJ4r4945L2qCE0rU38xICNmvhWRePR/ZL8dge4n5ouqlYvRTNuu/GYvXvSzE2265u58+m530sVkUzxV2xKB7r9ffDPr0f6qZ9qp8fpkPXxXZ5fnnY98NUtw/jYfhar+Ny36a/u5jAT4ui6Tbx/2JFp/8WRfqomZp45vr55vmhO+we45B2WBRdvZs5p0TSLcep3yfmfT+mr/Td/JsSzJK0XhTP8z+UwDfNENfnzW5RjFN9/r/4Enf9MSb6DzQKpFEWoPknppHbfO6Hp3rYjNfo9G+6dyP3OmSx21xhr8KZPHzgPtZD88pOV+jMX+jGuJ11SUedtm+/Tde4rZDbZuDWQm6XgZuE3P5+bi/Vu8rA7YXcIQO31GtUZiCXmo0oA7nUbaTuJ3dSu5HOQC71G2UoNyc2XIZ2c2LDZag3JzZchn6zYsNlKDgrNlyGhrNSw6kMDWelhlMZGs5KDacyNJyRGk5laDgjNZzK0HBGbDgrmqoascx/LLVDumIYtkOfXpEj1uLh9qIj1uJUZSgzJTZ2hjJT0pHWGcpMSY2tM5SZkmquM5SZkkZMZygzkhpOZygzEhsuw3SNxIbLMF0jseEyTNdIbLgMDSf2W47rUemyS47JmpQ7Q71JzWYytJvUa+b+chNT319t4hG/v9jERru/1sT5ur/UxCuq91eauE5NkExQxect+9Zivw5mOfPeWoV/R6KuwRIDlnBYhcP+YdZ8FVYzYD0OaxiwFoe1DFiGZI4By5DM47DEkKxiwDIkCwxYXDLHSBnhkjlGygiXzDFSVuKSOUbKSlwyx0hZyZCMkbKSIRkjZSVDMjxlgaEYHrLAEAzPWMD18njEAi6XhxPG6C4P54vRsx5OF+Oc4OFsMc5fHk4W41zr4Vwx5gUeThVjDuPhUDHmWx7OlMaFquBIaVyoCk6UxoWq4EQZXKgKTpTBhargRBmGUHCiDEMoOFGGIRScKMsQCk6UZQgFJ8riQgU4URYXKsCJsrhQAU6Uw4UKcKIcLlSAE+UYQsGJcgyh4EQ5hlBviWr7db/rp+YYr6zC6E9BX9560w9NQnpdGSg/zZvm+/7Gef+hX3+P0/LrIbbzbTena7Rw5jzDH3DmPO4PKuHQectAhVPnPQP1LXbretj2y6d6m3b+gFmVt+Wcp2NNd0wf9UPapTu07VU6OJA+MA4CTmRFDFQ4khXHHA4ccJ9nwOHzX8XxIhzGiuNFOI0VwxwEpzEwzHFxe95NGYPJIiPBZ0fGtSYRnEbGdTERnEbGNTxd3Bt3c8BTT+YZcfjcGThmhOPIWYwhqnBYjj8CDsswyMVdZ7dmEKllACUZUwhS+OIKYz2QlMJhGV5RcDo5a62kDA7L8IqyOCzHKw6H5UjmoSc0fv9U/w7z4/MZX+IxDmMs5idQfj7Psrp4/GVRzBvPX63I+KC8CdZ4q0+nH1VIKUU="
 
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
@@ -67,6 +68,7 @@ end
 Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
+    local surface = TestFunctions.GetTestSurface()
 
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
 
@@ -82,18 +84,24 @@ Test.Start = function(testName)
         end
     end
 
-    -- Get the portals.
-    local entrancePortal, entrancePortalXPos, exitPortal, exitPortalXPos = nil, -100000, nil, 100000
-    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-tunnel_portal_surface"]) do
+    -- Get the outside ends of both portals.
+    local entrancePortalPart, entrancePortalXPos, exitPortalPart, exitPortalXPos = nil, -100000, nil, 100000
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
         if portalEntity.position.x > entrancePortalXPos then
-            entrancePortal = portalEntity
+            entrancePortalPart = portalEntity
             entrancePortalXPos = portalEntity.position.x
         end
         if portalEntity.position.x < exitPortalXPos then
-            exitPortal = portalEntity
+            exitPortalPart = portalEntity
             exitPortalXPos = portalEntity.position.x
         end
     end
+
+    -- Get the entrance portal's entry train detector.
+    local entrancePortalTrainDetector = surface.find_entities_filtered {area = {top_left = {x = entrancePortalPart.position.x - 3, y = entrancePortalPart.position.y - 3}, right_bottom = {x = entrancePortalPart.position.x + 3, y = entrancePortalPart.position.y + 3}}, name = "railway_tunnel-portal_entry_train_detector_1x1", limit = 1}[1]
+
+    -- Get the exit portal's entry train detector.
+    local exitPortalTrainDetector = surface.find_entities_filtered {area = {top_left = {x = exitPortalPart.position.x - 3, y = exitPortalPart.position.y - 3}, right_bottom = {x = exitPortalPart.position.x + 3, y = exitPortalPart.position.y + 3}}, name = "railway_tunnel-portal_entry_train_detector_1x1", limit = 1}[1]
 
     -- Get the train from any locomotive as only 1 train is placed in this test.
     local train = placedEntitiesByGroup["locomotive"][1].train
@@ -152,6 +160,7 @@ Test.Start = function(testName)
         )
     end
     train.schedule = trainSchedule
+    train.speed = 0.75 -- Set so that it triggers approaching before it gets on to the portal tracks.
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
@@ -159,8 +168,10 @@ Test.Start = function(testName)
         stationRemove = stationRemove,
         stationSecondForwards = stationSecondForwards,
         stationSecondReverse = stationSecondReverse,
-        entrancePortal = entrancePortal,
-        exitPortal = exitPortal,
+        entrancePortalPart = entrancePortalPart,
+        entrancePortalTrainDetector = entrancePortalTrainDetector,
+        exitPortalPart = exitPortalPart,
+        exitPortalTrainDetector = exitPortalTrainDetector,
         train = train,
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
         firstTargetRemoved = false
@@ -172,33 +183,35 @@ Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
-Test.TunnelUsageChanged = function(event)
-    -- OVERHAUL - functionised
-    local testData = TestFunctions.GetTestDataObject(event.testName)
-    local testScenario = testData.testScenario
-    local testDataBespoke = testData.bespoke
-
-    if not testDataBespoke.firstTargetRemoved and testScenario.tunnelUsageState == TunnelUsageStates[event.action] then
-        -- Is the state we are wanting to act upon.
-        if testScenario.targetType == TargetTypes.trainStop then
-            testDataBespoke.stationRemove.destroy()
-            game.print("Removed target schedule station.")
-        elseif testScenario.targetType == TargetTypes.rail then
-            testDataBespoke.stationRemove.connected_rail.destroy()
-            game.print("Removed target schedule rail.")
-        else
-            error("Unsupported testScenario.targetType: " .. testScenario.targetType)
-        end
-        testDataBespoke.firstTargetRemoved = true
-        testData.tunnelUsageEntry = {enteringTrain = event.enteringTrain, leavingTrain = event.leavingTrain}
-    end
-end
-
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
     local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+
+    if not testDataBespoke.firstTargetRemoved then
+        local removeFirstTarget = false
+        if (testScenario.tunnelUsageState == TunnelUsageStates.startApproaching or testScenario.tunnelUsageState == TunnelUsageStates.entered or testScenario.tunnelUsageState == TunnelUsageStates.leaving) and testScenario.tunnelUsageState == testData.lastAction then
+            removeFirstTarget = true
+        elseif testScenario.tunnelUsageState == TunnelUsageStates.onPortalTrack and not testDataBespoke.entrancePortalTrainDetector.valid then
+            removeFirstTarget = true
+        elseif testScenario.tunnelUsageState == TunnelUsageStates.partlyLeftExitPortalTracks and not testDataBespoke.exitPortalTrainDetector.valid then
+            removeFirstTarget = true
+        end
+        if removeFirstTarget then
+            -- Is the state we are wanting to act upon.
+            if testScenario.targetType == TargetTypes.trainStop then
+                testDataBespoke.stationRemove.destroy()
+                game.print("Removed target schedule station.")
+            elseif testScenario.targetType == TargetTypes.rail then
+                testDataBespoke.stationRemove.connected_rail.destroy()
+                game.print("Removed target schedule rail.")
+            else
+                error("Unsupported testScenario.targetType: " .. testScenario.targetType)
+            end
+            testDataBespoke.firstTargetRemoved = true
+        end
+    end
 
     if not testDataBespoke.firstTargetRemoved then
         -- Wait for the tunnel usage state to trigger the removal.
@@ -224,13 +237,12 @@ Test.EveryTick = function(event)
         end
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.pulledToExitPortalEntry then
         -- Train should be sent to the end of the exit portal as no path anywhere else.
-        local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.exitPortal.position, {x = -22, y = 0}))
-        if atrainAtExitTunnelEntryRail ~= nil then
+        local trainAtExitPortal = TestFunctions.GetTrainInArea(Utils.CalculateBoundingBoxFromPositionAndRange(testDataBespoke.exitPortalPart.position, 3))
+        if trainAtExitPortal ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
-            if atrainAtExitTunnelEntryRail.state == defines.train_state.wait_station or atrainAtExitTunnelEntryRail.state == defines.train_state.no_schedule then
-                -- Current train will be a part of the full train, rest will still be in the tunnel.
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(atrainAtExitTunnelEntryRail)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, true) then
+            if trainAtExitPortal.state == defines.train_state.wait_station or trainAtExitPortal.state == defines.train_state.no_schedule then
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "part of train at end of portal doesn't match origional")
                     return
                 end
@@ -265,9 +277,9 @@ Test.GenerateTestScenarios = function(testName)
 
     local targetTypesToTest, tunnelUsageStatesToTest, nextScheduleOrdersToTest
     if DoMinimalTests then
-        targetTypesToTest = TargetTypes
-        tunnelUsageStatesToTest = {TunnelUsageStates.fullyEntered, TunnelUsageStates.startedLeaving}
-        nextScheduleOrdersToTest = {NextScheduleOrders.reversal}
+        targetTypesToTest = {TargetTypes.trainStop}
+        tunnelUsageStatesToTest = {TunnelUsageStates.onPortalTrack, TunnelUsageStates.entered, TunnelUsageStates.leaving}
+        nextScheduleOrdersToTest = {NextScheduleOrders.reversal, NextScheduleOrders.none}
     elseif DoSpecificTests then
         -- Adhock testing option.
         targetTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TargetTypes, SpecificTargetTypesFilter)
@@ -307,10 +319,10 @@ Test.CalculateExpectedResults = function(testScenario)
     if testScenario.nextScheduleOrder == NextScheduleOrders.fowards or testScenario.nextScheduleOrder == NextScheduleOrders.reversal then
         expectedFinalTrainState = FinalTrainStates.secondTargetReached
     elseif testScenario.nextScheduleOrder == NextScheduleOrders.none then
-        if testScenario.tunnelUsageState == TunnelUsageStates.startApproaching or testScenario.tunnelUsageState == TunnelUsageStates.fullyLeft then
-            expectedFinalTrainState = FinalTrainStates.stoppedWhenFirstTargetRemoval
-        else
+        if testScenario.tunnelUsageState == TunnelUsageStates.entered then
             expectedFinalTrainState = FinalTrainStates.pulledToExitPortalEntry
+        else
+            expectedFinalTrainState = FinalTrainStates.stoppedWhenFirstTargetRemoval
         end
     else
         error("Unsupported testScenario.nextScheduleOrder: " .. testScenario.nextScheduleOrder)

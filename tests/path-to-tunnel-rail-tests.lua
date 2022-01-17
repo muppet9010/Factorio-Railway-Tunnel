@@ -36,7 +36,7 @@ local DoSpecificTests = false -- If TRUE does the below specific tests, rather t
 local SpecificTargetTunnelRailFilter = {} -- Pass in array of TargetTunnelRail keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.
 local SpecificNextStopFilter = {} -- Pass in array of NextStopTypes keys to do just those. Leave as nil or empty table for all tunnel usage types. Only used when DoSpecificTests is TRUE.
 
-local DebugOutputTestScenarioDetails = true -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
+local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 1000
 Test.RunLoopsMax = 0 -- Populated when script loaded.

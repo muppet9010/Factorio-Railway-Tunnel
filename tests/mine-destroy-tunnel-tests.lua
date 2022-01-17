@@ -30,7 +30,7 @@ local RemovalActions = {
     destroy = "destroy"
 }
 
-local DoMinimalTests = false -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
+local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificTrainStateFilter = {} -- Pass in array of TrainStates keys to do just those. Leave as nil or empty table for all train states. Only used when DoSpecificTests is TRUE.

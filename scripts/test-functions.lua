@@ -270,9 +270,9 @@ TestFunctions.GetSnapshotOfTrain = function(train)
 end
 
 --- Compares 2 train snapshots to see if they are the same train structure. If Optional "allowPartialCurrentSnapshot" argument is true then the current snapshot can be one end of the origonal train.
----@param origionalTrainSnapshot TestFunctions_TrainSnapshot
----@param currentTrainSnapshot TestFunctions_TrainSnapshot
----@param allowPartialCurrentSnapshot? boolean|null
+---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
+---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
+---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false.
 ---@return boolean
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
