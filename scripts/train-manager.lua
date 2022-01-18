@@ -225,7 +225,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
             local trainForwards = trainSpeed > 0
             if trainForwards ~= managedTrain.portalTrackTrainInitiallyForwards then
                 -- Train is moving away from the portal track. Try to put the detection entity back to work out if the train has left the portal tracks.
-                local placedDetectionEntity = MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false)
+                local placedDetectionEntity = MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false, false)
                 if placedDetectionEntity then
                     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
                 end

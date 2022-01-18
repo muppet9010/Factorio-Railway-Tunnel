@@ -1,19 +1,17 @@
 --[[
-    2 facing trains set to try and use the tunnel on the exact same tick. Each train paths just to a station on the other side of the tunnel.
-    Confirms that one gets the tunnel and the other has to wait.
+    2 facing trains set to try and use the tunnel on the exact same tick with each train trying to path through the tunnel. One of them will be acepted for the tunnel and the other blocked. After 5 seconds of the player alert firing the test will send the blocked train backwards to unjam the tunnel exit (equivilent to manual intervention). Thus allowing the first train out of the tunnel and the second makes its journey afterwards.
 
     Breaks due to known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed. At present the 2 trains are stopped and a GUI alert is raised for both trains and the player has to resolve it. This test currently verifies this work around situation.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
-
---TODO: fix commented out code from testing.
+local Utils = require("utility/utils")
 
 -- How the train triggers the portal first. Done by setting train's starting speed.
 local PortalTriggered = {
-    --onPortalTrack = Common.TunnelUsageAction.onPortalTrack,
-    startApproaching = Common.TunnelUsageAction.startApproaching
+    onPortalTrack = "onPortalTrack", -- Both trains trigger via trying to move on to the portal tracks. Meaning they are both blocking their portal's exit rail when one is chosen as being blocked from using the tunnel.
+    startApproachingSlower = "startApproachingSlower", -- The slower speed to trigger this way. Both trains are blocking their portal's exit rail when one is chosen as being blocked from using the tunnel.
+    startApproachingFaster = "startApproachingFaster" -- The faster speed to trigger this way. Both trains are back in their own waiting rail segments when they double reserve the tunnel and one is chosen as being blocked from using the tunnel.
 }
 Test.RunLoopsMax = 0 -- Populated when script loaded.
 Test.TestScenarios = {} -- Populated when script loaded
@@ -86,10 +84,12 @@ Test.Start = function(testName)
 
     -- Train speed is based on how we want to trigger the portal. Do this after all setup so train pathign and state is applied correctly.
     local trainTargetSpeed
-    if testScenario.portalTriggered == Common.TunnelUsageAction.startApproaching then
-        trainTargetSpeed = 0.75
-    elseif testScenario.portalTriggered == Common.TunnelUsageAction.onPortalTrack then
+    if testScenario.portalTriggered == PortalTriggered.onPortalTrack then
         trainTargetSpeed = 0
+    elseif testScenario.portalTriggered == PortalTriggered.startApproachingSlower then
+        trainTargetSpeed = 0.4
+    elseif testScenario.portalTriggered == PortalTriggered.startApproachingFaster then
+        trainTargetSpeed = 0.75
     else
         error("unsupported portalTriggered mode: " .. testScenario.portalTriggered)
     end
@@ -130,7 +130,7 @@ Test.Start = function(testName)
     }
     testData.bespoke = testDataBespoke
 
-    --TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
 ---@param testName string
@@ -159,19 +159,24 @@ Test.EveryTick = function(event)
         -- One ore more of the trains have been stopped, so check theres an alert somewhere.
 
         -- The alerts should appear instantly.
-        local westPlayerAlerts = testDataBespoke.player.get_alerts {entity = testDataBespoke.westPortalEntryEnd}
+        -- The alerts are against a carriage of the train so check them all to see if any alerts for that train exist.
+        local westPlayerAlertsCarriage1 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingEastTrain.carriages[1]}
+        local westPlayerAlertsCarriage2 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingEastTrain.carriages[2]}
+        local westPlayerAlerts = Utils.TableMerge({westPlayerAlertsCarriage1, westPlayerAlertsCarriage2})
         local westAlertSurfaceIndex = testDataBespoke.westPortalEntryEnd.surface.index
         if westPlayerAlerts[westAlertSurfaceIndex] == nil or #westPlayerAlerts[westAlertSurfaceIndex] == 0 or #westPlayerAlerts[westAlertSurfaceIndex][defines.alert_type.custom] == 1 then
             table.insert(testDataBespoke.trainNamesAlerting, "headingEastTrain")
         end
-        local eastPlayerAlerts = testDataBespoke.player.get_alerts {entity = testDataBespoke.eastPortalEntryEnd}
+        local eastPlayerAlertsCarriage1 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingWestTrain.carriages[1]}
+        local eastPlayerAlertsCarriage2 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingWestTrain.carriages[2]}
+        local eastPlayerAlerts = Utils.TableMerge({eastPlayerAlertsCarriage1, eastPlayerAlertsCarriage2})
         local eastAlertSurfaceIndex = testDataBespoke.eastPortalEntryEnd.surface.index
         if eastPlayerAlerts[eastAlertSurfaceIndex] == nil or #eastPlayerAlerts[eastAlertSurfaceIndex] == 0 or #eastPlayerAlerts[eastAlertSurfaceIndex][defines.alert_type.custom] == 1 then
             table.insert(testDataBespoke.trainNamesAlerting, "headingWestTrain")
         end
 
         if #testDataBespoke.trainNamesAlerting == 0 then
-            TestFunctions.TestFailed(testName, "One of the trains was rejected from tunnel, but no alerts found")
+            TestFunctions.TestFailed(testName, "One or more of the trains were rejected from the tunnel, but no alerts found")
         end
 
         -- Flag this state as reached.

@@ -1,10 +1,12 @@
 local Utils = require("utility/utils")
 local Colors = require("utility/colors")
 local EventScheduler = require("utility/event-scheduler")
+local PlayerAlerts = require("utility/player-alerts")
 local TunnelShared = {}
 
 TunnelShared.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelShared.SetTrainToManual_Scheduled", TunnelShared.SetTrainToManual_Scheduled)
+    EventScheduler.RegisterScheduledEventType("TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled", TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled)
 end
 
 ---@param builtEntity LuaEntity
@@ -153,6 +155,66 @@ TunnelShared.SetTrainToManual_Scheduled = function(event)
     local train = event.data.train ---@type LuaTrain
     if train.valid then
         train.manual_mode = true
+    end
+end
+
+--- Train can't enter the portal so stop it, set it to manual and alert the players.
+---@param train LuaTrain
+---@param train_id Id
+---@param portal Portal
+---@param alertEntity LuaEntity
+---@param currentTick Tick
+TunnelShared.StopTrainFromEnteringTunnel = function(train, train_id, portal, alertEntity, currentTick, message)
+    -- Stop the train.
+    TunnelShared.StopTrainOnEntityCollision(train, train_id, currentTick)
+
+    -- Show a text message at the tunnel entrance for a short period.
+    rendering.draw_text {
+        text = message,
+        surface = portal.tunnel.surface,
+        target = alertEntity,
+        time_to_live = 300,
+        forces = {portal.force},
+        color = {r = 1, g = 0, b = 0, a = 1},
+        scale_with_zoom = true
+    }
+
+    -- Add the alert for the tunnel force.
+    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, message, true)
+
+    -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId})
+end
+
+--- Checks a train until it is no longer stopped and then removes the alert associated with it.
+---@param event UtilityScheduledEvent_CallbackObject
+TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled = function(event)
+    local train = event.data.train ---@type LuaTrain
+    local alertEntity = event.data.alertEntity ---@type LuaEntity
+    local alertId = event.data.alertId ---@type Id
+    local trainStopped = true
+
+    if not train.valid then
+        -- Train is not valid any more so alert should be removed.
+        trainStopped = false
+    elseif not alertEntity.valid then
+        -- The alert target entity is not valid any more so alert should be removed.
+        trainStopped = false
+    elseif train.speed ~= 0 then
+        -- The train has speed and so isn't stopped any more.
+        trainStopped = false
+    elseif not train.manual_mode then
+        -- The train is in automatic so isn't stopped any more.
+        trainStopped = false
+    end
+
+    -- Handle the stopped state.
+    if not trainStopped then
+        -- Train isn't stopped so remove the alert.
+        PlayerAlerts.RemoveCustomAlertFromForce(alertEntity.force, alertId)
+    else
+        -- Train is still stopped so schedule a check for next tick.
+        EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled", event.instanceId, event.data)
     end
 end
 

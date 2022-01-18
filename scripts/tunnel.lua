@@ -82,11 +82,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local tunnel, train_id = transitionSignal.portal.tunnel, train.id
     if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id then
         -- Tunnel already reserved so this reservation is bad.
-
-        -- Reset the trains speed and make it recalculate the path so that when it recovers the tunnel's entry signals on its side will have updated for the other train approaching the tunnel from the other side.
-        train.speed = 0
-        train.recalculate_path(true)
-        --TODO: show alerts as we just stopped a train....
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, transitionSignal.portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
         return
     end
 
@@ -165,13 +161,13 @@ end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainFinishedEnteringTunnel = function(managedTrain)
-    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true, false)
 end
 
 ---@param managedTrain ManagedTrain
 Tunnel.TrainReleasedTunnel = function(managedTrain)
-    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true)
-    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.exitPortal, true)
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, true, false)
+    MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.exitPortal, true, false)
     if managedTrain.tunnel.managedTrain ~= nil and managedTrain.tunnel.managedTrain.id == managedTrain.id then
         managedTrain.tunnel.managedTrain = nil
     end

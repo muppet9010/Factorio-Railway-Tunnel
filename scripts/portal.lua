@@ -5,7 +5,6 @@ local Common = require("scripts/common")
 local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = Common.PortalEndAndSegmentEntityNames, Common.TunnelSignalDirection, Common.TunnelUsageParts
 local Portal = {}
 local EventScheduler = require("utility/event-scheduler")
-local PlayerAlerts = require("utility/player-alerts")
 
 ---@class Portal
 ---@field id uint @ unique id of the portal object.
@@ -222,7 +221,6 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
-    EventScheduler.RegisterScheduledEventType("Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled", Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled)
 
     local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
@@ -742,7 +740,7 @@ end
 Portal.On_PostTunnelCompleted = function(portals)
     for _, portal in pairs(portals) do
         -- Both of these functions require the tunnel to be present in the portal object as they are called throughout the portals lifetime.
-        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false)
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, false)
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
     end
 end
@@ -987,7 +985,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     if carriageEnteringPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
-        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true)
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true, false)
         return
     end
     local train = carriageEnteringPortalTrack.train
@@ -996,8 +994,8 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
         -- Note that we call this on a leaving train when we don't need to, but would be messy code to delay this check in to all of the branches.
-        Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
-        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
+        Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
         return
     end
 
@@ -1033,8 +1031,8 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
                 -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
 
-                Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-tunnel_in_use"})
-                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
+                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
                 return
             end
         end
@@ -1049,7 +1047,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
 
     -- Train is coasting so stop it and put the detection entity back.
     train.speed = 0
-    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
+    Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
     rendering.draw_text {
         text = {"message.railway_tunnel-unpowered_trains_cant_use_tunnels"},
         surface = portal.tunnel.surface,
@@ -1064,38 +1062,44 @@ end
 --- Will try and place the entering train detection entity now and if not possible will keep on trying each tick until either successful or a tunnel state setting stops the attempts. Is safe to call if the entity already exists as will just abort (initally or when in per tick loop).
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
+---@param justplaceIt boolean @ If true the detector is built without a check first. Some weird edge cases whre the train has rammed the detector and stopped right next to it will blocks its build check, but it will work fine once just placed.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
-Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry)
+Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry, justplaceIt)
     if portal.tunnel == nil or not portal.isComplete or portal.enteringTrainUsageDetectorEntity ~= nil then
         -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
-    return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled(nil, portal, retry)
+    return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled(nil, portal, retry, justplaceIt)
 end
 
 ---@param event UtilityScheduledEvent_CallbackObject
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
----@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
-Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled = function(event, portal, retry)
+---@param justplaceIt boolean @ If true the detector is built without a check first. Some weird edge cases whre the train has rammed the detector and stopped right next to it will blocks its build check, but it will work fine once just placed.
+---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed on first attempt. Retries in later ticks will not return the entity to the calling function.
+Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled = function(event, portal, retry, justplaceIt)
     local eventData
     if event ~= nil then
         eventData = event.data
-        portal, retry = eventData.portal, eventData.retry
+        portal, retry, justplaceIt = eventData.portal, eventData.retry, eventData.justplaceIt
     end
     if portal.tunnel == nil or not portal.isComplete or portal.enteringTrainUsageDetectorEntity ~= nil then
         -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
         return
     end
 
-    -- TODO: On a leaving train the train detector is created on top of the carriage and instantly killed, thus partially reserving the tunnel by the train again. This needs to check the entity can be palced before buildign to avoid this and document it, as it used to do it, but I removed it as wasn;t an apparent reason  and saved UPS. Apply to other train detector creation as well.
-    -- The left train will initially be within the collision box of where we want to place this. So try to place it and if it fails retry a moment later. In tests 2/3 of the time it was created successfully.
-    local enteringTrainUsageDetectorEntity =
-        portal.surface.create_entity {
-        name = "railway_tunnel-portal_entry_train_detector_1x1",
-        force = global.force.tunnelForce,
-        position = portal.enteringTrainUsageDetectorPosition
-    }
+    -- When the train is leaving the left train will initially be within the collision box of where we want to place this. So try to place it and if it fails retry a moment later. In tests 2/3 of the time it was created successfully.
+    -- For odd reasons the entity can be "create" on top of a train and instantly be killed, so have to explicitly check first in some cases.
+    -- In cases where the detector was killed by a train that is then immediately stopped the build check will fail, but it can be placed back there and we need to force it with "justPlaceIt".
+    local enteringTrainUsageDetectorEntity
+    if justplaceIt or portal.surface.can_place_entity {name = "railway_tunnel-portal_entry_train_detector_1x1", force = global.force.tunnelForce, position = portal.enteringTrainUsageDetectorPosition} then
+        enteringTrainUsageDetectorEntity =
+            portal.surface.create_entity {
+            name = "railway_tunnel-portal_entry_train_detector_1x1",
+            force = global.force.tunnelForce,
+            position = portal.enteringTrainUsageDetectorPosition
+        }
+    end
     if enteringTrainUsageDetectorEntity ~= nil then
         portal.enteringTrainUsageDetectorEntity = enteringTrainUsageDetectorEntity
         global.portals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = portal
@@ -1106,7 +1110,7 @@ Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled = function
         if eventData ~= nil then
             postbackData = eventData
         else
-            postbackData = {portal = portal, retry = retry}
+            postbackData = {portal = portal, retry = retry, justplaceIt = justplaceIt}
         end
         EventScheduler.ScheduleEventOnce(nil, "Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", portal.id, postbackData)
     end
@@ -1157,7 +1161,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
-        Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.blockedPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, portal.blockedPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return
     end
@@ -1197,7 +1201,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the transition train detection entity.
                 -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
 
-                Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-tunnel_in_use"})
+                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
                 Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                 return
             end
@@ -1233,6 +1237,7 @@ Portal.AddTransitionUsageDetectionEntityToPortal = function(portal)
         return
     end
 
+    -- For odd reasons the entity will fail a build check where a train carriage was desotryed in the same tick. But it will create on top of where something is still. So as the usage case for returning this detector is simple it can always be put back, no checking first required. So this detector must be different logic to the entering detector.
     local transitionUsageDetectorEntity =
         portal.surface.create_entity {
         name = "railway_tunnel-portal_transition_train_detector_1x1",
@@ -1254,66 +1259,6 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
             portal.transitionUsageDetectorEntity.destroy()
         end
         portal.transitionUsageDetectorEntity = nil
-    end
-end
-
---- Train can't enter the portal so stop it, set it to manual and alert the players.
----@param train LuaTrain
----@param train_id Id
----@param portal Portal
----@param alertEntity LuaEntity
----@param currentTick Tick
-Portal.StopTrainFromEnteringTunnel = function(train, train_id, portal, alertEntity, currentTick, message)
-    -- Stop the train.
-    TunnelShared.StopTrainOnEntityCollision(train, train_id, currentTick)
-
-    -- Show a text message at the tunnel entrance for a short period.
-    rendering.draw_text {
-        text = message,
-        surface = portal.tunnel.surface,
-        target = alertEntity,
-        time_to_live = 300,
-        forces = {portal.force},
-        color = {r = 1, g = 0, b = 0, a = 1},
-        scale_with_zoom = true
-    }
-
-    -- Add the alert for the tunnel force.
-    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, message, true)
-
-    -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId})
-end
-
---- Checks a train until it is no longer stopped and then removes the alert associated with it.
----@param event UtilityScheduledEvent_CallbackObject
-Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled = function(event)
-    local train = event.data.train ---@type LuaTrain
-    local alertEntity = event.data.alertEntity ---@type LuaEntity
-    local alertId = event.data.alertId ---@type Id
-    local trainStopped = true
-
-    if not train.valid then
-        -- Train is not valid any more so alert should be removed.
-        trainStopped = false
-    elseif not alertEntity.valid then
-        -- The alert target entity is not valid any more so alert should be removed.
-        trainStopped = false
-    elseif train.speed ~= 0 then
-        -- The train has speed and so isn't stopped any more.
-        trainStopped = false
-    elseif not train.manual_mode then
-        -- The train is in automatic so isn't stopped any more.
-        trainStopped = false
-    end
-
-    -- Handle the stopped state.
-    if not trainStopped then
-        -- Train isn't stopped so remove the alert.
-        PlayerAlerts.RemoveCustomAlertFromForce(alertEntity.force, alertId)
-    else
-        -- Train is still stopped so schedule a check for next tick.
-        EventScheduler.ScheduleEventOnce(event.tick + 1, "Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled", event.instanceId, event.data)
     end
 end
 
