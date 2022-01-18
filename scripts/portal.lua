@@ -167,7 +167,7 @@ local PortalTypeData = {
 local EntryEndPortalSetup = {
     trackEntryPointFromCenter = 3, -- The border of the portal on the entry side.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
-    enteringTrainUsageDetectorEntityDistance = 0.5 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until just before it triggers the signal, but a leaving train won't touch it either when waiting at the exit signals. This is a judgement call as trains can actually collide when manaully driven over signals without triggering them. Positioned to minimise UPS usage
+    enteringTrainUsageDetectorEntityDistance = 2.5 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its on the portal's tracks, but a leaving train won't touch it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked from entering a portal, a seperate train that appears in that portal from traversing the tunnel from the opposite direction doesn't connect to it. Also makes sure the entry signals don't trigger for the blocked train than and that the blocked train isn't on the portal tracks when checking/doing tunnel part minning. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don;t want it placed between the leaving trains carraiges and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complciated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed).
 }
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
@@ -222,7 +222,7 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
-    EventScheduler.RegisterScheduledEventType("Portal.CheckIfTooLongTrainStillStopped_Scheduled", Portal.CheckIfTooLongTrainStillStopped_Scheduled)
+    EventScheduler.RegisterScheduledEventType("Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled", Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled)
 
     local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
@@ -996,7 +996,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
         -- Note that we call this on a leaving train when we don't need to, but would be messy code to delay this check in to all of the branches.
-        Portal.StopTrainAsTooLong(train, train_id, portal, portal.entryPortalEnd.entity, event.tick)
+        Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
         return
     end
@@ -1030,24 +1030,11 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal)
                 return
             else
-                -- Portal's tunnel is already being used so stop this train entering. Not sure how this could have happened, but just stop the new train here and restore the entering train detection entity.
+                -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
+                -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
 
-                -- This will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
-                error("Train has entered one portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
-
-                train.speed = 0
-                train.manual_mode = true
-                -- OVERHAUL: this may need setting to manual mode next tick as well?
+                Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-tunnel_in_use"})
                 Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal)
-                rendering.draw_text {
-                    text = {"message.railway_tunnel-tunnel_in_use"},
-                    surface = portal.tunnel.surface,
-                    target = portal.entryPortalEnd.entity,
-                    time_to_live = 300,
-                    forces = {portal.force},
-                    color = {r = 1, g = 0, b = 0, a = 1},
-                    scale_with_zoom = true
-                }
                 return
             end
         end
@@ -1101,6 +1088,7 @@ Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled = function
         return
     end
 
+    -- TODO: On a leaving train the train detector is created on top of the carriage and instantly killed, thus partially reserving the tunnel by the train again. This needs to check the entity can be palced before buildign to avoid this and document it, as it used to do it, but I removed it as wasn;t an apparent reason  and saved UPS. Apply to other train detector creation as well.
     -- The left train will initially be within the collision box of where we want to place this. So try to place it and if it fails retry a moment later. In tests 2/3 of the time it was created successfully.
     local enteringTrainUsageDetectorEntity =
         portal.surface.create_entity {
@@ -1169,7 +1157,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
-        Portal.StopTrainAsTooLong(train, train_id, portal, portal.blockedPortalEnd.entity, event.tick)
+        Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.blockedPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return
     end
@@ -1202,28 +1190,15 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
             -- This train hasn't reserved any tunnel.
             if portal.tunnel.managedTrain == nil then
                 -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now.
-                error("unsupported unexpected train entering tunnel without having passed through entry detector at present")
+                error("unexpected train entering tunnel without having passed through entry detector")
                 MOD.Interfaces.TrainManager.TrainEnterTunnel(train, event.tick)
                 return
             else
-                -- Portal's tunnel is already being used so stop this train from using the tunnel. Not sure how this could have happened, but just stop the new train here and restore the transition detection entity.
+                -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the transition train detection entity.
+                -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
 
-                -- This will be removed when future tests functionality is added. Is just in short term as we don't expect to reach this state ever.
-                error("Train has reached the transition of a portal in automatic mode, while the portal's tunnel was reserved by another train.\nthisTrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. portal.tunnel.managedTrain.tunnel.id .. "\reservedTrainId: " .. portal.tunnel.managedTrain.tunnel.managedTrain.id)
-
-                train.speed = 0
-                train.manual_mode = true
-                -- OVERHAUL: this may need setting to manual mode next tick as well?
+                Portal.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-tunnel_in_use"})
                 Portal.AddTransitionUsageDetectionEntityToPortal(portal)
-                rendering.draw_text {
-                    text = {"message.railway_tunnel-tunnel_in_use"},
-                    surface = portal.tunnel.surface,
-                    target = portal.blockedPortalEnd.entity,
-                    time_to_live = 180,
-                    forces = {portal.force},
-                    color = {r = 1, g = 0, b = 0, a = 1},
-                    scale_with_zoom = true
-                }
                 return
             end
         end
@@ -1288,16 +1263,13 @@ end
 ---@param portal Portal
 ---@param alertEntity LuaEntity
 ---@param currentTick Tick
-Portal.StopTrainAsTooLong = function(train, train_id, portal, alertEntity, currentTick)
+Portal.StopTrainFromEnteringTunnel = function(train, train_id, portal, alertEntity, currentTick, message)
     -- Stop the train.
-    train.speed = 0
-    train.manual_mode = true
-    -- Have to set the train to be stopped next tick as the Factorio game engine will restart a stopped train upon collision.
-    TunnelShared.SetTrainToManualNextTick(train, train_id, currentTick)
+    TunnelShared.StopTrainOnEntityCollision(train, train_id, currentTick)
 
     -- Show a text message at the tunnel entrance for a short period.
     rendering.draw_text {
-        text = {"message.railway_tunnel-train_too_long"},
+        text = message,
         surface = portal.tunnel.surface,
         target = alertEntity,
         time_to_live = 300,
@@ -1307,15 +1279,15 @@ Portal.StopTrainAsTooLong = function(train, train_id, portal, alertEntity, curre
     }
 
     -- Add the alert for the tunnel force.
-    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, {"message.railway_tunnel-train_too_long"}, true)
+    local alertId = PlayerAlerts.AddCustomAlertToForce(portal.tunnel.force, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, message, true)
 
     -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId})
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId})
 end
 
 --- Checks a train until it is no longer stopped and then removes the alert associated with it.
 ---@param event UtilityScheduledEvent_CallbackObject
-Portal.CheckIfTooLongTrainStillStopped_Scheduled = function(event)
+Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled = function(event)
     local train = event.data.train ---@type LuaTrain
     local alertEntity = event.data.alertEntity ---@type LuaEntity
     local alertId = event.data.alertId ---@type Id
@@ -1341,7 +1313,7 @@ Portal.CheckIfTooLongTrainStillStopped_Scheduled = function(event)
         PlayerAlerts.RemoveCustomAlertFromForce(alertEntity.force, alertId)
     else
         -- Train is still stopped so schedule a check for next tick.
-        EventScheduler.ScheduleEventOnce(event.tick + 1, "Portal.CheckIfTooLongTrainStillStopped_Scheduled", event.instanceId, event.data)
+        EventScheduler.ScheduleEventOnce(event.tick + 1, "Portal.CheckIfRejectedTunnelTrainStillStopped_Scheduled", event.instanceId, event.data)
     end
 end
 

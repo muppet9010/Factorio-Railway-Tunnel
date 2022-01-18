@@ -76,7 +76,21 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if transitionSignal == nil then
         return
     end
-    MOD.Interfaces.TrainManager.RegisterTrainApproachingPortalSignal(train, transitionSignal)
+
+    -- Check the tunnel can be reserved by this train. Same as the train detectors do before calling the TrainManager.
+    -- In certain edge cases 2 trains can reserve the the tunnel's 2 transition signals simultaneously and the portal entry signal circuitry doesn't have time to react to prevent it.
+    local tunnel, train_id = transitionSignal.portal.tunnel, train.id
+    if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id then
+        -- Tunnel already reserved so this reservation is bad.
+
+        -- Reset the trains speed and make it recalculate the path so that when it recovers the tunnel's entry signals on its side will have updated for the other train approaching the tunnel from the other side.
+        train.speed = 0
+        train.recalculate_path(true)
+        --TODO: show alerts as we just stopped a train....
+        return
+    end
+
+    MOD.Interfaces.TrainManager.RegisterTrainApproachingPortalSignal(train, train_id, transitionSignal)
 end
 
 ---@param portals Portal[]

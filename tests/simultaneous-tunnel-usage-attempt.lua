@@ -1,18 +1,22 @@
 --[[
     2 facing trains set to try and use the tunnel on the exact same tick. Each train paths just to a station on the other side of the tunnel.
     Confirms that one gets the tunnel and the other has to wait.
+
+    Breaks due to known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed. At present the 2 trains are stopped and a GUI alert is raised for both trains and the player has to resolve it. This test currently verifies this work around situation.
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Common = require("scripts/common")
 
+--TODO: fix commented out code from testing.
+
 -- How the train triggers the portal first. Done by setting train's starting speed.
 local PortalTriggered = {
-    startApproaching = Common.TunnelUsageAction.startApproaching,
-    onPortalTrack = Common.TunnelUsageAction.onPortalTrack
+    --onPortalTrack = Common.TunnelUsageAction.onPortalTrack,
+    startApproaching = Common.TunnelUsageAction.startApproaching
 }
 Test.RunLoopsMax = 0 -- Populated when script loaded.
-Test.TestScenarios = {} -- Populated when script loaded.
+Test.TestScenarios = {} -- Populated when script loaded
 
 Test.RunTime = 3600
 
@@ -22,7 +26,7 @@ Test.OnLoad = function(testName)
     Test.GenerateTestScenarios() -- Call here so its always populated.
 end
 
-local blueprintString = "0eNq1Wsty6jgQ/RevIaVWSy2J/f2GWUylUg54iGvApmyTuakU/34lTF4gkpbMbEJA1jlyP47aLb8Wj5t9tevqZigWr0W9bJu+WPz9WvT1uik34bfhZVcVi6Ieqm0xK5pyG751Zb0pDrOiblbV72IBhxlryn/ly8Owb5pqM9+13VBuHvpqva2aYd4Pfnz9NHwClYf7WeHH6qGuxkUdv7w8NPvtY9V51nfsMLnxGO3O8+3a3k9pm7ASDzPXela8hE8Pvaq7ajkO0qzoh3L8v/ir6gP1BYV8p3hb4Px469dZ8CuLjIAiHxTZoIoPCmxQzQZVjg1KfFDDBjV8UL6j7Dvoct89V6urkGKElF8hMQLpeJBXECmCCIJ76wl3DsAG5fsI2NmUEE3AzqaEuAd2NiVkKLCzKUFLgL4I7Hz5dFTCUYovIxXp7oQNd/rnaAXDzABUR9SzcDUxSGZSxRGjJnApJvjGAhDbAARrk3nzGJwt9/Me86u8ssdAmgvt6QbE+fpj5pYyD/zCODHLS/xhd6+aVYREjpKBF/vxc9nV5Te+UKnFRIQbM7n1Dbghk5umc4PL5DY34M71t70Bt45xy5+53Q24MY8bxQ24IZMbslLaZLLJa2x7/wzQrbvWf17c7nHHeFh2bd/XzTqmYpmrwZzVxIyfya9uw59Lr/8PZ+T6gnLiMFNocLrIQaa243SNg8wtDadLXFxdf6ZW0xUOMiVHwXRql0ktJ1PLzNxWOJ06M8yUysnk3BpR6aSHgau1tI5hUxY2q5RWHxK0aZftth3q5yrWvJHvdmm72oOcbCHujGdbtpu2C5d24Rch0EnQZK12SFaTJGeRlNTGQiho1+Eqq4zQ1qIkpRWQ1M6Qv9QPP4Zh5cckagRLJAySsOiswsBWMkhCO2+otv1xUe3y32qY/7OvNsF5MSvY1H4bpzPmUvttnM6YSO23cUAhtd/GAZW8yFL6WmTJi8gygEZqLfyf4HTrSJ1iYv398CmklBPgCJWRSISIQpwiclJIyVhIaUxtN3JsqlLbjRzQhG4rP04Tuq38OOV3W5Efp/zcR76j+LmPbEcRP/eR7Sji5z6yHUXsjmsCJjuhEm6enU8JXmKnEz+ciJ1N/LgndjLxE5QsS/OvS/5lMeGrgmOh4GXbGB20+1QlHBUfg+ArB0AEoKwwIK0TH1WEF3OSxs8hr+zOGWEEThd8HRN8Yqc8X0VN6hkLBzP1iIWDydvrrxeRl1u9Cn7TIEQoDK3whaJ58+zo+XEvB7JKBrc5o0i4j83enupHYyVp9ADaTS8eo443mHi8xDGoSjxd4mDqxMMlDiYlni1xME3e0YE6f96JnVoam/UsFcG+nxX98qla7TentwQ+Ij9898mj5adrxrcbzg5l7sMKv87zEmq+mTe+MHAf2I+vOSw+vUjhH1Krrh/takEZ5zPIaWU0Hg5/AOsp8Xc="
+local blueprintString = "0eNq1Wl1v6jgQ/SurPEPlrxnbvO/+hX24qqo0ZGl0Q4KS0LtVxX9fm+QWKKaMne5LaXByjpmZMzO285491/ty11XNkK3es6pomz5b/XjP+mrT5LX/bnjbldkqq4Zymy2yJt/6qy6v6uywyKpmXf6brfhhQXrkV/72NOybpqyXu7Yb8vqpLzfbshmW/eDGNy/DGag4PC4yN1YNVTlO6njx9tTst89l51g/sP3DjcNod45v1/bukbbxM3EwS2UX2Vu2UtpBr6uuLMZBXGT9kI//Z3+Xvae+ohAfFL8nuDz+9Nss9pJFBEAlHVSTQRUdFMigQAeVZFCkg3IyqCaDSrqjzAdose9ey/VNSHWEBHYJKQOQlgapMIiIAUTOqD8d6ObknAxKdzwnqwnoIcrJagK6mDhZTUCPJk5WE0Y4Ci8S7LJ4OWbCMRUHIpU9wBRZD3A/WrkmKkCYEVVdYuoQJlFVigUhg0awMUZQ4qYNeKgEMFKZmXwG/NN0z6vMn/mNKhNXyUDeqWR//JXX9XNe/AySibiI+bCW+GytkHeFTESXn9FDjhbqTjtRNutQdE6+gSu7veZdlX/he4htX67JuU4lx28gh1Ry/Q3kMpXcfAN5ss/tfHIb5BZ3uSWbz61Tufl8bkjlFkm65ql08hbd3i09uk3Xus+r33usU09F1/Z91WyupyNTZ6NSZhNoRVL54Xv4kwMP/w9vJEtQp4RicqqT81NdcoGR8zMdt4ncan6mS67qan6mE6liV2I+d6rQlZzPnSpypeZzJ8capEhapkpaRS3JlLrZX0MIXKeBk9prdUpGdVu023aoXsvQOgRPpmm7yqFM5mAP2vEVbd12/t7Of8OYtIIDGgNWogEUaI1EJUAb7mN54+8ySjMwRgpUoDgKsBrdrW742Q8rNyYkSG4QmZbIjLRGSc+WE0j8puJQbvvjpNriZzks/9mXtfdfyAw2dtcPCMYFFrvtR0Llsft+JFQRu/FHQpW08JL2ZniJq/DSXGoBwNwf73ljUU2Bsfl6eIorZRm3KJUWElFKydgUlrPiSoTiClTszifJqhC79UlCpe/SyohojdimjYhWQ0eNiFZ6FpB0byE9Cwi6t5CeBQTdW0jPAoLuLSRv2EYEFpKlFaEBJCsrQq5IFlZEZkWyriKKAJJlFVGv0JJqAPCIDsO1CsfuwaVxrcHn8ql1OFYA6QuAspwjcq4M01wYy06thUvuKLR7Bl2mt1YzzeT8AgChAqDJ4o/oKzSPPP8hgYrI8x8SKK3+g4ko/8r7DjhjvmM0zHWQ+rd3R++P9Z2jUcK7zmqFzJ4aADM1ltoIBOkAwM7vKsPOV5GnXySTQuTpFwkUI0+/SKA68vSLBGoSTxvw83IodLKqbdpaiwRu4o6V9J1jpbMjn0c3VryU6309vTZxEpu/dos8kGf3jK97fDqjevQzvnzOZW79xXPjGxSPnv343sfq7M0St2Quu36cuOFKW6dZC0qDPBz+A7k5RdQ="
 
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
@@ -39,12 +43,16 @@ Test.Start = function(testName)
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the stations placed by name.
-    local stationWest, stationEast
+    local stationWest, stationWestFallback, stationEast, stationEastFallback
     for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "West" then
             stationWest = stationEntity
+        elseif stationEntity.backer_name == "West Fallback" then
+            stationWestFallback = stationEntity
         elseif stationEntity.backer_name == "East" then
             stationEast = stationEntity
+        elseif stationEntity.backer_name == "East Fallback" then
+            stationEastFallback = stationEntity
         end
     end
 
@@ -58,7 +66,25 @@ Test.Start = function(testName)
         end
     end
 
-    -- Train speed is based on how we want to trigger the portal.
+    -- Get the player as we need to check their alerts.
+    local player = game.connected_players[1]
+    if player == nil then
+        TestFunctions.TestFailed(testName, "Test requires player to check alerts on.")
+    end
+
+    -- Get the 2 portal's entry portal end entity.
+    local eastPortalEntryEnd, eastPortalEntryEndXPos, westPortalEntryEnd = nil, -100000, nil
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
+        if portalEntity.position.x > eastPortalEntryEndXPos then
+            westPortalEntryEnd = eastPortalEntryEnd -- May be nil if first portal end is east, but will be corrected when second portal end is checked.
+            eastPortalEntryEnd = portalEntity
+            eastPortalEntryEndXPos = portalEntity.position.x
+        else
+            westPortalEntryEnd = portalEntity
+        end
+    end
+
+    -- Train speed is based on how we want to trigger the portal. Do this after all setup so train pathign and state is applied correctly.
     local trainTargetSpeed
     if testScenario.portalTriggered == Common.TunnelUsageAction.startApproaching then
         trainTargetSpeed = 0.75
@@ -84,16 +110,27 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        stationEast = stationEast,
-        stationWest = stationWest,
+    --- Class name includes the abbreviation of the test name to make it unique across the mod.
+    ---@class Tests_STUA_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationEast = stationEast, ---@type LuaEntity
+        stationWest = stationWest, ---@type LuaEntity
+        stationEastFallback = stationEastFallback, ---@type LuaEntity
+        stationWestFallback = stationWestFallback, ---@type LuaEntity
         stationEastReached = false,
         stationWestReached = false,
-        headingWestTrain = headingWestTrain,
-        headingEastTrain = headingEastTrain
+        headingWestTrain = headingWestTrain, ---@type LuaTrain
+        headingEastTrain = headingEastTrain, ---@type LuaTrain
+        trainsStartedMoving = false,
+        player = player,
+        eastPortalEntryEnd = eastPortalEntryEnd, ---@type LuaEntity
+        westPortalEntryEnd = westPortalEntryEnd, ---@type LuaEntity
+        stoppedAlertsStartedTick = nil, ---@type uint|null
+        trainNamesAlerting = {} ---@type string[] @ Array of the train reference name in the testDataBespoke object.
     }
+    testData.bespoke = testDataBespoke
 
-    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+    --TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
 ---@param testName string
@@ -105,19 +142,87 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_STUA_TestScenarioBespokeData
 
-    -- Detect when the stations have a train waiting in them.
+    -- If the train's haven't started moving for the first time then wait.
+    if not testDataBespoke.trainsStartedMoving then
+        if testDataBespoke.headingWestTrain.speed ~= 0 then
+            testDataBespoke.trainsStartedMoving = true
+        else
+            return
+        end
+    end
+
+    -- CURRENT KNOWN LIMITATION BEHAVIOUR - START
+    -- Check if any trains have been stopped for the first time.
+    if testDataBespoke.stoppedAlertsStartedTick == nil and (testDataBespoke.headingWestTrain.speed == 0 or testDataBespoke.headingEastTrain.speed == 0) then
+        -- One ore more of the trains have been stopped, so check theres an alert somewhere.
+
+        -- The alerts should appear instantly.
+        local westPlayerAlerts = testDataBespoke.player.get_alerts {entity = testDataBespoke.westPortalEntryEnd}
+        local westAlertSurfaceIndex = testDataBespoke.westPortalEntryEnd.surface.index
+        if westPlayerAlerts[westAlertSurfaceIndex] == nil or #westPlayerAlerts[westAlertSurfaceIndex] == 0 or #westPlayerAlerts[westAlertSurfaceIndex][defines.alert_type.custom] == 1 then
+            table.insert(testDataBespoke.trainNamesAlerting, "headingEastTrain")
+        end
+        local eastPlayerAlerts = testDataBespoke.player.get_alerts {entity = testDataBespoke.eastPortalEntryEnd}
+        local eastAlertSurfaceIndex = testDataBespoke.eastPortalEntryEnd.surface.index
+        if eastPlayerAlerts[eastAlertSurfaceIndex] == nil or #eastPlayerAlerts[eastAlertSurfaceIndex] == 0 or #eastPlayerAlerts[eastAlertSurfaceIndex][defines.alert_type.custom] == 1 then
+            table.insert(testDataBespoke.trainNamesAlerting, "headingWestTrain")
+        end
+
+        if #testDataBespoke.trainNamesAlerting == 0 then
+            TestFunctions.TestFailed(testName, "One of the trains was rejected from tunnel, but no alerts found")
+        end
+
+        -- Flag this state as reached.
+        testDataBespoke.stoppedAlertsStartedTick = event.tick
+    end
+
+    -- Wait a few seconds after the alerts started so the human can notice them. Then review whats happened and if we need to fix anything.
+    if testDataBespoke.stoppedAlertsStartedTick ~= nil and event.tick == testDataBespoke.stoppedAlertsStartedTick + 300 then
+        if #testDataBespoke.trainNamesAlerting == 2 then
+            -- Both trains stopped, so order one of the trains out of the way and restart the other.
+
+            -- West heading train is reversed to the EastFallback station temporarirly and then released back to head to the west station.
+            local westTrainSchedule = testDataBespoke.headingWestTrain.schedule
+            table.insert(westTrainSchedule.records, {station = testDataBespoke.stationEastFallback.backer_name, temporary = true})
+            testDataBespoke.headingWestTrain.schedule = westTrainSchedule
+            testDataBespoke.headingWestTrain.manual_mode = false
+
+            -- East heading train is restarted and should be able to make its journey.
+            testDataBespoke.headingEastTrain.manual_mode = false
+        elseif #testDataBespoke.trainNamesAlerting == 1 then
+            -- One train stopped so the other must be using the tunnel. Send the stopped one to the fallback station behind it to let the tunnel user leave.
+            local stoppedTrainName = testDataBespoke.trainNamesAlerting[1]
+            local targetStation
+            if stoppedTrainName == "headingWestTrain" then
+                targetStation = testDataBespoke.stationEastFallback
+            elseif stoppedTrainName == "headingEastTrain" then
+                targetStation = testDataBespoke.stationWestFallback
+            else
+                error("unrecognised trainNamesAlerting trainName: " .. tostring(stoppedTrainName))
+            end
+            local targetTrain = testDataBespoke[stoppedTrainName]
+            local trainSchedule = targetTrain.schedule
+            table.insert(trainSchedule.records, 1, {station = targetStation.backer_name, temporary = true})
+            targetTrain.schedule = trainSchedule
+            targetTrain.manual_mode = false
+        end
+    end
+    -- CURRENT KNOWN LIMITATION BEHAVIOUR - END
+
+    -- IDEAL BEHAVIOUR - START
+    -- Detect when the stations have a train waiting in them and react when both completed their journey.
     if not testDataBespoke.stationEastReached and testDataBespoke.stationEast.get_stopped_train() ~= nil then
         testDataBespoke.stationEastReached = true
     end
     if not testDataBespoke.stationWestReached and testDataBespoke.stationWest.get_stopped_train() ~= nil then
         testDataBespoke.stationWestReached = true
     end
-
     if testDataBespoke.stationEastReached and testDataBespoke.stationWestReached then
         TestFunctions.TestCompleted(testName)
     end
+    -- IDEAL BEHAVIOUR - END
 end
 
 Test.GenerateTestScenarios = function()

@@ -99,21 +99,25 @@ end
 -------------------------------------------------------------------------------
 
 ---@param approachingTrain LuaTrain
+---@param approachingTrain_id Id
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
-TrainManager.RegisterTrainApproachingPortalSignal = function(approachingTrain, entrancePortalTransitionSignal)
+TrainManager.RegisterTrainApproachingPortalSignal = function(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
     if global.debugRelease then
-        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainApproachingPortalSignal_Internal, approachingTrain, entrancePortalTransitionSignal)
+        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainApproachingPortalSignal_Internal, approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
     else
-        TrainManager._RegisterTrainApproachingPortalSignal_Internal(approachingTrain, entrancePortalTransitionSignal)
+        TrainManager._RegisterTrainApproachingPortalSignal_Internal(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
     end
 end
 ---@param approachingTrain LuaTrain
+---@param approachingTrain_id Id
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
-TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachingTrain, entrancePortalTransitionSignal)
+TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
     -- Check if this train is already using the tunnel in some way.
-    local existingTrainIDTrackedObject = global.trainManager.trainIdToManagedTrain[approachingTrain.id]
+    local existingTrainIDTrackedObject = global.trainManager.trainIdToManagedTrain[approachingTrain_id]
     local reversedManagedTrain, committedManagedTrain = nil, nil
     if existingTrainIDTrackedObject ~= nil then
+        -- Train was using the tunnel already so handle the various states.
+
         if existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.leavingTrain then
             -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
             reversedManagedTrain = existingTrainIDTrackedObject.managedTrain
@@ -327,9 +331,7 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     -- Cache and handle the carriage we are using to keep the signals closed.
     managedTrain.entrancePortalCarriageClosingEntrySignal = approachingTrain_carriages[1]
     local entrancePortalCarriageClosingEntrySignal_train = managedTrain.entrancePortalCarriageClosingEntrySignal.train
-    entrancePortalCarriageClosingEntrySignal_train.manual_mode = true
-    TunnelShared.SetTrainToManualNextTick(entrancePortalCarriageClosingEntrySignal_train, entrancePortalCarriageClosingEntrySignal_train.id, tick)
-    entrancePortalCarriageClosingEntrySignal_train.speed = 0
+    TunnelShared.StopTrainOnEntityCollision(entrancePortalCarriageClosingEntrySignal_train, entrancePortalCarriageClosingEntrySignal_train.id, tick)
     managedTrain.entrancePortalCarriageClosingEntrySignal.force = global.force.tunnelForce
 
     -- Clear data thats no longer valid.

@@ -137,11 +137,13 @@ TunnelShared.DestroyCarriagesOnRailEntityList = function(railEntityList, killFor
     end
 end
 
---- Schedule a train to be set to manual next tick. Can be needed as sometimes the Factorio game engine will restart a stopped train upon collision.
+--- Correctly stops a train when it collides with an entity. As the Factorio game engine will return a manual train upon collision the following tick. So we have to stop it this tick and set it to be manual again next tick.
 ---@param train LuaTrain
 ---@param train_id Id
 ---@param currentTick Tick
-TunnelShared.SetTrainToManualNextTick = function(train, train_id, currentTick)
+TunnelShared.StopTrainOnEntityCollision = function(train, train_id, currentTick)
+    train.manual_mode = true
+    train.speed = 0
     EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.SetTrainToManual_Scheduled", train_id, {train = train})
 end
 
