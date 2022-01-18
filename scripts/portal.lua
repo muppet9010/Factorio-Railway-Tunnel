@@ -166,7 +166,7 @@ local PortalTypeData = {
 local EntryEndPortalSetup = {
     trackEntryPointFromCenter = 3, -- The border of the portal on the entry side.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
-    enteringTrainUsageDetectorEntityDistance = 2.5 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its on the portal's tracks, but a leaving train won't touch it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked from entering a portal, a seperate train that appears in that portal from traversing the tunnel from the opposite direction doesn't connect to it. Also makes sure the entry signals don't trigger for the blocked train than and that the blocked train isn't on the portal tracks when checking/doing tunnel part minning. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don;t want it placed between the leaving trains carraiges and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complciated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed).
+    enteringTrainUsageDetectorEntityDistance = 1.95 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carraiges and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
 }
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
@@ -1089,7 +1089,7 @@ Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled = function
     end
 
     -- When the train is leaving the left train will initially be within the collision box of where we want to place this. So try to place it and if it fails retry a moment later. In tests 2/3 of the time it was created successfully.
-    -- For odd reasons the entity can be "create" on top of a train and instantly be killed, so have to explicitly check first in some cases.
+    -- The entity can be created on top of a train and if that trains moving it will instantly be killed, so have to explicitly do a build check first in some cases.
     -- In cases where the detector was killed by a train that is then immediately stopped the build check will fail, but it can be placed back there and we need to force it with "justPlaceIt".
     local enteringTrainUsageDetectorEntity
     if justplaceIt or portal.surface.can_place_entity {name = "railway_tunnel-portal_entry_train_detector_1x1", force = global.force.tunnelForce, position = portal.enteringTrainUsageDetectorPosition} then
@@ -1237,7 +1237,7 @@ Portal.AddTransitionUsageDetectionEntityToPortal = function(portal)
         return
     end
 
-    -- For odd reasons the entity will fail a build check where a train carriage was desotryed in the same tick. But it will create on top of where something is still. So as the usage case for returning this detector is simple it can always be put back, no checking first required. So this detector must be different logic to the entering detector.
+    -- The entity will fail a build check where a train carriage was desotryed in the same tick. But it will create on top of where something is still. So as the usage case for returning this detector is simple it can always be put back, no checking first required. So this detector must be different logic to the entering detector.
     local transitionUsageDetectorEntity =
         portal.surface.create_entity {
         name = "railway_tunnel-portal_transition_train_detector_1x1",

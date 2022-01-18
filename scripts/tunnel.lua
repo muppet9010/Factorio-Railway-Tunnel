@@ -79,8 +79,9 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
 
     -- Check the tunnel can be reserved by this train. Same as the train detectors do before calling the TrainManager.
     -- In certain edge cases 2 trains can reserve the the tunnel's 2 transition signals simultaneously and the portal entry signal circuitry doesn't have time to react to prevent it.
+    -- A train that doesn't leave the portal before turning around will also need to have its request allowed through to the TrainManager.
     local tunnel, train_id = transitionSignal.portal.tunnel, train.id
-    if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id then
+    if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id and tunnel.managedTrain.leavingTrainId ~= train_id then
         -- Tunnel already reserved so this reservation is bad.
         TunnelShared.StopTrainFromEnteringTunnel(train, train_id, transitionSignal.portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
         return
