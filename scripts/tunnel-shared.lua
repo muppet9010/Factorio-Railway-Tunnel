@@ -118,27 +118,6 @@ TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface
     rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudiencePlayers, forces = textAudienceForces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
----@param railEntityList LuaEntity[]
----@param killForce LuaForce
----@param killerCauseEntity LuaEntity
-TunnelShared.DestroyCarriagesOnRailEntityList = function(railEntityList, killForce, killerCauseEntity)
-    if Utils.IsTableEmpty(railEntityList) then
-        return
-    end
-    local refEntity, railEntityCollisionBoxList = nil, {}
-    for _, railEntity in pairs(railEntityList) do
-        if railEntity.valid then
-            refEntity = railEntity
-            table.insert(railEntityCollisionBoxList, railEntity.bounding_box) -- Only supports straight track by design.
-        end
-    end
-    local searchArea = Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs(railEntityCollisionBoxList)
-    local carriagesFound = refEntity.surface.find_entities_filtered {area = searchArea, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
-    for _, carriage in pairs(carriagesFound) do
-        Utils.EntityDie(carriage, killForce, killerCauseEntity)
-    end
-end
-
 --- Correctly stops a train when it collides with an entity. As the Factorio game engine will return a manual train upon collision the following tick. So we have to stop it this tick and set it to be manual again next tick.
 ---@param train LuaTrain
 ---@param train_id Id

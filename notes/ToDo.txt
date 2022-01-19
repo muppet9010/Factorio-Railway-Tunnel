@@ -1,10 +1,10 @@
 Now
 ---
+    -- Update existing tests with new EmmyLua class refreecnes to make future maintenance easier.
 
 
 Bugs
 ----
-	- Check that a train thats stopped right up against the portal entry signal isn't affected when the the tunnel rails are removed. While the locomotives collision box overlaps the portal rails, they can be manually mined. If a train has gone beyond this limit but not reserved the tunnel then make sure the mining check detects and prevents this.
     - Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
     - Make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.

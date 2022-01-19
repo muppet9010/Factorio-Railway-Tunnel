@@ -10,10 +10,13 @@ local Test = {}
 local TestFunctions = require("scripts/test-functions")
 
 -- Internal test types.
+--- Class name includes the abbreviation of the test name to make it unique across the mod.
+---@class Tests_TMI_FirstLetterTypes
 local FirstLetterTypes = {
     a = "a", -- For the letter a.
     b = "b" -- For the letter b.
 }
+---@class Tests_TMI_TrainStartingSpeeds
 local TrainStartingSpeeds = {
     none = "none", -- 0 speed
     full = "full" -- 2 speed
@@ -35,6 +38,7 @@ Test.RunTime = 3600
 Test.RunLoopsMax = 0
 
 --- The test configurations are stored in this when populated by Test.GenerateTestScenarios().
+---@type Tests_TMI_TestScenario[]
 Test.TestScenarios = {}
 
 --- Any scheduled event types for the test must be Registered here.
@@ -78,10 +82,13 @@ Test.Start = function(testName)
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    testData.bespoke = {
-        announcedTunnelUsage = false,
-        southTrainStop = southTrainStop
+    --- Class name includes the abbreviation of the test name to make it unique across the mod.
+    ---@class Tests_TMI_TestScenarioBespokeData
+    local testDataBespoke = {
+        announcedTunnelUsage = false, ---@type boolean
+        southTrainStop = southTrainStop ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
@@ -98,8 +105,9 @@ end
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_TMI_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_TMI_TestScenarioBespokeData
 
     if testData.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
@@ -126,7 +134,8 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out what specific instances of each type to do.
-    local firstLettersToTest, trainStartingSpeedToTest
+    local firstLettersToTest  ---@type Tests_TMI_FirstLetterTypes[]
+    local trainStartingSpeedToTest  ---@type Tests_TMI_TrainStartingSpeeds[]
     if DoMinimalTests then
         firstLettersToTest = {FirstLetterTypes.b}
         trainStartingSpeedToTest = {TrainStartingSpeeds.none, TrainStartingSpeeds.full}
@@ -143,6 +152,8 @@ Test.GenerateTestScenarios = function(testName)
     -- Work out the combinations of the various types that we will do a test for.
     for _, firstLetter in pairs(firstLettersToTest) do
         for _, trainStartingSpeed in pairs(trainStartingSpeedToTest) do
+            --- Class name includes the abbreviation of the test name to make it unique across the mod.
+            ---@class Tests_TMI_TestScenario
             local scenario = {
                 firstLetter = firstLetter,
                 trainStartingSpeed = trainStartingSpeed

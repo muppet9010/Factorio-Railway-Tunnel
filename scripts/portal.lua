@@ -902,9 +902,9 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
             end
         end
         portal.portalOtherEntities = nil
-        TunnelShared.DestroyCarriagesOnRailEntityList(portal.portalRailEntities, killForce, killerCauseEntity)
         for _, railEntity in pairs(portal.portalRailEntities) do
             if railEntity.valid then
+                Utils.DestroyCarriagesOnRailEntity(railEntity, killForce, killerCauseEntity, portal.surface)
                 railEntity.destroy()
             end
         end

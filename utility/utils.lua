@@ -146,6 +146,29 @@ Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyFor
     end
 end
 
+--- Kills any carriages that would prevent the rail from being removed.
+---@param railEntity LuaEntity
+---@param killForce LuaForce
+---@param killerCauseEntity LuaEntity
+---@param surface LuaSurface
+Utils.DestroyCarriagesOnRailEntity = function(railEntity, killForce, killerCauseEntity, surface)
+    -- Check if any carriage prevents the rail from being removed before just killing all carriages within the rails collision boxes as this is more like vanilla behaviour.
+    if not railEntity.can_be_destroyed() then
+        local railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "collision_box")
+        local carriagesFound = surface.find_entities_filtered {area = railEntityCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+        for _, carriage in pairs(carriagesFound) do
+            Utils.EntityDie(carriage, killForce, killerCauseEntity)
+        end
+        if railEntity.type == "curved-rail" then
+            railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "secondary_collision_box")
+            carriagesFound = surface.find_entities_filtered {area = railEntityCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+            for _, carriage in pairs(carriagesFound) do
+                Utils.EntityDie(carriage, killForce, killerCauseEntity)
+            end
+        end
+    end
+end
+
 ---@param thing table
 ---@return boolean
 Utils.IsTableValidPosition = function(thing)

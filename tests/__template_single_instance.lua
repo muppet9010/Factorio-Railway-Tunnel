@@ -39,10 +39,13 @@ Test.Start = function(testName)
 
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        announcedTunnelUsage = false,
-        southTrainStop = southTrainStop
+    --- Class name includes the abbreviation of the test name to make it unique across the mod.
+    ---@class Tests_TSI_TestScenarioBespokeData
+    local testDataBespoke = {
+        announcedTunnelUsage = false, ---@type boolean
+        southTrainStop = southTrainStop ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
@@ -59,8 +62,8 @@ end
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testDataBespoke = testData.bespoke ---@type Tests_TSI_TestScenarioBespokeData
 
     if testData.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true

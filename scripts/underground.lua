@@ -698,9 +698,9 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
 
     -- Remove anything on the crossing rails and the rails. If this function has been reached any mining checks have already happened.
     if removedSegment.crossingRailEntities ~= nil then
-        TunnelShared.DestroyCarriagesOnRailEntityList(removedSegment.crossingRailEntities, killForce, killerCauseEntity)
         for _, crossingRailEntity in pairs(removedSegment.crossingRailEntities) do
             if crossingRailEntity.valid then
+                Utils.DestroyCarriagesOnRailEntity(crossingRailEntity, killForce, killerCauseEntity, removedSegment.surface)
                 crossingRailEntity.destroy()
             end
         end
