@@ -1,13 +1,11 @@
 Now
 ---
+    - Run full test suite. Atleast one test fails due to incorrect expectations/setup around destroying portal and train not being properly on portal tracks yet. Test is for old flawed core mod logic.
 
 
 Bugs
 ----
-    - Make wagons invunerable until they start to move when travelling underground. Also make the train carriages indestructable to keep things simple.
-    - Make sure a player can't get in a traversing train carriage and if they can detect and handle it somehow if easy. Or log it if its not going to be nicely handled.
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.
-	- A transitioning train can be marked for decon, it needs to prevent this in addition to being invunerable, not player selectable, notable to have its orders accessed/changed.
     - The portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
     - If a train has entered the tracks (triggered the portal tracks train detector) and then is upgraded to being tracked by signal approaching, but the train aborts its approach we currently Terminate the tunnel usage. However we need to return to the train on portal tracks state as the train is still there now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals. TrainManager.TrainApproachingOngoing() the terminate logic at top of function.
     - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
@@ -25,7 +23,7 @@ Features to add/change
         - Tunnel destroyed while player underground.
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.
-    - Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots.
+    - Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots. Some thooughts on this and options to resolve:
         - Can't use active state on rolling stock.
         - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
         - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate.

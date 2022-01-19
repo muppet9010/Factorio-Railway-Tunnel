@@ -72,3 +72,17 @@ Train with no fuel
 - This does mean a train with no fuel that starts approaching will accelerate towards the tunnel.
 - The leaving train will depart at the expected speed and traversing time of a fueled train.
 - This will generally resolves the issue of trying to re-fuel a train sitting in a portal, as with this approach frequently the train will escape the portal and thus easily accessible.
+
+
+Traversing train not on player force
+------------------------------------
+
+By having the traversing train not on the player's force from the point it enters the tunnel to when it starts leaving it resolves several issues:
+    - Can't be deconstructed by the player.
+    - Doesn't show up in the players train list as a duplicate to the dummy train that the player does see.
+    - Player can't interact with the trains schedule in any way.
+Notes on this area:
+    - A train Id is the carriage entities and has no owner, so carriages can have their force changed witohut affecting the train Id.
+    - The dummy train is on the players force and so maintains the train count and train manager visibility. But it doesn't allow the player to interact with it.
+    - The entrance portal blockign carriage left behind upon entering the tunnel has its force changed for the same reasons.
+    - Once a graphic layer is put above the portals and has a selection option for the portal/tunnel player GUI then the train carraiges on the portal will no longer be selectable.
