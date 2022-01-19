@@ -39,15 +39,17 @@ Test.Start = function(testName)
     local repathTrain = placedEntitiesByGroup["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        stationSouthReached = false,
-        stationNorthReached = false,
-        repathTrain = repathTrain,
+    ---@class Tests_DROA_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationSouthReached = false, ---@type boolean
+        stationNorthReached = false, ---@type boolean
+        repathTrain = repathTrain, ---@type LuaTrain
         repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain),
-        stationSouthEndViaTunnel = stationSouthEndViaTunnel,
-        stationSouthEndNotTunnel = stationSouthEndNotTunnel,
-        stationNorth = stationNorth
+        stationSouthEndViaTunnel = stationSouthEndViaTunnel, ---@type LuaEntity
+        stationSouthEndNotTunnel = stationSouthEndNotTunnel, ---@type LuaEntity
+        stationNorth = stationNorth ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -61,7 +63,8 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_DROA_TestScenarioBespokeData
+
     local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testDataBespoke.stationSouthEndViaTunnel.get_stopped_train(), testDataBespoke.stationSouthEndNotTunnel.get_stopped_train(), testDataBespoke.stationNorth.get_stopped_train()
 
     if stationSouthEndViaTunnelTrain ~= nil and not testDataBespoke.stationSouthReached then

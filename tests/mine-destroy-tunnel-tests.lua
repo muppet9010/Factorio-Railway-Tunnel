@@ -13,6 +13,7 @@ local TestFunctions = require("scripts/test-functions")
 local Common = require("scripts/common")
 
 -- These must be the same name as Common.TunnelUsageAction, with the exception of "none" and "partiallyOnPortalTrack".
+---@class Tests_MDTT_TrainStates
 local TrainStates = {
     none = "none", -- Removal occurs before tunnel is used at all.
     startApproaching = Common.TunnelUsageAction.startApproaching,
@@ -20,11 +21,13 @@ local TrainStates = {
     entered = Common.TunnelUsageAction.entered,
     leaving = Common.TunnelUsageAction.leaving
 }
+---@class Tests_MDTT_TunnelParts
 local TunnelParts = {
     entrancePortal = "entrancePortal",
     tunnelSegment = "tunnelSegment",
     exitPortal = "exitPortal"
 }
+---@class Tests_MDTT_RemovalActions
 local RemovalActions = {
     mine = "mine",
     destroy = "destroy"
@@ -39,10 +42,12 @@ local SpecificRemovalActionFilter = {} -- Pass in array of RemovalActions keys t
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
+---@class Tests_MDTT_FinalTunnelStates
 local FinalTunnelStates = {
     complete = "complete",
     broken = "broken"
 }
+---@class Tests_MDTT_FinalTunnelStates
 local FinalTrainStates = {
     complete = "complete",
     partDestroyed = "partDestroyed",
@@ -51,6 +56,7 @@ local FinalTrainStates = {
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
+---@type Tests_MDTT_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded.
 --[[
     {
@@ -119,19 +125,22 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    testData.bespoke = {
-        stationEast = stationEast,
-        stationWest = stationWest,
-        entrancePortalPart = entrancePortalPart,
-        entrancePortalTrainDetector = entrancePortalTrainDetector,
-        exitPortalPart = exitPortalPart,
-        tunnelSegmentToRemove = tunnelSegmentToRemove,
-        train = train,
+    ---@class Tests_MDTT_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationEast = stationEast, ---@type LuaEntity
+        stationWest = stationWest, ---@type LuaEntity
+        entrancePortalPart = entrancePortalPart, ---@type LuaEntity
+        entrancePortalTrainDetector = entrancePortalTrainDetector, ---@type LuaEntity
+        exitPortalPart = exitPortalPart, ---@type LuaEntity
+        tunnelSegmentToRemove = tunnelSegmentToRemove, ---@type LuaEntity
+        train = train, ---@type LuaTrain
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        tunnelPartRemoved = false,
-        westReached = false,
-        eastReached = false
+        tunnelPartRemoved = false, ---@type boolean
+        westReached = false, ---@type boolean
+        eastReached = false ---@type boolean
     }
+    testData.bespoke = testDataBespoke
+
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -143,8 +152,9 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_MDTT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_MDTT_TestScenarioBespokeData
 
     if not testDataBespoke.tunnelPartRemoved then
         if Test.ShouldTunnelPartBeRemoved(testData) then
@@ -261,8 +271,9 @@ end
 ---@param testData TestManager_TestData
 ---@return boolean
 Test.ShouldTunnelPartBeRemoved = function(testData)
-    local testScenario = testData.testScenario
-    local testDataBespoke = testData.bespoke
+    local testScenario = testData.testScenario ---@type Tests_MDTT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_MDTT_TestScenarioBespokeData
+
     if testScenario.trainState == TrainStates.none then
         -- Always the right time with "none" train state requirement.
         return true
@@ -288,8 +299,9 @@ end
 ---@param tunnelObject RemoteTunnelDetails
 ---@return boolean trainStateOk
 Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject)
-    local testDataBespoke = testData.bespoke
-    local testScenario = testData.testScenario
+    local testScenario = testData.testScenario ---@type Tests_MDTT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_MDTT_TestScenarioBespokeData
+
     local inspectionArea = {left_top = {x = testDataBespoke.stationWest.position.x, y = testDataBespoke.stationWest.position.y}, right_bottom = {x = testDataBespoke.stationEast.position.x, y = testDataBespoke.stationEast.position.y}} -- Inspection area needs to find trains that are anywhere on the tracks between the stations
     local trainOnSurface = TestFunctions.GetTrainInArea(inspectionArea)
     local tunnelUsageEntry  ---@type RemoteTunnelUsageEntry
@@ -351,7 +363,9 @@ Test.GenerateTestScenarios = function(testName)
         DoMinimalTests = false
     end
 
-    local trainStatesToTest, tunnelPartsToTest, removalActionsToTest
+    local trainStatesToTest  ---@type Tests_MDTT_TrainStates
+    local tunnelPartsToTest  ---@type Tests_MDTT_TunnelParts
+    local removalActionsToTest  ---@type Tests_MDTT_RemovalActions
     if DoMinimalTests then
         -- Minimal tests.
         trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.partiallyOnPortalTrack] = TrainStates.partiallyOnPortalTrack, [TrainStates.leaving] = TrainStates.leaving}
@@ -372,6 +386,7 @@ Test.GenerateTestScenarios = function(testName)
     for _, trainState in pairs(trainStatesToTest) do
         for _, tunnelPart in pairs(tunnelPartsToTest) do
             for _, removalAction in pairs(removalActionsToTest) do
+                ---@class Tests_MDTT_TestScenario
                 local scenario = {
                     trainState = trainState,
                     tunnelPart = tunnelPart,

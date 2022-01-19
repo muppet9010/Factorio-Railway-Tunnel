@@ -44,18 +44,20 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        stationEast1Reached = false,
-        stationEast2Reached = false,
-        stationWest1Reached = false,
-        stationWest2Reached = false,
+    ---@class Tests_TIUWT_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationEast1Reached = false, ---@type boolean
+        stationEast2Reached = false, ---@type boolean
+        stationWest1Reached = false, ---@type boolean
+        stationWest2Reached = false, ---@type boolean
         trainHeadingEast1Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingEast1),
         trainHeadingEast2Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingEast2),
         trainHeadingWest1Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingWest1),
         trainHeadingWest2Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingWest2),
-        stationEast = stationEast,
-        stationWest = stationWest
+        stationEast = stationEast, ---@type LuaEntity
+        stationWest = stationWest ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -69,7 +71,8 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_TIUWT_TestScenarioBespokeData
+
     local stationEastTrain, stationWestTrain = testDataBespoke.stationEast.get_stopped_train(), testDataBespoke.stationWest.get_stopped_train()
 
     -- Tracked trains should arrive to their expected station in order before any other train gets to reach its second station.

@@ -9,6 +9,7 @@ local Utils = require("utility/utils")
 local Common = require("scripts/common")
 local TunnelRailEntityNames = Common.TunnelRailEntityNames
 
+---@class Tests_PTTRT_TargetTunnelRail
 local TargetTunnelRail = {
     entrancePortalMiddle = "entrancePortalMiddle", -- An entrance portal track after the entry detector, but before the transition detector.
     entrancePortalBlockingEnd = "entrancePortalBlockingEnd", -- An entrance portal track after the transition detector.
@@ -16,15 +17,18 @@ local TargetTunnelRail = {
     exitPortalBlockingEnd = "exitPortalBlockingEnd", -- An exit portal track on the blocking side (inside/before) of the transition detector.
     exitPortalMiddle = "exitPortalMiddle" -- An exit portal track before the entry detector, but after the transition detector.
 }
+---@class Tests_PTTRT_NextStopTypes
 local NextStopTypes = {
     none = "none",
     station = "station",
     rail = "rail"
 }
+---@class Tests_PTTRT_ExpectedTunnelStopHandling
 local ExpectedTunnelStopHandling = {
     targetTunnelRail = "targetTunnelRail",
     endOfTunnel = "endOfTunnel"
 }
+---@class Tests_PTTRT_FinalTrainStates
 local FinalTrainStates = {
     nextStopReached = "nextStopReached",
     targetRailReached = "targetRailReached"
@@ -40,6 +44,7 @@ local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scen
 
 Test.RunTime = 1000
 Test.RunLoopsMax = 0 -- Populated when script loaded.
+---@type Tests_PTTRT_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded.
 --[[
     {
@@ -179,17 +184,20 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    testData.bespoke = {
-        stationEnd = stationEnd,
-        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd,
-        exitPortalEntryPortalEnd = exitPortalEntryPortalEnd,
-        undergroundSegment = undergroundSegment,
-        targetTunnelRailEntity = targetTunnelRailEntity,
-        train = train,
+    ---@class Tests_PTTRT_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationEnd = stationEnd, ---@type LuaEntity
+        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd, ---@type LuaEntity
+        exitPortalEntryPortalEnd = exitPortalEntryPortalEnd, ---@type LuaEntity
+        undergroundSegment = undergroundSegment, ---@type LuaEntity
+        targetTunnelRailEntity = targetTunnelRailEntity, ---@type LuaEntity
+        train = train, ---@type LuaTrain
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        tunnelRailReached = false,
-        nextStopReached = false
+        tunnelRailReached = false, ---@type boolean
+        nextStopReached = false ---@type boolean
     }
+    testData.bespoke = testDataBespoke
+
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -201,8 +209,9 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_PTTRT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_PTTRT_TestScenarioBespokeData
 
     local train = testDataBespoke.train
     if train == nil or not train.valid then
@@ -261,7 +270,8 @@ Test.GenerateTestScenarios = function(testName)
         DoMinimalTests = false
     end
 
-    local targetTunnelRailsToTest, nextStopsToTest
+    local targetTunnelRailsToTest  ---@type Tests_PTTRT_TargetTunnelRail
+    local nextStopsToTest  ---@type  Tests_PTTRT_NextStopTypes
     if DoMinimalTests then
         targetTunnelRailsToTest = {TargetTunnelRail.undergroundSegment}
         nextStopsToTest = {NextStopTypes.station}
@@ -277,6 +287,7 @@ Test.GenerateTestScenarios = function(testName)
 
     for _, targetTunnelRail in pairs(targetTunnelRailsToTest) do
         for _, nextStop in pairs(nextStopsToTest) do
+            ---@class Tests_PTTRT_TestScenario
             local scenario = {
                 targetTunnelRail = targetTunnelRail,
                 nextStop = nextStop

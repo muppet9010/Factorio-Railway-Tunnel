@@ -26,9 +26,11 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        stationEnd = stationEnd
+    ---@class Tests_PW_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationEnd = stationEnd ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -42,7 +44,8 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_PW_TestScenarioBespokeData
+
     local stationEndTrain = testDataBespoke.stationEnd.get_stopped_train()
 
     -- Check that enough trains got within 40 tiles (west) of the end station. Should be 4 of the 5 make it with current path finder weightings.

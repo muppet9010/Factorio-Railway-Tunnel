@@ -30,13 +30,15 @@ Test.Start = function(testName)
     local train = placedEntitiesByGroup["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        stationWestReached = false,
-        stationEastReached = false,
+    ---@class Tests_TIUNLPTBR_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationWestReached = false, ---@type boolean
+        stationEastReached = false, ---@type boolean
         trainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        stationWest = stationWest,
-        stationEast = stationEast
+        stationWest = stationWest, ---@type LuaEntity
+        stationEast = stationEast ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -50,7 +52,8 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_TIUNLPTBR_TestScenarioBespokeData
+
     local stationWestTrain, stationEastTrain = testDataBespoke.stationWest.get_stopped_train(), testDataBespoke.stationEast.get_stopped_train()
 
     if stationWestTrain ~= nil and not testDataBespoke.stationWestReached then

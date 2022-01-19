@@ -14,6 +14,7 @@ local PortalTriggered = {
     startApproachingFaster = "startApproachingFaster" -- The faster speed to trigger this way. Both trains are back in their own waiting rail segments when they double reserve the tunnel and one is chosen as being blocked from using the tunnel.
 }
 Test.RunLoopsMax = 0 -- Populated when script loaded.
+---@type Tests_TMI_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded
 
 Test.RunTime = 3600
@@ -141,7 +142,7 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testData = TestFunctions.GetTestDataObject(testName)
     local testDataBespoke = testData.bespoke ---@type Tests_STUA_TestScenarioBespokeData
 
     -- If the train's haven't started moving for the first time then wait.
@@ -232,6 +233,7 @@ end
 
 Test.GenerateTestScenarios = function()
     for _, portalTriggered in pairs(PortalTriggered) do
+        ---@class Tests_TMI_TestScenario
         local scenario = {
             portalTriggered = portalTriggered
         }

@@ -38,13 +38,15 @@ Test.Start = function(testName)
     }
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        farWestRailReached = false,
-        farEastRailReached = false,
+    ---@class Tests_PTR_TestScenarioBespokeData
+    local testDataBespoke = {
+        farWestRailReached = false, ---@type boolean
+        farEastRailReached = false, ---@type boolean
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        farWestRail = farWestRail,
-        farEastRail = farEastRail
+        farWestRail = farWestRail, ---@type LuaEntity
+        farEastRail = farEastRail ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -58,9 +60,11 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_PTR_TestScenarioBespokeData
+
     local westTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
     local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+
     if westTrain ~= nil and not testDataBespoke.farWestRailReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then

@@ -28,10 +28,12 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
+    ---@class Tests_PKR_TestScenarioBespokeData
+    local testDataBespoke = {
         trainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        stationTarget = stationTarget
+        stationTarget = stationTarget ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -45,7 +47,8 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_PKR_TestScenarioBespokeData
+
     local stationTargetTrain = testDataBespoke.stationTarget.get_stopped_train()
 
     if stationTargetTrain ~= nil then

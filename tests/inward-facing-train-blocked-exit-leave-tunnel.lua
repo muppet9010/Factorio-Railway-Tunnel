@@ -40,16 +40,18 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        blockingWagon = blockingWagon,
-        movingTrain = movingTrain,
-        blockingWagonReached = false,
-        northStationReached = false,
-        southStationReached = false,
+    ---@class Tests_IFTBELT_TestScenarioBespokeData
+    local testDataBespoke = {
+        blockingWagon = blockingWagon, ---@type LuaEntity
+        movingTrain = movingTrain, ---@type LuaTrain
+        blockingWagonReached = false, ---@type boolean
+        northStationReached = false, ---@type boolean
+        southStationReached = false, ---@type boolean
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(movingTrain),
-        trainStopNorth = trainStopNorth,
-        trainStopSouth = trainStopSouth
+        trainStopNorth = trainStopNorth, ---@type LuaEntity
+        trainStopSouth = trainStopSouth ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
     TestFunctions.ScheduleTestsOnceEvent(game.tick + 600, testName, "DestroyBlockingWagon", testName)
@@ -66,7 +68,7 @@ Test.DestroyBlockingWagon = function(event)
     -- The main train should have completed its tunnel trip north and have completely stopped at the blocking wagon at this point.
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_IFTBELT_TestScenarioBespokeData
 
     -- The main train will have its lead loco around 30 tiles below the blocking wagon if stopped at the signal.
     local inspectionArea = {left_top = {x = testDataBespoke.blockingWagon.position.x, y = testDataBespoke.blockingWagon.position.y + 25}, right_bottom = {x = testDataBespoke.blockingWagon.position.x, y = testDataBespoke.blockingWagon.position.y + 35}}
@@ -98,8 +100,10 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_IFTBELT_TestScenarioBespokeData
+
     local northTrain, southTrain = testDataBespoke.trainStopNorth.get_stopped_train(), testDataBespoke.trainStopSouth.get_stopped_train()
+
     if northTrain ~= nil and not testDataBespoke.northStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then

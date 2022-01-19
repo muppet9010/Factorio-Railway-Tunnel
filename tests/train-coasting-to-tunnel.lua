@@ -3,6 +3,7 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 
+---@class Tests_TCTT_TrainScheduleStates
 local TrainScheduleStates = {
     manualMode = "manualMode",
     automaticNoSchedule = "automaticNoSchedule"
@@ -10,12 +11,8 @@ local TrainScheduleStates = {
 
 Test.RunTime = 600
 Test.RunLoopsMax = 0 -- Populated when script loaded.
+---@type Tests_TCTT_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded.
---[[
-    {
-        trainScheduleState = the TrainScheduleStates of this test.
-    }
-]]
 ---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
@@ -60,10 +57,12 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        train = train,
-        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd
+    ---@class Tests_TCTT_TestScenarioBespokeData
+    local testDataBespoke = {
+        train = train, ---@type LuaTrain
+        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -76,8 +75,9 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testDataBespoke = testData.bespoke ---@type Tests_TCTT_TestScenarioBespokeData
+
     local train = testDataBespoke.train ---@type LuaTrain
     local entrancePortalEntryPortalEnd = testDataBespoke.entrancePortalEntryPortalEnd ---@type LuaEntity
     if not train.valid then
@@ -92,7 +92,9 @@ Test.EveryTick = function(event)
 end
 
 Test.GenerateTestScenarios = function()
-    for _, trainScheduleState in pairs(TrainScheduleStates) do
+    local trainScheduleStatesToTest = TrainScheduleStates ---@type Tests_TCTT_TrainScheduleStates
+    for _, trainScheduleState in pairs(trainScheduleStatesToTest) do
+        ---@class Tests_TCTT_TestScenario
         local scenario = {
             trainScheduleState = trainScheduleState
         }

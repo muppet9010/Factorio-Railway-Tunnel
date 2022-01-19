@@ -42,13 +42,15 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        northStationReached = false,
-        southStationReached = false,
+    ---@class Tests_STSTNTSWPR_TestScenarioBespokeData
+    local testDataBespoke = {
+        northStationReached = false, ---@type boolean
+        southStationReached = false, ---@type boolean
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        trainStopNorth = trainStopNorth,
-        trainStopSouth = trainStopSouth
+        trainStopNorth = trainStopNorth, ---@type LuaEntity
+        trainStopSouth = trainStopSouth ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -62,8 +64,10 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_STSTNTSWPR_TestScenarioBespokeData
+
     local northTrain, southTrain = testDataBespoke.trainStopNorth.get_stopped_train(), testDataBespoke.trainStopSouth.get_stopped_train()
+
     if northTrain ~= nil and not testDataBespoke.northStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then

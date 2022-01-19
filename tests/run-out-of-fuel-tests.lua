@@ -6,6 +6,7 @@ local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Common = require("scripts/common")
 
+---@class Tests_ROOFT_NoFuelPoints
 local NoFuelPoints = {
     onPortalTrack = "onPortalTrack",
     asEntering = "asEntering",
@@ -17,6 +18,7 @@ local SpecificNoFuelPointFilter = {} -- Pass in array of NoFuelPoints keys to do
 
 Test.RunTime = 10000
 Test.RunLoopsMax = 0 -- Populated when script loaded.
+---@type Tests_ROOFT_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded.
 --[[
     {
@@ -78,12 +80,15 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    testData.bespoke = {
-        stationEnd = stationEnd,
-        enteringtrain = train,
+    ---@class Tests_ROOFT_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationEnd = stationEnd, ---@type LuaEntity
+        enteringtrain = train, ---@type LuaTrain
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        trainhasStartedMoving = false
+        trainhasStartedMoving = false ---@type boolean
     }
+    testData.bespoke = testDataBespoke
+
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -95,8 +100,9 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_ROOFT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_ROOFT_TestScenarioBespokeData
 
     -- The train starts stationary, so we only want to start checking its state and if its stopped after it has started moving first.
     if not testDataBespoke.trainhasStartedMoving then
@@ -145,7 +151,7 @@ Test.EveryTick = function(event)
 end
 
 Test.GenerateTestScenarios = function()
-    local noFuelPointsToTest
+    local noFuelPointsToTest  ---@type Tests_ROOFT_NoFuelPoints
 
     if DoSpecificTests then
         -- Adhock testing option.
@@ -156,6 +162,7 @@ Test.GenerateTestScenarios = function()
     end
 
     for _, noFuelPoint in pairs(noFuelPointsToTest) do
+        ---@class Tests_ROOFT_TestScenario
         local scenario = {
             noFuelPoint = noFuelPoint
         }

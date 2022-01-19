@@ -13,6 +13,7 @@ local Common = require("scripts/common")
 
 -- Internal test types.
 ---@type table<string, TestFunctions_TrainSpecifiction> @ The key is generally the train specification composition text string with the speed if set.
+---@class Tests_LTSDCT_TrainComposition
 local TrainComposition = {
     ["<"] = {
         composition = "<"
@@ -37,17 +38,20 @@ local TrainComposition = {
     }
 }
 -- A non oversized tunnel is the portal length required by that train type and 4 underground segments. Oversized is the number multiplied by 4.
+---@class Tests_LTSDCT_TunnelOversized
 local TunnelOversized = {
     none = "none",
     portalOnly = "portalOnly",
     undergroundOnly = "undergroundOnly",
     portalAndUnderground = "portalAndUnderground"
 }
+---@class Tests_LTSDCT_StartingSpeed
 local StartingSpeed = {
     none = "none",
     half = "half", -- Will be set to 0.6 as an approximate half speed.
     full = "full" -- Will be set to 2 as this will drop to the trains real max after 1 tick.
 }
+---@class Tests_LTSDCT_LeavingTrackCondition
 local LeavingTrackCondition = {
     clear = "clear", -- Train station far away so more than breaking distance.
     nearStation = "nearStation", -- A train station near to the portal so the train has to brake very aggressively leaving the portal.
@@ -77,6 +81,7 @@ Test.RunTime = 5000 -- The large slow train "<>>>>>>>>>" takes 4k.
 Test.RunLoopsMax = 0
 
 --- The test configurations are stored in this when populated by Test.GenerateTestScenarios().
+---@type Tests_LTSDCT_TestScenario[]
 Test.TestScenarios = {}
 
 --- Any scheduled event types for the test must be Registered here.
@@ -295,23 +300,25 @@ Test.Start = function(testName)
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    testData.bespoke = {
-        tunnelEndStation = tunnelEndStation,
-        aboveEndStation = aboveEndStation,
-        tunnelTrainPreTunnel = tunnelTrain,
-        tunnelTrainPostTunnel = nil, -- Will overwrite when the train leaves the tunnel.
-        aboveTrain = aboveTrain,
-        nearPositionX = nearPositionX,
-        farPositionX = farPositionX,
-        tunnelTrackY = tunnelTrackY,
-        aboveTrackY = aboveTrackY,
-        noPath_trackRemoved = false,
-        tunnelTrainStoppedTick = nil, -- Will overwrite at run time.
-        aboveTrainStoppedTick = nil, -- Will overwrite at run time.
-        testStartedTick = game.tick,
-        tunnelBlockingLocomotive = tunnelBlockingLocomotive, -- Populated if theres a loco thats blocking the exit somewhere.
-        aboveBlockingLocomotive = aboveBlockingLocomotive -- Populated if theres a loco thats blocking the exit somewhere.
+    ---@class Tests_LTSDCT_TestScenarioBespokeData
+    local testDataBespoke = {
+        tunnelEndStation = tunnelEndStation, ---@type LuaEntity
+        aboveEndStation = aboveEndStation, ---@type LuaEntity
+        tunnelTrainPreTunnel = tunnelTrain, ---@type LuaTrain
+        tunnelTrainPostTunnel = nil, ---@type LuaTrain @ Will overwrite when the train leaves the tunnel.
+        aboveTrain = aboveTrain, ---@type LuaTrain
+        nearPositionX = nearPositionX, ---@type double
+        farPositionX = farPositionX, ---@type double
+        tunnelTrackY = tunnelTrackY, ---@type double
+        aboveTrackY = aboveTrackY, ---@type double
+        noPath_trackRemoved = false, ---@type boolean
+        tunnelTrainStoppedTick = nil, ---@type Tick @ Will overwrite at run time.
+        aboveTrainStoppedTick = nil, ---@type Tick @ Will overwrite at run time.
+        testStartedTick = game.tick, ---@type Tick
+        tunnelBlockingLocomotive = tunnelBlockingLocomotive, ---@type LuaEntity @ Populated if theres a loco thats blocking the exit somewhere.
+        aboveBlockingLocomotive = aboveBlockingLocomotive ---@type LuaEntity @ Populated if theres a loco thats blocking the exit somewhere.
     }
+    testData.bespoke = testDataBespoke
 
     -- Schedule the EveryTick() to run each game tick.
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick")
@@ -329,8 +336,9 @@ end
 Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_LTSDCT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_LTSDCT_TestScenarioBespokeData
 
     -- LeavingTrackCondition.noPath only - track when to remove the rail to cause a noPath.
     if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
@@ -420,7 +428,10 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out what specific instances of each type to do.
-    local trainCompositionToTest, tunnelOversizedToTest, startingSpeedToTest, leavingTrackConditionToTest
+    local trainCompositionToTest  ---@type Tests_LTSDCT_TrainComposition
+    local tunnelOversizedToTest  ---@type Tests_LTSDCT_TunnelOversized
+    local startingSpeedToTest  ---@type Tests_LTSDCT_StartingSpeed
+    local leavingTrackConditionToTest  ---@type Tests_LTSDCT_LeavingTrackCondition
     if DoMinimalTests then
         trainCompositionToTest = {TrainComposition["<---->"]}
         tunnelOversizedToTest = {TunnelOversized.none}
@@ -445,6 +456,7 @@ Test.GenerateTestScenarios = function(testName)
         for _, tunnelOversized in pairs(tunnelOversizedToTest) do
             for _, startingSpeed in pairs(startingSpeedToTest) do
                 for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
+                    ---@class Tests_LTSDCT_TestScenario
                     local scenario = {
                         trainComposition = trainComposition,
                         tunnelOversized = tunnelOversized,

@@ -1,6 +1,5 @@
 Now
 ---
-    -- Update existing tests with new EmmyLua class refreecnes to make future maintenance easier.
 
 
 Bugs

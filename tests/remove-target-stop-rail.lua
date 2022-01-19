@@ -9,10 +9,12 @@ local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 local Common = require("scripts/common")
 
+---@class Tests_RTSR_TargetTypes
 local TargetTypes = {
     rail = "rail",
     trainStop = "trainStop"
 }
+---@class Tests_RTSR_TunnelUsageStates
 local TunnelUsageStates = {
     startApproaching = Common.TunnelUsageAction.startApproaching,
     onPortalTrack = "onPortalTrack", -- Have to detect manually in the test from the entrance portal's entry train detector's death.
@@ -20,11 +22,13 @@ local TunnelUsageStates = {
     leaving = Common.TunnelUsageAction.leaving, -- When the train starts actively leaving the exit portal.
     partlyLeftExitPortalTracks = "partlyLeftExitPortalTracks" -- Have to detect manually in the test from the exit portal's entry train detector's death.
 }
+---@class Tests_RTSR_NextScheduleOrders
 local NextScheduleOrders = {
     none = "none",
     fowards = "forwards",
     reversal = "reversal"
 }
+---@class Tests_RTSR_FinalTrainStates
 local FinalTrainStates = {
     stoppedWhenFirstTargetRemoval = "stoppedWhenFirstTargetRemoval",
     pulledToExitPortalEntry = "pulledToExitPortalEntry",
@@ -42,6 +46,7 @@ local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scen
 
 Test.RunTime = 1200
 Test.RunLoopsMax = 0 -- Populated when script loaded.
+---@type Tests_RTSR_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded.
 --[[
     {
@@ -167,18 +172,21 @@ Test.Start = function(testName)
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    testData.bespoke = {
-        stationRemove = stationRemove,
-        stationSecondForwards = stationSecondForwards,
-        stationSecondReverse = stationSecondReverse,
-        entrancePortalPart = entrancePortalPart,
-        entrancePortalTrainDetector = entrancePortalTrainDetector,
-        exitPortalPart = exitPortalPart,
-        exitPortalTrainDetector = exitPortalTrainDetector,
-        train = train,
+    ---@class Tests_RTSR_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationRemove = stationRemove, ---@type LuaEntity
+        stationSecondForwards = stationSecondForwards, ---@type LuaEntity
+        stationSecondReverse = stationSecondReverse, ---@type LuaEntity
+        entrancePortalPart = entrancePortalPart, ---@type LuaEntity
+        entrancePortalTrainDetector = entrancePortalTrainDetector, ---@type LuaEntity
+        exitPortalPart = exitPortalPart, ---@type LuaEntity
+        exitPortalTrainDetector = exitPortalTrainDetector, ---@type LuaEntity
+        train = train, ---@type LuaTrain
         origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
-        firstTargetRemoved = false
+        firstTargetRemoved = false ---@type boolean
     }
+    testData.bespoke = testDataBespoke
+
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
@@ -190,8 +198,9 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
     local testName = event.instanceId
-    local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testScenario, testDataBespoke = testData.testScenario, testData.bespoke
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_RTSR_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_RTSR_TestScenarioBespokeData
 
     if not testDataBespoke.firstTargetRemoved then
         local removeFirstTarget = false
@@ -280,7 +289,9 @@ Test.GenerateTestScenarios = function(testName)
         DoMinimalTests = false
     end
 
-    local targetTypesToTest, tunnelUsageStatesToTest, nextScheduleOrdersToTest
+    local targetTypesToTest  ---@type Tests_RTSR_TargetTypes
+    local tunnelUsageStatesToTest  ---@type Tests_RTSR_TunnelUsageStates
+    local nextScheduleOrdersToTest  ---@type Tests_RTSR_NextScheduleOrders
     if DoMinimalTests then
         targetTypesToTest = {TargetTypes.trainStop}
         tunnelUsageStatesToTest = {TunnelUsageStates.onPortalTrack, TunnelUsageStates.entered, TunnelUsageStates.leaving}
@@ -300,6 +311,7 @@ Test.GenerateTestScenarios = function(testName)
     for _, targetType in pairs(targetTypesToTest) do
         for _, tunnelUsageState in pairs(tunnelUsageStatesToTest) do
             for _, nextScheduleOrder in pairs(nextScheduleOrdersToTest) do
+                ---@class Tests_RTSR_TestScenario
                 local scenario = {
                     targetType = targetType,
                     tunnelUsageState = tunnelUsageState,

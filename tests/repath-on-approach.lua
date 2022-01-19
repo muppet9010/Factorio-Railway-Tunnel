@@ -51,15 +51,17 @@ Test.Start = function(testName)
     local repathTrain, loopTrain = eastMostLoco.train, westMostLoco.train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        stationLoopEndReached = false,
-        stationRepathEndNotTunnelReached = false,
-        repathTrain = repathTrain,
+    ---@class Tests_ROA_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationLoopEndReached = false, ---@type boolean
+        stationRepathEndNotTunnelReached = false, ---@type boolean
+        repathTrain = repathTrain, ---@type LuaTrain
         loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain),
-        stationRepathEndViaTunnel = stationRepathEndViaTunnel,
-        stationRepathEndNotTunnel = stationRepathEndNotTunnel,
-        stationLoopEnd = stationLoopEnd
+        stationRepathEndViaTunnel = stationRepathEndViaTunnel, ---@type LuaEntity
+        stationRepathEndNotTunnel = stationRepathEndNotTunnel, ---@type LuaEntity
+        stationLoopEnd = stationLoopEnd ---@type LuaEntity
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -73,7 +75,8 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_ROA_TestScenarioBespokeData
+
     local repathTrain, stationRepathEndViaTunnelTrain, stationRepathEndNotTunnelTrain, stationLoopEndTrain = testDataBespoke.repathTrain, testDataBespoke.stationRepathEndViaTunnel.get_stopped_train(), testDataBespoke.stationRepathEndNotTunnel.get_stopped_train(), testDataBespoke.stationLoopEnd.get_stopped_train()
 
     if repathTrain == nil or not repathTrain.valid then

@@ -43,15 +43,17 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.bespoke = {
-        train = train,
-        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd,
-        eastTrainStop = eastTrainStop,
-        player = player,
-        ticksStopped = 0,
-        trainStoppedAtTunnelEntrance = false,
-        trainStartedFromTunnelEntrance = false
+    ---@class Tests_TTL_TestScenarioBespokeData
+    local testDataBespoke = {
+        train = train, ---@type LuaTrain
+        entrancePortalEntryPortalEnd = entrancePortalEntryPortalEnd, ---@type LuaEntity
+        eastTrainStop = eastTrainStop, ---@type LuaEntity
+        player = player, ---@type LuaPlayer
+        ticksStopped = 0, ---@type Tick
+        trainStoppedAtTunnelEntrance = false, ---@type boolean
+        trainStartedFromTunnelEntrance = false ---@type boolean
     }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
@@ -65,7 +67,7 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
-    local testDataBespoke = testData.bespoke
+    local testDataBespoke = testData.bespoke ---@type Tests_TTL_TestScenarioBespokeData
 
     local train = testDataBespoke.train ---@type LuaTrain
     local entrancePortalEntryPortalEnd = testDataBespoke.entrancePortalEntryPortalEnd ---@type LuaEntity
