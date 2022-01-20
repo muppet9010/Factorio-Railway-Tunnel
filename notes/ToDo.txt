@@ -13,7 +13,7 @@ Bugs
 
 Features to add/change
 ----------------------
-    - Clickable on portal area's will raise a dialogue showing max supported train length for this end and if there's a tunnel the other end as well. Should be created when the portal is complete and not require a tunnel.
+    - Clickable on portal area's will raise a dialogue showing max supported train length for this end and if there's a tunnel the other end as well. Should be created when the portal is complete and not require a tunnel. Make the clickable entities be of type market as neatest base entity type that is left clickable with a GUI we can trigger off.
     - A way to add fuel to any train stuck in the portal. This can presently still occur if the train is releaed at a very slow speed. Probably an option on the portal/tunnel GUI that lets you transfer fuel to a special inventory that then distributes it across the forward facing locomotives.
     - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort. Should be included as part of the portal/tunnel GUI.
     - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behaviour is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.

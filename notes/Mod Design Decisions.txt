@@ -93,5 +93,5 @@ Notes on this area:
     - Open end - with 2 parts:
         - Front part - the graphic rendered in front of the train carriage graphics.
         - Rear part - the grpahic rendered behind the train carriage graphics.
-    - Portal segment - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
+    - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
 The entry in/out signal graphics for the lights are offset away from the track so they are visbile around the portal open end portal graphics.

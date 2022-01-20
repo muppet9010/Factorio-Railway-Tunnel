@@ -34,6 +34,7 @@ require("prototypes/invisible-signal-not-on-map")
 
 require("prototypes/portal-end")
 require("prototypes/portal-segment")
+require("prototypes/portal-graphics")
 require("prototypes/tunnel-portal-blocking-locomotive")
 require("prototypes/tunnel-exit-dummy-locomotive")
 
@@ -50,43 +51,3 @@ require("prototypes/placement-highlights")
 require("prototypes/train-blocker")
 require("prototypes/temporary-fuel")
 require("prototypes/virtual-signals")
-
-data:extend(
-    {
-        {
-            type = "simple-entity-with-owner",
-            name = "railway_tunnel-graphics-potral_complete",
-            icon = "__railway_tunnel__/graphics/icon/portal_end/railway_tunnel-portal_end.png",
-            icon_size = 32,
-            collision_mask = {},
-            flags = {"not-on-map"},
-            picture = {
-                north = {
-                    filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete.png",
-                    height = 214,
-                    width = 448,
-                    shift = {0, -0.5}
-                },
-                east = {
-                    filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete.png",
-                    height = 214,
-                    width = 448,
-                    shift = {0, -0.5}
-                },
-                south = {
-                    filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete.png",
-                    height = 214,
-                    width = 448,
-                    shift = {0, -0.5}
-                },
-                west = {
-                    filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete.png",
-                    height = 214,
-                    width = 448,
-                    shift = {0, -0.5}
-                }
-            },
-            render_layer = "higher-object-under"
-        }
-    }
-)

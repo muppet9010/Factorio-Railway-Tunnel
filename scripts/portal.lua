@@ -53,8 +53,11 @@ local EventScheduler = require("utility/event-scheduler")
 ---@field force LuaForce @ the force this portal part object belongs to.
 ---@field nonConnectedInternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
+---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
+---
+---@field portalFacingOrientation? RealOrientation|null @ The orientation for this entity's relationship to the larger portal from the inside of the portal heading outside. Only populated when the portal is Complete.
 
 ---@class PortalEnd : PortalPart @ the end part of a portal.
 ---@field connectedToUnderground boolean @ if theres an underground segment connected to this portal on one side as part of the completed tunnel. Defaults to false on non portal connected parts.
@@ -278,7 +281,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
         force = builtEntity.force,
         typeData = portalTypeData,
         nonConnectedInternalSurfacePositions = {},
-        nonConnectedExternalSurfacePositions = {}
+        nonConnectedExternalSurfacePositions = {},
+        graphicRenderIds = {}
     }
 
     -- Handle the caching of specific portal part type information and to their globals.
@@ -489,6 +493,49 @@ Portal.PortalComplete = function(portal)
             endPortalPart = endPortalPart
         }
     end
+
+    -- Work out and cache which side of each end portal is the inside of this portal. This is the end part's orientation as part of the wider portal from the inside of the portal heading outside.
+    for _, endPortalPart in pairs(portal.portalEnds) do
+        -- The front internal is in the orientation of this entity, the rear is in its backwards orientation.
+        -- Comparing the non connected internal position to the front and back we can work out the parts portal facing orientation.
+        local portalFacingOrientation
+        if next(endPortalPart.nonConnectedInternalSurfacePositions) == endPortalPart.frontInternalSurfacePositionString then
+            portalFacingOrientation = endPortalPart.entity_orientation
+        else
+            portalFacingOrientation = Utils.LoopOrientationValue(endPortalPart.entity_orientation + 0.5)
+        end
+        endPortalPart.portalFacingOrientation = portalFacingOrientation
+    end
+
+    -- Add the graphics with closed ends to the portal end.
+    for _, endPortalPart in pairs(portal.portalEnds) do
+        table.insert(
+            endPortalPart.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-closed_end-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
+                render_layer = "higher-object-above",
+                target = endPortalPart.entity_position,
+                surface = endPortalPart.surface
+            }
+        )
+    end
+    -- Add the portal segment's graphics.
+    for _, portalSegment in pairs(portal.portalSegments) do
+        local segmentPortalTypeData = portalSegment.typeData ---@type SegmentPortalTypeData
+        if segmentPortalTypeData.segmentShape == SegmentShape.straight then
+            table.insert(
+                portalSegment.graphicRenderIds,
+                rendering.draw_sprite {
+                    sprite = "railway_tunnel-portal_graphics-middle-0_" .. tostring(portalSegment.entity_orientation * 100),
+                    render_layer = "higher-object-above",
+                    target = portalSegment.entity_position,
+                    surface = portalSegment.surface
+                }
+            )
+        else
+            error("unsupported segment shape: " .. segmentPortalTypeData.segmentShape)
+        end
+    end
 end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
@@ -685,6 +732,22 @@ Portal.On_PreTunnelCompleted = function(portals)
         }
 
         --portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(builtEntity.orientation, {x = 0, y = -math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, portalEntity_position) -- only used by player containers and likely not suitable any more. fix when doing player containers.
+
+        -- Remove the entry end's old closed graphics and add new open one.
+        for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do
+            rendering.destroy(oldGraphicRenderId)
+        end
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-open_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = "higher-object-above",
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        --TODO: need to do the seperate in front and behind.
+        --TODO: need to remove these on potral removal or downgrade it back to closed when the tunnel is removed.
     end
 
     portals[1].entrySignals[TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelSignalDirection.inSignal].entity}
