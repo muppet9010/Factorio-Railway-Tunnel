@@ -54,6 +54,7 @@ local TestsToRun = {
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
+    MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
     RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},

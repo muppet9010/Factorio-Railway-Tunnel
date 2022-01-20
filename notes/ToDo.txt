@@ -1,6 +1,5 @@
 Now
 ---
-    - Run full test suite. Atleast one test fails due to incorrect expectations/setup around destroying portal and train not being properly on portal tracks yet. Test is for old flawed core mod logic.
 
 
 Bugs

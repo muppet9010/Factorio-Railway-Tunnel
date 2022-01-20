@@ -178,7 +178,7 @@ Test.EveryTick = function(event)
                 local mined = player.mine_entity(entityToDestroy, true)
                 if testScenario.expectedTunnelState == FinalTunnelStates.broken and not mined then
                     -- If the tunnel was expected to end up broken then the mine should have worked. But if we expected the tunnel to remain complete then we expect the mine to fail and so do nothing.
-                    error("failed to mine tunnel part: " .. testScenario.tunnelPart)
+                    TestFunctions.TestFailed(testName, "failed to mine tunnel part: " .. testScenario.tunnelPart)
                 end
             elseif testScenario.removalAction == RemovalActions.destroy then
                 entityToDestroy.damage(9999999, entityToDestroy.force, "impact", otherTunnelEntity)

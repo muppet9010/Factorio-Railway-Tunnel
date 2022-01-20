@@ -701,7 +701,9 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
         for _, crossingRailEntity in pairs(removedSegment.crossingRailEntities) do
             if crossingRailEntity.valid then
                 Utils.DestroyCarriagesOnRailEntity(crossingRailEntity, killForce, killerCauseEntity, removedSegment.surface)
-                crossingRailEntity.destroy()
+                if not crossingRailEntity.destroy() then
+                    error("removedSegment.crossingRailEntities rail failed to be removed")
+                end
             end
         end
     end

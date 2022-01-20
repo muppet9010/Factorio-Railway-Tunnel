@@ -146,7 +146,7 @@ Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyFor
     end
 end
 
---- Kills any carriages that would prevent the rail from being removed.
+--- Kills any carriages that would prevent the rail from being removed. If a carriage is not destructable make it so, so it can be killed normally and appear in death stats, etc.
 ---@param railEntity LuaEntity
 ---@param killForce LuaForce
 ---@param killerCauseEntity LuaEntity
@@ -155,14 +155,24 @@ Utils.DestroyCarriagesOnRailEntity = function(railEntity, killForce, killerCause
     -- Check if any carriage prevents the rail from being removed before just killing all carriages within the rails collision boxes as this is more like vanilla behaviour.
     if not railEntity.can_be_destroyed() then
         local railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "collision_box")
-        local carriagesFound = surface.find_entities_filtered {area = railEntityCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+        local positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
+        local carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
         for _, carriage in pairs(carriagesFound) do
+            -- If the carriage is currently not destructable make it so, so we can kill it normally.
+            if not carriage.destructible then
+                carriage.destructible = true
+            end
             Utils.EntityDie(carriage, killForce, killerCauseEntity)
         end
         if railEntity.type == "curved-rail" then
             railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "secondary_collision_box")
-            carriagesFound = surface.find_entities_filtered {area = railEntityCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+            positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
+            carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
             for _, carriage in pairs(carriagesFound) do
+                -- If the carriage is currently not destructable make it so, so we can kill it normally.
+                if not carriage.destructible then
+                    carriage.destructible = true
+                end
                 Utils.EntityDie(carriage, killForce, killerCauseEntity)
             end
         end
@@ -533,7 +543,7 @@ Utils.LoopFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxE
     end
 end
 
--- return the passed in number clamped to within the max and min limits.
+-- Return the passed in number clamped to within the max and min limits inclusively.
 ---@param value number
 ---@param min number
 ---@param max number
@@ -1767,6 +1777,7 @@ Utils.LoopOrientationValue = function(orientationValue)
     return Utils.LoopFloatValueWithinRangeMaxExclusive(orientationValue, 0, 1)
 end
 
+-- Kills an entity and handles the optional arguments as Facotrio API doesn't accept nil arguments.
 ---@param entity LuaEntity
 ---@param killerForce LuaForce
 ---@param killerCauseEntity? LuaEntity|null
