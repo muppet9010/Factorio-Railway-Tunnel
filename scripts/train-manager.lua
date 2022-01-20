@@ -851,9 +851,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
         trainCarriagesForwardOrientation = Utils.LoopOrientationValue(trainCarriagesForwardOrientation + 0.5)
     end
 
-    -- Get the position for the front of the lead carriage, 1.5 tiles back from the entry signal. This means the front 2.5 tiles of the portal area graphics can show the train, with further back needing to be covered to hide the train graphics while the train is underground. Also this allows the train to just fit in without hitting the transition usage detector entity at the back of the exit portal.
-    local exitPortalEntrySignalOutPosition = managedTrain.exitPortalEntrySignalOut.entity_position
-    local nextCarriagePosition = Utils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = -1.5, y = 1.5}, exitPortalEntrySignalOutPosition)
+    local nextCarriagePosition = managedTrain.exitPortal.leavingTrainFrontPosition
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator

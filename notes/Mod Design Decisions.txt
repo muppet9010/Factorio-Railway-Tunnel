@@ -1,7 +1,3 @@
-Mod Behavours
-=============
-
-
 Underground segments building, mining and fast replacing
 --------------------------------------------------------
 The difficult variation here is supporting the fast replacing and the variation between player and robot events triggered.
@@ -86,3 +82,16 @@ Notes on this area:
     - The dummy train is on the players force and so maintains the train count and train manager visibility. But it doesn't allow the player to interact with it.
     - The entrance portal blockign carriage left behind upon entering the tunnel has its force changed for the same reasons.
     - Once a graphic layer is put above the portals and has a selection option for the portal/tunnel player GUI then the train carraiges on the portal will no longer be selectable.
+
+
+-- Portal design and layout
+---------------------------
+
+- The front 3 tiles of the portal area can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding).
+- A portal will have a base graphic under regulr entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
+    - Closed end - the graphic rendered in front of the train carriage graphics.
+    - Open end - with 2 parts:
+        - Front part - the graphic rendered in front of the train carriage graphics.
+        - Rear part - the grpahic rendered behind the train carriage graphics.
+    - Portal segment - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
+The entry in/out signal graphics for the lights are offset away from the track so they are visbile around the portal open end portal graphics.

@@ -32,6 +32,7 @@ local EventScheduler = require("utility/event-scheduler")
 ---@field dummyLocomotivePosition? Position|null @ the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
 ---@field entryDirection? defines.direction|null @ the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
 ---@field leavingDirection? defines.direction|null @ the direction a train would be heading if leaving the tunnel via this portal. Only established once this portal is part of a valid tunnel.
+---@field leavingTrainFrontPosition? Position|null @ The position of the leaving train's lead carriage, 2 tiles back from the entry signal position. Only established once this portal is part of a valid tunnel.
 
 ---@class PortalPart @ a generic part (entity) object making up part of a potral.
 ---@field id UnitNumber @ unit_number of the portal part entity.
@@ -164,7 +165,7 @@ local PortalTypeData = {
 
 -- Distances are from entry end portal position in the Portal.entryDirection direction.
 local EntryEndPortalSetup = {
-    trackEntryPointFromCenter = 3, -- The border of the portal on the entry side.
+    trackEntryPointFromCenter = 3, -- The border of the portal on the entry side. -- OVERHAUL: likely not needed in the end and can then be removed.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
     enteringTrainUsageDetectorEntityDistance = 1.95 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carraiges and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
 }
@@ -551,6 +552,7 @@ Portal.On_PreTunnelCompleted = function(portals)
         local reverseEntryDirection = Utils.LoopDirectionValue(entryDirection + 4)
         portal.entryDirection, portal.leavingDirection = entryDirection, reverseEntryDirection
         local entryOrientation = Utils.DirectionToOrientation(entryDirection)
+        local reverseEntryOrientation = Utils.LoopOrientationValue(entryOrientation + 0.5)
         local surface, force = portal.surface, portal.force
 
         Portal.BuildRailForPortalsParts(portal)
@@ -595,6 +597,7 @@ Portal.On_PreTunnelCompleted = function(portals)
         }
 
         -- Cache the objects details for later use.
+        portal.leavingTrainFrontPosition = Utils.RotateOffsetAroundPosition(reverseEntryOrientation, {x = -1.5, y = 2}, entrySignalOutEntityPosition)
         portal.dummyLocomotivePosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}, blockedPortalEnd.entity_position)
         portal.enteringTrainUsageDetectorPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = EntryEndPortalSetup.enteringTrainUsageDetectorEntityDistance}, entryPortalEnd.entity_position)
         portal.transitionUsageDetectorPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionUsageDetectorEntityDistance}, blockedPortalEnd.entity_position)

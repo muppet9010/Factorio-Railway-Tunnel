@@ -1,5 +1,6 @@
 Now
 ---
+    - Initial graphics and code implimentation.
 
 
 Bugs
@@ -12,10 +13,9 @@ Bugs
 
 Features to add/change
 ----------------------
-    - Add some placeholder Portal graphics to hide the train and rail images in the portal base layer. A closed portal (blocked graphics both ends) should appear when the portal is complete, with the open end graphics being applied when the tunnel is complete.
     - Clickable on portal area's will raise a dialogue showing max supported train length for this end and if there's a tunnel the other end as well. Should be created when the portal is complete and not require a tunnel.
     - A way to add fuel to any train stuck in the portal. This can presently still occur if the train is releaed at a very slow speed. Probably an option on the portal/tunnel GUI that lets you transfer fuel to a special inventory that then distributes it across the forward facing locomotives.
-   - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort. Should be included as part of the portal/tunnel GUI.
+    - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort. Should be included as part of the portal/tunnel GUI.
     - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behaviour is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
     - The current player container concept needs updating to calculate the player containers current position in the tunnel. As part of this move the player riding tests to their own test(s) and remove them from other tests. Cover:
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
