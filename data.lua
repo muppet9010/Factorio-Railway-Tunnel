@@ -29,7 +29,7 @@ MODDATA.railway_tunnel.tunnelTrainCollisionLayer = tunnelTrainCollisionLayer
 
 require("prototypes/internal-rails")
 require("prototypes/invisible-rails")
-require("prototypes/internal-signal-not-on-map")
+require("prototypes/portal-entry-signal")
 require("prototypes/invisible-signal-not-on-map")
 
 require("prototypes/portal-end")

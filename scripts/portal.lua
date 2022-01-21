@@ -512,7 +512,7 @@ Portal.PortalComplete = function(portal)
         table.insert(
             endPortalPart.graphicRenderIds,
             rendering.draw_sprite {
-                sprite = "railway_tunnel-portal_graphics-closed_end-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
+                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
                 render_layer = "higher-object-above",
                 target = endPortalPart.entity_position,
                 surface = endPortalPart.surface
@@ -526,7 +526,7 @@ Portal.PortalComplete = function(portal)
             table.insert(
                 portalSegment.graphicRenderIds,
                 rendering.draw_sprite {
-                    sprite = "railway_tunnel-portal_graphics-middle-0_" .. tostring(portalSegment.entity_orientation * 100),
+                    sprite = "railway_tunnel-portal_graphics-portal_complete-middle-0_" .. tostring(portalSegment.entity_orientation * 100),
                     render_layer = "higher-object-above",
                     target = portalSegment.entity_position,
                     surface = portalSegment.surface
@@ -609,7 +609,7 @@ Portal.On_PreTunnelCompleted = function(portals)
         ---@type LuaEntity
         local entrySignalInEntity =
             surface.create_entity {
-            name = "railway_tunnel-internal_signal-not_on_map",
+            name = "railway_tunnel-portal_entry_signal",
             position = entrySignalInEntityPosition,
             force = force,
             direction = reverseEntryDirection
@@ -618,7 +618,7 @@ Portal.On_PreTunnelCompleted = function(portals)
         ---@type LuaEntity
         local entrySignalOutEntity =
             surface.create_entity {
-            name = "railway_tunnel-internal_signal-not_on_map",
+            name = "railway_tunnel-portal_entry_signal",
             position = entrySignalOutEntityPosition,
             force = force,
             direction = entryDirection
@@ -733,20 +733,28 @@ Portal.On_PreTunnelCompleted = function(portals)
 
         --portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(builtEntity.orientation, {x = 0, y = -math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, portalEntity_position) -- only used by player containers and likely not suitable any more. fix when doing player containers.
 
-        -- Remove the entry end's old closed graphics and add new open one.
+        -- Remove the entry end's old closed graphics and add new open ones.
         for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do
             rendering.destroy(oldGraphicRenderId)
         end
         table.insert(
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
-                sprite = "railway_tunnel-portal_graphics-open_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-near-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
                 render_layer = "higher-object-above",
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
             }
         )
-        --TODO: need to do the seperate in front and behind.
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-far-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = "lower-object",
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
         --TODO: need to remove these on potral removal or downgrade it back to closed when the tunnel is removed.
     end
 
