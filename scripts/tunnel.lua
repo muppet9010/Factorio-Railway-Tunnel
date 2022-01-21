@@ -87,7 +87,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
         return
     end
 
-    MOD.Interfaces.TrainManager.RegisterTrainApproachingPortalSignal(train, train_id, transitionSignal)
+    MOD.Interfaces.TrainManager.RegisterTrainApproachingPortalSignal(train, train_id, transitionSignal, event.tick)
 end
 
 ---@param portals Portal[]

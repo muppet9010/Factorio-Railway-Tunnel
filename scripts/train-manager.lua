@@ -68,6 +68,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 
 local StatesActionTickDelay_OnPortalTrack = 10
 local StatesActionTickDelay_OnLeaving = 10
+local StatesActionTickDelay_ApproachOngoing = 10
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -106,17 +107,19 @@ end
 ---@param approachingTrain LuaTrain
 ---@param approachingTrain_id Id
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
-TrainManager.RegisterTrainApproachingPortalSignal = function(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
+---@param currentTick Tick
+TrainManager.RegisterTrainApproachingPortalSignal = function(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal, currentTick)
     if global.debugRelease then
-        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainApproachingPortalSignal_Internal, approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
+        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainApproachingPortalSignal_Internal, approachingTrain, approachingTrain_id, entrancePortalTransitionSignal, currentTick)
     else
-        TrainManager._RegisterTrainApproachingPortalSignal_Internal(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
+        TrainManager._RegisterTrainApproachingPortalSignal_Internal(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal, currentTick)
     end
 end
 ---@param approachingTrain LuaTrain
 ---@param approachingTrain_id Id
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
-TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal)
+---@param currentTick Tick
+TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachingTrain, approachingTrain_id, entrancePortalTransitionSignal, currentTick)
     -- Check if this train is already using the tunnel in some way.
     local existingTrainIDTrackedObject = global.trainManager.trainIdToManagedTrain[approachingTrain_id]
     local reversedManagedTrain, committedManagedTrain = nil, nil
@@ -134,13 +137,16 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachi
             committedManagedTrain = existingTrainIDTrackedObject.managedTrain
             -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
             TrainManager.RemoveManagedTrainEntry(committedManagedTrain)
+        elseif existingTrainIDTrackedObject.tunnelUsagePart == TunnelUsageParts.approachingTrain then
+            -- Train was approaching before and it is again. Its re-triggered the train state however which only started when the TrainApproachingOngoing() started being cycled and not run every tick.
+            error("Unexpected situation") -- Not hit since I made the approaching train apply its speed increase initially.
         else
             error("Unsupported situation")
         end
     end
 
     local managedTrain = TrainManager.CreateManagedTrainObject(approachingTrain, entrancePortalTransitionSignal, true, committedManagedTrain)
-    managedTrain.nextActionTick = nil
+    managedTrain.nextActionTick = currentTick + 1
     managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     if reversedManagedTrain ~= nil then
@@ -198,7 +204,7 @@ TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     -- These are ordered on frequency of use to reduce per tick check costs.
     if managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
         -- Keep on running until either the train reaches the Transition train detector or the train's target stops being the transition signal.
-        TrainManager.TrainApproachingOngoing(managedTrain)
+        TrainManager.TrainApproachingOngoing(managedTrain, currentTick)
     elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
         -- Keep on running until the train has fully left the portal tracks.
         TrainManager.TrainLeavingOngoing(managedTrain, currentTick)
@@ -260,7 +266,8 @@ end
 --- The train is approaching the transition signal so maintain its speed.
 --- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrain().
 ---@param managedTrain ManagedTrain
-TrainManager.TrainApproachingOngoing = function(managedTrain)
+---@param currentTick Tick
+TrainManager.TrainApproachingOngoing = function(managedTrain, currentTick)
     local approachingTrain = managedTrain.approachingTrain ---@type LuaTrain
 
     -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
@@ -272,7 +279,8 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target, with just the last few ticks it climbing significantly as a % of current speed.
     if not managedTrain.approachingTrainReachedFullSpeed then
         -- If the train hasn't yet reached its full speed then work out the new speed.
-        local newAbsSpeed = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.trainSpeedCalculationData, math.abs(managedTrain.approachingTrainExpectedSpeed))
+        -- Estimate the trains new speed for how fast it will be going in the cycle number of ticks time. Slight speed boast to start, but last few ticks speed will drop off much more compared to calculating and applying speed per tick.
+        local newAbsSpeed = Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks(managedTrain.trainSpeedCalculationData, math.abs(managedTrain.approachingTrainExpectedSpeed), StatesActionTickDelay_ApproachOngoing)
         if managedTrain.approachingTrainExpectedSpeed == newAbsSpeed then
             -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
             managedTrain.approachingTrainReachedFullSpeed = true
@@ -292,6 +300,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     end
 
     -- Theres a transition portal track detector to flag when a train reaches the end of the portal track and is ready to enter the tunnel. So need to check in here.
+    managedTrain.nextActionTick = currentTick + StatesActionTickDelay_ApproachOngoing
 end
 
 ---@param managedTrain ManagedTrain
