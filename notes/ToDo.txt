@@ -1,6 +1,5 @@
 Now
 ---
-    - Initial graphics and code implimentation.
 
 
 Bugs
@@ -31,13 +30,13 @@ Features to add/change
 
 Long term UPS/code plans
 ------------------------
-    - Review leaving train arrival time and speed again and work to reduce varation to the regular train time. Will probably need to account for excessive speeds entering the tunnel. Review performance of the test and make it run fast on the big trains/setups if possible. Make the leaving track a suitable length for the train's task. I.e. only "clear" needs the current mega long track.
+    - Review performance of the leaving train arrival time and speed test (leaving-train-speed-duration-change-tests) and make it run fast on the big trains/setups if possible. Make the leaving track a suitable length for the train's task. I.e. only "clear" needs the current mega long track.
+    - Review leaving train arrival time and speed again and work to reduce varation to the regular train time. Will probably need to account for excessive speeds entering the tunnel.
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel carriage activity (N)? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway.
-    - Remove invisible tunnel segment signals from segments not with a crossing on them as no need for them and adds track lag. As signals at Blocker End of portal and the one in the crossing segment will always end up with 1 between 2 crossing segments next to each other.
-    - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to track train Id changes to delete old data though to stop our list infintely growing with train composition changes.
+    - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to track train Id changes to delete old data though to stop our list infintely growing with train composition changes. Also cached data would be for one direction of the train, so would have to iterate it carefully.
 
 
 Long term feature plans
@@ -63,7 +62,7 @@ Concept changes
 ---------------
     - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
         - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
-        - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well.
+        - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well. Would it be an advantage?
 	- Review possibility to reduce setting the incoming trains speed to once every x ticks, rather than every tick. Won't be perfect, but should keep roughly the right speed ? Would be some sort of UPS saving if needed.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
     - Can we do TrainManager.TrainOnPortalTrackOngoing() say once per second rather than every tick. May need a change to a more expensive API check of the train rather than the signal. But this function is now a big UPS user. Same question for TrainManager.TrainLeavingOngoing().

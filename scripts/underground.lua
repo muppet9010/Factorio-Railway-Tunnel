@@ -219,6 +219,12 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
             -- OVERHAUL: the trainBlockerEntity doesn't need to be placed until the rails are added when the tunnel is complete. The crossing rails are needed before hand however.
             fastReplacedSegment.trainBlockerEntity.destroy()
             fastReplacedSegment.trainBlockerEntity = nil
+
+            -- If the old segment had an signalEntities array then we need to add them for the new segment.
+            if fastReplacedSegment.signalEntities ~= nil then
+                segment.signalEntities = {}
+                Underground.BuildSignalsForSegment(segment)
+            end
         elseif not segmentTypeData.placeCrossingRails and fastReplacedSegment.crossingRailEntities ~= nil then
             -- Downgrade from crossing rails to non crossing rails.
 
@@ -228,7 +234,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
                     -- Put the old correct entity back and correct whats been done.
                     TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, surface, builtEntity_position)
                     fastReplacedSegment.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
-                    Underground.ReplaceSegmentEntity(fastReplacedSegment)
+                    Underground.RestoreSegmentEntity(fastReplacedSegment)
                     Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing", count = 1})
                     Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight", count = 1})
                     return
@@ -239,6 +245,13 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
             for _, railCrossingTrackEntity in pairs(fastReplacedSegment.crossingRailEntities) do
                 railCrossingTrackEntity.destroy()
             end
+            -- Remove the old crossing track signals if there were any.
+            if fastReplacedSegment.signalEntities ~= nil then
+                for _, crossingRailSignal in pairs(fastReplacedSegment.signalEntities) do
+                    crossingRailSignal.destroy()
+                end
+                segment.signalEntities = {} -- Give the new segment the empty table as it would have had it if built normally.
+            end
         else
             -- Is a fast replace to the same type.
             newSegmentTypeBuilt = false
@@ -246,6 +259,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
             -- Fast replacement's of the same type can just claim the old segments extras.
             if segmentTypeData.placeCrossingRails then
                 segment.crossingRailEntities = fastReplacedSegment.crossingRailEntities
+                segment.signalEntities = fastReplacedSegment.signalEntities -- May or not be populated at the time, but this is fine in both cases.
             else
                 segment.trainBlockerEntity = fastReplacedSegment.trainBlockerEntity
             end
@@ -253,7 +267,6 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
 
         -- Claim the generic extras of the old segment,
         segment.tunnelRailEntities = fastReplacedSegment.tunnelRailEntities
-        segment.signalEntities = fastReplacedSegment.signalEntities
         segment.underground = fastReplacedSegment.underground
 
         -- Handle the Underground object.
@@ -520,24 +533,20 @@ end
 ---@param underground Underground
 Underground.On_PreTunnelCompleted = function(underground)
     for _, segment in pairs(underground.segments) do
-        local refPos, force, surface, directionValue = segment.entity_position, underground.force, underground.surface, segment.entity_direction
-
         Underground.BuildRailForSegment(segment)
 
-        -- Add the singals to the underground tunnel rail.
-        segment.signalEntities = {}
-        for _, orientationModifier in pairs({0, 4}) do
-            local signalDirection = Utils.LoopDirectionValue(directionValue + orientationModifier)
-            local orientation = Utils.DirectionToOrientation(signalDirection)
-            local position = Utils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, refPos)
-            local placedSignal = surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
-            segment.signalEntities[placedSignal.unit_number] = placedSignal
+        -- Add signals to the underground tunnel rail for the segments with crossing rails only. The mod expects the signalEntities to exist even if empty.
+        if segment.typeData.placeCrossingRails then
+            segment.signalEntities = {}
+            Underground.BuildSignalsForSegment(segment)
+        else
+            segment.signalEntities = {}
         end
 
         -- Create the top layer entity that has the desired graphics on it.
         local topLayerEntityName = segment.typeData.topLayerEntityName
         if topLayerEntityName ~= nil then
-            segment.topLayerEntity = surface.create_entity {name = topLayerEntityName, position = refPos, force = force, direction = directionValue, raise_built = false, create_build_effect_smoke = false}
+            segment.topLayerEntity = segment.surface.create_entity {name = topLayerEntityName, position = segment.entity_position, force = segment.force, direction = segment.entity_direction, raise_built = false, create_build_effect_smoke = false}
         end
     end
 end
@@ -551,6 +560,18 @@ Underground.BuildRailForSegment = function(segment)
         local placedRail = segment.surface.create_entity {name = tracksPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = Utils.RotateDirectionByDirection(tracksPositionOffset.baseDirection, defines.direction.north, segment.entity_direction), raise_built = false, create_build_effect_smoke = false}
         placedRail.destructible = false
         segment.tunnelRailEntities[placedRail.unit_number] = placedRail
+    end
+end
+
+--- Builds crossing rail signals for the segment and caches them to the segment
+---@param segment UndergroundSegment
+Underground.BuildSignalsForSegment = function(segment)
+    for _, orientationModifier in pairs({0, 4}) do
+        local signalDirection = Utils.LoopDirectionValue(segment.entity_direction + orientationModifier)
+        local orientation = Utils.DirectionToOrientation(signalDirection)
+        local position = Utils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, segment.entity_position)
+        local placedSignal = segment.surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
+        segment.signalEntities[placedSignal.unit_number] = placedSignal
     end
 end
 
@@ -629,7 +650,7 @@ Underground.OnPreMinedEntity = function(event)
                     miner = game.get_player(event.player_index)
                 end
                 TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
-                Underground.ReplaceSegmentEntity(minedSegment)
+                Underground.RestoreSegmentEntity(minedSegment)
                 return
             end
         end
@@ -646,7 +667,7 @@ Underground.OnPreMinedEntity = function(event)
                 miner = game.get_player(event.player_index)
             end
             TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
-            Underground.ReplaceSegmentEntity(minedSegment)
+            Underground.RestoreSegmentEntity(minedSegment)
         else
             -- Safe to mine the segment.
             Underground.EntityRemoved(minedSegment)
@@ -654,9 +675,9 @@ Underground.OnPreMinedEntity = function(event)
     end
 end
 
--- Places the replacement underground segment entity and destroys the old entity (so it can't be mined and get the item). Then relinks the new entity back in to its object.
+-- Restores the removed underground segment entity and destroys the old entity (so it can't be mined and get the item). Then relinks the new entity back in to its object.
 ---@param minedSegment UndergroundSegment
-Underground.ReplaceSegmentEntity = function(minedSegment)
+Underground.RestoreSegmentEntity = function(minedSegment)
     -- Destroy the old entity after caching its values.
     local minedSegmentEntity = minedSegment.entity
     local minedSegmentEntity_lastUser, minedSegmentEntityId = minedSegmentEntity.last_user, minedSegment.id

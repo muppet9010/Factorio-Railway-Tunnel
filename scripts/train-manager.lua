@@ -600,7 +600,6 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     end
 
     -- Return the leaving train carriages to their origional force and let them take damage again.
-    -- TODO: should cache the leaving trains carriages
     for _, carriage in pairs(managedTrain.leavingTrain.carriages) do
         carriage.force = managedTrain.force
         carriage.destructible = true
