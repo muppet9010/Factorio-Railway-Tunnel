@@ -87,11 +87,11 @@ Notes on this area:
 -- Portal design and layout
 ---------------------------
 
-- The front 3 tiles of the portal area can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding).
-- A portal will have a base graphic under regulr entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
+- The front 3 tiles of the portal area floor can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding). Note that when the open end of the portal is facing the player the tunnel roof is pushed back due to its height.
+- A portal will have a base graphic under regular entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
     - Closed end - the graphic rendered in front of the train carriage graphics.
     - Open end - with 2 parts:
         - Front part - the graphic rendered in front of the train carriage graphics.
         - Rear part - the grpahic rendered behind the train carriage graphics.
     - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
-The entry in/out signal graphics for the lights are offset away from the track so they are visbile around the portal open end portal graphics.
+- The entry in/out signal graphics for the lights are offset away from the track so they are visbile around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.

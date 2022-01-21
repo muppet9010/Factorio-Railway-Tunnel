@@ -42,6 +42,7 @@ Long term UPS/code plans
 
 Long term feature plans
 -----------------------
+    - Make better graphics and use tunnel shadows to hide train carriage shadows of tre traversing train.
 	- Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carraiges and flipping them.
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
 	- Manually driven trains trying to enter a portal area will either be stopped dead if tunnel in use or can be manually driven through using same logic as was being worked on for full mod version. If problematic just make it go on auto once committed and then at the far end return it to the players control from 0 speed. Currently they are blocked from entering always. Would need to handle trains arriving on top of one another and destroying one another when placed. If this is done then some of the preliminary checks at entrance detection could be removed? When manually driving a train through a tunnel show a render of carriages underground. Have them appear semi transparent or tinted so obviously not real.

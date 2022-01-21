@@ -755,7 +755,6 @@ Portal.On_PreTunnelCompleted = function(portals)
                 surface = portal.entryPortalEnd.surface
             }
         )
-        --TODO: need to remove these on potral removal or downgrade it back to closed when the tunnel is removed.
     end
 
     portals[1].entrySignals[TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelSignalDirection.inSignal].entity}
@@ -873,7 +872,7 @@ Portal.OnPreMinedEntity = function(event)
     end
 end
 
--- Places the replacement portal part entity and destroys the old entity (so it can't be mined and get the item). Then relinks the new entity back in to its object.
+-- Places the replacement portal part entity and destroys the old entity (so it can't be mined and get the item). Then updates the existing object with the new entity, so no other objects require updating.
 ---@param minedPortalPart PortalPart
 Portal.ReplacePortalPartEntity = function(minedPortalPart)
     -- Destroy the old entity after caching its values.
@@ -926,6 +925,16 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
 
         -- Handle the portal object.
 
+        -- Remove the portal's graphic parts. When the portal parts are remade in to a portal they will gain their graphics back if approperiate.
+        for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
+            for _, __ in pairs(list) do
+                local loopingGenericPortalPart = __ ---@type PortalPart
+                for _, graphicRenderId in pairs(loopingGenericPortalPart.graphicRenderIds) do
+                    rendering.destroy(graphicRenderId)
+                end
+            end
+        end
+
         -- Remove the portal's global objects.
         for _, endPortalPart in pairs(portal.portalEnds) do
             global.portals.portalTunnelInternalConnectionSurfacePositionStrings[next(endPortalPart.nonConnectedInternalSurfacePositions)] = nil
@@ -970,6 +979,21 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
     for _, portal in pairs(portals) do
         portal.tunnel = nil
 
+        -- Remove the entry end's old open graphics and add a closed one back.
+        for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do
+            rendering.destroy(oldGraphicRenderId)
+        end
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = "higher-object-above",
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+
+        -- Remove the tunnel related entities of this portal.
         for _, otherEntity in pairs(portal.portalOtherEntities) do
             if otherEntity.valid then
                 otherEntity.destroy()
@@ -1005,11 +1029,13 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         Portal.RemoveTransitionUsageDetectionEntityFromPortal(portal)
         portal.transitionUsageDetectorPosition = nil
 
+        -- Clear the end part's state that relates to the tunnel.
         portal.entryPortalEnd.endPortalType = nil
         portal.entryPortalEnd = nil
         portal.blockedPortalEnd.endPortalType = nil
         portal.blockedPortalEnd = nil
 
+        -- Clear the portal's tunnel related state data.
         portal.portalEntryPointPosition = nil
         portal.dummyLocomotivePosition = nil
         portal.entryDirection = nil
