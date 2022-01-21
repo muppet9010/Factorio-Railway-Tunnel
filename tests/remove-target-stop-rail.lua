@@ -44,7 +44,7 @@ local SpecificNextScheduleOrdersFilter = {} -- Pass in array of TRUE/FALSE (bool
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
-Test.RunTime = 1200
+Test.RunTime = 1800
 Test.RunLoopsMax = 0 -- Populated when script loaded.
 ---@type Tests_RTSR_TestScenario[]
 Test.TestScenarios = {} -- Populated when script loaded.
