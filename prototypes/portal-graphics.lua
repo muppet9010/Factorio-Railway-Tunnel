@@ -3,6 +3,7 @@
 
 data:extend(
     {
+        --East West - mirror of each other.
         {
             type = "sprite",
             name = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_25",
@@ -66,6 +67,71 @@ data:extend(
             height = 206,
             width = 64,
             shift = {0, -0.8}
+        },
+        -- North South - unique open and closed, mirroed middle section.
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_0",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-closed_end-0_0.png",
+            height = 192,
+            width = 128,
+            shift = {0, 0}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_50",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-closed_end-0_50.png",
+            height = 256,
+            width = 128,
+            shift = {0, -1}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-open_end-near-0_0",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-open_end-near-0_0.png",
+            height = 160,
+            width = 128,
+            shift = {0, -1}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-open_end-near-0_50",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-open_end-near-0_50.png",
+            height = 256,
+            width = 128,
+            shift = {0, -1}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-open_end-far-0_0",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-open_end-far-0_0.png",
+            height = 160,
+            width = 128,
+            shift = {0, -1}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-open_end-far-0_50",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-open_end-far-0_50.png",
+            height = 256,
+            width = 128,
+            shift = {0, -1}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-middle-0_0",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-middle-0_0.png",
+            height = 128,
+            width = 128,
+            shift = {0, -1}
+        },
+        {
+            type = "sprite",
+            name = "railway_tunnel-portal_graphics-portal_complete-middle-0_50",
+            filename = "__railway_tunnel__/graphics/entity/portal_complete/portal_complete-middle-0_50.png",
+            height = 128,
+            width = 128,
+            shift = {0, -1}
         }
     }
 )
