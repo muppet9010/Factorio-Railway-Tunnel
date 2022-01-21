@@ -179,6 +179,7 @@ Test.EveryTick = function(event)
                 if testScenario.expectedTunnelState == FinalTunnelStates.broken and not mined then
                     -- If the tunnel was expected to end up broken then the mine should have worked. But if we expected the tunnel to remain complete then we expect the mine to fail and so do nothing.
                     TestFunctions.TestFailed(testName, "failed to mine tunnel part: " .. testScenario.tunnelPart)
+                    return
                 end
             elseif testScenario.removalAction == RemovalActions.destroy then
                 entityToDestroy.damage(9999999, entityToDestroy.force, "impact", otherTunnelEntity)
@@ -234,12 +235,11 @@ Test.EveryTick = function(event)
         if testDataBespoke.train.state == defines.train_state.no_path then
             -- Train should have no path as tunnel is invalid.
             TestFunctions.TestCompleted(testName)
-            return
         else
             -- Train should have no path as tunnel is invalid.
             TestFunctions.TestFailed(testName, "Train should have reached no path state on tunnel removal.")
-            return
         end
+        return
     else
         if not testDataBespoke.westReached then
             local stationWestTrain = testDataBespoke.stationWest.get_stopped_train()
@@ -331,6 +331,7 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             return true
         else
             TestFunctions.TestFailed(testName, "No train on surface or underground")
+            return false
         end
     elseif testScenario.expectedTrainState == FinalTrainStates.fullyDestroyed then
         if trainOnSurface ~= nil then

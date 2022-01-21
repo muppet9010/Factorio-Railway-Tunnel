@@ -40,6 +40,7 @@ Test.Start = function(testName)
     local player = game.connected_players[1]
     if player == nil then
         TestFunctions.TestFailed(testName, "Test requires player to check alerts on.")
+        return
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
@@ -94,6 +95,7 @@ Test.EveryTick = function(event)
                 local playerAlerts = player.get_alerts {entity = entrancePortalEntryPortalEnd}
                 if playerAlerts[entrancePortalEntryPortalEnd.surface.index] == nil or #playerAlerts[entrancePortalEntryPortalEnd.surface.index] == 0 or #playerAlerts[entrancePortalEntryPortalEnd.surface.index][defines.alert_type.custom] ~= 1 then
                     TestFunctions.TestFailed(testName, "Train was rejected from tunnel, but alert didn't show")
+                    return
                 end
 
                 game.print("Train stopped and alert shown")
@@ -129,6 +131,7 @@ Test.EveryTick = function(event)
             else
                 TestFunctions.TestCompleted(testName)
             end
+            return
         end
     end
 end

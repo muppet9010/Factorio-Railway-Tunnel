@@ -381,10 +381,12 @@ Test.EveryTick = function(event)
         if tunnelBlockingLocomotive ~= nil then
             if not tunnelBlockingLocomotive.valid or tunnelBlockingLocomotive.get_health_ratio() ~= 1 then
                 TestFunctions.TestFailed(testName, "tunnel blocking locomotive is damaged/dead")
+                return
             end
             local aboveBlockingLocomotive = testDataBespoke.aboveBlockingLocomotive ---@type LuaEntity
             if not aboveBlockingLocomotive.valid or aboveBlockingLocomotive.get_health_ratio() ~= 1 then
                 TestFunctions.TestFailed(testName, "above track blocking locomotive is damaged/dead")
+                return
             end
         end
 

@@ -88,6 +88,7 @@ Test.EveryTick = function(event)
     if trainFoundAtPortalEntrance ~= nil and trainFoundAtPortalEntrance.speed == 0 then
         game.print("Train stopped")
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

@@ -124,6 +124,7 @@ Test.EveryTick = function(event)
     end
     if testDataBespoke.blockingWagonReached and testDataBespoke.northStationReached and testDataBespoke.southStationReached then
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

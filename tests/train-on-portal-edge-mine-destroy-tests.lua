@@ -124,11 +124,13 @@ Test.EveryTick = function(event)
         local mined = player.mine_entity(testDataBespoke.tunnelPart, true)
         if not mined then
             TestFunctions.TestFailed(testName, "tunnel part should have been mined")
+            return
         end
     elseif testScenario.actionType == ActionTypes.destroy then
         testDataBespoke.tunnelPart.damage(9999999, testDataBespoke.tunnelPart.force, "impact")
         if testDataBespoke.tunnelPart.valid then
             TestFunctions.TestFailed(testName, "tunnel part didn't die")
+            return
         end
     else
         error("unsupported testScenario.actionType: " .. testScenario.actionType)

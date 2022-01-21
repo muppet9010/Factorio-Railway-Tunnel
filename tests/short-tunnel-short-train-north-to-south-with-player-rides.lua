@@ -88,6 +88,7 @@ Test.EveryTick = function(event)
     end
     if testDataBespoke.northStationReached and testDataBespoke.southStationReached then
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

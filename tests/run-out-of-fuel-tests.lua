@@ -145,9 +145,9 @@ Test.EveryTick = function(event)
     local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(leavingTrain)
     if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
         TestFunctions.TestFailed(testName, "train not identical to starting, but is stopped.")
-        return
+    else
+        TestFunctions.TestCompleted(testName)
     end
-    TestFunctions.TestCompleted(testName)
 end
 
 Test.GenerateTestScenarios = function()

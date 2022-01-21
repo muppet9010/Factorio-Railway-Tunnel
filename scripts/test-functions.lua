@@ -43,7 +43,7 @@ TestFunctions.GetTestForce = function()
     return global.testManager.playerForce
 end
 
---- Complete the current test. arguments: the test name.
+--- Complete the current test.
 ---@param testName TestManager_TestName
 TestFunctions.TestCompleted = function(testName)
     game.print("Completed Test", Colors.lightgreen)
@@ -61,7 +61,7 @@ TestFunctions.TestCompleted = function(testName)
     end
 end
 
---- Fail the current test. arguments: the test name, the text reason that is shown on screen.
+--- Fail the current test.
 ---@param testName TestManager_TestName
 ---@param errorText string
 TestFunctions.TestFailed = function(testName, errorText)

@@ -59,6 +59,7 @@ Test.EveryTick = function(event)
         end
         game.print("train reached target station")
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

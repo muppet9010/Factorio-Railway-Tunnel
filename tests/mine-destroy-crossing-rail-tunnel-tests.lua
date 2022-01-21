@@ -138,6 +138,7 @@ Test.EveryTick = function(event)
         else
             TestFunctions.TestCompleted(testName)
         end
+        return
     elseif testScenario.actionType == ActionTypes.destroy then
         entityToRemove.damage(9999999, entityToRemove.force, "impact")
         if testScenario.segmentToRemove == SegmentsToRemove.crossingRail and testScenario.blockingTrainType == BlockingTrainTypes.onCrossingRail then
@@ -155,6 +156,7 @@ Test.EveryTick = function(event)
                 TestFunctions.TestCompleted(testName)
             end
         end
+        return
     end
 end
 

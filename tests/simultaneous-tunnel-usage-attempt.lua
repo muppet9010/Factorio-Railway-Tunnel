@@ -69,6 +69,7 @@ Test.Start = function(testName)
     local player = game.connected_players[1]
     if player == nil then
         TestFunctions.TestFailed(testName, "Test requires player to check alerts on.")
+        return
     end
 
     -- Get the 2 portal's entry portal end entity.
@@ -178,6 +179,7 @@ Test.EveryTick = function(event)
 
         if #testDataBespoke.trainNamesAlerting == 0 then
             TestFunctions.TestFailed(testName, "One or more of the trains were rejected from the tunnel, but no alerts found")
+            return
         end
 
         -- Flag this state as reached.
@@ -227,6 +229,7 @@ Test.EveryTick = function(event)
     end
     if testDataBespoke.stationEastReached and testDataBespoke.stationWestReached then
         TestFunctions.TestCompleted(testName)
+        return
     end
     -- IDEAL BEHAVIOUR - END
 end

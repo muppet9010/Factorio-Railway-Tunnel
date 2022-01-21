@@ -116,12 +116,14 @@ Test.EveryTick = function(event)
 
     if not testDataBespoke.southTrainStop.valid then
         TestFunctions.TestFailed(testName, "South station was removed")
+        return
     end
 
     if testDataBespoke.southTrainStop.get_stopped_train() ~= nil then
         game.print("train reached South station, so stop test")
         game.print("test letter: " .. testScenario.firstLetter)
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 
