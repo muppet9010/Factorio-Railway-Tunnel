@@ -26,16 +26,17 @@ Features to add/change
         - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
         - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate.
         - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this.
+    - Do need to handle if a train follows one in to the portal tracks. As technically a short first train approaching a tunnel may have fully entered the portal area and then a second train can follow it up in manual/coasting. We should know the trains length and be able to estimate when its over the entrance portal boundary, thus we can put the train detector back quickly. Look for low UPS approach.
+    - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time. Will probably need to account for excessive speeds entering the tunnel.
 
 
 Long term UPS/code plans
 ------------------------
     - Review performance of the leaving train arrival time and speed test (leaving-train-speed-duration-change-tests) and make it run fast on the big trains/setups if possible. Make the leaving track a suitable length for the train's task. I.e. only "clear" needs the current mega long track.
-    - Review leaving train arrival time and speed again and work to reduce varation to the regular train time. Will probably need to account for excessive speeds entering the tunnel.
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
-    - Tunnel usage events being raised uses some UPS per tunnel carriage activity (N)? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway.
+    - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.
     - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to track train Id changes to delete old data though to stop our list infintely growing with train composition changes. Also cached data would be for one direction of the train, so would have to iterate it carefully.
 
 
