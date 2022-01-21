@@ -76,7 +76,7 @@ Test.Start = function(testName)
         tunnelTrain = tunnelTrain, ---@type LuaTrain
         waitingTrain = waitingTrain, ---@type LuaTrain
         tunnelPart = tunnelPart, ---@type LuaEntity
-        testPrepared = false ---@type boolean
+        testReadyForAction = nil ---@type Tick|null @ populated when the test is made ready to define when the action should be done. Needs some delay due to the less frequent checking of the leaving trains state.
     }
     testData.bespoke = testDataBespoke
 
@@ -100,7 +100,7 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_TOPEMDT_TestScenarioBespokeData
 
     -- We have to prepare the test and give Factorio 1 tick for the destroyed carriage to fully dissapear, otherwise the tess give wrong result.
-    if not testDataBespoke.testPrepared then
+    if testDataBespoke.testReadyForAction == nil then
         -- Do nothing until the tunnel train has used the tunnel.
         if testData.lastAction ~= "leaving" then
             return
@@ -114,7 +114,11 @@ Test.EveryTick = function(event)
         -- Stop the waiting train and remove the tunnel train so it doesn't block any test actions.
         testDataBespoke.waitingTrain.manual_mode = true
         testData.train.carriages[1].destroy()
-        testDataBespoke.testPrepared = true
+        testDataBespoke.testReadyForAction = event.tick + 10
+    end
+
+    -- Wait for the testReadyForAction tick to have passed before doing the action.
+    if event.tick <= testDataBespoke.testReadyForAction then
         return
     end
 
@@ -124,11 +128,13 @@ Test.EveryTick = function(event)
         local mined = player.mine_entity(testDataBespoke.tunnelPart, true)
         if not mined then
             TestFunctions.TestFailed(testName, "tunnel part should have been mined")
+            return
         end
     elseif testScenario.actionType == ActionTypes.destroy then
         testDataBespoke.tunnelPart.damage(9999999, testDataBespoke.tunnelPart.force, "impact")
         if testDataBespoke.tunnelPart.valid then
             TestFunctions.TestFailed(testName, "tunnel part didn't die")
+            return
         end
     else
         error("unsupported testScenario.actionType: " .. testScenario.actionType)

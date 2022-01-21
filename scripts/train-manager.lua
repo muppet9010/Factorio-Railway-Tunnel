@@ -14,6 +14,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainState
+---@field nextActionTick? Tick|null @ The game tick when a stateful function should next be done for this managed train. Only populated when the current primary train state runs on a periodic basis. A nil value means run every tick. A -1 value will never be matached and thus never run.
 ---
 ---@field approachingTrain? LuaTrain|null @ Ref to the approaching train. Cleared when the train enters the tunnel.
 ---@field approachingTrainId? Id|null @ The approachingTrain LuaTrain id. Cleared when the train enters the tunnel.
@@ -64,6 +65,9 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 ---@field trainId Id @ the LuaTrain id.
 ---@field managedTrain ManagedTrain
 ---@field tunnelUsagePart TunnelUsageParts
+
+local StatesActionTickDelay_OnPortalTrack = 10
+local StatesActionTickDelay_OnLeaving = 10
 
 TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
@@ -136,6 +140,7 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachi
     end
 
     local managedTrain = TrainManager.CreateManagedTrainObject(approachingTrain, entrancePortalTransitionSignal, true, committedManagedTrain)
+    managedTrain.nextActionTick = nil
     managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     if reversedManagedTrain ~= nil then
@@ -149,17 +154,20 @@ end
 --- Used when a train is claiming a portals track (and thus the tunnel), but not planning to actively use the tunnel yet. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
-TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
+---@param currentTick Tick
+TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, currentTick)
     if global.debugRelease then
-        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainOnPortalTrack_Internal, trainOnPortalTrack, portal)
+        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainOnPortalTrack_Internal, trainOnPortalTrack, portal, currentTick)
     else
-        TrainManager._RegisterTrainOnPortalTrack_Internal(trainOnPortalTrack, portal)
+        TrainManager._RegisterTrainOnPortalTrack_Internal(trainOnPortalTrack, portal, currentTick)
     end
 end
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
-TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack, portal)
+---@param currentTick Tick
+TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack, portal, currentTick)
     local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
+    managedTrain.nextActionTick = currentTick + StatesActionTickDelay_OnPortalTrack
     managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
@@ -170,10 +178,13 @@ TrainManager.ProcessManagedTrains = function(eventData)
 
     -- Loop over each train and process it.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if global.debugRelease then
-            Logging.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain, currentTick)
-        else
-            TrainManager.ProcessManagedTrain(managedTrain, currentTick)
+        -- Only do the processing for this train on its tick cycle for the current state or if the state has no tick cycle.
+        if managedTrain.nextActionTick == nil or managedTrain.nextActionTick == currentTick then
+            if global.debugRelease then
+                Logging.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain, currentTick)
+            else
+                TrainManager.ProcessManagedTrain(managedTrain, currentTick)
+            end
         end
     end
 
@@ -185,30 +196,31 @@ end
 TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     -- We only need to handle one of these per tick as the transition between these states is either triggered externally or requires no immediate checking of the next state in the same tick as the transition.
     -- These are ordered on frequency of use to reduce per tick check costs.
-    if managedTrain.primaryTrainPartName == PrimaryTrainState.portalTrack then
-        -- Keep on running until either the train triggers the Transition signal or the train leaves the portal tracks.
-        TrainManager.TrainOnPortalTrackOngoing(managedTrain)
-        return
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
+    if managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
         -- Keep on running until either the train reaches the Transition train detector or the train's target stops being the transition signal.
         TrainManager.TrainApproachingOngoing(managedTrain)
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
+        -- Keep on running until the train has fully left the portal tracks.
+        TrainManager.TrainLeavingOngoing(managedTrain, currentTick)
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.portalTrack then
+        -- Keep on running until either the train triggers the Transition signal or the train leaves the portal tracks.
+        TrainManager.TrainOnPortalTrackOngoing(managedTrain, currentTick)
     elseif managedTrain.primaryTrainPartName == PrimaryTrainState.underground then
         if managedTrain.undergroundTrainHasPlayersRiding then
             -- Only reason we have to update per tick while travelling underground currently.
             TrainManager.TrainUndergroundOngoing(managedTrain, currentTick)
         else
-            -- Nothing to do, the arrival is scheduled.
+            -- Nothing to do, the arrival is scheduled. This should never be reached due to setting of the nextActionTick to -1 when scheduling the trains arrival without player.
             return
         end
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
-        TrainManager.TrainLeavingOngoing(managedTrain)
     end
 end
 
 -- This tracks a train once it triggers the entry train detector, until it reserves the Transition signal of the Entrance portal or leaves the portal track (turn around and leave). Turning around could be caused by either manual driving or from an extreme edge case of track removal ahead as the train is approaching the transition point and there is a path backwards available. No state change or control of the train is required or applied at this stage.
 --- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrain().
 ---@param managedTrain ManagedTrain
-TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
+---@param currentTick Tick
+TrainManager.TrainOnPortalTrackOngoing = function(managedTrain, currentTick)
     local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
 
     if not managedTrain.portalTrackTrainBySignal then
@@ -221,6 +233,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
             local trainSpeed = managedTrain.portalTrackTrain.speed
             if trainSpeed == 0 then
                 -- If the train isn't moving we don't need to check for any state change this tick.
+                managedTrain.nextActionTick = currentTick + StatesActionTickDelay_OnPortalTrack
                 return
             end
             local trainForwards = trainSpeed > 0
@@ -229,6 +242,7 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
                 local placedDetectionEntity = MOD.Interfaces.Portal.AddEnteringTrainUsageDetectionEntityToPortal(managedTrain.entrancePortal, false, false)
                 if placedDetectionEntity then
                     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
+                    return
                 end
             end
         end
@@ -237,8 +251,10 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
         if entrancePortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
             -- No train in the block so our one must have left.
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.portalTrackReleased)
+            return
         end
     end
+    managedTrain.nextActionTick = currentTick + StatesActionTickDelay_OnPortalTrack
 end
 
 --- The train is approaching the transition signal so maintain its speed.
@@ -355,7 +371,10 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
 
     -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
     if not managedTrain.undergroundTrainHasPlayersRiding then
+        managedTrain.nextActionTick = -1 -- Stop the per tick cycle until the scheduled traversal arrival time.
         EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain})
+    else
+        managedTrain.nextActionTick = nil -- We need to run a process every tick for the player.
     end
 end
 
@@ -378,7 +397,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
         local leavingTrain = managedTrain.leavingTrain
         TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainForwards", managedTrain.dummyTrain.path_end_stop)
 
-        TrainManager.TrainUndergroundCompleted(managedTrain)
+        TrainManager.TrainUndergroundCompleted(managedTrain, currentTick)
     end
 end
 
@@ -401,7 +420,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local leavingTrain_state = leavingTrain.state
     if leavingTrain_state == defines.train_state.on_the_path then
         -- Train can leave at full speed.
-        TrainManager.TrainUndergroundCompleted(managedTrain)
+        TrainManager.TrainUndergroundCompleted(managedTrain, event.tick)
         return
     end
 
@@ -587,11 +606,12 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
             error("unknown leaving train facing when trying to set its speed to release it from the tunnel")
         end
     end
-    TrainManager.TrainUndergroundCompleted(managedTrain)
+    TrainManager.TrainUndergroundCompleted(managedTrain, event.tick)
 end
 
 ---@param managedTrain ManagedTrain
-TrainManager.TrainUndergroundCompleted = function(managedTrain)
+---@param currentTick Tick
+TrainManager.TrainUndergroundCompleted = function(managedTrain, currentTick)
     -- Train has arrived and needs tidying up.
 
     -- Handle any players riding in the train.
@@ -609,11 +629,13 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     TrainManager.DestroyDummyTrain(managedTrain)
     TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.leaving
+    managedTrain.nextActionTick = currentTick + StatesActionTickDelay_OnLeaving
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
 end
 
 ---@param managedTrain ManagedTrain
-TrainManager.TrainLeavingOngoing = function(managedTrain)
+---@param currentTick Tick
+TrainManager.TrainLeavingOngoing = function(managedTrain, currentTick)
     -- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left. We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its rear rail signal is our portal entrance one. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
     local exitPortalEntrySignalEntity = managedTrain.exitPortal.entrySignals[TunnelSignalDirection.inSignal].entity
     if exitPortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
@@ -622,7 +644,9 @@ TrainManager.TrainLeavingOngoing = function(managedTrain)
         managedTrain.leavingTrain = nil
         managedTrain.leavingTrainId = nil
         TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.completedTunnelUsage)
+        return
     end
+    managedTrain.nextActionTick = currentTick + StatesActionTickDelay_OnLeaving
 end
 
 -------------------------------------------------------------------------------

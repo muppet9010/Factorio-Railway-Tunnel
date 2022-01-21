@@ -1127,7 +1127,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
             -- This train hasn't reserved any tunnel.
             if portal.tunnel.managedTrain == nil then
                 -- Portal's tunnel isn't reserved so this train can grab the portal.
-                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal)
+                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, event.tick)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
