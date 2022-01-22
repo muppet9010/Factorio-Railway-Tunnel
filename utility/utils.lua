@@ -10,7 +10,7 @@ Utils.DeepCopy = factorioUtil.table.deepcopy
 
 -- Takes an array of tables and returns a new table with copies of their contents. Merges children when they are tables togeather, but non table data types will have the latest value as the result.
 ---@type fun(tables:table[]):table
-Utils.TableMerge = factorioUtil.merge
+Utils.TableMergeCopies = factorioUtil.merge
 
 -- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
 ---@param entity1 LuaEntity

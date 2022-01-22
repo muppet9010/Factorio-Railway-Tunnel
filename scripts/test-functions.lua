@@ -537,7 +537,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 
     TestFunctions.MakeCarriagesUnique(placedEntitiesByType["locomotive"], placedEntitiesByType["cargo-wagon"], placedEntitiesByType["fluid-wagon"], placedEntitiesByType["artillery-wagon"])
 
-    return placedEntities, Utils.TableMerge({placedEntitiesByType, placedEntitiesByName})
+    return placedEntities, Utils.TableMergeCopies({placedEntitiesByType, placedEntitiesByName})
 end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.

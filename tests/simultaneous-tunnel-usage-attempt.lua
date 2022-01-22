@@ -163,14 +163,14 @@ Test.EveryTick = function(event)
         -- The alerts are against a carriage of the train so check them all to see if any alerts for that train exist.
         local westPlayerAlertsCarriage1 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingEastTrain.carriages[1]}
         local westPlayerAlertsCarriage2 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingEastTrain.carriages[2]}
-        local westPlayerAlerts = Utils.TableMerge({westPlayerAlertsCarriage1, westPlayerAlertsCarriage2})
+        local westPlayerAlerts = Utils.TableMergeCopies({westPlayerAlertsCarriage1, westPlayerAlertsCarriage2})
         local westAlertSurfaceIndex = testDataBespoke.westPortalEntryEnd.surface.index
         if westPlayerAlerts[westAlertSurfaceIndex] == nil or #westPlayerAlerts[westAlertSurfaceIndex] == 0 or #westPlayerAlerts[westAlertSurfaceIndex][defines.alert_type.custom] == 1 then
             table.insert(testDataBespoke.trainNamesAlerting, "headingEastTrain")
         end
         local eastPlayerAlertsCarriage1 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingWestTrain.carriages[1]}
         local eastPlayerAlertsCarriage2 = testDataBespoke.player.get_alerts {entity = testDataBespoke.headingWestTrain.carriages[2]}
-        local eastPlayerAlerts = Utils.TableMerge({eastPlayerAlertsCarriage1, eastPlayerAlertsCarriage2})
+        local eastPlayerAlerts = Utils.TableMergeCopies({eastPlayerAlertsCarriage1, eastPlayerAlertsCarriage2})
         local eastAlertSurfaceIndex = testDataBespoke.eastPortalEntryEnd.surface.index
         if eastPlayerAlerts[eastAlertSurfaceIndex] == nil or #eastPlayerAlerts[eastAlertSurfaceIndex] == 0 or #eastPlayerAlerts[eastAlertSurfaceIndex][defines.alert_type.custom] == 1 then
             table.insert(testDataBespoke.trainNamesAlerting, "headingWestTrain")

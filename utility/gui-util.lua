@@ -74,7 +74,7 @@ GuiUtil.AddElement = function(elementDetails)
                 child.parent = element
                 local childReturnElements = GuiUtil.AddElement(child)
                 if childReturnElements ~= nil then
-                    returnElements = Utils.TableMerge({returnElements, childReturnElements})
+                    returnElements = Utils.TableMergeCopies({returnElements, childReturnElements})
                 end
             end
         end

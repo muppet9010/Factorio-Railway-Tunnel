@@ -280,8 +280,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
         surface_index = surface_index,
         force = builtEntity.force,
         typeData = portalTypeData,
-        nonConnectedInternalSurfacePositions = {},
-        nonConnectedExternalSurfacePositions = {},
+        nonConnectedInternalSurfacePositions = {}, -- Populated when checking connection to other built portal parts as they will be added and removed iteratively there.
+        nonConnectedExternalSurfacePositions = {}, -- Populated when checking connection to other built portal parts as they will be added and removed iteratively there.
         graphicRenderIds = {}
     }
 
@@ -384,10 +384,12 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 connectedPortalPart.nonConnectedInternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = nil
                 connectedPortalPart.nonConnectedExternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = nil
             else
+                -- Record ours and their non connected points.
                 portalPartObject.nonConnectedInternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = checkDetails.internalCheckSurfacePositionString
                 portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
             end
         else
+            -- Record ours and their non connected points.
             portalPartObject.nonConnectedInternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = checkDetails.internalCheckSurfacePositionString
             portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
         end
@@ -438,7 +440,11 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
 
     -- Check if portal is complete.
     if portalPartObject.portal ~= nil and Utils.GetTableNonNilLength(portalPartObject.portal.portalEnds) == 2 then
+        local portalPartsDisowned = Portal.ClensePortalsExcessParts(portalPartObject.portal)
         Portal.PortalComplete(portalPartObject.portal)
+        if next(portalPartsDisowned) ~= nil then
+            Portal.RecalculatePortalPartsParentPortal(portalPartsDisowned)
+        end
     end
 end
 
@@ -473,6 +479,114 @@ Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
     global.portals.portals[oldPortal.id] = nil
 end
 
+--- A complete portal is 2 ends with some segments between. If a portal end part has segments both sides it must have the excess trimmed as the PortalComplete() logic requires portal end's with 1 used and 1 free connection.
+---@param portal Portal
+---@return table<Id, PortalPart> portalPartsDisowned @ The portal parts that were dropped from this portal. As after the Portal is completed they will need to be regnerated due to their portal and connected point states being messed up by our cleanse here.
+Portal.ClensePortalsExcessParts = function(portal)
+    local portalPartsDisowned = {} ---@type table<Id, PortalPart>
+    for portalEndPart_id, portalEndPart in pairs(portal.portalEnds) do
+        -- If theres no free connection points then the portal end has segments on both sides.
+        if next(portalEndPart.nonConnectedInternalSurfacePositions) == nil then
+            -- This is a very rare scenario so doesn't need to be overly optimised.
+
+            -- Get the other portal as this is our target.
+            local targetPortalEnd
+            if portalEndPart_id == next(portal.portalEnds) then
+                -- This is first in table, so other end is the second.
+                targetPortalEnd = portal.portalEnds[next(portal.portalEnds, portalEndPart_id)]
+            else
+                -- This is the second in the table, so other end is the first.
+                targetPortalEnd = portal.portalEnds[next(portal.portalEnds)]
+            end
+
+            -- Walk down the connected portal part in the front direction until we hit the other portal end or have walked the full line.
+            local frontConnectedPortalPartSurfacePositionObject = global.portals.portalPartInternalConnectionSurfacePositionStrings[portalEndPart.frontExternalCheckSurfacePositionString] -- Is always found as otherwise this would be a non connected point.
+            local frontOtherEndFound, frontPartsWalked = Portal.WalkConnectedPortalParts(frontConnectedPortalPartSurfacePositionObject.portalPart, portalEndPart.frontExternalCheckSurfacePositionString, targetPortalEnd)
+            -- If the other end isn't found then the front is the bad direction walked list.
+            if not frontOtherEndFound then
+                -- Release our end part's connection point we found the bad parts down.
+                portalEndPart.nonConnectedInternalSurfacePositions = {[portalEndPart.frontInternalSurfacePositionString] = portalEndPart.frontInternalSurfacePositionString}
+                portalEndPart.nonConnectedExternalSurfacePositions = {[portalEndPart.frontExternalCheckSurfacePositionString] = portalEndPart.frontExternalCheckSurfacePositionString}
+
+                -- Remove the offending parts walked over from this portal before its marked as complete. The parts themselves will be tiedup up in the calling function.
+                for _, partWalked in pairs(frontPartsWalked) do
+                    portal.portalSegments[partWalked.id] = nil
+                    portalPartsDisowned[partWalked.id] = partWalked
+                end
+            end
+
+            -- If the other end was found then we've gone the good direction, so repeat in the rear to find the bad parts
+            if frontOtherEndFound then
+                -- Walk down the connected portal part in the rear direction until we hit the other portal end or have walked the full line.
+                local rearConnectedPortalPartSurfacePositionObject = global.portals.portalPartInternalConnectionSurfacePositionStrings[portalEndPart.rearExternalCheckSurfacePositionString] -- Is always found as otherwise this would be a non connected point.
+                local _, rearPartsWalked = Portal.WalkConnectedPortalParts(rearConnectedPortalPartSurfacePositionObject.portalPart, portalEndPart.rearExternalCheckSurfacePositionString, targetPortalEnd)
+
+                -- Release our end part's connection point we found the bad parts down.
+                portalEndPart.nonConnectedInternalSurfacePositions = {[portalEndPart.rearInternalSurfacePositionString] = portalEndPart.rearInternalSurfacePositionString}
+                portalEndPart.nonConnectedExternalSurfacePositions = {[portalEndPart.rearExternalCheckSurfacePositionString] = portalEndPart.rearExternalCheckSurfacePositionString}
+
+                -- Remove the offending parts walked over from this portal before its marked as complete. The parts themselves will be tiedup up in the calling function.
+                for _, partWalked in pairs(rearPartsWalked) do
+                    portal.portalSegments[partWalked.id] = nil
+                    portalPartsDisowned[partWalked.id] = partWalked
+                end
+            end
+        end
+    end
+
+    return portalPartsDisowned
+end
+
+--- Walks down a line of connected portal parts from a starting part in a single direction, until either a specific portal part is reached or the end of the line is reached. Returns an array of all the portal parts it went through as well as if it found the specific part.
+---@param initialPortalPart PortalPart @ The portal part to start the checking at.
+---@param internalSurfacePositionString SurfacePositionString @ The direction to enter the initialPortalPart from and its checks away from this.
+---@param targetPortalPart PortalPart @ Stop if this portal part is reached.
+---@return boolean targetPortalPartFound
+---@return PortalPart[] portalPartsSteppedThrough
+Portal.WalkConnectedPortalParts = function(initialPortalPart, internalSurfacePositionString, targetPortalPart)
+    local thisPortalPart, thisInternalSurfacePositionString = initialPortalPart, internalSurfacePositionString
+    local endtargetPortalPartFound, portalPartsSteppedThrough = nil, {initialPortalPart}
+
+    -- Recursively walk through the connected parts in this direction.
+    while endtargetPortalPartFound == nil do
+        -- Find the next surface position string to check for.
+        local nextExternalSurfacePosition
+        if thisPortalPart.frontInternalSurfacePositionString == thisInternalSurfacePositionString then
+            nextExternalSurfacePosition = thisPortalPart.rearExternalCheckSurfacePositionString
+        else
+            nextExternalSurfacePosition = thisPortalPart.frontExternalCheckSurfacePositionString
+        end
+
+        -- Get the next object if part of this tunnel
+        local nextPortalPartSurfacePositionObject = global.portals.portalPartInternalConnectionSurfacePositionStrings[nextExternalSurfacePosition]
+        if nextPortalPartSurfacePositionObject == nil then
+            -- No part found so reached the end of the line.
+            endtargetPortalPartFound = false
+        else
+            -- Part found so inspect it.
+            local nextPortalPart = nextPortalPartSurfacePositionObject.portalPart
+            if nextPortalPart.portal.id ~= thisPortalPart.portal.id then
+                -- Part found isn't the same portal, so reached the end of the line.
+                endtargetPortalPartFound = false
+            else
+                -- Part found is the same portal.
+                table.insert(portalPartsSteppedThrough, nextPortalPart)
+                if nextPortalPart.id == targetPortalPart.id then
+                    -- Found the target part, so stop.
+                    endtargetPortalPartFound = true
+                else
+                    -- Not the part we are looking for, so setup variables for another loop.
+                    thisPortalPart = nextPortalPart
+                    thisInternalSurfacePositionString = nextExternalSurfacePosition -- old part's external is new part's internal
+                end
+            end
+        end
+    end
+
+    return endtargetPortalPartFound, portalPartsSteppedThrough
+end
+
+-- The portal is found to be complete so do the approperiate processing.
 ---@param portal Portal
 Portal.PortalComplete = function(portal)
     portal.isComplete = true
@@ -737,6 +851,7 @@ Portal.On_PreTunnelCompleted = function(portals)
         for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do
             rendering.destroy(oldGraphicRenderId)
         end
+        portal.entryPortalEnd.graphicRenderIds = {}
         table.insert(
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
@@ -928,14 +1043,15 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Remove the portal's graphic parts. When the portal parts are remade in to a portal they will gain their graphics back if approperiate.
         for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
             for _, __ in pairs(list) do
-                local loopingGenericPortalPart = __ ---@type PortalPart
-                for _, graphicRenderId in pairs(loopingGenericPortalPart.graphicRenderIds) do
+                local portalPart = __ ---@type PortalPart
+                for _, graphicRenderId in pairs(portalPart.graphicRenderIds) do
                     rendering.destroy(graphicRenderId)
                 end
+                portalPart.graphicRenderId = {}
             end
         end
 
-        -- Remove the portal's global objects.
+        -- Remove the portal's global objects. The portal object itself will be garbage collected as by the end of this function nothing will reference it.
         for _, endPortalPart in pairs(portal.portalEnds) do
             global.portals.portalTunnelInternalConnectionSurfacePositionStrings[next(endPortalPart.nonConnectedInternalSurfacePositions)] = nil
         end
@@ -946,27 +1062,38 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         portal.portalSegments[removedPortalPart.id] = nil
 
         -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
-        -- Make each portal part forget its parent so they are all ready to re-merge in to new portals later.
-        for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
-            for _, __ in pairs(list) do
-                local loopingGenericPortalPart = __ ---@type PortalPart
-                loopingGenericPortalPart.portal = nil
-                loopingGenericPortalPart.nonConnectedInternalSurfacePositions = {}
-                loopingGenericPortalPart.nonConnectedExternalSurfacePositions = {}
-                if loopingGenericPortalPart.typeData.partType == PortalPartType.portalEnd then
-                    local loopingEndPortalPart = loopingGenericPortalPart ---@type PortalEnd
-                    loopingEndPortalPart.connectedToUnderground = false
-                    loopingEndPortalPart.endPortalType = nil
-                end
-            end
+        ---@type table<Id, PortalPart>
+        local endsAndSegments = {}
+        for k, v in pairs(portal.portalEnds) do
+            endsAndSegments[k] = v
         end
-        -- Loop over each portal part and add them back in to whatever portals they reform.
-        for _, list in pairs({portal.portalEnds, portal.portalSegments}) do
-            for _, __ in pairs(list) do
-                local loopingGenericPortalPart = __ ---@type PortalPart
-                Portal.UpdatePortalsForNewPortalPart(loopingGenericPortalPart)
-            end
+        for k, v in pairs(portal.portalSegments) do
+            endsAndSegments[k] = v
         end
+        Portal.RecalculatePortalPartsParentPortal(endsAndSegments)
+    end
+end
+
+--- Make a list of portal parts forget their portal and connections. Then recalculate the portal and connections again.
+--- Useful for when breaking a portal up or removing parts from a portal.
+---@param portalParts table<Id, PortalPart>
+Portal.RecalculatePortalPartsParentPortal = function(portalParts)
+    -- Make each portal part forget its parent so they are all ready to re-merge in to new portals later.
+    for _, portalPart in pairs(portalParts) do
+        portalPart.portal = nil
+        portalPart.nonConnectedInternalSurfacePositions = {}
+        portalPart.nonConnectedExternalSurfacePositions = {}
+        if portalPart.typeData.partType == PortalPartType.portalEnd then
+            local endPortalPart = portalPart ---@type PortalEnd
+            endPortalPart.connectedToUnderground = false
+            endPortalPart.endPortalType = nil
+            endPortalPart.portalFacingOrientation = nil
+        end
+    end
+
+    -- Loop over each portal part and add them back in to whatever portals they reform in to.
+    for _, portalPart in pairs(portalParts) do
+        Portal.UpdatePortalsForNewPortalPart(portalPart)
     end
 end
 
@@ -983,6 +1110,7 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do
             rendering.destroy(oldGraphicRenderId)
         end
+        portal.entryPortalEnd.graphicRenderIds = {}
         table.insert(
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
