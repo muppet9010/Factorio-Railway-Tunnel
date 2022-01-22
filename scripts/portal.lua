@@ -51,8 +51,8 @@ local EventScheduler = require("utility/event-scheduler")
 ---@field surface LuaSurface @ the surface this portal part object is on.
 ---@field surface_index uint @ cached index of the surface this portal part is on.
 ---@field force LuaForce @ the force this portal part object belongs to.
----@field nonConnectedInternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
----@field nonConnectedExternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
+---@field nonConnectedInternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
+---@field nonConnectedExternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
@@ -326,8 +326,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
     portalPartObject.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(surface_index, Utils.RotateOffsetAroundPosition(builtEntity_orientation, {x = 0, y = 1}, portalPartObject.rearInternalPosition))
 
     -- Record this portal part object's non connected positions as both front and back to start.
-    portalPartObject.nonConnectedInternalSurfacePositions = {[portalPartObject.frontInternalSurfacePositionString] = portalPartObject.frontInternalSurfacePositionString, [portalPartObject.rearInternalSurfacePositionString] = portalPartObject.rearInternalSurfacePositionString}
-    portalPartObject.nonConnectedExternalSurfacePositions = {[portalPartObject.frontExternalCheckSurfacePositionString] = portalPartObject.frontExternalCheckSurfacePositionString, [portalPartObject.rearExternalCheckSurfacePositionString] = portalPartObject.rearExternalCheckSurfacePositionString}
+    portalPartObject.nonConnectedInternalSurfacePositionStrings = {[portalPartObject.frontInternalSurfacePositionString] = portalPartObject.frontInternalSurfacePositionString, [portalPartObject.rearInternalSurfacePositionString] = portalPartObject.rearInternalSurfacePositionString}
+    portalPartObject.nonConnectedExternalSurfacePositionStrings = {[portalPartObject.frontExternalCheckSurfacePositionString] = portalPartObject.frontExternalCheckSurfacePositionString, [portalPartObject.rearExternalCheckSurfacePositionString] = portalPartObject.rearExternalCheckSurfacePositionString}
 
     -- Register the part's entity for reverse lookup.
     global.portals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
@@ -380,20 +380,20 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
                     end
                 end
                 -- Update ours nonConnected Internal and External SurfacePositions as we are now connected on this connection side.
-                portalPartObject.nonConnectedInternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = nil
-                portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = nil
+                portalPartObject.nonConnectedInternalSurfacePositionStrings[checkDetails.internalCheckSurfacePositionString] = nil
+                portalPartObject.nonConnectedExternalSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString] = nil
                 -- Update their nonConnected Internal and External SurfacePositions, but our surface position string text is flipped as recording to their perspective.
-                connectedPortalPart.nonConnectedInternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = nil
-                connectedPortalPart.nonConnectedExternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = nil
+                connectedPortalPart.nonConnectedInternalSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString] = nil
+                connectedPortalPart.nonConnectedExternalSurfacePositionStrings[checkDetails.internalCheckSurfacePositionString] = nil
             else
-                -- Record our free connected point to record this one isn't in use (may have been removed before so update it back as free).
-                portalPartObject.nonConnectedInternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = checkDetails.internalCheckSurfacePositionString
-                portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
+                -- Record our free connected point as not in use. May have been removed before in an edge case so update it back as free (confirmed called in edge cases when not existing before).
+                portalPartObject.nonConnectedInternalSurfacePositionStrings[checkDetails.internalCheckSurfacePositionString] = checkDetails.internalCheckSurfacePositionString
+                portalPartObject.nonConnectedExternalSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
             end
         else
-            -- Record our free connected point to record this one isn't in use (may have been removed before so update it back as free).
-            portalPartObject.nonConnectedInternalSurfacePositions[checkDetails.internalCheckSurfacePositionString] = checkDetails.internalCheckSurfacePositionString
-            portalPartObject.nonConnectedExternalSurfacePositions[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
+            -- Record our free connected point as not in use. May have been removed before in an edge case so update it back as free (confirmed called in edge cases when not existing before).
+            portalPartObject.nonConnectedInternalSurfacePositionStrings[checkDetails.internalCheckSurfacePositionString] = checkDetails.internalCheckSurfacePositionString
+            portalPartObject.nonConnectedExternalSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString] = checkDetails.externalCheckSurfacePositionString
         end
     end
 
@@ -483,12 +483,12 @@ end
 
 --- A complete portal is 2 ends with some segments between. If a portal end part has segments both sides it must have the excess trimmed as the PortalComplete() logic requires portal end's with 1 used and 1 free connection.
 ---@param portal Portal
----@return table<Id, PortalPart> portalPartsDisowned @ The portal parts that were dropped from this portal. As after the Portal is completed they will need to be regnerated due to their portal and connected point states being messed up by our cleanse here.
+---@return table<UnitNumber, PortalPart> portalPartsDisowned @ The portal parts that were dropped from this portal. As after the Portal is completed they will need to be regnerated due to their portal and connected point states being messed up by our cleanse here.
 Portal.ClensePortalsExcessParts = function(portal)
-    local portalPartsDisowned = {} ---@type table<Id, PortalPart>
+    local portalPartsDisowned = {} ---@type table<UnitNumber, PortalPart>
     for portalEndPart_id, portalEndPart in pairs(portal.portalEnds) do
         -- If theres no free connection points then the portal end has segments on both sides.
-        if next(portalEndPart.nonConnectedInternalSurfacePositions) == nil then
+        if next(portalEndPart.nonConnectedInternalSurfacePositionStrings) == nil then
             -- This is a very rare scenario so doesn't need to be overly optimised.
 
             -- Get the other portal as this is our target.
@@ -507,8 +507,8 @@ Portal.ClensePortalsExcessParts = function(portal)
             -- If the other end isn't found then the front is the bad direction walked list.
             if not frontOtherEndFound then
                 -- Release our end part's connection point we found the bad parts down.
-                portalEndPart.nonConnectedInternalSurfacePositions = {[portalEndPart.frontInternalSurfacePositionString] = portalEndPart.frontInternalSurfacePositionString}
-                portalEndPart.nonConnectedExternalSurfacePositions = {[portalEndPart.frontExternalCheckSurfacePositionString] = portalEndPart.frontExternalCheckSurfacePositionString}
+                portalEndPart.nonConnectedInternalSurfacePositionStrings = {[portalEndPart.frontInternalSurfacePositionString] = portalEndPart.frontInternalSurfacePositionString}
+                portalEndPart.nonConnectedExternalSurfacePositionStrings = {[portalEndPart.frontExternalCheckSurfacePositionString] = portalEndPart.frontExternalCheckSurfacePositionString}
 
                 -- Remove the offending parts walked over from this portal before its marked as complete. The parts themselves will be tiedup up in the calling function.
                 for _, partWalked in pairs(frontPartsWalked) do
@@ -524,8 +524,8 @@ Portal.ClensePortalsExcessParts = function(portal)
                 local _, rearPartsWalked = Portal.WalkConnectedPortalParts(rearConnectedPortalPartSurfacePositionObject.portalPart, portalEndPart.rearExternalCheckSurfacePositionString, targetPortalEnd)
 
                 -- Release our end part's connection point we found the bad parts down.
-                portalEndPart.nonConnectedInternalSurfacePositions = {[portalEndPart.rearInternalSurfacePositionString] = portalEndPart.rearInternalSurfacePositionString}
-                portalEndPart.nonConnectedExternalSurfacePositions = {[portalEndPart.rearExternalCheckSurfacePositionString] = portalEndPart.rearExternalCheckSurfacePositionString}
+                portalEndPart.nonConnectedInternalSurfacePositionStrings = {[portalEndPart.rearInternalSurfacePositionString] = portalEndPart.rearInternalSurfacePositionString}
+                portalEndPart.nonConnectedExternalSurfacePositionStrings = {[portalEndPart.rearExternalCheckSurfacePositionString] = portalEndPart.rearExternalCheckSurfacePositionString}
 
                 -- Remove the offending parts walked over from this portal before its marked as complete. The parts themselves will be tiedup up in the calling function.
                 for _, partWalked in pairs(rearPartsWalked) do
@@ -546,6 +546,7 @@ end
 ---@return boolean targetPortalPartFound
 ---@return PortalPart[] portalPartsSteppedThrough
 Portal.WalkConnectedPortalParts = function(initialPortalPart, internalSurfacePositionString, targetPortalPart)
+    -- This is a bit crude, but can be reviewed if UPS impactful. Would require more neighbour tracking at all times to replace the lookups.
     local thisPortalPart, thisInternalSurfacePositionString = initialPortalPart, internalSurfacePositionString
     local endtargetPortalPartFound, portalPartsSteppedThrough = nil, {initialPortalPart}
 
@@ -596,13 +597,13 @@ Portal.PortalComplete = function(portal)
 
     -- Work out where a tunnel could connect to the portal based on the unconnected sides of the End Portal.
     for _, endPortalPart in pairs(portal.portalEnds) do
-        local undergroundInternalConnectionSurfacePositionString = next(endPortalPart.nonConnectedInternalSurfacePositions)
+        local undergroundInternalConnectionSurfacePositionString = next(endPortalPart.nonConnectedInternalSurfacePositionStrings)
         global.portals.portalTunnelInternalConnectionSurfacePositionStrings[undergroundInternalConnectionSurfacePositionString] = {
             id = undergroundInternalConnectionSurfacePositionString,
             portal = portal,
             endPortalPart = endPortalPart
         }
-        local undergroundExternalConnectionSurfacePositionString = next(endPortalPart.nonConnectedExternalSurfacePositions)
+        local undergroundExternalConnectionSurfacePositionString = next(endPortalPart.nonConnectedExternalSurfacePositionStrings)
         portal.portalTunneExternalConnectionSurfacePositionStrings[undergroundExternalConnectionSurfacePositionString] = {
             id = undergroundExternalConnectionSurfacePositionString,
             portal = portal,
@@ -615,7 +616,7 @@ Portal.PortalComplete = function(portal)
         -- The front internal is in the orientation of this entity, the rear is in its backwards orientation.
         -- Comparing the non connected internal position to the front and back we can work out the parts portal facing orientation.
         local portalFacingOrientation
-        if next(endPortalPart.nonConnectedInternalSurfacePositions) == endPortalPart.frontInternalSurfacePositionString then
+        if next(endPortalPart.nonConnectedInternalSurfacePositionStrings) == endPortalPart.frontInternalSurfacePositionString then
             portalFacingOrientation = endPortalPart.entity_orientation
         else
             portalFacingOrientation = Utils.LoopOrientationValue(endPortalPart.entity_orientation + 0.5)
@@ -1043,7 +1044,7 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Handle the portal object.
 
         -- Remove the portal's graphic parts. When the portal parts are remade in to a portal they will gain their graphics back if approperiate.
-        ---@type table<Id, PortalPart>
+        ---@type table<UnitNumber, PortalPart>
         local endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments})
         for _, portalPart in pairs(endsAndSegments) do
             for _, graphicRenderId in pairs(portalPart.graphicRenderIds) do
@@ -1054,7 +1055,7 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
 
         -- Remove the portal's global objects. The portal object itself will be garbage collected as by the end of this function nothing will reference it.
         for _, endPortalPart in pairs(portal.portalEnds) do
-            local nonConnectedInternalSurfacePosition = next(endPortalPart.nonConnectedInternalSurfacePositions)
+            local nonConnectedInternalSurfacePosition = next(endPortalPart.nonConnectedInternalSurfacePositionStrings)
             if nonConnectedInternalSurfacePosition ~= nil then
                 global.portals.portalTunnelInternalConnectionSurfacePositionStrings[nonConnectedInternalSurfacePosition] = nil
             end
@@ -1074,15 +1075,15 @@ end
 
 --- Make a list of portal parts forget their portal and connections. Then recalculate the portal and connections again.
 --- Useful for when breaking a portal up or removing parts from a portal.
----@param portalParts table<Id, PortalPart>
+---@param portalParts table<UnitNumber, PortalPart>
 Portal.RecalculatePortalPartsParentPortal = function(portalParts)
     -- Make each portal part forget its parent so they are all ready to re-merge in to new portals later.
     for _, portalPart in pairs(portalParts) do
         portalPart.portal = nil
 
         -- Populate these back to their full lists as the entity may be connected prematurely when all the portal parts are re-scanned en-mass.
-        portalPart.nonConnectedInternalSurfacePositions = {[portalPart.frontInternalSurfacePositionString] = portalPart.frontInternalSurfacePositionString, [portalPart.rearInternalSurfacePositionString] = portalPart.rearInternalSurfacePositionString}
-        portalPart.nonConnectedExternalSurfacePositions = {[portalPart.frontExternalCheckSurfacePositionString] = portalPart.frontExternalCheckSurfacePositionString, [portalPart.rearExternalCheckSurfacePositionString] = portalPart.rearExternalCheckSurfacePositionString}
+        portalPart.nonConnectedInternalSurfacePositionStrings = {[portalPart.frontInternalSurfacePositionString] = portalPart.frontInternalSurfacePositionString, [portalPart.rearInternalSurfacePositionString] = portalPart.rearInternalSurfacePositionString}
+        portalPart.nonConnectedExternalSurfacePositionStrings = {[portalPart.frontExternalCheckSurfacePositionString] = portalPart.frontExternalCheckSurfacePositionString, [portalPart.rearExternalCheckSurfacePositionString] = portalPart.rearExternalCheckSurfacePositionString}
 
         if portalPart.typeData.partType == PortalPartType.portalEnd then
             local endPortalPart = portalPart ---@type PortalEnd
