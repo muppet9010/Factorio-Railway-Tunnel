@@ -1,6 +1,6 @@
 Now
 ---
-    - On a horizontal tunnel the top signals aren't visible around the tunnel graphic any more. Cut the roof back a tile on it and add to design decisions that the tunnel graphics aren't idenitcal in vertical vs horizonal orientations with the temporary grahics. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
+
 
 
 Bugs

@@ -94,7 +94,8 @@ Notes on this area:
         - Front part - the graphic rendered in front of the train carriage graphics.
         - Rear part - the grpahic rendered behind the train carriage graphics.
     - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
-- The entry in/out signal graphics for the lights are offset away from the track so they are visbile around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
+- The entry in/out signal graphics for the lights are currently offset away from the track so they are visbile around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
+- On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
 
 
 -- Processing trains per tick
