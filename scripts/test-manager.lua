@@ -39,6 +39,7 @@ local KeepRunningTest = false -- If enabled the first test run will not stop whe
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 ---@type table<TestManager_TestName, TestManager_TestToRun>
 local TestsToRun = {
+    -- Regular train using tunnel tests:
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
     --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
     --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
@@ -47,20 +48,24 @@ local TestsToRun = {
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
     PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-    TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
-    SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},
-    PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+    TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
+    PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
+    SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},
+    LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
+    -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
+    PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
+    RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
+    -- Bad train state tests:
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
+    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
+    TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
+    -- Tunnel part tests:
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
-    PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
-    RemoveTargetStopRail = {enabled = false, testScript = require("tests/remove-target-stop-rail")},
-    RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
-    TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
-    LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
+    TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     --UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     --Template Tests:

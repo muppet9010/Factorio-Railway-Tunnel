@@ -215,6 +215,12 @@ Tunnel.Remote_GetTunnelDetails = function(tunnel)
         portal2PartEntities[portalSegmentPartId] = portalSegmentPartObject.entity
     end
 
+    -- Get the tunnel usage ID if the tunnel is in use.
+    local tunnelUsageId
+    if tunnel.managedTrain ~= nil then
+        tunnelUsageId = tunnel.managedTrain.id
+    end
+
     ---@type RemoteTunnelDetails
     local tunnelDetails = {
         tunnelId = tunnel.id,
@@ -229,7 +235,7 @@ Tunnel.Remote_GetTunnelDetails = function(tunnel)
             }
         },
         undergroundSegmentEntities = undergroundSegmentEntities,
-        tunnelUsageId = tunnel.managedTrain.id
+        tunnelUsageId = tunnelUsageId
     }
     return tunnelDetails
 end

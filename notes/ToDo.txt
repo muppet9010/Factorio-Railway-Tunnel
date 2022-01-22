@@ -1,5 +1,6 @@
 Now
 ---
+    - On a horizontal tunnel the top signals aren't visible around the tunnel graphic any more. Cut the roof back a tile on it and add to design decisions that the tunnel graphics aren't idenitcal in vertical vs horizonal orientations with the temporary grahics. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
 
 
 Bugs
@@ -7,7 +8,6 @@ Bugs
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.
     - The portal part connected checking in Portal.UpdatePortalsForNewPortalPart() doesn't stop odd part ordering that arises from 2 incompatible portals being joined, like:  S S E S S BUILD_S_HERE E S. It just declares a portal complete when 2 Ends are within it, regardless of where straights may be, so youd could also build this in order and it would include all within the complete portal: S E S E
     - If a train has entered the tracks (triggered the portal tracks train detector) and then is upgraded to being tracked by signal approaching, but the train aborts its approach we currently Terminate the tunnel usage. However we need to return to the train on portal tracks state as the train is still there now. If it didn't trigger the portal tracks detector we can just stop as its having no impact on the tunnel or portals. TrainManager.TrainApproachingOngoing() the terminate logic at top of function.
-    - Make a proper test for rebuilding all tunnel portal and underground part combinations so it can be tested properly.
 
 
 Features to add/change
