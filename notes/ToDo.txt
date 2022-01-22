@@ -1,6 +1,5 @@
 Now
 ---
-    - Building E S E S E doesn't generate a valid portal (correct), but if you mine any of the parts it crashes.
 
 
 Bugs

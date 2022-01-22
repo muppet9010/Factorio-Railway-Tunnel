@@ -4,15 +4,28 @@ local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
 local PrototypeAttributes = require("utility/prototype-attributes")
 
--- Copies a table and all of its children all the way down.
+--- Copies a table and all of its children all the way down.
 ---@type fun(object:table):table
 Utils.DeepCopy = factorioUtil.table.deepcopy
 
--- Takes an array of tables and returns a new table with copies of their contents. Merges children when they are tables togeather, but non table data types will have the latest value as the result.
+--- Takes an array of tables and returns a new table with copies of their contents. Merges children when they are tables togeather, but non table data types will have the latest value as the result.
 ---@type fun(tables:table[]):table
 Utils.TableMergeCopies = factorioUtil.merge
 
--- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
+--- Takes an array of tables and returns a new table with references to their top level contents. Does a shallow merge, so just the top level key/values. Last duplicate key's value processed will be the final result.
+---@param sourceTables table[]
+---@return table mergedTable
+Utils.TableMergeOrigionalsShallow = function(sourceTables)
+    local mergedTable = {}
+    for _, sourceTable in pairs(sourceTables) do
+        for k in pairs(sourceTable) do
+            mergedTable[k] = sourceTable[k]
+        end
+    end
+    return mergedTable
+end
+
+--- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
 ---@param entity1 LuaEntity
 ---@param entity2 LuaEntity
 Utils.Are2EntitiesTheSame = function(entity1, entity2)
