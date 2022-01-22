@@ -95,3 +95,17 @@ Notes on this area:
         - Rear part - the grpahic rendered behind the train carriage graphics.
     - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
 - The entry in/out signal graphics for the lights are offset away from the track so they are visbile around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
+
+
+-- Processing trains per tick
+-----------------------------
+
+Explored delaying the TrainManager per tick functions (TrainApproachingOngoing, TrainLeavingOngoing, TrainOnPortalTrackOngoing) to be run every 10 ticks rather than per tick in branch "less_frequent_tick_processing". This did save some mod execution time, estimate around 15%. But it introduced a lot of risk as there could become odd timings between different events that I couldn't test and reasonably reproduce. So decided the UPS saving aren't worth the risk.
+The TrainApproachingOngoing function for setting speed seems less risky to delay as it would just make entering speed less stable, but when tested on a big train and 10 second initial delay it could cause the entering train to double call its signal reservation, flagging the risks involved.
+
+
+-- Train entry detector
+----------------------------
+
+The train entry detector is intended to prevent *most* invalid tunnel uses while the train is outside of the portal and thus easiest for players to resolve. With the future introduction of manual train driving and other features this protection will likely be weakened. An example of when it won't detect a bad train is if a second train tails a first train in to the same portal.
+As it isn't guarenteed to block all bad train usage an undesireable state must be handled by the active elements of the tunnel's usage (transition detectors and traversing train cloning process).

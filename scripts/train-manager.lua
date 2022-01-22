@@ -14,6 +14,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
 ---@field primaryTrainPartName PrimaryTrainState
+---@field skipTickCheck boolean @ If TRUE then the mod doesn't check the train this tick. Used to save checking which state function to call when there is none required for a large portion of the managed train's lifetime.
 ---
 ---@field approachingTrain? LuaTrain|null @ Ref to the approaching train. Cleared when the train enters the tunnel.
 ---@field approachingTrainId? Id|null @ The approachingTrain LuaTrain id. Cleared when the train enters the tunnel.
@@ -170,10 +171,12 @@ TrainManager.ProcessManagedTrains = function(eventData)
 
     -- Loop over each train and process it.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
-        if global.debugRelease then
-            Logging.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain, currentTick)
-        else
-            TrainManager.ProcessManagedTrain(managedTrain, currentTick)
+        if not managedTrain.skipTickCheck then
+            if global.debugRelease then
+                Logging.RunFunctionAndCatchErrors(TrainManager.ProcessManagedTrain, managedTrain, currentTick)
+            else
+                TrainManager.ProcessManagedTrain(managedTrain, currentTick)
+            end
         end
     end
 
@@ -185,23 +188,22 @@ end
 TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     -- We only need to handle one of these per tick as the transition between these states is either triggered externally or requires no immediate checking of the next state in the same tick as the transition.
     -- These are ordered on frequency of use to reduce per tick check costs.
-    if managedTrain.primaryTrainPartName == PrimaryTrainState.portalTrack then
-        -- Keep on running until either the train triggers the Transition signal or the train leaves the portal tracks.
-        TrainManager.TrainOnPortalTrackOngoing(managedTrain)
-        return
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
+    if managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
         -- Keep on running until either the train reaches the Transition train detector or the train's target stops being the transition signal.
         TrainManager.TrainApproachingOngoing(managedTrain)
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
+        TrainManager.TrainLeavingOngoing(managedTrain)
+    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.portalTrack then
+        -- Keep on running until either the train triggers the Transition signal or the train leaves the portal tracks.
+        TrainManager.TrainOnPortalTrackOngoing(managedTrain)
     elseif managedTrain.primaryTrainPartName == PrimaryTrainState.underground then
         if managedTrain.undergroundTrainHasPlayersRiding then
             -- Only reason we have to update per tick while travelling underground currently.
             TrainManager.TrainUndergroundOngoing(managedTrain, currentTick)
         else
-            -- Nothing to do, the arrival is scheduled.
+            -- Nothing to do, the arrival is scheduled. Should never really be reached due to the "skipTickCheck" ManagedTrain field.
             return
         end
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
-        TrainManager.TrainLeavingOngoing(managedTrain)
     end
 end
 
@@ -356,6 +358,7 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
     if not managedTrain.undergroundTrainHasPlayersRiding then
         EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain})
+        managedTrain.skipTickCheck = true -- We can ignore this managed train until its arrival tick event fires.
     end
 end
 
@@ -605,6 +608,9 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
         carriage.destructible = true
     end
 
+    -- Set the per tick event back to running. In some UndergroundOngoing states this was set to skip each tick as not needed due to scheduled events.
+    managedTrain.skipTickCheck = false
+
     -- Tidy up for the leaving train and propigate state updates.
     TrainManager.DestroyDummyTrain(managedTrain)
     TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
@@ -729,7 +735,8 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         entrancePortal = entrancePortalTransitionSignal.portal,
         tunnel = entrancePortalTransitionSignal.portal.tunnel,
         trainTravelDirection = Utils.LoopDirectionValue(entrancePortalTransitionSignal.entity.direction + 4),
-        undergroundTrainHasPlayersRiding = false
+        undergroundTrainHasPlayersRiding = false,
+        skipTickCheck = false
     }
     local trainForwards = train_speed > 0
 
