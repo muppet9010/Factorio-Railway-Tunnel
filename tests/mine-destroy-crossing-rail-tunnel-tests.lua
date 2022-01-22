@@ -6,7 +6,6 @@ local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
 -- Internal test types.
---- Class name includes the abbreviation of the test name to make it unique across the mod.
 ---@class Tests_MDCRTT_ActionTypes
 local ActionTypes = {
     mine = "mine",
@@ -86,7 +85,6 @@ Test.Start = function(testName)
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    --- Class name includes the abbreviation of the test name to make it unique across the mod.
     ---@class Tests_MDCRTT_TestScenarioBespokeData
     local testDataBespoke = {
         crossingTunnelSegment = crossingTunnelSegment, ---@type LuaEntity
@@ -192,7 +190,6 @@ Test.GenerateTestScenarios = function(testName)
     for _, actionType in pairs(actionTypesToTest) do
         for _, segmentToRemove in pairs(segmentsToRemoveToTest) do
             for _, blockingTrainType in pairs(blockingTrainTypesToTest) do
-                --- Class name includes the abbreviation of the test name to make it unique across the mod.
                 ---@class Tests_MDCRTT_TestScenario
                 local scenario = {
                     actionType = actionType,
@@ -207,7 +204,7 @@ Test.GenerateTestScenarios = function(testName)
 
     -- Write out all tests to csv as debug if approperiate.
     if DebugOutputTestScenarioDetails then
-        TestFunctions.WriteTestScenariosToFile(testName, {"actionType", "segmentToRemove", "blockingTrainType"}, Test.TestScenarios)
+        TestFunctions.WriteTestScenariosToFile(testName, Test.TestScenarios)
     end
 end
 

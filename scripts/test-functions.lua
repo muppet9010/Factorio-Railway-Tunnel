@@ -576,24 +576,36 @@ end
 
 --- A debug function to write out the test's testScenario's details to a csv for manually checking in excel.
 ---@param testName string @ Used in the file name and appended with "-TestScenarios.csv".
----@param keysToRecord string[] @ The name of the data keys to be recorded from the testScenarios object. The first column is always the testScenario index value.
 ---@param testScenarios table @ The test scenario table.
-TestFunctions.WriteTestScenariosToFile = function(testName, keysToRecord, testScenarios)
+TestFunctions.WriteTestScenariosToFile = function(testName, testScenarios)
     -- game will be nil on loading a save.
     if game == nil then
         return
     end
 
-    local fileName = testName .. "-TestScenarios.csv"
-    game.write_file(fileName, "#, " .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n", false)
-
-    for testIndex, test in pairs(testScenarios) do
-        local testScenarioLogText = ""
-        for _, key in pairs(keysToRecord) do
-            testScenarioLogText = testScenarioLogText .. ", " .. tostring(test[key])
+    -- Get all the keys across all of the test scenario's as some scenarios may have different keys to others.
+    local keysToRecord = {}
+    for _, test in pairs(testScenarios) do
+        for key in pairs(test) do
+            if keysToRecord[key] == nil then
+                keysToRecord[key] = key
+            end
         end
-        game.write_file(fileName, tostring(testIndex) .. testScenarioLogText .. "\r\n", true)
     end
+
+    -- Add the headers.
+    local logText = "#, " .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n"
+    -- Add the test's keys
+    for testIndex, test in pairs(testScenarios) do
+        logText = logText .. tostring(testIndex)
+        for key in pairs(keysToRecord) do
+            logText = logText .. ", " .. tostring(test[key])
+        end
+        logText = logText .. "\r\n"
+    end
+    -- Write out the file.
+    local fileName = testName .. "-TestScenarios.csv"
+    game.write_file(fileName, logText, false)
 end
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,6 @@
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 
---- Class name includes the abbreviation of the test name to make it unique across the mod.
 ---@class Tests_TOPEMDT_ActionTypes
 local ActionTypes = {
     mine = "mine",
@@ -68,7 +67,6 @@ Test.Start = function(testName)
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    --- Class name includes the abbreviation of the test name to make it unique across the mod.
     ---@class Tests_TOPEMDT_TestScenarioBespokeData
     local testDataBespoke = {
         westTrainStop = westTrainStop, ---@type LuaEntity
@@ -149,7 +147,6 @@ Test.GenerateTestScenarios = function()
     local actionTypesToTest = ActionTypes ---@type Tests_TOPEMDT_ActionTypes[]
     -- Work out the combinations of the various types that we will do a test for.
     for _, actionType in pairs(actionTypesToTest) do
-        --- Class name includes the abbreviation of the test name to make it unique across the mod.
         ---@class Tests_TOPEMDT_TestScenario
         local scenario = {
             actionType = actionType

@@ -112,7 +112,6 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    --- Class name includes the abbreviation of the test name to make it unique across the mod.
     ---@class Tests_STUA_TestScenarioBespokeData
     local testDataBespoke = {
         stationEast = stationEast, ---@type LuaEntity
