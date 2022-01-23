@@ -53,6 +53,8 @@ local TestsToRun = {
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
+    ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_abort")},
+    ApproachingOnPortalTrackTrainIndecisive = {enabled = true, testScript = require("tests/approaching_on_portal_track_train_indecisive")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},

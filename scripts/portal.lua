@@ -1241,6 +1241,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 -- The train has reserved this tunnel.
                 if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
                     -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entry portal track. This is healthy activity.
+                    MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, managedTrain)
                     return
                 elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
                     -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
@@ -1257,7 +1258,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
             -- This train hasn't reserved any tunnel.
             if portal.tunnel.managedTrain == nil then
                 -- Portal's tunnel isn't reserved so this train can grab the portal.
-                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal)
+                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
                 return
             else
                 -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.

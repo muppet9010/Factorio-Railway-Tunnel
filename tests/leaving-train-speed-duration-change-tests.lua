@@ -49,7 +49,7 @@ local TunnelOversized = {
 local StartingSpeed = {
     none = "none",
     half = "half", -- Will be set to 0.6 as an approximate half speed.
-    full = "full" -- Will be set to 2 as this will drop to the trains real max after 1 tick.
+    full = "full" -- Will be set to 1.4 as this is locomotive max.
 }
 ---@class Tests_LTSDCT_LeavingTrackCondition
 local LeavingTrackCondition = {
@@ -67,10 +67,10 @@ local MaxTimeVariationPercentage = 80 -- The maximum approved time variation as 
 local DoMinimalTests = true -- The minimal test to prove the concept. Just does the letter "b".
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionFilter = {"--<>--"} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelOversizedFilter = {} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificStartingSpeedFilter = {} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificTrainCompositionFilter = {"<---->"} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelOversizedFilter = {"portalOnly"} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificStartingSpeedFilter = {"full"} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificLeavingTrackConditionFilter = {"clear"} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -120,8 +120,15 @@ Test.Start = function(testName)
     end
 
     -- Work out how much rail to build at the ends of the tunnel portals.
-    local railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 10 -- Start the train very close to the portal so its speed is around the starting speed still.
-    local railCountLeavingEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 40 -- Seems that 40 is safely far away at max speed for "clear" LeavingTrackCondition.
+    local railCountEntranceEndOfPortal
+    if testScenario.startingSpeed == StartingSpeed.full then
+        -- Start the train far ebnough away from the portal so its  starting abstract high speed doesn't trigger the tunnel and then instantly release it when Factorio clamps to train max speed in first tick. The train isn;t going to go any faster so greater starting distances only smooth out the variation value (we want aas little smoothing as possible).
+        railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 4
+    else
+        -- Start the train very close to the portal so its speed hasn't climbed much from the starting speed.
+        railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 10
+    end
+    local railCountLeavingEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 40 -- Seems that 40 is safely far away at max speed for "clear" LeavingTrackCondition. *40 was found as *30 was edge case in some trains. Not smartly worked out at present.
 
     -- Stores the various placement position X's worked out during setup for use by other elements later.
     local nearPositionX, farPositionX, beginningEntranceRailPositionX
@@ -285,7 +292,7 @@ Test.Start = function(testName)
     elseif testScenario.startingSpeed == StartingSpeed.half then
         startingSpeedValue = 0.6
     elseif testScenario.startingSpeed == StartingSpeed.full then
-        startingSpeedValue = 2
+        startingSpeedValue = 1.4
     else
         error("unrecognised StartignSpeed: " .. testScenario.startingSpeed)
     end
@@ -339,6 +346,14 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_LTSDCT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_LTSDCT_TestScenarioBespokeData
+
+    -- Check that no starting speed variations has caused the tunnel to be reserved/released on the first tick.
+    if event.tick == testDataBespoke.testStartedTick then
+        if testData.lastAction ~= nil then
+            TestFunctions.TestFailed(testName, "train triggered tunnel in first tick and is therefore bad test setup")
+            return
+        end
+    end
 
     -- LeavingTrackCondition.noPath only - track when to remove the rail to cause a noPath.
     if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then

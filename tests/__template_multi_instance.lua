@@ -76,7 +76,7 @@ Test.Start = function(testName)
     -- Set the trains starting speed based on the test scenario.
     local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
     if testScenario.trainStartingSpeed == TrainStartingSpeeds.full then
-        train.speed = -2 -- Train is moving backwards for Factorio reasons.
+        train.speed = -1.4 -- Max locomotive speed. Train is moving backwards for Factorio reasons.
     end
 
     -- Add test data for use in the EveryTick().

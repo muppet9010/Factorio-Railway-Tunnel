@@ -147,20 +147,35 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachi
     end
 end
 
---- Used when a train is claiming a portals track (and thus the tunnel), but not planning to actively use the tunnel yet. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their breaking distance is the stopping signal or when driven manually.
+--- Used when a train is on a portal's track and thus the tunnel.
+--- if its pathed to the tranisition signal already and claimed the tunnel we just need to record that it has entered the portal tracks in case it aborts its use of the tunnel (downgrades).
+--- If its not pathed to the transition signal then we need to reserve the tunnel now for it. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their breaking distance is the stopping signal or when driven manually. They will claim the signal at a later point (upgrade) and thne that logic will superseed this.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
-TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal)
+---@param managedTrain? ManagedTrain|null @ Populated if this is an alrady approachingTrain entering the portal tracks.
+TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, managedTrain)
     if global.debugRelease then
-        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainOnPortalTrack_Internal, trainOnPortalTrack, portal)
+        Logging.RunFunctionAndCatchErrors(TrainManager._RegisterTrainOnPortalTrack_Internal, trainOnPortalTrack, portal, managedTrain)
     else
-        TrainManager._RegisterTrainOnPortalTrack_Internal(trainOnPortalTrack, portal)
+        TrainManager._RegisterTrainOnPortalTrack_Internal(trainOnPortalTrack, portal, managedTrain)
     end
 end
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
-TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack, portal)
-    local managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
+---@param managedTrain? ManagedTrain|null @ Populated if this is an alrady approachingTrain entering the portal tracks.
+TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack, portal, managedTrain)
+    -- Check if this is a new tunnel usage or part of an exisitng transition signal reservation.
+    if managedTrain ~= nil then
+        -- Is an already approaching train entering the portal tracks. Just capture this and do nothing further in relation to this.
+        managedTrain.portalTrackTrain = managedTrain.approachingTrain
+        managedTrain.portalTrackTrainId = managedTrain.approachingTrainId
+        managedTrain.portalTrackTrainInitiallyForwards = managedTrain.approachingTrainForwards
+        managedTrain.portalTrackTrainBySignal = false
+        return
+    end
+
+    -- Is a new tunnel usage so do a full handling process.
+    managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
     managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
@@ -251,7 +266,14 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
 
     -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
     if approachingTrain.state ~= defines.train_state.arrive_signal or approachingTrain.signal ~= managedTrain.entrancePortalTransitionSignal.entity then
-        TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
+        if managedTrain.portalTrackTrain == nil then
+            -- Train never made it to the prtoal tracks, so can just abandon it.
+            TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
+        else
+            -- Train made it to the portal tracks, so need to enable tracking of it until it leaves.
+            managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
+            TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack, TunnelUsageChangeReason.abortedApproach)
+        end
         return
     end
 
