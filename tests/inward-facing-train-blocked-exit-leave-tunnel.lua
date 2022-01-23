@@ -7,21 +7,21 @@ local Test = {}
 
 Test.RunTime = 1800
 
-local blueprintString =
-    "0eNqtWl1v4jAQ/C9+JlVsx7HNj7iXezxVKA0ujS4kKB/toYr/fg5UpVKn4LX8UhQwM2F2duNd9509tbM7DE03sfU7a+q+G9n6zzsbm11Xtct70/Hg2Jo1k9uzFeuq/XI1VE37Vh0309x1rs0uL5tDP0xVuxnn4bmqXXZo/d+989CnFWu6rfvH1vz0uGL+rWZq3IXpfHHcdPP+yQ1+wSfHOHmW3cuULWSe+tCP/lt9t9yUR8oKv/ToX7lSp9PqG5D4BFpwumyc+gNAkfaKsvKc1eVD9sv/lhcGcGXEDUp0g0UEEEdAig5UWARURgBpBKQjgGAQTQQQFNtGAEGxeU5HklBtHmF1CeXmIgIJ6s0j3C2h4DzC3hIrHuFvgRWPMLjAikc4XGDFIywusOIRHhdQcRHhcQ4VF1eP19Ww67O3aue/fAtHPSgr9VKM+6HxcB8FOV8eIa/+uh/8um5uW0QXkQgcBlhEJALHz6GIROAwwCIiETgOcEQi5DjAEYmQY8UjEiHHikckQg4VlxGJkEPFJb3YWyi4FBGbsO0NGi19qr1WQ/ORaByRyjuko9stG71wVr9vuM9aJGdVAawqOWuIwmVyVh7AqlOz+q3OfVaTnDXETTY5a4Cbijw5a4CbCp6cNcBNhUjNKgLcVCSvTSLATUXy2iRC3JS8NokQNyWvTSLETclrEw9xU/LaxEPclLw28QA3qeS1iQe4SSWvTTzATSp5bQowk5Jp92pnK22bwdWXD4v7d0BuPvD4RJFbDzzPUeTGAw+YFLntwBMvRW46fhjBkVsOPBMsyQ0HHn6W5HZDQZ1LckOt8GSR3E6XUOeS7OcS60z2c4l1Jvu5xDqT/Vxincl+1ljnq5/bvu73/dS8uhsg5UOBZjYPXubl4GBc1g99/ddN2fPs2mWMCufGZPtrGF5Ntr+G4dVk+2s8DyfbX8Pw6oI2TjPyRlzuTtM0OUkMNJMmJ4nBUSUnicFRJSeJwVG1tGjYHEcjJBaGnBkGOsiQM8PCmBpyZlgYUyNJhcbqHyUklBlDfopYfDpFThALjWTICYJng4acID9MK42hA+HwWjoQlNrmYce5yzTgjPJ9q3w92/3dz/hs13L67cKIWkEHgiG15CfHeeT/6H9u/eK2c/txyn5NruXaP96N/LLmcuQPzr6/afa4QJ//F2D95V8HfB/ihvG8UBheaCu01FrxvDid/gPlMsdE"
+local blueprintString = "0eNqtW9tu4kgQ/Zd+hsjVVzcfMS/7uIoiB3qINcZGvmQ2ivLv2w7sBO1UZ6qUegEZzDmm6vSxCx9e1WO3pPPY9rPavap2P/ST2v39qqb22Dfd+tr8ck5qp9o5ndRGPTb7H8s5b49N2/1sXh7mpe9Tt708PZyHcW66h2kZvzf7tD13+fGUMvjbRrX9If2jdvB2v1H5pXZu04XrfePloV9Oj2nMO2xU35xWzmnOLMenebuSZfLzMOVPDf16WBnJuo16UbttjG9vm99g9C+YFaXfTvNwRjDCL4xN5msub6lv+Xs8KQTVsA8uYAdn2TAOg3FsGIPBeDYMYDCBC1OjjavZMGiJIxsGLTFUbBy0xsCWdY0WGTQXJ6BVBraSA1pmYEs54HVmazngdWaLOeB1ZqvZ43Vmy9njdWbr2aN11mw9e7TO+kPP+2Y8DtufzTF/tIji4p2LJvd+o4axzWBXq63WE8Nz3h7GvFu/dB1Gxha9R5uq2aJ3+LmFLXqHNlWzRe/wprJF7/CmskXv8DqzRW/xOrNFb9E6G7boLVpnwzZxi9bZfOj5f9dR1wuo1B/KmGa9Vnluxva6hABjMH9gmNJxvTDb/vc9PqFzBDorR2cIdE6ODgh0XoxOU3oX5OgCga6Wo6NIJcrREaRiKzk6glQsiNEBQSpWy9ERpGLlXAUIUrFyrgIUqci5ClCkIucqFKXImQpFKHKeQtGJnKUQZOLkHIWgEidmKBQyMTuh1NF84SKIoEFXdI+lP6TxOA75mVE+Sv2cLCWlil6WkrDcXJClpPSylqUkGKaLopSUiwdfyVIS5ONBlpIgH69lKQny8UaWkiAfL+s+lDHFy7oPZRDzsu5DGTW9rPsYinxk3Ycyv3tZ97EE+QRZ97EE+QRZ97EE+YSv/PRiCZ0LYjOSo1RQbERylOKJTUiOsOyC2IDkKH0TG5A8ZbGJDUieohKxAckTVFKLDUieoJJabEDyBJXUYhNSIKikFvOSQFBJLeYlgaISMS8JFJWIeUmgqETMS2qKSsS8pKaoRMxLaoJKopiX1ASVRDEvqQkqiWJeEgkqiV/5uSVSWsW9KYrndiL3nihU6D3I6Nk46L26GNg46L3DWLNx8FxLZOPgwYSKe1MUAE9KVMAGwqMblWYDFTI7hg2Ehy4qywYqFJutal0oNlvWulBstq51odhsYetCsT+U3Q374TTM7XP65MdRfWexQMldfn9NK07r/uOw/5Hm7fcldSsDnsxiLwSNN5md8QKDN5kd8gJTCJ2xF4LBm3wT86LEfcDET5rzx7wPsNNgYHBNseNg+chxIPZysYXespeLLfQ28lpiPd4SUkPYsTHAEzSg2WsEj/QAOxMGeMYIbkJhFNtxplhGjumwI2TgCnlQ9lLBs1/ADpGBK7SYvVRcocXspeIKLWZfM+H5QbgJkn2aKjdXlHWeOrRj2l/etLcZ87+GBc+YAztmBnhGEwx7jeChUTDs88iaYr3PX3f/lA5Ld036f6yvdXs94efVd7PX5a8HSAr/t6rdr+Dv/0nY3fyFIc8oaZzed9R1No6og43OhlXx/wKoxJcr"
 
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     TestFunctions.RegisterTestsScheduledEventType(testName, "DestroyBlockingWagon", Test.DestroyBlockingWagon)
 end
 
+---@param testName string
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the trains/wagons
     local blockingWagon, movingTrain
-    local wagons = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "cargo-wagon", true, false)
-    for _, wagon in pairs(wagons) do
+    for _, wagon in pairs(placedEntitiesByGroup["cargo-wagon"]) do
         if #wagon.train.carriages == 1 then
             blockingWagon = wagon
         else
@@ -31,7 +31,7 @@ Test.Start = function(testName)
 
     -- Get the stations placed by name.
     local trainStopNorth, trainStopSouth
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "North" then
             trainStopNorth = stationEntity
         elseif stationEntity.backer_name == "South" then
@@ -40,30 +40,38 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.blockingWagon = blockingWagon
-    testData.movingTrain = movingTrain
-    testData.blockingWagonReached = false
-    testData.northStationReached = false
-    testData.southStationReached = false
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(movingTrain)
-    testData.trainStopNorth = trainStopNorth
-    testData.trainStopSouth = trainStopSouth
+    ---@class Tests_IFTBELT_TestScenarioBespokeData
+    local testDataBespoke = {
+        blockingWagon = blockingWagon, ---@type LuaEntity
+        movingTrain = movingTrain, ---@type LuaTrain
+        blockingWagonReached = false, ---@type boolean
+        northStationReached = false, ---@type boolean
+        southStationReached = false, ---@type boolean
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(movingTrain),
+        trainStopNorth = trainStopNorth, ---@type LuaEntity
+        trainStopSouth = trainStopSouth ---@type LuaEntity
+    }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
     TestFunctions.ScheduleTestsOnceEvent(game.tick + 600, testName, "DestroyBlockingWagon", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsOnceEvent(testName, "DestroyBlockingWagon", testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.DestroyBlockingWagon = function(event)
     -- The main train should have completed its tunnel trip north and have completely stopped at the blocking wagon at this point.
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke ---@type Tests_IFTBELT_TestScenarioBespokeData
 
     -- The main train will have its lead loco around 30 tiles below the blocking wagon if stopped at the signal.
-    local inspectionArea = {left_top = {x = testData.blockingWagon.position.x, y = testData.blockingWagon.position.y + 25}, right_bottom = {x = testData.blockingWagon.position.x, y = testData.blockingWagon.position.y + 35}}
+    local inspectionArea = {left_top = {x = testDataBespoke.blockingWagon.position.x, y = testDataBespoke.blockingWagon.position.y + 25}, right_bottom = {x = testDataBespoke.blockingWagon.position.x, y = testDataBespoke.blockingWagon.position.y + 35}}
     local locosInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {area = inspectionArea, name = "locomotive", limit = 1}
     if #locosInInspectionArea ~= 1 then
         TestFunctions.TestFailed(testName, "1 loco not found around expected point")
@@ -77,40 +85,46 @@ Test.DestroyBlockingWagon = function(event)
         return
     end
 
-    if Utils.GetDistanceSingleAxis(leadingCarriage.position, testData.blockingWagon.position, "y") > 25 then
+    if Utils.GetDistanceSingleAxis(leadingCarriage.position, testDataBespoke.blockingWagon.position, "y") > 25 then
         TestFunctions.TestFailed(testName, "train not stopped at expected position for blocking wagon signal")
         return
     end
 
     game.print("train stopped at blocking wagon signal")
-    testData.blockingWagonReached = true
+    testDataBespoke.blockingWagonReached = true
 
-    testData.blockingWagon.destroy()
+    testDataBespoke.blockingWagon.destroy()
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local northTrain, southTrain = testData.trainStopNorth.get_stopped_train(), testData.trainStopSouth.get_stopped_train()
-    if northTrain ~= nil and not testData.northStationReached then
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke ---@type Tests_IFTBELT_TestScenarioBespokeData
+
+    local northTrain, southTrain = testDataBespoke.trainStopNorth.get_stopped_train(), testDataBespoke.trainStopSouth.get_stopped_train()
+
+    if northTrain ~= nil and not testDataBespoke.northStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached north station, but with train differences")
             return
         end
         game.print("train reached north station")
-        testData.northStationReached = true
+        testDataBespoke.northStationReached = true
     end
-    if southTrain ~= nil and not testData.southStationReached then
+    if southTrain ~= nil and not testDataBespoke.southStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached south station, but with train differences")
             return
         end
         game.print("train reached south station")
-        testData.southStationReached = true
+        testDataBespoke.southStationReached = true
     end
-    if testData.blockingWagonReached and testData.northStationReached and testData.southStationReached then
+    if testDataBespoke.blockingWagonReached and testDataBespoke.northStationReached and testDataBespoke.southStationReached then
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

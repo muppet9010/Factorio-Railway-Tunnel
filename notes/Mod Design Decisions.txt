@@ -1,0 +1,112 @@
+Underground segments building, mining and fast replacing
+--------------------------------------------------------
+The difficult variation here is supporting the fast replacing and the variation between player and robot events triggered.
+
+Player:
+    Place ghost on empty space: on_pre_build > on_built_entity
+    Place ghost fast replace over entity: on_pre_build
+    Place ghost fast replace over ghost: on_pre_build > on_built_entity
+    Build entity: on_pre_build > on_built_entity
+    Mine entity: on_pre_player_mined_item
+    Fast Replace entity: on_pre_build > on_pre_player_mined_item > on_built_entity
+
+Construction bot:
+    Bot build entity: on_robot_built_entity
+    Bot mine entity: on_robot_pre_mined
+    Bot fast replace entity: on_built_entity
+
+
+Ghost placement of fast replacement and rotations
+-------------------------------------------------
+
+A player can fast replace an entity over itself with a different rotation if it supports fast replacement, but a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
+
+
+Tunnel part connections
+-----------------------
+
+Portal and Underground parts connect within their own groups using connection points they each maintain in a global lookup table. A part's internal connection points are 0.5 tiles inside their border on the connection side centers. Meaning that a part can look in its external connection point to see if there is another part to connect to, this is 1 tile in front of its internal connection points. As all parts have at least 1 tile padding to the sides of the connection points and must be placed on the rail grid (2x2 tiles) its impossible to place a part at a side angle to another part.
+For a tunnel there must be an underground between 2 complete portals. As otherwise separating the portal parts from each other is a pain and why would you ever want a 0 length tunnel.
+
+
+Portal has tracks only with tunnel
+----------------------------------
+
+The new design is that a portal without a tunnel has no tracks or other elements. This reduces entity creation during building and makes things simpler. This does mean that when a tunnel is destroyed all tracks for the underground and portal are removed, killing any trains on either (rare case in real game). Also, to mine part of a tunnel (portal or underground) the entire tunnel tracks must be clear, otherwise the mine should fail.
+In the past there was a separation between portals and undergrounds in terms of tracks, but this made things more complicated for no real world value.
+
+
+Events
+------
+
+- Use of on_pre_player_mined_item over on_player_mined_entity for portal and underground mining detection and undo logic. This is an historic decision and both events support entity type filtering. Appears to have been done as with the pre event in invalid removal situations we can destroy the old entity when we replace it. This destroying of the old entity prevents it being mined and so any mod reacting to the standard mined_entity event won't know about the attempt we blocked and undid. An alternative previously considered was to make the entities non minable while the tunnel was in use, but this is a lot of API calls on every tunnel usage.
+
+
+Train detector usage
+--------------------
+
+Using entities that are killed by a train reaching a certain point allows us to not track distances each tick, thus being significantly lower in UPS overall. They also trigger when the train reaches that exact spot, meaning no overrun is possible before we have reviewed the situation and taken the desired action. This results in no need for padding within the portal for fast moving trains and should let us support infinitely fast trains.
+
+
+Death event detection
+---------------------
+
+At present we don't subscribe to any commonly named prototype death events, only our custom ones. And so I don't believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.
+
+
+Train leaving tunnel
+--------------------
+
+- A train trying to leave a tunnel will tend to give way to other trains on the rail network. This is due to the tunnel train only being able to claim signal blocks once released, and every time it tries to leave and can't claim the signals for its speed it has to wait longer while it simulates slowing down in the tunnel.
+- A train that can't leave at full speed will have its expected leaving speed recalculated and the time to traverse the tunnel set to fully account for this. This means while a train enters the tunnel at full speed regardless of the rail network state on the other side the total duration and leaving speed of using the tunnel will correct this.
+
+
+Train with no fuel
+------------------
+
+- If a train with no fuel is on a schedule and has speed to reach the tunnel train detectors we treat it equally as if it had fuel.  This is the simplest handling as it requires no additional logic and is a very minor edge case, as the train will just run out of fuel on the other side of the tunnel somewhere.
+- This does mean a train with no fuel that starts approaching will accelerate towards the tunnel.
+- The leaving train will depart at the expected speed and traversing time of a fueled train.
+- This will generally resolve the issue of trying to re-fuel a train sitting in a portal, as with this approach frequently the train will escape the portal and thus be easily accessible.
+
+
+Traversing train not on player force
+------------------------------------
+
+By having the traversing train not on the player's force from the point it enters the tunnel to when it starts leaving it resolves several issues:
+    - Can't be deconstructed by the player.
+    - Doesn't show up in the players train list as a duplicate to the dummy train that the player does see.
+    - Players can't interact with the train's schedule in any way.
+Notes on this area:
+    - A train Id is the carriage entities and has no owner, so carriages can have their force changed without affecting the train Id.
+    - The dummy train is on the players force and so maintains the train count and train manager visibility. But it doesn't allow the player to interact with it.
+    - The entrance portal blocking carriage left behind upon entering the tunnel has its force changed for the same reasons.
+    - Once a graphic layer is put above the portals and has a selection option for the portal/tunnel player GUI then the train carriages on the portal will no longer be selectable.
+
+
+-- Portal design and layout
+---------------------------
+
+- The front 3 tiles of the portal area floor can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding). Note that when the open end of the portal is facing the player the tunnel roof is pushed back due to its height.
+- A portal will have a base graphic under regular entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics on both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
+    - Closed end - the graphic rendered in front of the train carriage graphics.
+    - Open end - with 2 parts:
+        - Front part - the graphic rendered in front of the train carriage graphics.
+        - Rear part - the graphic rendered behind the train carriage graphics.
+    - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
+- The entry in/out signal graphics for the lights are currently offset away from the track so they are visible around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
+- On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
+
+
+-- Processing trains per tick
+-----------------------------
+
+Explored delaying the TrainManager per tick functions (TrainApproachingOngoing, TrainLeavingOngoing, TrainOnPortalTrackOngoing) to be run every 10 ticks rather than per tick in branch "less_frequent_tick_processing". This did save some mod execution time, estimated around 15%. But it introduced a lot of risk as there could become odd timings between different events that I couldn't test and reasonably reproduce. So decided the UPS savings aren't worth the risk.
+The TrainApproachingOngoing function for setting speed seems less risky to delay as it would just make entering speed less stable, but when tested on a big train and 10 second initial delay it could cause the entering train to double call its signal reservation, flagging the risks involved.
+
+
+-- Train entry detector
+----------------------------
+
+The train entry detector is intended to prevent *most* invalid tunnel uses while the train is outside of the portal and thus easiest for players to resolve. With the future introduction of manual train driving and other features this protection will likely be weakened. An example of when it won't detect a bad train is if a second train tails a first train into the same portal.
+As it isn't guaranteed to block all bad train usage an undesirable state must be handled by the active elements of the tunnel's usage (transition detectors and traversing train cloning process).

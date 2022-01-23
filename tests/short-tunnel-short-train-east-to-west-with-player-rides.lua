@@ -1,25 +1,26 @@
 -- Sends a short train from the east to the west. First loop player watches, second loop player rides the train.
+-- Note the player being in the train after the tunnel traversal isn't checked by the test.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 2
 
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
-local blueprintString =
-    "0eNqtml1v2jAUhv9LrmGK82Wb+/2GXUwVSoNLo4UEJYEOVfz3OaUbqETtY883haThPYe85zk2jl+jx+Zg9n3djtHqNaqrrh2i1c/XaKi3bdlM58bT3kSrqB7NLlpEbbmbjvqybl7K03o8tK1plpeX9b7rx7JZD4f+qazMct/Yvztjpc+LqG435ne0EueHRWRP1WNtLpHeDk7r9rB7NL294F+M0QZpl8PY7W3cfTfYj3TtlJGVWYpUL6LT9MZqb+reVJf/FotoGMvL++iHGabYdzESj++xmUkiy99yuE/hWPb1exJiJn76RfzBbKfb9nUCQvslkAVLQPolkAdLwNOCIlgCqV8CMlgCwi8BFSoBzxrUoeJ7lqCIQyXgWYJChErAswRFEqwGPRMI1Qh944fqg74GhGqDvhUYqgv6IhiqCXq2IBGqB/r2YBGqCfqOQkmoJug7DiehmqDvTCQJ1QR952JJGmY2Oj8ZTb6Of22CwzTl3j6PyymRTybdH2PMqeYOqhKrFg6qOVaVDqopVlUOqgKraq6aYLfS2EEVu5UKB1XsVpo4qGK30tRBFbuVOrAluFsObAnulgNbgrvlwJbgbjmwJbhbDmzF2K3Mga0Yu5U5sBVjtzIHtmLsVubAVozdyjhbmpvF0dLcK06W5lZxsDR3inOluVEcK4WNyjlVChuVc6gUNirnTClsVM6RUtionBMluVGcKMmN4kRJbhQnSnKjOFGSG4WJ4poFBop/+QLzxF0qME68nApME6/7AsPEAS0wS7yTFBgl3vIKTBLvzQUGiQ8iBeaIj3byylHTVd2uG+ujmRG83syur63G+y/0+NuEwvSwbZiu7LvqlxmXTwfT2M+c5+Jhxvg0QGLG+HxFYsb4xEpeGavKftstX8qtvfZ+aSZOPr3b7dGe6np7RXtomrlAGDw+1ZQYPIdJsZRclJeD4qK8HjTi5PaH1gfrkltQqm56Wp3Hc4iomOePa08JLoprQmHwHH7WqpTd6elpwP/e6Yznj8tP5VwUl5/i9PElFMXp46s9itPHF6aU5qLYKM0548t9mnPGVyY154wvomo8wjms92pOFF+a1pwovoquOVF8wV9zovizCa3QHqO/iundE5XrDqPv5bTD6MGeqp7N5tC872m69tnp2E4J7Win0pvLLnus7jcq3SlP2m9br1Y3O7UW0dH0wyUbJTKpE5lKmYs4O5//ALwlrMw="
+local blueprintString = "0eNqtW11z4jgQ/C9+hiuPZFkS7/cb7uFqK+UQL+taY1P+yF4qxX8/OXAbNnhz0yO9hACmR1ZPtzSS9Zo9tnN9GppuynavWbPvuzHb/f2ajc2hq9rls+nlVGe7rJnqY7bJHqv99/kU3g9V0/6oXh6muevqdnt5eTj1w1S1D+M8fK329fbUhr/HOoCfN1nTPdX/ZDs6f9lk4aNmaupLrLc3Lw/dfHysh3DBJuuq4xJzCkG67Tj1pxD51I/hJ323tCnAbKkIF74s/+gA/tQM9f7ydbnJxqm6/J/9VY9L8Lsg6meQDzdyvYO6e1qJWfprSPo1ZEB7robmGpRW4un/iTfWh6Wfws2G7w/fprXgRhq8SBBcS4ObBMFJGryMD27EnNsEwa00uEsQXJxwPkFwccJRniC6OOOI4qMX4pQjlSC6OOcogcsV4qSjBDZXyLMugc8V8qxLYHRannUJnE7Lsy6B1Wl51iXwOi3OOpXA67Q461QCr1PirFMJvE6Js05p0QxSyan+rb3NYWI9HIY+vHLumeQ9blI1Qd7tZaomiBWvbKomyHPBpWqCXPs+URPkJVWeqAXiZNSUqAXiXNQqUQvEqah1qlQUtyCRMcobkMgW5RwkMkV5GiayRLkSExmi3IwS2aHckItEdigflYpEdigfmgvRsp58QlTEF7zyCWERX+8qeU/Hl7vyuXcRX+3Ky44ivtiVV1xFfK0rLzaL+FJXXmeb+EpXvsRg4gtd+eqKia9z5QtLJt7h5GtqJt7h5MuJJt7h5CupJt7h5IvIJt7h5OvnJt7h5FsHJt7h5JsmZbzDybeLyniHk2+UlfEOF7FFKFrIk2/Glu+m9t/tbJfAn25xf4yyhmv4uL8djNZwSwDXArgWwDUArgNwNYDrAVyAN5vzcRXAmyUAF+DNKgAX4M1qABfgzQJ6UwhvgN4I4Q3QGyG8AXojhDdAb4TwBuiNAN4coLcc4M0BessB3hygtxzgzQF6ywHeHKC3HOGNrzeP0MaXm0dY46vNI6TxxeYRzvha8wBlni81B1Dm+UpzAGWeLzQHUOb5OnMAZZ4vM4dQxleZRSjjq8wilPFVZhHK+CqzCGVslZVA11LOVpklBJatMqQPKGerDGHsbYRiwloElq0yC1HGVpmDKGOrzEGUsVXmIMrYKnMQZWyVIWMO3TxV2vb7/thPzXO9soF427H90ASY61pA/seS0Mtj9ONy7dDvv9fT9utct+FX59WQbAUigzIRW4HIFIKIrUBkwkM3T3Xuq+HQb39Uh3Dx/SbeYoOf9nz3HD7qh3BNN7ftaiy2LJGpIBFblh7KSLYsoXk2kePjQgniWQr6tTj6QKS6ldC+X06omHxVPCrn3wWSj4r4uEiSKMXHRbLk5jnFT3t90VmCXmePl1DNTsrwcZGcVCUfF8oSvjYJyhK+NgnKEvagCa2RkearEFnTI81XIbIGSZqvQmTNlLTm4yK8ab7eNMQbX28a4o2vNw3xxtebhnhzrMOIP0H93W7Q+1HEP6vlKOKX8NH+W/00t9fTj++uvLxf5pmLdIMcbq68HMm8P9R4B77Av53U3N0c7Nxkz/UwXhrkqLBe2cKbwhp9Pv8L26V33w=="
 
+---@param testName string
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 45, y = 70}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 45, y = 70}, testName)
 
     -- Get the stations placed by name.
     local trainStopWest, trainStopEast
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "West" then
             trainStopWest = stationEntity
         elseif stationEntity.backer_name == "East" then
@@ -27,7 +28,7 @@ Test.Start = function(testName)
         end
     end
 
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+    local train = placedEntitiesByGroup["locomotive"][1].train
 
     -- Put the player in a carriage on the 2nd loop.
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
@@ -41,42 +42,53 @@ Test.Start = function(testName)
     end
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.westStationReached = false
-    testData.eastStationReached = false
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.trainStopWest = trainStopWest
-    testData.trainStopEast = trainStopEast
+    ---@class Tests_STSTETWWPR_TestScenarioBespokeData
+    local testDataBespoke = {
+        westStationReached = false, ---@type boolean
+        eastStationReached = false, ---@type boolean
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        trainStopWest = trainStopWest, ---@type LuaEntity
+        trainStopEast = trainStopEast ---@type LuaEntity
+    }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local westTrain, eastTrain = testData.trainStopWest.get_stopped_train(), testData.trainStopEast.get_stopped_train()
-    if westTrain ~= nil and not testData.westStationReached then
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke ---@type Tests_STSTETWWPR_TestScenarioBespokeData
+
+    local westTrain, eastTrain = testDataBespoke.trainStopWest.get_stopped_train(), testDataBespoke.trainStopEast.get_stopped_train()
+
+    if westTrain ~= nil and not testDataBespoke.westStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached west station, but with train differences")
             return
         end
         game.print("train reached west station")
-        testData.westStationReached = true
+        testDataBespoke.westStationReached = true
     end
-    if eastTrain ~= nil and not testData.eastStationReached then
+    if eastTrain ~= nil and not testDataBespoke.eastStationReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached east station, but with train differences")
             return
         end
         game.print("train reached east station")
-        testData.eastStationReached = true
+        testDataBespoke.eastStationReached = true
     end
-    if testData.westStationReached and testData.eastStationReached then
+    if testDataBespoke.westStationReached and testDataBespoke.eastStationReached then
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

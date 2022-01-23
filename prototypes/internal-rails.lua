@@ -15,20 +15,28 @@ local internalRailBase = {
     pictures = refStraightRail.pictures
 }
 
-local internalRailOnMap = Utils.DeepCopy(internalRailBase)
-internalRailOnMap.name = "railway_tunnel-internal_rail-on_map"
+-- Used for the rail in the portal areas that are visible.
+local portalRailOnMap = Utils.DeepCopy(internalRailBase)
+portalRailOnMap.name = "railway_tunnel-portal_rail-on_map"
 
+-- The crossing rail isn't used to make part of the tunnel itself, but to be a rail crossing the tunnel.
+local crossingRailOnMap = Utils.DeepCopy(internalRailBase)
+crossingRailOnMap.name = "railway_tunnel-crossing_rail-on_map"
+
+-- Not currently used
 local internalRailNotOnMap = Utils.DeepCopy(internalRailBase)
 internalRailNotOnMap.name = "railway_tunnel-internal_rail-not_on_map"
 table.insert(internalRailNotOnMap.flags, "not-on-map")
 
+-- Not currently used
 local internalRailOnMapTunnel = Utils.DeepCopy(internalRailBase)
 internalRailOnMapTunnel.name = "railway_tunnel-internal_rail-on_map_tunnel"
 internalRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
 
 data:extend(
     {
-        internalRailOnMap,
+        portalRailOnMap,
+        crossingRailOnMap,
         internalRailNotOnMap,
         internalRailOnMapTunnel
     }

@@ -4,29 +4,30 @@
 ]]
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
 
 Test.RunTime = 1800
 
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
-local blueprintString =
-    "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"
+local blueprintString = "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"
 
+---@param testName string
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 50, y = 60}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 50, y = 60}, testName)
 
     -- Get the stations placed by name.
-    local stationSouths, stationSouthEndViaTunnel, stationSouthEndNotTunnel, stationNorth = {}
-    for _, stationEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "train-stop", true, false)) do
+    local stationSouths, stationNorth = {}, nil
+    for _, stationEntity in pairs(placedEntitiesByGroup["train-stop"]) do
         if stationEntity.backer_name == "South" then
             table.insert(stationSouths, stationEntity)
         elseif stationEntity.backer_name == "North" then
             stationNorth = stationEntity
         end
     end
+    local stationSouthEndViaTunnel, stationSouthEndNotTunnel
     if stationSouths[1].position.x < stationSouths[2].position.x then
         stationSouthEndViaTunnel = stationSouths[1]
         stationSouthEndNotTunnel = stationSouths[2]
@@ -35,53 +36,62 @@ Test.Start = function(testName)
         stationSouthEndNotTunnel = stationSouths[1]
     end
 
-    local repathTrain = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+    local repathTrain = placedEntitiesByGroup["locomotive"][1].train
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.stationSouthReached = false
-    testData.stationNorthReached = false
-    testData.repathTrain = repathTrain
-    testData.repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain)
-    testData.stationSouthEndViaTunnel = stationSouthEndViaTunnel
-    testData.stationSouthEndNotTunnel = stationSouthEndNotTunnel
-    testData.stationNorth = stationNorth
+    ---@class Tests_DROA_TestScenarioBespokeData
+    local testDataBespoke = {
+        stationSouthReached = false, ---@type boolean
+        stationNorthReached = false, ---@type boolean
+        repathTrain = repathTrain, ---@type LuaTrain
+        repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain),
+        stationSouthEndViaTunnel = stationSouthEndViaTunnel, ---@type LuaEntity
+        stationSouthEndNotTunnel = stationSouthEndNotTunnel, ---@type LuaEntity
+        stationNorth = stationNorth ---@type LuaEntity
+    }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testData.stationSouthEndViaTunnel.get_stopped_train(), testData.stationSouthEndNotTunnel.get_stopped_train(), testData.stationNorth.get_stopped_train()
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke ---@type Tests_DROA_TestScenarioBespokeData
 
-    if stationSouthEndViaTunnelTrain ~= nil and not testData.stationSouthReached then
+    local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testDataBespoke.stationSouthEndViaTunnel.get_stopped_train(), testDataBespoke.stationSouthEndNotTunnel.get_stopped_train(), testDataBespoke.stationNorth.get_stopped_train()
+
+    if stationSouthEndViaTunnelTrain ~= nil and not testDataBespoke.stationSouthReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.repathTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at south station has differences")
             return
         end
         game.print("train reached tunnel usage south station")
-        testData.stationSouthReached = true
+        testDataBespoke.stationSouthReached = true
     end
     if stationSouthEndNotTunnelTrain ~= nil then
         -- The train should never reach this specific station as it should use the tunnel.
         TestFunctions.TestFailed(testName, "train didn't use tunnel and reached wrong south station")
         return
     end
-    if stationNorthTrain ~= nil and not testData.stationNorthReached then
+    if stationNorthTrain ~= nil and not testDataBespoke.stationNorthReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.repathTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at north station has differences")
             return
         end
         game.print("train reached north station")
-        testData.stationNorthReached = true
+        testDataBespoke.stationNorthReached = true
     end
 
-    if testData.stationSouthReached and testData.stationNorthReached then
+    if testDataBespoke.stationSouthReached and testDataBespoke.stationNorthReached then
         TestFunctions.TestCompleted(testName)
         return
     end

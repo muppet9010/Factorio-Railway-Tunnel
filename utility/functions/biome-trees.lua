@@ -88,7 +88,7 @@ BiomeTrees.AddBiomeTreeNearPosition = function(surface, position, distance)
         Logging.LogPrint("No position for new tree found", logNonPositives)
         return nil
     end
-    local newTree = surface.create_entity {name = treeType, position = newPosition, force = "neutral", raise_built = true}
+    local newTree = surface.create_entity {name = treeType, position = newPosition, force = "neutral", raise_built = true, create_build_effect_smoke = false}
     if newTree == nil then
         Logging.LogPrint("Failed to create tree at found position")
         return nil
@@ -215,6 +215,7 @@ BiomeTrees._GetTreeData = function()
     local environmentData = global.UTILITYBIOMETREES.environmentData
     local moistureRangeAttributeName = global.UTILITYBIOMETREES.environmentData.moistureRangeAttributeName
     local treeEntities = game.get_filtered_entity_prototypes({{filter = "type", type = "tree"}, {mode = "and", filter = "autoplace"}})
+    -- NOTE: temperature_optimal and temperature_range show as warnings as API docs don't specifically list them, instead it lists generic dimensions which the machine parsing can't handle.
     for _, prototype in pairs(treeEntities) do
         Logging.LogPrint(prototype.name, logData)
         local autoplace = nil

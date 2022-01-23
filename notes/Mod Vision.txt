@@ -1,0 +1,29 @@
+Vision
+------
+
+Be as light weight UPS wise for running trains through tunnels as possible. Sacrifice everything to achieve this and if odd scenarios arise provide a manual fix that doesn't burden UPS.
+
+
+Expected behaviour
+-----------------
+
+    - When a train is approaching a tunnel we assume it has a clear path onwards on the far side and so always accelerate the train into the tunnel for this best case scenario. When the train comes to leave we review the rail network on the leaving side of the tunnel and simulate the trains breaking and leaving speed appropriately. This can lead to the train spending longer in the tunnel to make up for it entering the tunnel while accelerating, when on a real rail network it would have been breaking. This means the tunnels overall train throughput and handling is roughly equivalent to a natural rail block of the total tunnel length.
+    - If 2 trains both try to use the tunnel at once, stop the second train at the border, set it to manual and fire a GUI alert. Don't let manual/coasting trains enter the portal area as this just avoids needing to handle collisions. We want to add cheap issue detection mechanics, but nothing UPS costly.
+    - Portal design:
+        - There will be 2 portal parts initially.
+            - Portal End - a 6x6 tile piece that has to be used at both ends of each portal. At the End part it will provide 6 of the 8 tiles needed for the detector entity, end signals, blocker locomotive and Blocked end invisible signals. At the Entry part it will provide 6 tiles: 2 tiles needed for the entry signals and detector, 2 tiles for the End part and 2 tiles for a leaving train to pull forward in when leaving.
+            - Portal Segment (Straight) - a 2x6 piece that is used to build up the portal's straight length. This will make up the full train length, but no padding needed as the entry part handles this.
+        - Will have the example composition of for a single carriage tunnel: E S S S E U U U U E S S S E
+            - E = End Portal piece
+            - S = Segment portal piece
+            - U = Underground tunnel piece
+    - Initially tunnels (portals and underground) must be built in straight lines.
+    - Any train trying to enter the portal area that is longer than the portal area it will be hard blocked at the border, set to manual and a notification to user shown.
+    - A train that is on the portal tracks or is approaching the tunnel is free to turn around. It's only committed to use the tunnel once it reaches the end of the entrance portal tracks and triggered the transition train detector.
+
+
+Known non ideal behaviour
+------------------------
+
+    - Scripts must use "raise_built" = true when creating our tunnel parts, otherwise the mod doesn't know about them. This applies to our mod internally and any external mods. Same equivalence for when any mod removes one of our entities.
+    - When a tunnel is being used bi-directionally (2 ways) and 2 trains simultaneously approach the tunnel from opposite ends at slow speeds in some cases they can both be allowed to reserve a path into the tunnel. When they both reach the portal they will be mutually blocking each other from using the tunnel, leaving the rails deadlocked. At present the 2 trains are stopped and a GUI alert is raised for both trains to the player to manually resolve as it should be a very rare occurrence.

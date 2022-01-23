@@ -5,17 +5,17 @@ local TestFunctions = require("scripts/test-functions")
 local Utils = require("utility/utils")
 
 Test.RunTime = 1800
-Test.RunLoopsMax = 1
 
+---@param testName string
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
-local blueprintString =
-    "0eNqtmu1u2jAUhu/Fv2HC3za3MlUopRmLFhIUAh2quPc5YxLVlq0Pnv+0Shq9x+R9n5Pj0Dfx3J7qw9B0o1i/iWbbd0ex/vwmjs2uq9rp3Hg51GItmrHei4Xoqv10NFRN+1pdNuOp6+p2efu1OfTDWLWb42n4Um3r5aFNP/d1kr4uRNO91N/FWl6fFiKdasamvlX6eXDZdKf9cz2kCzJqvKSFHfpj0uy7acmpzlLGhbiItU2lX5qh3t7+5hbiXA1NdTuS18Uf9dUH9Y/1bvpIHy7A55XXhcpnfnpTqLyUefVtqfo6r74rVd/m1fel6mfGL5Sqn5m/WKi+ysyfXJVaQGYApSy1gMwEylINUGVGUJZqgSozg7JUE9S5ISzVBXVuCEu1QZ0bwlJ9UOeGsFQj1LkhLNUJTWYIValOaDJDqEp1QpMZQqXKjKJ+1gH1cf17IzyOaQW7r+NyWsjcsDs/76g5VfOAqsSqlquuIlZ1D6h6rOofULVYNTygyt2KD6hit/QKq0ZslpZcFHulFRfFVmkOVsROac5V5EZxrAI3ilMVuFEcqsCN4kwFbhRHKmCjDCfKY6MMJ8pjowwnymOjDCfKY6MMJ8pzozhRjhvFiXLcKE6U40Zxohw3ihPlsFGWE2WxUZYTZbFRlhNlsVGWE2WxUZYTZblRnCjDjeJEGW4UJ8pwozBRfOqxGCg+njnM0wODpJNcFKfUKS6KbXKai2KfnOGi3CjM0wP7M+e4KDfKc1FuVOCi3Kg7UG2/7ff92JzrGcV3r437oUkiv7bnq0/TLDR9BXacLh367bd6XH451W1C8Dr3Hp/TJnEyPKdN4WR4TpvCyfB32rbVsOuXr9UuXTsjGf55w7tzOtUP6Yru1LZzhTiBCkfQcwIVjqDnBCqeCE6g5okIDJZ3L3d/8069h2XbT98j29UsJpGvH4cvcPY0zkTg7GmciaDYnZ72bP95pwN//mkcv8DpMzh+gdNneCY4fXz0C5w+PqQG/vzj43TgnPHBP3LO+BYlcs74ZiryZxzf9kVOFN+gRk4U30pHThTf9EdO1N9eTzzdeldSuP8T0kKc6+F4uyAkbKLyOq6c9O56/QFNSE4l"
+local blueprintString = "0eNqtW9tu4zYQ/Rc924V4J/MrxSJQHK4rrCwZspxtEPjfS8VbJNs46RzOvESwLJyhdC7iMPRL8zCc83Hux6W5e2n63TSemrs/X5pTvx+7YT23PB9zc9f0Sz40m+ah2/04H8vnueuHn93z/XIexzxsr4f74zQv3XB/Os/fu13eHofy95AL+GXT9ONj/ru5U5dvm6ac6pc+X2u9fni+H8+HhzyXCzbN2B3yxxq/wPP4WAZynE4FYRrXIRbUrU2b5rkcVWtKrcd+zrvr13rTPHVz310/qcvmQ0H9PwVPeb/ew/a0lO/3fy23qrvq6kaguqmubgWqq+rqjl/d1PPuBaqH6upBoHq96qJA9XrVJYHq9apTLb+8rpedUgLl63WnBOJO1wtPCeSdrleeEgg8zZCeQOIphvQEIk8xpCeQeYohPYHQUwzpCaSeqpeeFkg9xhxLIPTqhad11Zyynmv9acqdyyx43s9TORLumUG3lRkB4xk4mRHUG157mREwhBdkRsAwXhRSIkOKSWgI9Vo0rdAQGH2eEhpCvRqNFhpCvRyNUDAy5mBGKBkZs1AjFI2MebgRykZGJ2KEwpHRixmhdGR0o0YoHRntuBVKR8Z6hK1a9WMs/lh+G8xZduN3wYwlR8tvgm297S2/B2Ys9lp+C+zqzW75HbBjqI7fADuG6vj9r6tXneO3v65edY7f/nrGMjs/63y96hw/63y96hw/6zxDdfys8wzV8bMuMFTHz7rAUB0/6wJDdfysC/Wq8/ysC4x/q/GzLtarzlct9cV6qv1bvP17Q9u18q3V28+71lvAlg78eUd+C9gBwAEB9gCwQ4ADAGwQ4AgAQ+QlOnCLkBdaABghLygAGCEvaAAYIS8AzmsR8gLdeQnijm68BFFH912CmKPbLkHE0V2XIN7oposIb5HuuYjwFumWiwhvke64iPAW6YaLCG+R7rcA8Ub3W4B4o/stQLzR/RYg3uh+CxBvdL95hLdE95tHeEt0v3mEt0T3m0d4S3S/eYS3RPebg3ij+81BvNH95iDe6H5zEG9kv0GvoUS2G/TWVC3ZbtBb/nXORcR1EC7ZbtAs6nXyScRNEC7Zbtg09XUaTgXGmPN0YIy6QAfGuIt0YIy8N9MN0246TEv/lG9tj/jtAU9zX4B+rRq0f6yzgHUD/Wm9ep52P/Ky/X7OQ1HS5eYOUbIjsa5UKUUHhhSjNB0YUsy7/aK7bt5P25/dvlz8EXbd3/Y1AeNTOTXN5aLxPAw3i9GdCi2MKEV3KrSUoxTdqRpTCt2pGlNKpBnq940F/+FTvzfUblp/qeLa21ZK9PuAhKnpHtWQVjTdoxrSyrtdkF8++XWDjMCT1+TXqTKQNDXdpQaSpqa71GBaobvUYFqhu9RgWqG/Ty1GHt2PFiLP0P1oIfIM3Y8WIs/Q35kWIs/Qnecg8gzdeQ4jj+48h5FHd94XLem3a+YVkLefS26apzyfrhfEwnzSwSZngzOXyz+o2C/i"
 
+---@param testName string
 Test.Start = function(testName)
-    local builtEntities = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 45, y = 70}, testName)
+    local builtEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 45, y = 70}, testName)
 
     -- Get the end rails.
     local farWestRail, farEastRail
@@ -28,53 +28,64 @@ Test.Start = function(testName)
         end
     end
 
-    local train = Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "locomotive").train
+    local train = placedEntitiesByGroup["locomotive"][1].train
     train.schedule = {
         current = 1,
         records = {
-            {rail = farWestRail},
-            {rail = farEastRail}
+            {rail = farWestRail, temporay = true},
+            {rail = farEastRail, temporay = true}
         }
     }
 
     local testData = TestFunctions.GetTestDataObject(testName)
-    testData.farWestRailReached = false
-    testData.farEastRailReached = false
-    testData.origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-    testData.farWestRail = farWestRail
-    testData.farEastRail = farEastRail
+    ---@class Tests_PTR_TestScenarioBespokeData
+    local testDataBespoke = {
+        farWestRailReached = false, ---@type boolean
+        farEastRailReached = false, ---@type boolean
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        farWestRail = farWestRail, ---@type LuaEntity
+        farEastRail = farEastRail ---@type LuaEntity
+    }
+    testData.bespoke = testDataBespoke
 
     TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param testName string
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
+---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
-    local testName, testData = event.instanceId, TestFunctions.GetTestDataObject(event.instanceId)
-    local westTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
-    local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testData.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
-    if westTrain ~= nil and not testData.farWestRailReached then
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(event.instanceId)
+    local testDataBespoke = testData.bespoke ---@type Tests_PTR_TestScenarioBespokeData
+
+    local westTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+    local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+
+    if westTrain ~= nil and not testDataBespoke.farWestRailReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached west rail, but with train differences")
             return
         end
         game.print("train reached west rail")
-        testData.farWestRailReached = true
+        testDataBespoke.farWestRailReached = true
     end
-    if eastTrain ~= nil and not testData.farEastRailReached then
+    if eastTrain ~= nil and not testDataBespoke.farEastRailReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testData.origionalTrainSnapshot, currentTrainSnapshot) then
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached east rail, but with train differences")
             return
         end
         game.print("train reached east rail")
-        testData.farEastRailReached = true
+        testDataBespoke.farEastRailReached = true
     end
-    if testData.farWestRailReached and testData.farEastRailReached then
+    if testDataBespoke.farWestRailReached and testDataBespoke.farEastRailReached then
         TestFunctions.TestCompleted(testName)
+        return
     end
 end
 

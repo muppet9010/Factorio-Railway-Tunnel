@@ -6,7 +6,7 @@ data:extend(
             order = "zzzzzzz",
             icons = {
                 {
-                    icon = "__railway_tunnel__/graphics/icon/tunnel_portal_surface/railway_tunnel-tunnel_portal_surface-placement.png",
+                    icon = "__railway_tunnel__/graphics/icon/railway_tunnel.png",
                     icon_size = 32
                 },
                 {
@@ -45,6 +45,18 @@ data:extend(
             name = "railway_tunnel-hidden_placement_tests",
             group = "railway_tunnel-hidden",
             order = "e"
+        },
+        {
+            type = "item-subgroup",
+            name = "railway_tunnel-train_blockers",
+            group = "railway_tunnel-hidden",
+            order = "f"
+        },
+        {
+            type = "item-subgroup",
+            name = "railway_tunnel-other",
+            group = "railway_tunnel-hidden",
+            order = "z"
         }
     }
 )

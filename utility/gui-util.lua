@@ -1,3 +1,5 @@
+-- Library to support making, storing and accessing GUI elements.
+
 local GuiUtil = {}
 local Utils = require("utility/utils")
 local GuiActionsClick = require("utility/gui-actions-click")
@@ -72,7 +74,7 @@ GuiUtil.AddElement = function(elementDetails)
                 child.parent = element
                 local childReturnElements = GuiUtil.AddElement(child)
                 if childReturnElements ~= nil then
-                    returnElements = Utils.TableMerge({returnElements, childReturnElements})
+                    returnElements = Utils.TableMergeCopies({returnElements, childReturnElements})
                 end
             end
         end
@@ -115,10 +117,7 @@ GuiUtil.UpdateElementFromPlayersReferenceStorage = function(playerIndex, storeNa
     local element = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, storeName, name, type)
     if element ~= nil then
         if not element.valid then
-            Logging.LogPrint(
-                "WARNING: Muppet GUI - A mod tried to update a GUI, buts the GUI is invalid. This is either a bug, or another mod deleted this GUI. Hopefully closing the affected GUI and re-opening it will resolve this. GUI details: player: '" ..
-                    game.get_player(playerIndex).name .. "', storeName: '" .. storeName .. "', guiElementName: '" .. name .. "', guiElementType '" .. type .. "'"
-            )
+            Logging.LogPrint("WARNING: Muppet GUI - A mod tried to update a GUI, buts the GUI is invalid. This is either a bug, or another mod deleted this GUI. Hopefully closing the affected GUI and re-opening it will resolve this. GUI details: player: '" .. game.get_player(playerIndex).name .. "', storeName: '" .. storeName .. "', guiElementName: '" .. name .. "', guiElementType '" .. type .. "'")
             return
         end
         local generatedName = GuiUtil.GenerateGuiElementName(name, type)
