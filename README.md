@@ -17,11 +17,11 @@ Mod Features
 - Tunnels are built by placing the entrance and exit tunnel portal parts and building underground tunnel parts between them. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel.
 - Tunnels can not be entered by players, they are purely for trains to go under one another. Players riding in trains through tunnels stay on the surface to enjoy the view.
 - Tunnels are composed of 2 complete portals with underground parts connecting them. Which comprise multiple parts for maximum design flexibility:
-    - A complete portal is made of 2 portal End parts with a number of portal Segments between them. The segment’s length must be long enough on each portal for the trains length (end parts not counted) that tries to use the tunnel.
+    - A complete portal is made of 2 portal End parts with a number of portal Segments between them. Each portal's segment’s length (end parts not counted) must be long enough for the train when it tries to use the tunnel.
         - When a complete portal is made a tunnel portal graphic will appear with both ends of the portal closed to trains.
     - The underground of the tunnel is made up of a series of underground parts.
     - When 2 valid portals are connected by underground parts a tunnel is formed. This can be seen as the outside ends of each portal facing the wider rail network will have their graphics show an opening, with rail and signals appearing on them. At this point trains can path through the tunnel and use it.
-- A train must fully fit within the tunnel's entrance and exit portal to be able to use the tunnel. If the train is too long it will be prevented access and a GUI alert raised to the player. Unfortunately I can't stop the train trying to path through the tunnel so some consideration by the player when building their rail network is required.
+- A train must fully fit within the tunnel's entrance and exit portal to be able to use the tunnel. If the train is too long it will be prevented access and a GUI alert raised to the player. Unfortunately I can't stop the train trying to path through the tunnel so some consideration by the player when building their rail network is required. The max length train a tunnel can accept is the minimum length of either portal's segments (non end parts). A train's length for vanilla Factorio carriages is 6 tiles, plus 1 tile per carriage connection. This will match the length of a train on regular track. i.e. 1 carriage is 6 tiles, 2 carriages are 13 tiles (6+1+6).
 - The mod has been designed and optimised to be UPS efficient.
 
 
