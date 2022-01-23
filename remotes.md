@@ -7,7 +7,7 @@ All remote interfaces are under the interface name "railway_tunnel".
 
 Tunnel Usage Entry Object Attributes
 ----------------
-The common attributes that are returned giving details about a tunnel usage entry by many of the mods events and remote interfaces. If the tunnel usage has completed then these values will all be nil.
+The common attributes that are returned give details about a tunnel usage entry by many of the mods events and remote interfaces. If the tunnel usage has completed then these values will all be nil.
 - tunnelUsageId = id of the tunnel usage details (INT). Always present.
 - primaryState = the primary (lead) state of the train in its tunnel usage (STRING): approaching, underground, leaving, finished.
 - train = LuaTrain of the train entering or leaving the tunnel. Will be nil while primaryState is "underground".
@@ -31,15 +31,15 @@ Get a custom event id via a remote interface call that can be registered to be n
 - Description: Event raised every time a tunnel usage details change. Any instances of this event are raised at the end of the tunnel's usage processing each tick, so train states should be stable.
 - Event Attributes:
     - Tunnel Usage Entry Object Attributes for this tunnel usage.
-    - action: the action that occured (STRING):
+    - action: the action that occurred (STRING):
         - onPortalTrack: When the train has initially moved on to the tunnel portals tracks. This may be on route to use the tunnel or may be just moving on to some tracks within the portal. Either way the tunnel and the other portal are now reserved for this train. If the train leaves the portal track without using the tunnel the terminated action will be raised with a "changeReason" of "portalTrackReleased". If the train moves in to use the tunnel then the "startApproaching" or action will be raised when the train reserves the inner transition signals.
         - startApproaching: When the train has first reserved the tunnel by pathing across the inner end of a tunnel portal. The tunnel is reserved. In cases of a "fullyLeft" train reversing down the tunnel the "replacedtunnelUsageId" attribute will be populated. The old tunnel usage will have the "changeReason" attribute with a value of "reversedAfterLeft" on its "terminated" action event.
         - entered: Raised when the train enters the tunnel and is removed from the entrance portal on the map.
         - leaving: Raised when the train has left the tunnel and starts to path away from the exit portal. When the train has finished leaving the portal and its tracks the "terminated" action will be raised.
         - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
     - changeReason: the cause of the change (STRING):
-        - reversedAfterLeft: Raised for "terminated" action. Occurs when a train has fullyLeft, but not released the tunnel and then reverses back down the tunnel. The new tunnel usage event for "startApproaching" action will have the "replacedtunnelUsageId" attribute populated. This old tunnel usage has completed with this event.
-        - abortedApproach: Raised for "terminated" action. Occurs when a train aborts its approach before it starts to enter the tunnel, but after it has reserved the tunnel and the "startApproaching" action evet has been raised.
+        - reversedAfterLeft: Raised for "terminated" action. Occurs when a train has fullyLeft, but not released the tunnel and then reverses back down the tunnel. The new tunnel usage event for "startApproaching" action will have the "replacedtunnelUsageId" attribute populated. This old tunnel usage has been completed with this event.
+        - abortedApproach: Raised for "terminated" action. Occurs when a train aborts its approach before it starts to enter the tunnel, but after it has reserved the tunnel and the "startApproaching" action event has been raised.
         - completedTunnelUsage: Raised for "terminated" action. The train finished leaving the portal tracks and the tunnel has been unlocked ready for future use. This is the successful completed clarification on the "terminated" action.
         - tunnelRemoved: Raised once a tunnel is removed (destroyed) while the train is using it.
         - portalTrackReleased: Raised when a train that had entered a tunnels portal rails leaves without using the tunnel.
@@ -86,7 +86,7 @@ Get Temporary Carriage Names
 Tunnel Object Attributes
 ----------------
 
-The common attributes that are returned giving details about a tunnel by many of the mods events and remote interfaces. If the tunnel is not complete these values will all be nil.
+The common attributes that are returned give details about a tunnel by many of the mods events and remote interfaces. If the tunnel is not complete these values will all be nil.
 - tunnelId = Id of the tunnel (INT).
 - portals = table of the 2 portals in this tunnel. Comprising the below details:
     - portalId = Id of the portal (INT).
@@ -112,8 +112,8 @@ Get Tunnel Details For Entity Unit Number
 -----------------
 
 - Interface Name: get_tunnel_details_for_entity_unit_number
-- Description: Remote interface to get the details of the tunnel a tunnel part (portal or segment) entity is part of, by the entities unit_number.
+- Description: Remote interface to get the details of the tunnel a tunnel part (portal or segment) entity is part of, by the entity's unit_number.
 - Arguments:
-    - Tunnel Part Unit Number (INT) - The unit number of an entity that is part of the tunne.
+    - Tunnel Part Unit Number (INT) - The unit number of an entity that is part of the tunnel.
 - Returns:
-    - Tunnel Object Attributes for this entities tunnel or nil if no complete tunnel.
+    - Tunnel Object Attributes for this entity's tunnel or nil if no complete tunnel.

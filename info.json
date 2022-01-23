@@ -1,13 +1,13 @@
 {
     "name": "railway_tunnel",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "title": "Railway Tunnel",
     "author": "Muppet9010",
     "contact": "",
     "homepage": "https://mods.factorio.com/mod/railway_tunnel",
     "factorio_version": "1.1",
     "dependencies": [
-        "base >= 1.1.34"
+        "base >= 1.1.53"
     ],
-    "description": "A railway tunnel so trains can cross under each other. ALPHA MOD - Early release mod and versions won't upgrade. Use for testing/experimenting only."
+    "description": "A railway tunnel so trains can cross under each other. ALPHA MOD - Early release and mod won't upgrade to future versions. Use for testing/experimenting only."
 }

@@ -2,8 +2,8 @@ Terminology
 -----------
 
 A tunnel is the connection between 2 portals and can be used in either direction.
-Each portal has an Entry part where the trains enter, a Transition point where the trains are teleported away and beyond this a Blocked area where the tracks are permentantly blocked.
-A managed train is a train using a tunnel. The manage train has a direction of travel through the tunnel and thus an Entrance portal and Exit portal.
+Each portal has an Entry part where the trains enter, a Transition point where the trains are teleported away and beyond this a Blocked area where the tracks are permanently blocked.
+A managed train is a train using a tunnel. The managed train has a direction of travel through the tunnel and thus an Entrance portal and Exit portal.
 
 
 
@@ -14,11 +14,11 @@ A variable that references a LuaObject's field is named as: objectName_fieldName
 
 
 
-EmmyLua Class Defintions
+EmmyLua Class Definitions
 ------------------------
 
-- Fields that are only populated when a certain state of the parent is obtained are seperated out togeatehr with a "---" line above them. i.e. the constant fields of a portal part, vs its portal membership requiring ones, vs its tunnel requiring ones. Purely to improve class readability at the head of the document, no impact on intelisense.
-- Some large classes have their fields grouped bassed on functional role only wih a "---" line. Purely to improve class readability at the head of the document, no impact on intelisense.
+- Fields that are only populated when a certain state of the parent is obtained are separated out together with a "---" line above them. i.e. the constant fields of a portal part, vs its portal membership requiring ones, vs its tunnel requiring ones. Purely to improve class readability at the head of the document, no impact on intellisense.
+- Some large classes have their fields grouped based on functional role only with a "---" line. Purely to improve class readability at the head of the document, no impact on intellisense.
 
 
 
@@ -26,6 +26,6 @@ EmmyLua nil, null and ? for optional things.
 --------------------------------------------
 
 - All uses of optional arguments//params/returns/etc should have "?" appended to the end of the name and have "|null" on the end of their field types.
-- While techncially some scenarios can support "nil" its easier to do the same everywhere.
+- While technically some scenarios can support "nil" it's easier to do the same everywhere.
 - "nil" doesn't work for anything other than function returns, so I added "null" as a placeholder.
 - Aliases don't support ?, so can only have "null" set as one of the types.

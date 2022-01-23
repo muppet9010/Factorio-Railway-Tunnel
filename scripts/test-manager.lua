@@ -22,7 +22,7 @@ local Colors = require("utility/colors")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
-local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
+local DoTests = false -- Enable test mode and does the enabled tests below if TRUE.
 
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting, but honors their "DoSpecificTests" setting if enabled. If false then each test just will honour their other settings.
