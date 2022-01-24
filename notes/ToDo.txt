@@ -2,6 +2,7 @@ Now
 ---
 
 
+
 Bugs
 ----
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.
@@ -39,7 +40,6 @@ Features to add/change
 
 Long term UPS/code plans
 ------------------------
-    - Review performance of the leaving train arrival time and speed test (leaving-train-speed-duration-change-tests) and make it run fast on the big trains/setups if possible. Make the leaving track a suitable length for the train's task. I.e. only "clear" needs the current mega long track.
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
