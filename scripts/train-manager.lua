@@ -314,6 +314,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     -- Theres a transition portal track detector to flag when a train reaches the end of the portal track and is ready to enter the tunnel. So need to check in here.
 end
 
+--- This is triggered when the transition train detector triggers at the inner end of the portal. This is just before the train would have stopped at  the blocked end signal.
 ---@param managedTrain ManagedTrain
 ---@param tick Tick
 TrainManager.TrainEnterTunnel = function(managedTrain, tick)

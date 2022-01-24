@@ -1,11 +1,12 @@
 Now
 ---
+    - Create a test that confirms all states are transitioned through correctly. Test will need to do own state tracking and react to each change in real time.
 
 
 Bugs
 ----
     - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.
-    - Create a flow diagram of various train states and how they interlink with the change reasons and ingame triggers. Create a test that confirms all states are transitioned through correctly. Test will need to do own state tracking and react to each change in real time.
+
 
 
 Features to add/change

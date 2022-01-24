@@ -28,7 +28,7 @@ Get a custom event id via a remote interface call that can be registered to be n
     - Factorio event id.
 
 **Custom event raised**
-- Description: Event raised every time a tunnel usage details change. Any instances of this event are raised at the end of the tunnel's usage processing each tick, so train states should be stable.
+- Description: Event raised every time a tunnel usage details change. Any instances of this event are raised at the end of the tunnel's usage processing each tick, so train states should be stable. See the flow chart mapping out the states and events in the root of the mod folder: Tunnel Usage Changed Events.svg.
 - Event Attributes:
     - Tunnel Usage Entry Object Attributes for this tunnel usage.
     - action: the action that occurred (STRING):
@@ -38,13 +38,13 @@ Get a custom event id via a remote interface call that can be registered to be n
         - leaving: Raised when the train has left the tunnel and starts to path away from the exit portal. When the train has finished leaving the portal and its tracks the "terminated" action will be raised.
         - terminated: The tunnel usage has been stopped and/or completed. The "changeReason" attribute will include the specific cause.
     - changeReason: the cause of the change (STRING):
-        - reversedAfterLeft: Raised for "terminated" action. Occurs when a train is "leaving", but has not released the tunnel and then reverses back down the tunnel. The new tunnel usage event for "startApproaching" action will have the "replacedtunnelUsageId" attribute populated. This old tunnel usage has been completed with this event.
+        - reversedAfterLeft: Raised for "terminated" action. Occurs when a train is "leaving", but has not released the tunnel and then reverses back down the tunnel. The new tunnel usage event for "startApproaching" action will have the "replacedtunnelUsageId" attribute populated. This old tunnel usage has been completed with this event. It is impossible for the reversing train to reach the "entered" action before the "startApproaching" action.
         - abortedApproach: Raised for "terminated" and "onPortalTrack" action.
             - terminated action has this change reason when a train aborts its approach before it starts to enter the tunnel, but after it has reserved the tunnel and the "startApproaching" action event has been raised.
             - onPortalTrack action has this change reason when a train has been approaching the tunnel and has passed on to the portal's rail tracks, but then aborts its approach. The train remains in the "onPortalTrack" state until it has either left the portal's rail tracks, resumes its approach to the tunnel or enters the tunnel.
         - completedTunnelUsage: Raised for "terminated" action. The train finished leaving the portal tracks and the tunnel has been unlocked ready for future use. This is the successful completed clarification on the "terminated" action.
-        - tunnelRemoved: Raised once a tunnel is removed (destroyed) while the train is using it.
-        - portalTrackReleased: Raised when a train that had entered a tunnels portal rails leaves without using the tunnel.
+        - tunnelRemoved: Raised for "terminated" action once a tunnel is removed (destroyed) while the train is using it.
+        - portalTrackReleased: Raised for "terminated" when a train that had entered a tunnels portal rails leaves without using the tunnel.
     - replacedtunnelUsageId: Normally nil, unless an old tunnel usage has been replaced by this new tunnel usage for some reason. When this occurs the new tunnel usage event data includes the old tunnel usage id as this attributes value. With the old tunnel usage reporting "terminated" action.
 
 
