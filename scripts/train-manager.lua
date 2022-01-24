@@ -136,8 +136,7 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachi
         end
     end
 
-    -- TODO: need to pass through if its a reversing train to CreateManagedTrainObject() as if so it will need to populate the onPortalTrack attributes. Also add to tests.
-    local managedTrain = TrainManager.CreateManagedTrainObject(approachingTrain, entrancePortalTransitionSignal, true, committedManagedTrain)
+    local managedTrain = TrainManager.CreateManagedTrainObject(approachingTrain, entrancePortalTransitionSignal, true, committedManagedTrain, reversedManagedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     if reversedManagedTrain ~= nil then
@@ -749,8 +748,9 @@ end
 ---@param entrancePortalTransitionSignal PortalTransitionSignal
 ---@param onApproach boolean
 ---@param upgradeManagedTrain ManagedTrain @ An existing ManagedTrain object that is being updated/overwritten with fresh data.
+---@param reversedManagedTrain ManagedTrain @ An existing ManagedTrain object that is reversing after starting to leave the tunnel back in to the tunnel. This new ManagedTrain being created is this new reversal usage of the tunnel.
 ---@return ManagedTrain
-TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransitionSignal, onApproach, upgradeManagedTrain)
+TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransitionSignal, onApproach, upgradeManagedTrain, reversedManagedTrain)
     local train_id = train.id ---@type Id
     local train_speed = train.speed ---@type double
     if train_speed == 0 then
@@ -758,7 +758,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     end
 
     local managedTrainId
-    if upgradeManagedTrain then
+    if upgradeManagedTrain ~= nil then
         managedTrainId = upgradeManagedTrain.id
     else
         managedTrainId = global.trainManager.nextManagedTrainId
@@ -802,8 +802,8 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         managedTrain.approachingTrainForwards = trainForwards
         managedTrain.force = approachingTrainCarriagesCachedData[1].entity.force
 
-        -- If its an upgrade also populate the portalTrack fields as we currently destroy the old ManagedTrain rather than truely upgrading it.
-        if upgradeManagedTrain then
+        -- If its an upgrade or a reversal populate the portalTrack fields as the train is on the portal track. Any old ManagedTrain has been destroyed before this new create was called.
+        if upgradeManagedTrain ~= nil or reversedManagedTrain ~= nil then
             managedTrain.portalTrackTrain = managedTrain.approachingTrain
             managedTrain.portalTrackTrainId = managedTrain.approachingTrainId
             managedTrain.portalTrackTrainInitiallyForwards = managedTrain.approachingTrainForwards
