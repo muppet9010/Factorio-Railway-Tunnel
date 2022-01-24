@@ -1,6 +1,6 @@
 Now
 ---
-    - Create a test that confirms all states are transitioned through correctly. Test will need to do own state tracking and react to each change in real time.
+    - Inline TODO on missing logic gap.
 
 
 Bugs

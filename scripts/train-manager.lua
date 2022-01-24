@@ -136,6 +136,7 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachi
         end
     end
 
+    -- TODO: need to pass through if its a reversing train to CreateManagedTrainObject() as if so it will need to populate the onPortalTrack attributes. Also add to tests.
     local managedTrain = TrainManager.CreateManagedTrainObject(approachingTrain, entrancePortalTransitionSignal, true, committedManagedTrain)
     managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
@@ -800,6 +801,14 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
 
         managedTrain.approachingTrainForwards = trainForwards
         managedTrain.force = approachingTrainCarriagesCachedData[1].entity.force
+
+        -- If its an upgrade also populate the portalTrack fields as we currently destroy the old ManagedTrain rather than truely upgrading it.
+        if upgradeManagedTrain then
+            managedTrain.portalTrackTrain = managedTrain.approachingTrain
+            managedTrain.portalTrackTrainId = managedTrain.approachingTrainId
+            managedTrain.portalTrackTrainInitiallyForwards = managedTrain.approachingTrainForwards
+            managedTrain.portalTrackTrainBySignal = false
+        end
     else
         -- Reserved the tunnel, but not using it yet. Light data capture.
         managedTrain.portalTrackTrain = train

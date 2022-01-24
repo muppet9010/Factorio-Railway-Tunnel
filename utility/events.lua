@@ -85,15 +85,15 @@ Events.RemoveHandler = function(eventName, handlerName)
         error("Events.RemoveHandler called with missing arguments")
     end
     if MOD.eventsById[eventName] ~= nil then
-        for i = 1, MOD.eventsById[eventName] do
-            if MOD.eventsById[eventName].handlerName == handlerName then
+        for i, handler in pairs(MOD.eventsById[eventName]) do
+            if handler.handlerName == handlerName then
                 table.remove(MOD.eventsById[eventName], i)
                 break
             end
         end
     elseif MOD.eventsByActionName[eventName] ~= nil then
-        for i = 1, MOD.eventsByActionName[eventName] do
-            if MOD.eventsByActionName[eventName].handlerName == handlerName then
+        for i, handler in pairs(MOD.eventsByActionName[eventName]) do
+            if handler.handlerName == handlerName then
                 table.remove(MOD.eventsByActionName[eventName], i)
                 break
             end

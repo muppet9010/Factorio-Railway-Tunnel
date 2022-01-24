@@ -183,38 +183,22 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
     return listToTest
 end
 
---- Registers for tunnel usage change notifications to be recorded in the Test Data object's default fields.
+--- Registers for tunnel usage change notifications to be recorded in the Test Data object's default fields. To be called from Start().
+--- Used when a test will check tunnel usage events once per tick.
+--- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
+--- If multiple actions occur in the same tick only the last one is visible in the "lastAction" field which shouldn't be an issue for normal tests. All the events are in the "actions" field.
+--- If a test needs to react to each train state change in turn then the TestFunctions.RegisterTunnelUsageChangesToTestFunction() function should be used instead.
 ---@param testName string
 TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions.RecordTunnelUsageChanges", TestFunctions.RecordTunnelUsageChanges)
+    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions._RecordTunnelUsageChanges", TestFunctions._RecordTunnelUsageChanges)
 end
 
----@class TestFunctions_RemoteTunnelUsageChangedEvent : RemoteTunnelUsageChanged
----@field testName string
-
---- Records the tunnel usage change event's details to the test's Test Data object for usage within the test script. In most tests its limitations are fine.
---- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
---- If multiple actions occur in the same tick only the last one is visible in last action. Shouldn't be an issue for normal tests.
---- If a test needs to react in real time (mid tick) to a train state change then it must listen and handle the events itself. Very rare this is needed and checking at the end of each tick isn't good enough.
----@param event TestFunctions_RemoteTunnelUsageChangedEvent
-TestFunctions.RecordTunnelUsageChanges = function(event)
-    local testData = TestFunctions.GetTestDataObject(event.testName)
-
-    -- Record the action for later reference.
-    local actionListEntry = testData.actions[event.action]
-    if actionListEntry then
-        actionListEntry.count = actionListEntry.count + 1
-        actionListEntry.recentChangeReason = event.changeReason
-    else
-        testData.actions[event.action] = {
-            name = event.action,
-            count = 1,
-            recentChangeReason = event.changeReason
-        }
-    end
-
-    testData.lastAction = event.action
-    testData.train = event.train
+--- Registers for tunnel usage change notifications to be passed to a test function for processing sequentially. To be called from Start().
+--- Used when a tests needs to react to each event in turn. In most use cases tests only need to check the lastest tunnel usage event per tick and the TestFunctions.RegisterRecordTunnelUsageChanges() function is more approperiate.
+---@param testName string
+---@param testCallbackFunction function @ When called recieves a single argument "event" of type TestFunctions_RemoteTunnelUsageChangedEvent.
+TestFunctions.RegisterTunnelUsageChangesToTestFunction = function(testName, testCallbackFunction)
+    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions.RegisterTunnelUsageChangesToTestFunction", testCallbackFunction)
 end
 
 ---@class TestFunctions_TrainSnapshot
@@ -622,6 +606,31 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
+
+---@class TestFunctions_RemoteTunnelUsageChangedEvent : RemoteTunnelUsageChanged
+---@field testName string
+
+--- Records the tunnel usage change event's details to the test's Test Data object for usage within the test script in once per tick test processing. In most tests its limitations are fine.
+---@param event TestFunctions_RemoteTunnelUsageChangedEvent
+TestFunctions._RecordTunnelUsageChanges = function(event)
+    local testData = TestFunctions.GetTestDataObject(event.testName)
+
+    -- Record the action for later reference.
+    local actionListEntry = testData.actions[event.action]
+    if actionListEntry then
+        actionListEntry.count = actionListEntry.count + 1
+        actionListEntry.recentChangeReason = event.changeReason
+    else
+        testData.actions[event.action] = {
+            name = event.action,
+            count = 1,
+            recentChangeReason = event.changeReason
+        }
+    end
+
+    testData.lastAction = event.action
+    testData.train = event.train
+end
 
 -- The function called to revive the ghosts on the first and second attempt. It populates a bunch of passed in tables, rather than returning anything itself.
 ---@param ghost LuaEntity

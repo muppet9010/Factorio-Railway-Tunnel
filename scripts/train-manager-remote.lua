@@ -14,7 +14,7 @@ local Events = require("utility/events")
 ---@field name string @ The custom event name that this event is bveing raised for. Used by the Events library to find the remote Id to publish it under.
 ---@field action TunnelUsageAction
 ---@field changeReason TunnelUsageChangeReason
----@field replacedtunnelUsageId Id
+---@field replacedTunnelUsageId Id
 
 TrainManagerRemote.CreateGlobals = function()
     global.trainManager.eventsToRaise = global.trainManager.eventsToRaise or {} ---@type table[] @ Events are raised at end of tick to avoid other mods interupting this mod's process and breaking things.
@@ -50,8 +50,8 @@ end
 ---@param managedTrainId Id
 ---@param action TunnelUsageAction
 ---@param changeReason TunnelUsageChangeReason
----@param replacedtunnelUsageId Id
-TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedtunnelUsageId)
+---@param replacedTunnelUsageId Id
+TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedTunnelUsageId)
     -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
     -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.
     ---@type RemoteTunnelUsageChanged
@@ -60,7 +60,7 @@ TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeR
         name = "RailwayTunnel.TunnelUsageChanged",
         action = action,
         changeReason = changeReason,
-        replacedtunnelUsageId = replacedtunnelUsageId
+        replacedTunnelUsageId = replacedTunnelUsageId
     }
     table.insert(global.trainManager.eventsToRaise, data)
 end
