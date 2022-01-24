@@ -192,7 +192,10 @@ end
 ---@class TestFunctions_RemoteTunnelUsageChangedEvent : RemoteTunnelUsageChanged
 ---@field testName string
 
---- Records a tunnel usage change event's details to the test's Test Data object for usage within the test script.
+--- Records the tunnel usage change event's details to the test's Test Data object for usage within the test script. In most tests its limitations are fine.
+--- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
+--- If multiple actions occur in the same tick only the last one is visible in last action. Shouldn't be an issue for normal tests.
+--- If a test needs to react in real time (mid tick) to a train state change then it must listen and handle the events itself. Very rare this is needed and checking at the end of each tick isn't good enough.
 ---@param event TestFunctions_RemoteTunnelUsageChangedEvent
 TestFunctions.RecordTunnelUsageChanges = function(event)
     local testData = TestFunctions.GetTestDataObject(event.testName)

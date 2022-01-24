@@ -1,7 +1,5 @@
 -- This test runs a train at a tunnel and reserves the tunnel via signal. Then shortly after crossing on to the portal tracks it stops and reverses a bit out of the portal. Before leaving the portal tracks it re-commits to using the tunnel and completes its journey. This is a downgrade from approaching to onPortalTrack and then upgrades back. The whole time there is a second train from the other end of the tunnel waiting to enter. Once the second train is  able to enter the portal after the first train completed its traversal the test is completed.
 
---TODO: make test do mission statement.
-
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Common = require("scripts/common")
@@ -17,24 +15,25 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local blueprint = "0eNq1WNty2jAQ/Rc9Q0ar1ZX3fkMfOhnGAZV6aizGNmmZDP9eCdNAgpuuZZKX+CKds9bZPSv0wp6qvd81Zd2xxQsrV6Fu2eLbC2vLTV1U6Vl32Hm2YGXnt2zG6mKb7pqirH4Vh2W3r2tfzXeh6Ypq2frN1tfdvO3i+82Pjh1nrKzX/jdbwHGWCerr9RWOOD7OWOQou9L3kZ5uDst6v33yTSR6hUtB1DGWsIsUu9DGKaFO5BFmrtSMHSIcRuh12fhV/1LPWNsV/TX76tv0CTcUghDxLSNiz6huGJ+LpjxzwgAdjl31W27hMrnlHbhNJre6A7fK5NZ34M7V29yBGwa5xX+57XRucJnc7g7cJpMbeFZNA+bywb/49tHnmk0T4v+bL56nsctVE9q2rDcD8eQuPYiccAYCyF5/vFMAKjcA+SmCZOeHyslHyHQcmG53uUYL090ut7/AdLPLbasw3esg1+IFn86dm9YCpnPnVrgQ07lzU01gTjmL3HoWFzN741Qf7IPfL+cQ6sWTqrAK29CVz34Ikj9oa65wQ1NGqHO8/CHhpI1/myasQvpBoPhxiFDTPwPpn2HoqEBHtWRU6eiojo5qyKjI6aj09ECgo9LVQkFHpauFSEZFulpILzscoZaioooRYpFLS4yIlFxZYsSikgsLR+hPriukp6oklxXShZJAMt3rLH1nt8mJV6EKTRrapCfgBChttY4XFkw0a2dtvEr5s0kDpBZGKuBcKGcstxaNdVyn908nSCOUdBwRtEwDhEGJiadIbznHnsAqh9oqLbSzqKVQJnEcr9y/Caufvpt/3/vUBIZ6gCTX/4iSkuTyH1H9klz9I4xK0nqu1B9227fyKzz9aQAZlZVCWBXVehVfOAkxKaJ2yKN8XIKLcp4a+kl80ctrAA06dAokaH4G+AT9yUY1oqlIslGN6H+SbFQjWrUkG9WIXYXipDPSv4jmZqd9OSL9UqQj0sf4aPXDr/fV+Uz2kqvpXqirAf3p8nuAFOXbSbFI5Afz+rPZx0R9OkReXB1kx/2xb9o+WAvSOGFihgPquMv8Aw+fngg="
+    local blueprint = "0eNq1mN1y2jAQhd9F19DRavXLfZ6hF50M44BKPDU2Y5u0TIZ3r4RpoMFpVzLhBtsy55N1tMdCr+yp2vtdW9Y9W7yyctXUHVt8e2VduamLKl7rDzvPFqzs/ZbNWF1s41lblNXP4rDs93Xtq/muafuiWnZ+s/V1P+/60L557tlxxsp67X+xBRxnmaK+Xl/piOPjjAVG2Zd+6Onp5LCs99sn3wbQm1zsRB360uwCYtd04SdNHeFBZi7djB3CNwbpddn61dCoZ6zri+GYffVdfIQbhCD0+JYozECEG+JL0ZZnJozgMHXUR9iYyZZ3YEMmW01ng8tk6zuwc/02d2CrUbb4L9vegY2ZbHcHNmSygWfVtMnFwUe4fYi5dtM24fvmgefx3uWqbbqurDcj3ckdeRA53Rkb/9wO4H06kM2Xn+FHth0qZzLmxg1MzzrIjXiYnnWQ+2qD6Vn3QcwS2NOzDnKzR/DpbJfLhslskVvjQkxn5841gTkVnb1iFJc4+yur/rEOfj+cY6qKrmroqpququiqhq6KdFVLVwW6qiOrIt0t5HRVulsIdFW6WyjoqnS3EOmqdLeQXFspouTSSnl+cmWlWEUurJRZRa6rlAIgl1VCrcpLVVXNqtk2ffniRxSvBrRpyyByTmv+xYSmVVM1bby1jVfACVDaah0OLBhtjbM2HMW83cQbpBZGKuBcKGcstxaNdVzH9qeTpBFKOo4IWsYbhEGJkVPEVs5xAFjlUFulhXYWtRTKREbcWun9tjt1p1n98P38+95X4e/3cez5yfWfEKuSXP4JbwBJrv6El5WUJPuV+NB+cWO/wtNHA8jgrBTCquDWm/nCSQiTIniHPNjHJbhgpzV/zBeDvQbQoEOnQILmZ4FP8J8cVAkLC0kOKpVQqeSgUgkzlRxUKmGmOtKW5Vnxdt172bB8KOKG5WO4tHr263113iG9TNV4HiJMyqt7hu3ed5uej1HltDu7uNohDgtP33YD14I0TpgwVwE1Px5/A07GZa4="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
     local surface = TestFunctions.GetTestSurface()
 
-    -- Get the "East" train stop of the 2 train stops we know are in the BP.
-    local eastTrainStop = placedEntitiesByGroup["train-stop"][1]
-    if eastTrainStop.backer_name ~= "East" then
+    -- Get the "East" and "West" train stops.
+    local eastTrainStop, westTrainStop
+    if placedEntitiesByGroup["train-stop"][1].backer_name == "East" then
+        eastTrainStop = placedEntitiesByGroup["train-stop"][1]
+        westTrainStop = placedEntitiesByGroup["train-stop"][2]
+    else
         eastTrainStop = placedEntitiesByGroup["train-stop"][2]
+        westTrainStop = placedEntitiesByGroup["train-stop"][1]
     end
 
     -- Get the primary (right) train and set its starting speed.
     local primaryTrain = placedEntitiesByGroup["locomotive"][2].train
     primaryTrain.speed = 0.75
-
-    -- Get the secondary (left) train.
-    local secondaryTrain = placedEntitiesByGroup["locomotive"][1].train
 
     -- Get the outside ends of entrance portals.
     local entrancePortalPart, entrancePortalXPos = nil, -100000
@@ -54,11 +53,12 @@ Test.Start = function(testName)
     ---@class Tests_AOPTTA_TestScenarioBespokeData
     local testDataBespoke = {
         eastTrainStop = eastTrainStop, ---@type LuaEntity
+        westTrainStop = westTrainStop, ---@type LuaEntity
         primaryTrain = primaryTrain, ---@type LuaTrain
-        secondaryTrain = secondaryTrain, ---@type LuaTrain
         entrancePortalTrainDetector = entrancePortalTrainDetector, ---@type LuaEntity
         startedApproaching = false, ---@type boolean
-        waitTickAfterOnPortalTrack = nil ---@type Tick
+        tickToReverseOn = nil, ---@type Tick
+        tickToResumeOn = nil ---@type Tick
     }
     testData.bespoke = testDataBespoke
 
@@ -93,21 +93,18 @@ Test.EveryTick = function(event)
     end
 
     -- Wait until the entry train detector triggers to know when the train is on the portal track and then set a desired future tick to resume processing.
-    if testDataBespoke.waitTickAfterOnPortalTrack == nil then
+    if testDataBespoke.tickToReverseOn == nil then
         if not testDataBespoke.entrancePortalTrainDetector.valid then
-            testDataBespoke.waitTickAfterOnPortalTrack = event.tick + 10
+            testDataBespoke.tickToReverseOn = event.tick + 10
+            game.print("train on portal tracks")
         end
         return
     end
 
-    -- Wait for the desired tick.
-    if event.tick < testDataBespoke.waitTickAfterOnPortalTrack then
-        if not testDataBespoke.secondaryTrain.valid then
-            -- The secondary train entered the tunnel at some prior point incorrectly, but just check here as we don't want to check it after this point.
-            TestFunctions.TestFailed(testName, "secondary train should have not entered the tunnel before the primary train has finished with it")
-        end
+    -- Wait for the desired reverse tick.
+    if event.tick < testDataBespoke.tickToReverseOn then
         return
-    elseif event.tick == testDataBespoke.waitTickAfterOnPortalTrack then
+    elseif event.tick == testDataBespoke.tickToReverseOn then
         -- 10 ticks after train triggered onPortalTrack.
         testDataBespoke.primaryTrain.schedule = {
             current = 1,
@@ -121,11 +118,34 @@ Test.EveryTick = function(event)
             TestFunctions.TestFailed(testName, "train speed should be 0 after setting schedule behind it")
             return
         end
+        testDataBespoke.tickToResumeOn = event.tick + 50
+        game.print("train reversed away from tunnel")
         return
     end
 
-    -- When train reaches the East train stop and the secondary train has entered the tunnel the test is done.
-    if testDataBespoke.eastTrainStop.get_train_stop_trains() ~= nil and not testDataBespoke.secondaryTrain.valid then
+    -- Wait for the desired resume tick.
+    if event.tick < testDataBespoke.tickToResumeOn then
+        return
+    elseif event.tick == testDataBespoke.tickToResumeOn then
+        -- 10 ticks after train started reversing, it should still be on the portal tracks at this point.
+        testDataBespoke.primaryTrain.schedule = {
+            current = 1,
+            records = {
+                {
+                    station = testDataBespoke.westTrainStop.backer_name
+                }
+            }
+        }
+        if testDataBespoke.primaryTrain.speed ~= 0 then
+            TestFunctions.TestFailed(testName, "train speed should be 0 after setting schedule infront of it")
+            return
+        end
+        game.print("train resumed tunnel usage")
+        return
+    end
+
+    -- When train reaches the West train stop the test is done.
+    if testDataBespoke.westTrainStop.get_stopped_train() ~= nil then
         TestFunctions.TestCompleted(testName)
         return
     end

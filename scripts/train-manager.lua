@@ -264,14 +264,26 @@ end
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local approachingTrain = managedTrain.approachingTrain ---@type LuaTrain
 
-    -- Check whether the train is still approaching the tunnel portal as its not committed yet and so can turn away.
+    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away.
     if approachingTrain.state ~= defines.train_state.arrive_signal or approachingTrain.signal ~= managedTrain.entrancePortalTransitionSignal.entity then
+        -- Check if the train had reached the portal tracks yet or not as it affects next step in handling process.
         if managedTrain.portalTrackTrain == nil then
             -- Train never made it to the prtoal tracks, so can just abandon it.
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
         else
             -- Train made it to the portal tracks, so need to enable tracking of it until it leaves.
             managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
+
+            -- Update the global train lookup for the downgraded state.
+            global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrainId].tunnelUsagePart = TunnelUsageParts.portalTrackTrain
+
+            -- This is a downgrade so remove the approaching state data from the managed train.
+            managedTrain.approachingTrain = nil
+            managedTrain.approachingTrainId = nil
+            managedTrain.approachingTrainForwards = nil
+            managedTrain.approachingTrainExpectedSpeed = nil
+            managedTrain.approachingTrainReachedFullSpeed = nil
+
             TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack, TunnelUsageChangeReason.abortedApproach)
         end
         return
@@ -791,13 +803,13 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         -- Reserved the tunnel, but not using it yet. Light data capture.
         managedTrain.portalTrackTrain = train
         managedTrain.portalTrackTrainId = train_id
+        managedTrain.portalTrackTrainInitiallyForwards = trainForwards
+        managedTrain.portalTrackTrainBySignal = false
         global.trainManager.trainIdToManagedTrain[train_id] = {
             trainId = train_id,
             managedTrain = managedTrain,
             tunnelUsagePart = TunnelUsageParts.portalTrackTrain
         }
-        managedTrain.portalTrackTrainInitiallyForwards = trainForwards
-        managedTrain.portalTrackTrainBySignal = false
     end
 
     global.trainManager.managedTrains[managedTrain.id] = managedTrain

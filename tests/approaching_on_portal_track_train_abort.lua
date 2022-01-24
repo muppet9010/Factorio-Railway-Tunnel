@@ -123,7 +123,7 @@ Test.EveryTick = function(event)
     end
 
     -- When train reaches the East train stop and the secondary train has entered the tunnel the test is done.
-    if testDataBespoke.eastTrainStop.get_train_stop_trains() ~= nil and not testDataBespoke.secondaryTrain.valid then
+    if testDataBespoke.eastTrainStop.get_stopped_train() ~= nil and not testDataBespoke.secondaryTrain.valid then
         TestFunctions.TestCompleted(testName)
         return
     end
