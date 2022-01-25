@@ -7,8 +7,6 @@ local TestFunctions = require("scripts/test-functions")
 local Common = require("scripts/common")
 local TunnelUsageAction, TunnelUsageChangeReason = Common.TunnelUsageAction, Common.TunnelUsageChangeReason
 
--- Internal test types.
---- Class name includes the abbreviation of the test name to make it unique across the mod.
 ---@class Tests_TUCE_FinalActionChangeReasons
 local FinalActionChangeReasons = {
     terminated_completedTunnelUsage = "terminated_completedTunnelUsage",
@@ -17,10 +15,11 @@ local FinalActionChangeReasons = {
     terminated_tunnelRemoved = "terminated_tunnelRemoved",
     terminated_reversedAfterLeft = "terminated_reversedAfterLeft",
     onPortalTrack_abortedApproach = "onPortalTrack_abortedApproach" -- Train approaching is already on portal rails when it aborts. So this is reporting the downgrade in usage status and its new monitoring level.
+    --terminated_invalidTrain is not included as all of its generation cases and explicit state checking is done within the "invalid_train_tests" test.
 }
 
 -- Test configuration.
-local DoMinimalTests = false -- The minimal test to prove the concept.
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificFinalActionChangeReasonsFilter = {} -- Pass in an array of FinalActionChangeReasons keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.

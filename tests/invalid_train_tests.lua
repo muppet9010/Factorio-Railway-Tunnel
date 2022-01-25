@@ -1,28 +1,27 @@
--- Destroys a train carriage during each stage of a train's tunnel usage to check the mod handles invalid LuaTrain's. Will remove the carriage on a state being reached and a few ticks afterwards to let things settle each time.
--- Test is unlikely to fail but more liekly to cause the mod to error/crash in unhandled situations.
+-- Destroys a train carriage during each stage of a train's tunnel usage to check the mod handles invalid LuaTrain's. Will remove the carriage on a state being reached and a few ticks afterwards to let things settle each time. After a few seconds the remaining train carraige will be pathed to a train stop it can reach to "manually" clear the issue. There is a second train waiting to use the tunnel that confirms the tunnel has been left in a healthy state whe it reaches its target station.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
 local Common = require("scripts/common")
 local TunnelUsageAction, TunnelUsageChangeReason = Common.TunnelUsageAction, Common.TunnelUsageChangeReason
 
----@class Tests_TICT_StateToRemoveOn
+---@class Tests_ITT_StateToRemoveOn
 local StateToRemoveOn = {
     onPortalTrack = TunnelUsageAction.onPortalTrack,
     startApproaching = TunnelUsageAction.startApproaching,
     entered = TunnelUsageAction.entered,
     leaving = TunnelUsageAction.leaving
 }
----@class Tests_TICT_Delay
+---@class Tests_ITT_CarriageToRemove
+local CarriageToRemove = {
+    front = "front",
+    rear = "rear"
+}
+---@class Tests_ITT_Delay
 local Delay = {
     none = 0,
     one = 1,
     ten = 10
-}
----@class Tests_TICT_CarriageToRemove
-local CarriageToRemove = {
-    front = "front",
-    rear = "rear"
 }
 
 -- Test configuration.
@@ -30,15 +29,15 @@ local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificStateToRemoveOnFilter = {} -- Pass in an array of StateToRemoveOn keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificDelayFilter = {} -- Pass in an array of Delay keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificCarriageToRemoveFilter = {} -- Pass in an array of CarriageToRemove keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificDelayFilter = {} -- Pass in an array of Delay keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
 Test.RunTime = 3600
 Test.RunLoopsMax = 0
 
----@type Tests_TICT_TestScenario[]
+---@type Tests_ITT_TestScenario[]
 Test.TestScenarios = {}
 
 ---@param testName string
@@ -60,16 +59,43 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNq1mNty2jAQht9F19CRVmdepBedDOMYlXhqLEa20zIZ3r2SIeSAMl1kmhswUr5/pV+7svRCHtvR7UPTDWT1Qpradz1Z/XghfbPtqjb9Nhz2jqxIM7gdWZCu2qWnUDXt7+qwHsauc+1y78NQtevebXeuG5b9ENu3TwM5LkjTbdwfsmLHRSHUdZt3HDg+LEjUaIbGnSKdHg7rbtw9uhCFLrjXKJaJG1X2vo//5bukH0lLGbse0ucxxfYJAxdMonRxSH6fYQj7ylhEverURL67Po39Csov0HoMz27zZWR0otII3TTB1ac2kSEK9GiFnpj8I1NmmBIZpRATUX0k6gxRISy+5nM58fVHfmQ9V6E5TzXLqOlbV2lGmpVJm/nSYMuk7R2kdZk0o3fQLjSbsTto85w2/Fsb7qDNCrX5fG1mC7VFUT4zWSgnv5Ib454QtsHHz6vxTlVrXQff9023zYVTOvOqJJxMAKWzr++krwv1zX+xo3Rx2LK1WFZtYH6l44XK8+tcYYWF+VWucF+B+TWuMMdAzFYuLS8g50sX7meg5kuXLjJdksas8F0JDPq1WeVtzEEt/uRhsVBO8VCNht5wRpJoKOChHA3lt57mMNAbDk14o+StJzEMVOGheKM0Hoo3Cp9RAm8UPqM42iiBzihAj16gEwrQNgl0PgF6PQl0OgF+PtHZxNHGC3QycbxHb7nU+trv/NA8uwzwbTJ9aCLjvI3QbzoGVfvWh9QzpF+YBSaVUSp+MUwro60x8VsyeZs6CAVaSEYpSKsNNYZrY6lK7Y8TUoMUlnLOlEgdQHPBk06VWinlJwEjLVdGKlDWcCVA6qSR7sQGt+uncHz9yw3Ln6Nr051ObvjorOf4JYpOeo5fouicx6e8pCjrz/dZGevhynrJpz/FmIiuCgAjo1MX48EKFhdE9I3TaB0VzEYrjX41Hk7WasY1t9xKJpiiZ8D9vZfo8oSvzRJdnvCbiESXJ/xuJ9Hl6att+WFB+vrJbcb2fOH8tobSc6wrkr7rc7o9/3QV/JAo02X36t2Fe3xPdaE/yRgmtAUdVxHjih6PfwHeNduO"
+    local blueprint = "0eNq1Wt1y8jYQfRdfQ0bS6pf77wl60YtOJkOMSjwFm7FN2kyGd69kAwkgmoOgVwRkn7PW2V3tevNZvK62ftNWdV/MPouqbOqumP3xWXTVsp6v4m/9x8YXs6Lq/bqYFPV8Hb+182pV7CZFVS/8P8WM7ybQLX/PP176bV371XTTtP189dL55drX/bTrw/ryrf8GKnbPkyKsVX3lR6OGLx8v9Xb96tvAesQ+3D0d7JoUm6YLdzV1NCYgTZWaFB/hk/NdtPQMRxxxIkwdbGk2KRA6gkwC43xcK373XbT6ApVQ6/7bOAkZp0zStl/ztG3qCFpu23e/uLpvcoTVAXVRtb4cF2UCUmOQVxBVAtHg8vIRlH4GteCTSztAslNEk0B0Jx4+3UdBAtE97YUWT+oUlhKwnGGWpg0VKUQ4Xq7sZ9JM8UOA+3qR2AwaY4mfEgQfep+31d57eYqObs0nl9zCZXLLB3CbTG71AG6Vya0fwJ2rt3kAN09xi5+57f3c3GVyuwdwmzxuwbJCmlMmHb9Gtw11QLtsm/B58bxD5nop26brqnqZMCdz44XIsSbBn7v59CB+lckv/xc1cn1D5bgiz8s14v48l5lhxf1ZLvNcEffnuMzTVNyf4XhmYid2P3WmQxO/nzozskncT53pZUQ5YSwy45hOU9i0fBv6pit1ueKHspydl+WpIpoUVu4rcYDl57CptoQ03OzotP4pULyD0gSDWhyUw6AO7/UcCioZDmpg0JtfOiCgAgeFhZJ0W6srzuIsBSlvbckROxUMKnHt8XiSuPZ4PElcezyeJK49Hk8SFkrh8USwUAqPJ4KFUnA8CVgnBb/PE7idcDwJfEPhcCJceTiaCHZRBQcT4Rp9xdKqKZt101fvPgH4tZlNWwWMfTHBnkygKptV08Yr2/iLNFYSJ0OWpGbOWUWKKx39ZjncoaVhyjpNxihN0uhx8TUuWnIiXOyUVZYxbph1AS2SzOMyY+O6tcqRtuFG7SxpKZSxXMSqIb5B7wZbmvIv30//3PpVLCBSzw6HPB5HGo54POA1HPB4ZtIC0j0eCmndxYXuTirmLJNCWhv+4FIq4kfV+SCbFkFtpZjmJBmRYOMVg/QsLErFg+jSWWeC1Dz4kLDDFY9XX8PZCT9ENJyd8NNOw9kJP5Y1nJ3w+kGbG9+VI5hYdlL6acwRaIriTrOYpaSyWgkZUhEZ69hXjrLRFUPuYtpoa5w9uOHgqIYPKSwkL0XMaG64vTtBJQdZGk5QeI1r2I1DNgQTH5PALmrgggRvbwwc8ngfZm4u8NXPAzIDtszTYyt+MSBLtflG3zbEtACkASfBe+HP5mPy++j1N1829SI1fDX25haSdnEW3pVvfrFd7YfhXzkkfg+ljxbfrhmH+GdD6udozel92l6/6fAIz5F8GObPvv27wKR49203ulI4H40TJlRGnDTb7f4F4gimGg=="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
-    local _, _ = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
+
+    -- Get the stations.
+    local westStation, eastStation, secondStation
+    for _, station in pairs(placedEntitiesByGroup["train-stop"]) do
+        if station.backer_name == "West" then
+            westStation = station
+        elseif station.backer_name == "East" then
+            eastStation = station
+        elseif station.backer_name == "Second" then
+            secondStation = station
+        end
+    end
+
+    -- Work out where to send the first train after it has a carraige removed.
+    local firstTrainTargetStation
+    if testScenario.carriageToRemove == CarriageToRemove.front then
+        firstTrainTargetStation = eastStation
+    else
+        firstTrainTargetStation = westStation
+    end
 
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    ---@class Tests_TICT_TestScenarioBespokeData
+    ---@class Tests_ITT_TestScenarioBespokeData
     local testDataBespoke = {
+        westStation = westStation, ---@type LuaEntity
+        eastStation = eastStation, ---@type LuaEntity
+        firstTrainTargetStation = firstTrainTargetStation, ---@type LuaEntity
+        secondStation = secondStation, ---@type LuaEntity
+        preRemovedTrainCarriages = nil, ---@type LuaEntity[] @ Populated during EveryTick().
         removeOnTick = nil, ---@type Tick @ Populated during EveryTick().
-        carriageRemoved = false ---@type boolean
+        carriageRemoved = false, ---@type boolean
+        restartTrainOnTick = nil, ---@type Tick @ Populated during EveryTick().
+        firstTrainReachedStation = false ---@type boolean
     }
     testData.bespoke = testDataBespoke
 
@@ -85,8 +111,44 @@ end
 Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(testName)
-    local testScenario = testData.testScenario ---@type Tests_TICT_TestScenario
-    local testDataBespoke = testData.bespoke ---@type Tests_TICT_TestScenarioBespokeData
+    local testScenario = testData.testScenario ---@type Tests_ITT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_ITT_TestScenarioBespokeData
+
+    -- If populated then do the train restart logic rather than anything else.
+    if testDataBespoke.restartTrainOnTick ~= nil then
+        if event.tick == testDataBespoke.restartTrainOnTick then
+            -- Restart the train.
+
+            -- Get the remaining train part from the train carriages that existed just before carriage removal.
+            local train
+            for _, carriage in pairs(testDataBespoke.preRemovedTrainCarriages) do
+                if carriage.valid then
+                    train = carriage.train
+                end
+            end
+
+            train.schedule = {
+                current = 1,
+                records = {
+                    {
+                        station = testDataBespoke.firstTrainTargetStation.backer_name
+                    }
+                }
+            }
+            train.manual_mode = false
+        elseif event.tick > testDataBespoke.restartTrainOnTick then
+            -- Trains should be running, so wait for both stations have a train stopped in them.
+            if not testDataBespoke.firstTrainReachedStation and testDataBespoke.firstTrainTargetStation.get_stopped_train() then
+                testDataBespoke.firstTrainReachedStation = true
+                game.print("first train reached station post carriage removal and restart")
+            end
+            if testDataBespoke.firstTrainReachedStation and testDataBespoke.secondStation.get_stopped_train() then
+                TestFunctions.TestCompleted(testName)
+            end
+        end
+        -- Otherwise just wait.
+        return
+    end
 
     -- If the carriage has been removed already then do specific handling first.
     if testDataBespoke.carriageRemoved then
@@ -107,7 +169,7 @@ Test.EveryTick = function(event)
                 return false
             end
         end
-        TestFunctions.TestCompleted(testName)
+        testDataBespoke.restartTrainOnTick = event.tick + 180
         return
     end
 
@@ -147,6 +209,9 @@ Test.EveryTick = function(event)
     end
 
     if doRemovalThisTick then
+        -- Cache the train carriages before we invalidate the managed train.
+        testDataBespoke.preRemovedTrainCarriages = testData.train.carriages
+
         local carriageIndex
         if testScenario.carriageToRemove == CarriageToRemove.front then
             carriageIndex = 1
@@ -170,9 +235,9 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out what specific instances of each type to do.
-    local stateToRemoveOnToTest  ---@type Tests_TICT_StateToRemoveOn[]
-    local delayToTest  ---@type Tests_TICT_Delay[]
-    local carriageToRemoveToTest  ---@type Tests_TICT_CarriageToRemove[]
+    local stateToRemoveOnToTest  ---@type Tests_ITT_StateToRemoveOn[]
+    local delayToTest  ---@type Tests_ITT_Delay[]
+    local carriageToRemoveToTest  ---@type Tests_ITT_CarriageToRemove[]
     if DoMinimalTests then
         stateToRemoveOnToTest = StateToRemoveOn
         delayToTest = {Delay.none}
@@ -193,7 +258,7 @@ Test.GenerateTestScenarios = function(testName)
     for _, stateToRemoveOn in pairs(stateToRemoveOnToTest) do
         for _, delay in pairs(delayToTest) do
             for _, carriageToRemove in pairs(carriageToRemoveToTest) do
-                ---@class Tests_TICT_TestScenario
+                ---@class Tests_ITT_TestScenario
                 local scenario = {
                     stateToRemoveOn = stateToRemoveOn,
                     delay = delay,

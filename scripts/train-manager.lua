@@ -33,7 +33,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryT
 ---
 ---@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
 ---@field trainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Data on the train used to calcualte its future speed and time to cover a distance.
----@field force? LuaForce|null @ The force of the train using the tunnel. Captured when the train startApproaching.
+---@field force LuaForce @ The force of the train using the tunnel.
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
 ---@field traversalTravelDistance double|null @ The length of tunnel the train is travelling through on this traversal. This is the distance for the lead carriage from the entering position to the leaving position.
 ---@field traversalInitialDuration? Tick|null @ The number of tick's the train takes to traverse the tunnel.
@@ -860,6 +860,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
             managedTrain = managedTrain,
             tunnelUsagePart = TunnelUsageParts.portalTrackTrain
         }
+        managedTrain.force = managedTrain.portalTrackTrainCarriages[1].force
     end
 
     global.trainManager.managedTrains[managedTrain.id] = managedTrain
@@ -1209,6 +1210,16 @@ TrainManager.InvalidTrainFound = function(managedTrain, trainFieldName)
     -- Only if a valid entity from the old train is found do we add an alert to it.
     if alertEntity ~= nil then
         TunnelShared.AlertOnTrain(train, train.id, alertEntity, managedTrain.force, game.tick, {"message.railway_tunnel-invalid_train"})
+    end
+
+    -- Return any leaving train carriages to their origional force and let them take damage again.
+    if managedTrain.leavingTrainCarriages ~= nil then
+        for _, carriage in pairs(managedTrain.leavingTrainCarriages) do
+            if carriage.valid then
+                carriage.force = managedTrain.force
+                carriage.destructible = true
+            end
+        end
     end
 
     -- Techncially this isn't ideal as a train remenant that ends up on the portal tracks should be known about. although the tunnel signals would all be closed at this point anyways. There may be 2 seperate new trains on the portal tracks and the tracking doesn't handle this currently so leave until it actually causes an issue.

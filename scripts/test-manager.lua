@@ -63,14 +63,14 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
-    TrainIdChangeTests = {enabled = false, testScript = require("tests/train_id_change_tests")},
+    InvalidTrainTests = {enabled = false, testScript = require("tests/invalid_train_tests")},
     -- Tunnel part tests:
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Adhoc tests:
-    TunnelUsageChangedEvents = {enabled = true, testScript = require("tests/tunnel_usage_changed_events")},
+    TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     -- Template Tests:
