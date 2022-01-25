@@ -1,12 +1,11 @@
 Now
 ---
-
-
+    - Document in remotes.md and add to state test the new TunnelUsageChangeReason.invalidTrain termination reason.
+    - Run all tests.
+    - Move the testData recorded train actions in to a sub object of TestData as its weird structure when writing tests from EmmyLua at present. Will need to update all tests using these fields.
 
 Bugs
 ----
-    - If a train is changed and losses its train ID the mod will fail as we don't track train ID's any more. We just need to handle this rare case in start of stateful functions some way so it can be recovered/tidied-up in a sane method.
-
 
 
 Features to add/change
@@ -45,7 +44,6 @@ Long term UPS/code plans
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.
     - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to track train Id changes to delete old data though to stop our list infintely growing with train composition changes. Also cached data would be for one direction of the train, so would have to iterate it carefully.
-    - The Portal and Underground function OnBuiltEntityGhost() could be merged in a central location to reduce double function calling when the behaviour is the same for each, just merge the entity names being checked. Also can move Tunnel.OnPlayerRotatedEntity() there.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
 
 

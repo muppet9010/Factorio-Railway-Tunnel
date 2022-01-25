@@ -1,9 +1,10 @@
 -- SAMPLE TEST FILE - Functions are populated with sample code in keeping with the other test design.
 -- As a single instance test this test file is run just once.
+
 -- Any created test has to be added to the test list at the top of test-manager.lua.
 -- A single test is run at a time and if the test is successful the map is cleared and the next test started. Each test only has to manage its own activities and feed back via the listed Interfaces.
 -- The referenced TestFunctions file has comments on the functions for their use.
--- Tests should only use thier own blueprint items lists and any searched based off thier own tracked entities. SO no getting a forces train list, etc. This is to enable future concurrent running of tests.
+-- Tests should only use their own blueprint items lists and any searches based off thier own tracked entities. So no getting a forces train list, etc. This is to enable future concurrent running of tests.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -14,8 +15,8 @@ Test.RunTime = 3600
 --- Any scheduled event types for the test must be Registered here. Most tests will want an event every tick to check the test progress.
 ---@param testName string
 Test.OnLoad = function(testName)
-    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
-    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick) -- Register for enabling during Start().
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName) -- Have tunnel usage changes being added to the test's TestData object.
 end
 
 --- OPTIONAL, can exclude the attribute. If present it will be called when starting a test and the returned name used, otherwise the test name as defined in test-manager.lua is used.

@@ -1,4 +1,5 @@
 -- Creates the situations to trigger each tunnel usage changed event's action and change reason to confirm they all appear when and only when expected.
+-- Will duplicate some other tests scenarios, but this test confirms explicitly that the Event's the mod raises are correct.
 
 -- Requires and this tests class object.
 local Test = {}
@@ -127,37 +128,28 @@ Test.OnTunnelUsageChangeEvent = function(event)
     end
     testDataBespoke.nextExpectedActionChangeIndex = testDataBespoke.nextExpectedActionChangeIndex + 1
 
-    local ReverseTrain = function(train)
-        train.schedule = {
-            current = 1,
-            records = {
-                {
-                    station = testDataBespoke.eastStation.backer_name
-                }
-            }
-        }
-        if train.speed ~= 0 then
-            TestFunctions.TestFailed(testName, "train didn't stop and reverse when requested")
-            return
-        end
-    end
-
     -- Special test scenarios game manipulation required.
     if testScenario.finalActionChangeReason == FinalActionChangeReasons.terminated_abortedApproach then
         if event.action == TunnelUsageAction.startApproaching then
-            ReverseTrain(event.train)
+            if not Test.ReverseTrain(event.train, testName) then
+                return
+            end
         end
         return
     end
     if testScenario.finalActionChangeReason == FinalActionChangeReasons.terminated_portalTrackReleased then
         if event.action == TunnelUsageAction.onPortalTrack then
-            ReverseTrain(event.train)
+            if not Test.ReverseTrain(event.train, testName) then
+                return
+            end
         end
         return
     end
     if testScenario.finalActionChangeReason == FinalActionChangeReasons.onPortalTrack_abortedApproach then
         if event.action == TunnelUsageAction.startApproaching then
-            ReverseTrain(event.train)
+            if not Test.ReverseTrain(event.train, testName) then
+                return
+            end
         end
         return
     end
@@ -169,10 +161,34 @@ Test.OnTunnelUsageChangeEvent = function(event)
     end
     if testScenario.finalActionChangeReason == FinalActionChangeReasons.terminated_reversedAfterLeft then
         if event.action == TunnelUsageAction.leaving then
-            ReverseTrain(event.train)
+            if not Test.ReverseTrain(event.train, testName) then
+                return
+            end
         end
         return
     end
+end
+
+--- Reverses the provided train back to the East station.
+---@param train LuaTrain
+---@return boolean trainReversedSuccessfully @ If false TestFailed() will have been called, but caller still needs to end function porcessing.
+Test.ReverseTrain = function(train, testName)
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testDataBespoke = testData.bespoke ---@type Tests_TUCE_TestScenarioBespokeData
+
+    train.schedule = {
+        current = 1,
+        records = {
+            {
+                station = testDataBespoke.eastStation.backer_name
+            }
+        }
+    }
+    if train.speed ~= 0 then
+        TestFunctions.TestFailed(testName, "train didn't stop and reverse when requested")
+        return false
+    end
+    return true
 end
 
 --- Generate the combinations of different tests required.

@@ -12,19 +12,19 @@ Common.UndergroundSegmentAndAllPortalEntityNames = Utils.TableMergeCopies({Commo
 ---@class TunnelRailEntityNames
 Common.TunnelRailEntityNames = {
     -- Doesn't include the tunnel crossing rail as this isn't deemed part of the tunnel's rails.
-    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map", ---@type TunnelRailEntityNames
-    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map", ---@type TunnelRailEntityNames
-    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel", ---@type TunnelRailEntityNames
-    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map", ---@type TunnelRailEntityNames
-    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel" ---@type TunnelRailEntityNames
+    ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map",
+    ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map",
+    ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel",
+    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map",
+    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel"
 }
 
 ---@class RollingStockTypes
 Common.RollingStockTypes = {
-    ["locomotive"] = "locomotive", ---@type RollingStockTypes
-    ["cargo-wagon"] = "cargo-wagon", ---@type RollingStockTypes
-    ["fluid-wagon"] = "fluid-wagon", ---@type RollingStockTypes
-    ["artillery-wagon"] = "artillery-wagon" ---@type RollingStockTypes
+    ["locomotive"] = "locomotive",
+    ["cargo-wagon"] = "cargo-wagon",
+    ["fluid-wagon"] = "fluid-wagon",
+    ["artillery-wagon"] = "artillery-wagon"
 }
 
 -- Gets the distance from the center of the carriage to the end of it for when placing carriages. This is half the combined connection and joint distance of the carriage.
@@ -68,39 +68,40 @@ Common.TunnelSignalDirection = {
 -- The managed train's state. Finished is for when the tunnel trip is completed.
 ---@class PrimaryTrainState
 Common.PrimaryTrainState = {
-    portalTrack = "portalTrack", ---@type PrimaryTrainState
-    approaching = "approaching", ---@type PrimaryTrainState
-    underground = "underground", ---@type PrimaryTrainState
-    leaving = "leaving", ---@type PrimaryTrainState
-    finished = "finished" ---@type PrimaryTrainState
+    portalTrack = "portalTrack",
+    approaching = "approaching",
+    underground = "underground",
+    leaving = "leaving",
+    finished = "finished"
 }
 
 -- A specific LuaTrain's role within its parent managed train object.
 ---@class TunnelUsageParts
 Common.TunnelUsageParts = {
-    approachingTrain = "approachingTrain", ---@type TunnelUsageParts
-    leavingTrain = "leavingTrain", ---@type TunnelUsageParts
-    portalTrackTrain = "portalTrackTrain" ---@type TunnelUsageParts
+    approachingTrain = "approachingTrain",
+    leavingTrain = "leavingTrain",
+    portalTrackTrain = "portalTrackTrain"
 }
 
 -- The train's state - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageAction
 Common.TunnelUsageAction = {
-    startApproaching = "startApproaching", ---@type TunnelUsageAction
-    onPortalTrack = "onPortalTrack", ---@type TunnelUsageAction
-    entered = "entered", ---@type TunnelUsageAction
-    leaving = "leaving", ---@type TunnelUsageAction
-    terminated = "terminated" ---@type TunnelUsageAction
+    startApproaching = "startApproaching",
+    onPortalTrack = "onPortalTrack",
+    entered = "entered",
+    leaving = "leaving",
+    terminated = "terminated"
 }
 
 -- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageChangeReason
 Common.TunnelUsageChangeReason = {
-    reversedAfterLeft = "reversedAfterLeft", ---@type TunnelUsageChangeReason
-    abortedApproach = "abortedApproach", ---@type TunnelUsageChangeReason
-    completedTunnelUsage = "completedTunnelUsage", ---@type TunnelUsageChangeReason
-    tunnelRemoved = "tunnelRemoved", ---@type TunnelUsageChangeReason
-    portalTrackReleased = "portalTrackReleased" ---@type TunnelUsageChangeReason
+    reversedAfterLeft = "reversedAfterLeft",
+    abortedApproach = "abortedApproach",
+    completedTunnelUsage = "completedTunnelUsage",
+    tunnelRemoved = "tunnelRemoved",
+    portalTrackReleased = "portalTrackReleased",
+    invalidTrain = "invalidTrain"
 }
 
 return Common

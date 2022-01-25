@@ -63,13 +63,14 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
+    TrainIdChangeTests = {enabled = false, testScript = require("tests/train_id_change_tests")},
     -- Tunnel part tests:
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Adhoc tests:
-    TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
+    TunnelUsageChangedEvents = {enabled = true, testScript = require("tests/tunnel_usage_changed_events")},
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     -- Template Tests:
@@ -121,7 +122,8 @@ local TestsToRun = {
 ---@field bespoke table<string, any> @ The bespoke test data for only this test will be registered under here.
 ---@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction> @ A list of the tunnel usage change actions and some meta data on them.
 ---@field lastAction? TunnelUsageAction|null @ The last tunnel usage change action reported or nil if none.
----@field train? LuaTrain|null @ The train entering or leaving the tunnel. Will be nil while the train is underground, lastAction is "entered".
+---@field lastChangeReason? TunnelUsageChangeReason|null @ The last tunnel usage change reason reported or nil if none.
+---@field train? LuaTrain|null @ The train using the tunnel. Will be nil while the train is underground, identified by lastAction being "entered".
 ---@field testScenario? table<string, any>|null @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
 
 ---@class TestManager_TunnelUsageChangeAction

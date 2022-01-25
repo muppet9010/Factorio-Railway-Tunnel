@@ -83,7 +83,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local tunnel, train_id = transitionSignal.portal.tunnel, train.id
     if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id and tunnel.managedTrain.leavingTrainId ~= train_id then
         -- Tunnel already reserved so this reservation is bad.
-        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, transitionSignal.portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
         return
     end
 

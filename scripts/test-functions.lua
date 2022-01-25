@@ -186,7 +186,7 @@ end
 --- Registers for tunnel usage change notifications to be recorded in the Test Data object's default fields. To be called from Start().
 --- Used when a test will check tunnel usage events once per tick.
 --- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
---- If multiple actions occur in the same tick only the last one is visible in the "lastAction" field which shouldn't be an issue for normal tests. All the events are in the "actions" field.
+--- If multiple actions occur in the same tick only the last one is visible in the "lastAction" and "lastChangeReason" fields which shouldn't be an issue for normal tests. All the events are in the "actions" field.
 --- If a test needs to react to each train state change in turn then the TestFunctions.RegisterTunnelUsageChangesToTestFunction() function should be used instead.
 ---@param testName string
 TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
@@ -629,6 +629,7 @@ TestFunctions._RecordTunnelUsageChanges = function(event)
     end
 
     testData.lastAction = event.action
+    testData.lastChangeReason = event.changeReason
     testData.train = event.train
 end
 

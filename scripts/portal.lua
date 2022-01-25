@@ -1226,7 +1226,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
         -- Note that we call this on a leaving train when we don't need to, but would be messy code to delay this check in to all of the branches.
-        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
         return
     end
@@ -1264,7 +1264,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
                 -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
                 -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
 
-                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
                 Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
                 return
             end
@@ -1394,7 +1394,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
 
     -- Check and handle if train can't fit in the tunnel's length.
     if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
-        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, portal.blockedPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal.blockedPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return
     end
@@ -1434,7 +1434,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
                 -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the transition train detection entity.
                 -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
 
-                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
                 Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                 return
             end

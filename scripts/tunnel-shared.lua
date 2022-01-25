@@ -6,7 +6,7 @@ local TunnelShared = {}
 
 TunnelShared.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelShared.SetTrainToManual_Scheduled", TunnelShared.SetTrainToManual_Scheduled)
-    EventScheduler.RegisterScheduledEventType("TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled", TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled)
+    EventScheduler.RegisterScheduledEventType("TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled)
 end
 
 ---@param builtEntity LuaEntity
@@ -137,38 +137,45 @@ TunnelShared.SetTrainToManual_Scheduled = function(event)
     end
 end
 
---- Train can't enter the portal so stop it, set it to manual and alert the players.
+--- Train can't enter the portal so stop it, set it to manual and alert the players. This stops the train the following tick if Facotrio engine decides to restart it.
 ---@param train LuaTrain
 ---@param train_id Id
----@param portal Portal
 ---@param alertEntity LuaEntity
 ---@param currentTick Tick
-TunnelShared.StopTrainFromEnteringTunnel = function(train, train_id, portal, alertEntity, currentTick, message)
-    -- Stop the train.
+TunnelShared.StopTrainFromEnteringTunnel = function(train, train_id, alertEntity, currentTick, message)
+    -- Stop the train now and next tick.
     TunnelShared.StopTrainOnEntityCollision(train, train_id, currentTick)
-    local force = portal.force
+    TunnelShared.AlertOnTrain(train, train_id, alertEntity, alertEntity.force, currentTick, message)
+end
 
+--- Alerts the player to a train via onscreen text and alert icon.
+---@param train LuaTrain
+---@param train_id Id
+---@param alertEntity LuaEntity
+---@param forceToSeeAlert LuaForce
+---@param currentTick Tick
+TunnelShared.AlertOnTrain = function(train, train_id, alertEntity, forceToSeeAlert, currentTick, message)
     -- Show a text message at the tunnel entrance for a short period.
     rendering.draw_text {
         text = message,
-        surface = portal.surface,
+        surface = alertEntity.surface,
         target = alertEntity,
         time_to_live = 300,
-        forces = {force},
+        forces = {forceToSeeAlert},
         color = {r = 1, g = 0, b = 0, a = 1},
         scale_with_zoom = true
     }
 
     -- Add the alert for the tunnel force.
-    local alertId = PlayerAlerts.AddCustomAlertToForce(force, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, message, true)
+    local alertId = PlayerAlerts.AddCustomAlertToForce(forceToSeeAlert, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, message, true)
 
-    -- Setup a schedule to detect when the issue is resolved and the alert can be removed.
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId, force = force})
+    -- Setup a schedule to detect when the train is either moving or changed (not valid LuaTrain) and the alert can be removed.
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId, force = forceToSeeAlert})
 end
 
 --- Checks a train until it is no longer stopped and then removes the alert associated with it.
 ---@param event UtilityScheduledEvent_CallbackObject
-TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled = function(event)
+TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled = function(event)
     local train = event.data.train ---@type LuaTrain
     local alertEntity = event.data.alertEntity ---@type LuaEntity
     local trainStopped = true
@@ -193,7 +200,7 @@ TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled = function(event)
         PlayerAlerts.RemoveCustomAlertFromForce(event.data.force, event.data.alertId)
     else
         -- Train is still stopped so schedule a check for next tick.
-        EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.CheckIfRejectedTunnelTrainStillStopped_Scheduled", event.instanceId, event.data)
+        EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", event.instanceId, event.data)
     end
 end
 

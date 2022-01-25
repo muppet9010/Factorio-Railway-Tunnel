@@ -1,9 +1,10 @@
 -- SAMPLE TEST FILE - Functions are populated with sample code in keeping with the other test design.
 -- As a multi instance test this test file is run multiple times with each instance having different variations.
+
 -- Any created test has to be added to the test list at the top of test-manager.lua.
 -- A single test is run at a time and if the test is successful the map is cleared and the next test started. Each test only has to manage its own activities and feed back via the listed Interfaces.
 -- The referenced TestFunctions file has comments on the functions for their use.
--- Tests should only use their own blueprint items lists and any searched based off thier own tracked entities. SO no getting a forces train list, etc. This is to enable future concurrent running of tests.
+-- Tests should only use their own blueprint items lists and any searches based off thier own tracked entities. So no getting a forces train list, etc. This is to enable future concurrent running of tests.
 
 -- Requires and this tests class object.
 local Test = {}
@@ -44,9 +45,9 @@ Test.TestScenarios = {}
 --- Any scheduled event types for the test must be Registered here.
 ---@param testName string
 Test.OnLoad = function(testName)
-    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick) -- Register for enabling during Start().
     Test.GenerateTestScenarios(testName)
-    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName) -- Have tunnel usage changes being added to the test's TestData object.
 end
 
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
