@@ -113,6 +113,7 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_ITT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_ITT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     -- If populated then do the train restart logic rather than anything else.
     if testDataBespoke.restartTrainOnTick ~= nil then
@@ -154,17 +155,17 @@ Test.EveryTick = function(event)
     if testDataBespoke.carriageRemoved then
         if testScenario.stateToRemoveOn == TunnelUsageAction.entered then
             -- Entered state doesn't have anything active to detect the invalid train immediately so have to wait for next action to check if it realised.
-            if testData.lastAction == TunnelUsageAction.entered then
+            if tunnelUsageChanges.lastAction == TunnelUsageAction.entered then
                 -- Mod hasn't tried to do any processing yet.
                 return
             end
-            if testData.lastAction ~= TunnelUsageAction.terminated or testData.lastChangeReason ~= TunnelUsageChangeReason.invalidTrain then
+            if tunnelUsageChanges.lastAction ~= TunnelUsageAction.terminated or tunnelUsageChanges.lastChangeReason ~= TunnelUsageChangeReason.invalidTrain then
                 TestFunctions.TestFailed(testName, "last action not 'terminated' on next processing after carriage removal")
                 return false
             end
         else
             -- Tunnel state has per tick events so will realise by now (1 tick after removal) that something has happened.
-            if testData.lastAction ~= TunnelUsageAction.terminated or testData.lastChangeReason ~= TunnelUsageChangeReason.invalidTrain then
+            if tunnelUsageChanges.lastAction ~= TunnelUsageAction.terminated or tunnelUsageChanges.lastChangeReason ~= TunnelUsageChangeReason.invalidTrain then
                 TestFunctions.TestFailed(testName, "last action not 'terminated' immediately after carriage removal")
                 return false
             end
@@ -190,7 +191,7 @@ Test.EveryTick = function(event)
         local scheduleRemovalTick = false
 
         -- Check if the action is the one we want to react to. Do like this as may want to add more complciated trigering logic in future.
-        if testData.lastAction == testScenario.stateToRemoveOn then
+        if tunnelUsageChanges.lastAction == testScenario.stateToRemoveOn then
             scheduleRemovalTick = true
         end
 
@@ -210,7 +211,7 @@ Test.EveryTick = function(event)
 
     if doRemovalThisTick then
         -- Cache the train carriages before we invalidate the managed train.
-        testDataBespoke.preRemovedTrainCarriages = testData.train.carriages
+        testDataBespoke.preRemovedTrainCarriages = tunnelUsageChanges.train.carriages
 
         local carriageIndex
         if testScenario.carriageToRemove == CarriageToRemove.front then
@@ -218,8 +219,8 @@ Test.EveryTick = function(event)
         else
             carriageIndex = 2
         end
-        testData.train.carriages[carriageIndex].destroy()
-        if testData.train.valid then
+        tunnelUsageChanges.train.carriages[carriageIndex].destroy()
+        if tunnelUsageChanges.train.valid then
             TestFunctions.TestFailed(testName, "carriage not removed when expected")
             return
         end

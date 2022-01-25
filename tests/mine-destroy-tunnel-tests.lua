@@ -273,6 +273,7 @@ end
 Test.ShouldTunnelPartBeRemoved = function(testData)
     local testScenario = testData.testScenario ---@type Tests_MDTT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_MDTT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     if testScenario.trainState == TrainStates.none then
         -- Always the right time with "none" train state requirement.
@@ -286,7 +287,7 @@ Test.ShouldTunnelPartBeRemoved = function(testData)
         end
     else
         -- All other train states check if they have been reported as being reached yet.
-        if testData.actions[testScenario.trainState] ~= nil and testData.actions[testScenario.trainState].count == 1 then
+        if tunnelUsageChanges.actions[testScenario.trainState] ~= nil and tunnelUsageChanges.actions[testScenario.trainState].count == 1 then
             return true
         else
             return false

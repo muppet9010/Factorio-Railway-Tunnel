@@ -103,6 +103,7 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_ROOFT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_ROOFT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     -- The train starts stationary, so we only want to start checking its state and if its stopped after it has started moving first.
     if not testDataBespoke.trainhasStartedMoving then
@@ -118,9 +119,9 @@ Test.EveryTick = function(event)
         if testDataBespoke.enteringtrain == nil or not testDataBespoke.enteringtrain.valid then
             TestFunctions.TestFailed(testName, "train traversed through tunnel, but should have stopped short on the protal tracks.")
         elseif testDataBespoke.enteringtrain.speed == 0 then
-            if testData.lastAction == nil then
+            if tunnelUsageChanges.lastAction == nil then
                 TestFunctions.TestFailed(testName, "train should have reserved tunnel when crossing on to portal tracks.")
-            elseif testData.lastAction == Common.TunnelUsageAction.onPortalTrack then
+            elseif tunnelUsageChanges.lastAction == Common.TunnelUsageAction.onPortalTrack then
                 TestFunctions.TestCompleted(testName)
             else
                 TestFunctions.TestFailed(testName, "train shouldn't have used the tunnel in any any way than be on portal tracks.")
@@ -131,12 +132,12 @@ Test.EveryTick = function(event)
     end
 
     -- Wait for when the train has started leaving the tunnel.
-    if testData.actions[Common.TunnelUsageAction.leaving] == nil then
+    if tunnelUsageChanges.actions[Common.TunnelUsageAction.leaving] == nil then
         return
     end
 
     -- Wait for when the leaving train stops.
-    local leavingTrain = testData.train
+    local leavingTrain = tunnelUsageChanges.train
     if leavingTrain == nil or leavingTrain.speed ~= 0 then
         return
     end

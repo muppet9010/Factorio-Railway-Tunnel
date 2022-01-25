@@ -183,7 +183,7 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
     return listToTest
 end
 
---- Registers for tunnel usage change notifications to be recorded in the Test Data object's default fields. To be called from Start().
+--- Registers for tunnel usage change notifications to be recorded in the Test Data object's tunnelUsageChanges field. To be called from Start().
 --- Used when a test will check tunnel usage events once per tick.
 --- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
 --- If multiple actions occur in the same tick only the last one is visible in the "lastAction" and "lastChangeReason" fields which shouldn't be an issue for normal tests. All the events are in the "actions" field.
@@ -614,23 +614,24 @@ end
 ---@param event TestFunctions_RemoteTunnelUsageChangedEvent
 TestFunctions._RecordTunnelUsageChanges = function(event)
     local testData = TestFunctions.GetTestDataObject(event.testName)
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     -- Record the action for later reference.
-    local actionListEntry = testData.actions[event.action]
+    local actionListEntry = tunnelUsageChanges.actions[event.action]
     if actionListEntry then
         actionListEntry.count = actionListEntry.count + 1
         actionListEntry.recentChangeReason = event.changeReason
     else
-        testData.actions[event.action] = {
+        tunnelUsageChanges.actions[event.action] = {
             name = event.action,
             count = 1,
             recentChangeReason = event.changeReason
         }
     end
 
-    testData.lastAction = event.action
-    testData.lastChangeReason = event.changeReason
-    testData.train = event.train
+    tunnelUsageChanges.lastAction = event.action
+    tunnelUsageChanges.lastChangeReason = event.changeReason
+    tunnelUsageChanges.train = event.train
 end
 
 -- The function called to revive the ghosts on the first and second attempt. It populates a bunch of passed in tables, rather than returning anything itself.

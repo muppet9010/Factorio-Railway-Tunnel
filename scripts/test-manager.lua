@@ -120,12 +120,17 @@ local TestsToRun = {
 --- The base object for storing test data during a test iteration run between ticks. It will have additional test specific fields set within it by the script.
 ---@class TestManager_TestData
 ---@field bespoke table<string, any> @ The bespoke test data for only this test will be registered under here.
----@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction> @ A list of the tunnel usage change actions and some meta data on them.
+---@field tunnelUsageChanges TestManaged_TunnelUsageChanges @ Only populated upon a tunnel usage change event occuring if recording these has been registered by TestFunctions.RegisterRecordTunnelUsageChanges().
+---@field testScenario? table<string, any>|null @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
+
+--- The Tunnel Usage Change data automatically captured by TestFunctions.RegisterRecordTunnelUsageChanges().
+---@class TestManaged_TunnelUsageChanges
 ---@field lastAction? TunnelUsageAction|null @ The last tunnel usage change action reported or nil if none.
 ---@field lastChangeReason? TunnelUsageChangeReason|null @ The last tunnel usage change reason reported or nil if none.
 ---@field train? LuaTrain|null @ The train using the tunnel. Will be nil while the train is underground, identified by lastAction being "entered".
----@field testScenario? table<string, any>|null @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
+---@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction>
 
+--- A list of the tunnel usage change actions and some meta data on them.
 ---@class TestManager_TunnelUsageChangeAction
 ---@field name TunnelUsageAction @ The action name string, same as the key in the table.
 ---@field count uint @ How many times the event has occured.
@@ -392,7 +397,10 @@ end
 TestManager.CreateTestDataObject = function()
     ---@type TestManager_TestData
     local testData = {
-        actions = {}
+        bespoke = {}, -- Expected to be overwritten witihn the test's Start(). But can also have entries just added to it if already present.
+        tunnelUsageChanges = {
+            actions = {}
+        }
     }
     return testData
 end

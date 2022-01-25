@@ -201,10 +201,11 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_RTSR_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_RTSR_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     if not testDataBespoke.firstTargetRemoved then
         local removeFirstTarget = false
-        if (testScenario.tunnelUsageState == TunnelUsageStates.startApproaching or testScenario.tunnelUsageState == TunnelUsageStates.entered or testScenario.tunnelUsageState == TunnelUsageStates.leaving) and testScenario.tunnelUsageState == testData.lastAction then
+        if (testScenario.tunnelUsageState == TunnelUsageStates.startApproaching or testScenario.tunnelUsageState == TunnelUsageStates.entered or testScenario.tunnelUsageState == TunnelUsageStates.leaving) and testScenario.tunnelUsageState == tunnelUsageChanges.lastAction then
             removeFirstTarget = true
         elseif testScenario.tunnelUsageState == TunnelUsageStates.onPortalTrack and not testDataBespoke.entrancePortalTrainDetector.valid then
             removeFirstTarget = true
@@ -235,7 +236,7 @@ Test.EveryTick = function(event)
         local train = testDataBespoke.train -- Check for train pre entering.
         if train == nil or not train.valid then
             -- Try to get the leaving train. No other states should have this outcome.
-            train = testData.train
+            train = tunnelUsageChanges.train
         end
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then

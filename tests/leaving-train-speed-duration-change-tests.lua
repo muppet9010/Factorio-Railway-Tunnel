@@ -378,10 +378,11 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_LTSDCT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_LTSDCT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     -- Check that no starting speed variations has caused the tunnel to be reserved/released on the first tick.
     if event.tick == testDataBespoke.testStartedTick then
-        if testData.lastAction ~= nil then
+        if tunnelUsageChanges.lastAction ~= nil then
             TestFunctions.TestFailed(testName, "train triggered tunnel in first tick and is therefore bad test setup")
             return
         end
@@ -410,8 +411,8 @@ Test.EveryTick = function(event)
     end
 
     -- Capture the leaving train when it first emerges.
-    if testDataBespoke.tunnelTrainPostTunnel == nil and testData.lastAction == Common.TunnelUsageAction.leaving then
-        testDataBespoke.tunnelTrainPostTunnel = testData.train
+    if testDataBespoke.tunnelTrainPostTunnel == nil and tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving then
+        testDataBespoke.tunnelTrainPostTunnel = tunnelUsageChanges.train
     end
 
     -- Monitor the train times when they stop.

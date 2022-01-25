@@ -79,11 +79,12 @@ Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(testName)
     local testDataBespoke = testData.bespoke ---@type Tests_AOPTTA_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     -- Check initial events occur in expected order.
     if not testDataBespoke.startedApproaching then
-        if testData.lastAction ~= nil then
-            if testData.lastAction == Common.TunnelUsageAction.startApproaching then
+        if tunnelUsageChanges.lastAction ~= nil then
+            if tunnelUsageChanges.lastAction == Common.TunnelUsageAction.startApproaching then
                 testDataBespoke.startedApproaching = true
             else
                 TestFunctions.TestFailed(testName, "first tunnel state should have been startApproaching")

@@ -65,8 +65,9 @@ Test.EveryTick = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(testName)
     local testDataBespoke = testData.bespoke ---@type Tests_TSI_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    if testData.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+    if tunnelUsageChanges.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
         game.print("train has completed tunnel trip")
     end
