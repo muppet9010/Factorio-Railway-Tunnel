@@ -41,8 +41,12 @@ Long term UPS/code plans
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.
-    - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to track train Id changes to delete old data though to stop our list infintely growing with train composition changes. Also cached data would be for one direction of the train, so would have to iterate it carefully.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
+    - Train data caching:
+        - Requires tracking train ID changes to remove old cached data.
+        - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to drop cached data for train Id changes. Also cached data would be for one direction of the train, so would have to iterate it carefully. The entering train data cache should be propigated through to the leaving and terminated train for this. As it alone takes 4% of total UPS to generate in large tests.
+        - Tunnel.CanTrainFitInTunnel() is getting some train carriage data that should be passed through in to the approaching train data cache as it overlaps.
+        - Train invalid checks - at present we check at the start of each function. See if its better UPS wise to monitor the train ID changed event and do a search for the old ID being one we were tracking, rather than having this valid API call once in every per tick event. As in lightweight functions there are only a few other API calls per tick.
 
 
 Long term feature plans
