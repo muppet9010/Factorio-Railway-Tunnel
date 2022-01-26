@@ -374,7 +374,7 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
         if i == 1 then
             entranceSignalClosingCarriage = carriage
         else
-            carriage.destroy()
+            carriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
         end
     end
     -- Cache and handle the carriage from the entering train we are using to keep the signals closed.
@@ -755,7 +755,7 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.DestroyEntranceSignalClosingLocomotive = function(managedTrain)
     if managedTrain.entranceSignalClosingCarriage ~= nil and managedTrain.entranceSignalClosingCarriage.valid then
-        managedTrain.entranceSignalClosingCarriage.destroy()
+        managedTrain.entranceSignalClosingCarriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
     end
     managedTrain.entranceSignalClosingCarriage = nil
 end
