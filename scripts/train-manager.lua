@@ -1,5 +1,11 @@
 -- Has the main state tracking and handling logic for Managed Trains.
 
+--[[
+    Notes:
+        - All of the ongoing or scheduled functions are protected against an invalid main train references by the train-cached-data module and its tracking of remvoed carriage's train Id's to global.trainManager.trainIdToManagedTrain and if found calling TrainManager.InvalidTrainFound().
+--]]
+--
+
 local TrainManager = {}
 local Utils = require("utility/utils")
 local Events = require("utility/events")
@@ -75,6 +81,7 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.TrainEnterTunnel = TrainManager.TrainEnterTunnel
     MOD.Interfaces.TrainManager.On_TunnelRemoved = TrainManager.On_TunnelRemoved
     MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails = TrainManager.GetTrainIdsManagedTrainDetails
+    MOD.Interfaces.TrainManager.InvalidTrainFound = TrainManager.InvalidTrainFound
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     EventScheduler.RegisterScheduledEventType(
@@ -221,12 +228,6 @@ end
 --- This is run within a debug logging wrapper when called by TrainManager.ProcessManagedTrain().
 ---@param managedTrain ManagedTrain
 TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
-    -- Check and handle if the train has become invalid.
-    if not managedTrain.portalTrackTrain.valid then
-        TrainManager.InvalidTrainFound(managedTrain, "portalTrackTrain")
-        return
-    end
-
     local entrancePortalEntrySignalEntity = managedTrain.entrancePortal.entrySignals[TunnelSignalDirection.inSignal].entity
 
     if not managedTrain.portalTrackTrainBySignal then
@@ -264,12 +265,6 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local approachingTrain = managedTrain.approachingTrain ---@type LuaTrain
-
-    -- Check and handle if the train has become invalid.
-    if not approachingTrain.valid then
-        TrainManager.InvalidTrainFound(managedTrain, "approachingTrain")
-        return
-    end
 
     -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away.
     if approachingTrain.state ~= defines.train_state.arrive_signal or approachingTrain.signal ~= managedTrain.entrancePortalTransitionSignal.entity then
@@ -352,6 +347,19 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     local currentAbsSpeed = math.abs(managedTrain.approachingTrainExpectedSpeed)
     managedTrain.traversalInitialSpeedAbsolute = currentAbsSpeed
 
+    -- Clear references and data thats no longer valid before we do anything else to the train. As we need these to be blank for when other functions are triggered from changing the train and its carriages.
+    -- Note that some of these may be cached prior to this within this function for use after the clearance.
+    global.trainManager.trainIdToManagedTrain[managedTrain.approachingTrainId] = nil
+    managedTrain.approachingTrain = nil
+    managedTrain.approachingTrainId = nil
+    --managedTrain.approachingTrainMovingForwards = nil -- TODO
+    managedTrain.approachingTrainExpectedSpeed = nil
+    managedTrain.approachingTrainReachedFullSpeed = nil
+    managedTrain.portalTrackTrain = nil
+    managedTrain.portalTrackTrainId = nil
+    managedTrain.portalTrackTrainInitiallyForwards = nil
+    managedTrain.portalTrackTrainBySignal = nil
+
     -- Set up DummyTrain to maintain station requests.
     managedTrain.tunnelUsageState = TunnelUsageState.underground
     managedTrain.targetTrainStop = approachingTrain.path_end_stop
@@ -369,6 +377,7 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     managedTrain.trainLeavingSpeedAbsolute = estimatedSpeedAbsolute
 
     -- Handle the entering train's carriage entities. Keep the first carriage that we will use to keep the signals closed, as there's a delay in the circuit wires between the exit portal signals triggering the entrance portal signals to close, thus we leave a carriage behind to keep the entrance portal signals closed. Destroy the other train entities as we have finished with them.
+    -- Have to use this reference and not the cached data as it was updated earlier in this function.
     local entranceSignalClosingCarriage
     for i, carriage in pairs(approachingTrain.carriages) do
         if i == 1 then
@@ -383,18 +392,6 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     TunnelShared.StopTrainOnEntityCollision(entranceSignalClosingCarriage_train, entranceSignalClosingCarriage_train.id, tick)
     entranceSignalClosingCarriage.force = global.force.tunnelForce
     entranceSignalClosingCarriage.destructible = false
-
-    -- Clear data thats no longer valid.
-    global.trainManager.trainIdToManagedTrain[managedTrain.approachingTrainId] = nil
-    managedTrain.approachingTrain = nil
-    managedTrain.approachingTrainId = nil
-    --managedTrain.approachingTrainMovingForwards = nil -- TODO
-    managedTrain.approachingTrainExpectedSpeed = nil
-    managedTrain.approachingTrainReachedFullSpeed = nil
-    managedTrain.portalTrackTrain = nil
-    managedTrain.portalTrackTrainId = nil
-    managedTrain.portalTrackTrainInitiallyForwards = nil
-    managedTrain.portalTrackTrainBySignal = nil
 
     -- Complete the state transition.
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel(managedTrain)
@@ -413,12 +410,6 @@ end
 ---@param managedTrain ManagedTrain
 ---@param currentTick Tick
 TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
-    -- Check and handle if the train has become invalid.
-    if not managedTrain.leavingTrain.valid then
-        TrainManager.InvalidTrainFound(managedTrain, "leavingTrain")
-        return
-    end
-
     -- OVERHAUL: use of managedTrain.traversalArrivalTick doesn't handle if the train is delayed. Will mean the player goes at full speed through the tunnel and then sits still for the delayed arrival from the train having to brake. Will also need to store the movement per tick so we can move te player container by that much.
     if currentTick < managedTrain.traversalArrivalTick then
         -- Train still waiting on its arrival time.
@@ -448,12 +439,6 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     end
 
     local leavingTrain = managedTrain.leavingTrain
-
-    -- Check and handle if the train has become invalid.
-    if not leavingTrain.valid then
-        TrainManager.InvalidTrainFound(managedTrain, "leavingTrain")
-        return
-    end
 
     -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainMovingForwards for later use.
     TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainMovingForwards", managedTrain.dummyTrain.path_end_stop)
@@ -696,12 +681,6 @@ end
 --- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingOngoing = function(managedTrain)
-    -- Check and handle if the train has become invalid.
-    if not managedTrain.leavingTrain.valid then
-        TrainManager.InvalidTrainFound(managedTrain, "leavingTrain")
-        return
-    end
-
     -- We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its rear rail signal is our portal entrance one. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
     local exitPortalEntrySignalEntity = managedTrain.exitPortal.entrySignals[TunnelSignalDirection.inSignal].entity
     if exitPortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
@@ -938,7 +917,7 @@ TrainManager.RemoveManagedTrainEntry = function(managedTrain)
 end
 
 ---@param trainId Id
----@return TrainIdToManagedTrain
+---@return TrainIdToManagedTrain trainIdToManagedTrain
 TrainManager.GetTrainIdsManagedTrainDetails = function(trainId)
     return global.trainManager.trainIdToManagedTrain[trainId]
 end
@@ -997,9 +976,6 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
 
         -- Update data cache.
         refCarriageData.entity = lastPlacedCarriage
-        if refCarriageData.unitNumber ~= nil then
-            refCarriageData.unitNumber = lastPlacedCarriage.unit_number
-        end
 
         -- Make the cloned carriage invunerable so that it can't be killed while "underground".
         lastPlacedCarriage.destructible = false
@@ -1201,8 +1177,7 @@ end
 
 --- Called when the mod finds an invalid train and handles the situation. Calling fucntion will need to stop processing after this function.
 ---@param managedTrain ManagedTrain
----@param trainFieldName string
-TrainManager.InvalidTrainFound = function(managedTrain, trainFieldName)
+TrainManager.InvalidTrainFound = function(managedTrain)
     -- Find a suitable target entity for the alert GUI.
     local train, alertEntity
     for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
@@ -1228,7 +1203,7 @@ TrainManager.InvalidTrainFound = function(managedTrain, trainFieldName)
     end
 
     -- Return any leaving train carriages to their origional force and let them take damage again.
-    if trainFieldName == "leavingTrain" then
+    if managedTrain.tunnelUsageState == TunnelUsageState.underground or managedTrain.tunnelUsageState == TunnelUsageState.leaving then
         for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
             local carriage = carriageData.entity
             if carriage.valid then

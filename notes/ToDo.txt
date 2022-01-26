@@ -1,13 +1,11 @@
 Now
 ---
-    - Train data caching:
-        - Tunnel.CanTrainFitInTunnel() is getting some train carriage data that should be passed through in to the approaching train data cache as it overlaps.
-        - Train invalid checks - at present we check at the start of each function. See if its better UPS wise to monitor the train ID changed event and do a search for the old ID being one we were tracking, rather than having this valid API call once in every per tick event. As in lightweight functions there are only a few other API calls per tick.
-    - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
+    - Run full test suite on current caching cahnges.
 
 
 Bugs
 ----
+    - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
     - Short train on small loop through tunnel causes error. error text "bad braking requirement?".
 
 

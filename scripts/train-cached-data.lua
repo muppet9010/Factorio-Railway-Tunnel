@@ -8,6 +8,7 @@ local Utils = require("utility/utils")
 ---@class TrainCachedData
 ---@field id Id @ Train Id
 ---@field carriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train.
+---@field trainLength double @ How much tunnel space the train takes up.
 ---@field forwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the forward movement of this cached train.
 ---@field backwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the backwards movement of this cached train.
 
@@ -41,11 +42,19 @@ TrainCachedData.OnRollingStockRemoved = function(event)
         return
     end
 
-    -- Check if the entity's train was one we had cached and if so remove the cache.
     local trainId = entity.train.id
+
+    -- Check if the entity's train was one we had cached and if so remove the cache.
     if global.trainCachedData.trains[trainId] ~= nil then
         -- Removed the cached data for this train as the train is no longer valid.
         global.trainCachedData.trains[trainId] = nil
+    end
+
+    -- Check if there is a managed train that needs stopping.
+    local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(trainId)
+    if trainIdToManagedTrain ~= nil then
+        -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
+        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain.managedTrain)
     end
 end
 
@@ -65,9 +74,6 @@ TrainCachedData.GetCreateTrainCache = function(train, train_id)
     local carriagesCachedData = {}
     for i, carriage in pairs(train.carriages) do
         carriagesCachedData[i] = {entity = carriage}
-        if i == 1 then
-            carriagesCachedData[1].unitNumber = carriage.unit_number
-        end
     end
     ---@type TrainCachedData
     local trainCachedData = {

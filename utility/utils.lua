@@ -1876,7 +1876,6 @@ end
 ---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
 ---@field entity LuaEntity
 ---@field prototypeName? string|null
----@field unitNumber? UnitNumber|null
 ---@field faceingFrontOfTrain? boolean|null @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
 
 --- Get the data other Utils functions need for calculating and estimating; a trains future speed, time to cover distance, etc.
