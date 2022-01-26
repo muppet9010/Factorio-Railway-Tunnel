@@ -658,20 +658,20 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.leftTrainId = nil
     -- global.trainManager.trainIdToManagedTrain[leftTrainId] - Nothing to set or nil, but included for ease of checking all global objects included in reversal.
 
-    if oldManagedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
+    if oldManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
         if oldManagedTrain.enteringTrainState == EnteringTrainStates.finished then
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.underground
+            newManagedTrain.tunnelUsageState = TunnelUsageState.underground
         elseif oldManagedTrain.enteringTrainState == EnteringTrainStates.entering then
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.leaving
+            newManagedTrain.tunnelUsageState = TunnelUsageState.leaving
         end
-    elseif oldManagedTrain.primaryTrainPartName == PrimaryTrainState.underground then
+    elseif oldManagedTrain.tunnelUsageState == TunnelUsageState.underground then
         if newManagedTrain.leavingTrainCarriagesPlaced == nil then
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.underground
+            newManagedTrain.tunnelUsageState = TunnelUsageState.underground
         else
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.leaving
+            newManagedTrain.tunnelUsageState = TunnelUsageState.leaving
         end
     else
-        error("Unexpected reversed old managed train primaryTrainPartName: " .. oldManagedTrain.primaryTrainPartName)
+        error("Unexpected reversed old managed train tunnelUsageState: " .. oldManagedTrain.tunnelUsageState)
     end
 
     -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage.

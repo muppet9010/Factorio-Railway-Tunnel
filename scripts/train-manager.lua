@@ -9,16 +9,16 @@ local PlayerContainer = require("scripts/player-container")
 local Common = require("scripts/common")
 local TrainManagerRemote = require("scripts/train-manager-remote")
 local TunnelShared = require("scripts/tunnel-shared")
-local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, PrimaryTrainState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.PrimaryTrainState, Common.TunnelUsageAction
+local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageState, Common.TunnelUsageAction
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
----@field primaryTrainPartName PrimaryTrainState
+---@field tunnelUsageState TunnelUsageState
 ---@field skipTickCheck boolean @ If TRUE then the mod doesn't check the train this tick. Used to save checking which state function to call when there is none required for a large portion of the managed train's lifetime.
 ---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal. -- OVERHAUL - not used by anything any more other than in its populating function. Remove in any final tidyup if still not used.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field force LuaForce @ The force of the train carriages using the tunnel.
----@field trainCarriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train as we obtain them.
+---@field trainCarriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train as we obtain them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes.
 ---
 ---@field approachingTrain? LuaTrain|null @ Ref to the approaching train. Cleared when the train enters the tunnel.
 ---@field approachingTrainId? Id|null @ The approachingTrain LuaTrain id. Cleared when the train enters the tunnel.
@@ -132,7 +132,7 @@ TrainManager._RegisterTrainApproachingPortalSignal_Internal = function(approachi
     end
 
     local managedTrain = TrainManager.CreateManagedTrainObject(approachingTrain, entrancePortalTransitionSignal, true, committedManagedTrain, reversedManagedTrain)
-    managedTrain.primaryTrainPartName = PrimaryTrainState.approaching
+    managedTrain.tunnelUsageState = TunnelUsageState.approaching
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     if reversedManagedTrain ~= nil then
         -- Include in the new train approaching event the old leavingTrain entry id that has been stopped.
@@ -171,7 +171,7 @@ TrainManager._RegisterTrainOnPortalTrack_Internal = function(trainOnPortalTrack,
 
     -- Is a new tunnel usage so do a full handling process.
     managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
-    managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
+    managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
 end
@@ -198,15 +198,15 @@ end
 TrainManager.ProcessManagedTrain = function(managedTrain, currentTick)
     -- We only need to handle one of these per tick as the transition between these states is either triggered externally or requires no immediate checking of the next state in the same tick as the transition.
     -- These are ordered on frequency of use to reduce per tick check costs.
-    if managedTrain.primaryTrainPartName == PrimaryTrainState.approaching then
+    if managedTrain.tunnelUsageState == TunnelUsageState.approaching then
         -- Keep on running until either the train reaches the Transition train detector or the train's target stops being the transition signal.
         TrainManager.TrainApproachingOngoing(managedTrain)
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
+    elseif managedTrain.tunnelUsageState == TunnelUsageState.leaving then
         TrainManager.TrainLeavingOngoing(managedTrain)
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.portalTrack then
+    elseif managedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
         -- Keep on running until either the train triggers the Transition signal or the train leaves the portal tracks.
         TrainManager.TrainOnPortalTrackOngoing(managedTrain)
-    elseif managedTrain.primaryTrainPartName == PrimaryTrainState.underground then
+    elseif managedTrain.tunnelUsageState == TunnelUsageState.underground then
         if managedTrain.undergroundTrainHasPlayersRiding then
             -- Only reason we have to update per tick while travelling underground currently.
             TrainManager.TrainUndergroundOngoing(managedTrain, currentTick)
@@ -279,7 +279,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
         else
             -- Train made it to the portal tracks, so need to enable tracking of it until it leaves.
-            managedTrain.primaryTrainPartName = PrimaryTrainState.portalTrack
+            managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
 
             -- Update the global train lookup for the downgraded state.
             global.trainManager.trainIdToManagedTrain[managedTrain.portalTrackTrainId].tunnelUsagePart = TunnelUsageParts.portalTrackTrain
@@ -353,7 +353,7 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     managedTrain.traversalInitialSpeedAbsolute = currentAbsSpeed
 
     -- Set up DummyTrain to maintain station requests.
-    managedTrain.primaryTrainPartName = PrimaryTrainState.underground
+    managedTrain.tunnelUsageState = TunnelUsageState.underground
     managedTrain.targetTrainStop = approachingTrain.path_end_stop
     managedTrain.dummyTrain = TrainManager.CreateDummyTrain(managedTrain.exitPortal, approachingTrain.schedule, managedTrain.targetTrainStop, false, managedTrain.force)
 
@@ -442,7 +442,7 @@ end
 TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local managedTrain = event.data.managedTrain ---@type ManagedTrain
     local previousBrakingTargetEntityId = event.data.brakingTargetEntityId ---@type UnitNumber
-    if managedTrain == nil or managedTrain.primaryTrainPartName ~= PrimaryTrainState.underground then
+    if managedTrain == nil or managedTrain.tunnelUsageState ~= TunnelUsageState.underground then
         -- Something has happened to the train/tunnel being managed while this has been scheduled, so just give up.
         return
     end
@@ -671,7 +671,7 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Tidy up for the leaving train and propigate state updates.
     TrainManager.DestroyDummyTrain(managedTrain)
     TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
-    managedTrain.primaryTrainPartName = PrimaryTrainState.leaving
+    managedTrain.tunnelUsageState = TunnelUsageState.leaving
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
 end
 
@@ -913,7 +913,7 @@ TrainManager.RemoveManagedTrainEntry = function(managedTrain)
     end
 
     -- Set all states to finished so that the TrainManager.ProcessManagedTrains() loop won't execute anything further this tick.
-    managedTrain.primaryTrainPartName = PrimaryTrainState.finished
+    managedTrain.tunnelUsageState = TunnelUsageState.finished
 
     global.trainManager.managedTrains[managedTrain.id] = nil
 end

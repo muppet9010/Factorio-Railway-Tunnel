@@ -6,7 +6,7 @@ local Events = require("utility/events")
 
 ---@class RemoteTunnelUsageEntry
 ---@field tunnelUsageId Id
----@field primaryState PrimaryTrainState
+---@field primaryState TunnelUsageState
 ---@field train LuaTrain @ The train entering or leaving the tunnel. Will be nil while primaryState is "underground".
 ---@field tunnelId Id
 
@@ -42,7 +42,7 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
 
     -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
     tableToPopulate.tunnelUsageId = managedTrainId
-    tableToPopulate.primaryState = managedTrain.primaryTrainPartName
+    tableToPopulate.primaryState = managedTrain.tunnelUsageState
     tableToPopulate.train = Utils.ReturnValidLuaObjectOrNil(managedTrain.portalTrackTrain) or Utils.ReturnValidLuaObjectOrNil(managedTrain.approachingTrain) or Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
     tableToPopulate.tunnelId = managedTrain.tunnel.id
 end
