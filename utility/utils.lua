@@ -1871,36 +1871,39 @@ end
 ---@field trainAirResistanceReductionMultiplier double @ The air resistance of the train (lead carriage in current direction).
 ---@field maxSpeed double @ The max speed the train can achieve.
 ---@field trainRawBrakingForce double @ The total braking force of the train ignoring any force bonus percentage from LuaForce.train_braking_force_bonus.
+---@field forwardFacingLocoCount uint @ The number of locomotives facing forwards. Used when recalcultaing locomotiveAccelerationPower.
 
 ---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
 ---@field entity LuaEntity
 ---@field prototypeName? string|null
----@field speed? double|null
 ---@field unitNumber? UnitNumber|null
+---@field faceingFrontOfTrain? boolean|null @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
 
---- Get the data other Utils functions needed for calculating and estimating a trains future speed, time to cover distance, etc.
+--- Get the data other Utils functions need for calculating and estimating; a trains future speed, time to cover distance, etc.
 --- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.
 --- Assumes all forward facing locomotives have the same fuel as the first one found. If no fuel is found in any locomotive then a default value of 1 is used and the return "noFuelFound" will indicate this,
 --- Either train_carriages or trainCarriagesDataArray needs to be provided.
 ---@param train LuaTrain
 ---@param train_speed double @ Must not be 0 (stationary train).
----@param train_carriages? LuaEntity[]|null
+---@param train_carriages? LuaEntity[]|null @ If provided the carriage data will be obtained as needed, but not cached.
 ---@param trainCarriagesDataArray? Utils_TrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
 ---@return Utils_TrainSpeedCalculationData trainSpeedCalculationData
----@return boolean noFuelFound @ TRUE if no fuel was found in any forward facing locomotive. Generally FALSE is returned when all is normal.
+---@return boolean noFuelFound @ TRUE if no fuel was found in any forward moving locomotive. Generally FALSE is returned when all is normal.
 Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
     if train_speed == 0 then
         -- We can't work out what way is forward for counting locomotives that can assist with acceleration.
         error("Utils.GetTrainSpeedCalculationData() doesn't work for 0 speed train")
     end
 
+    local trainWeight = train.weight
+
     ---@type Utils_TrainSpeedCalculationData
     local trainData = {
-        trainWeight = train.weight
+        trainWeight = trainWeight
     }
 
     local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce = 0, 0, nil, 0
-    local trainForwards = train_speed > 0
+    local trainMovingForwards = train_speed > 0
 
     -- Work out initial data based on what carriage data type has been passed in.
     local carriageCount
@@ -1912,23 +1915,23 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator
-    if (train_speed > 0) then
+    if trainMovingForwards then
         minCarriageIndex, maxCarriageIndex, carriageIterator = 1, carriageCount, 1
-    elseif (train_speed < 0) then
+    elseif not trainMovingForwards then
         minCarriageIndex, maxCarriageIndex, carriageIterator = carriageCount, 1, -1
     end
 
     local firstCarriage = true
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        local carriageEntity, carraigeCachedData, carriage_name
+        local carriageEntity, carriageCachedData, carriage_name
         if trainCarriagesDataArray ~= nil then
             ---@type Utils_TrainCarriageData
-            carraigeCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
-            carriage_name = carraigeCachedData.prototypeName
+            carriageCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
+            carriage_name = carriageCachedData.prototypeName
             if carriage_name == nil then
                 -- Data not known so obtain and cache.
-                carriage_name = carraigeCachedData.entity.name
-                carraigeCachedData.prototypeName = carriage_name
+                carriage_name = carriageCachedData.entity.name
+                carriageCachedData.prototypeName = carriage_name
             end
         else
             carriageEntity = train_carriages[currentSourceTrainCarriageIndex]
@@ -1940,36 +1943,44 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
 
         if firstCarriage then
             firstCarriage = false
-            trainData.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainData.trainWeight / 1000))
+            trainData.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainWeight / 1000))
             -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
-            if trainForwards then
+            if trainMovingForwards then
                 trainData.maxSpeed = train.max_forward_speed
-            elseif not trainForwards then
+            elseif not trainMovingForwards then
                 trainData.maxSpeed = train.max_backward_speed
             end
         end
 
         if carriage_name == "locomotive" then
-            local carriage_speed
+            local carriage_faceingFrontOfTrain  ---@type boolean
             if trainCarriagesDataArray ~= nil then
-                carriage_speed = carraigeCachedData.speed
-                if carriage_speed == nil then
+                carriage_faceingFrontOfTrain = carriageCachedData.faceingFrontOfTrain
+                if carriage_faceingFrontOfTrain == nil then
                     -- Data not known so obtain and cache.
-                    carriage_speed = carraigeCachedData.entity.speed
-                    carraigeCachedData.speed = carriage_speed
+                    if carriageCachedData.entity.speed == train_speed then
+                        carriage_faceingFrontOfTrain = trainMovingForwards
+                    else
+                        carriage_faceingFrontOfTrain = not trainMovingForwards
+                    end
+                    carriageCachedData.faceingFrontOfTrain = carriage_faceingFrontOfTrain
                 end
             else
-                carriage_speed = carriageEntity.speed
+                if carriageCachedData.entity.speed == train_speed then
+                    carriage_faceingFrontOfTrain = trainMovingForwards
+                else
+                    carriage_faceingFrontOfTrain = not trainMovingForwards
+                end
             end
 
             -- Only process locomotives that are powering the trains movement.
-            if carriage_speed > 0 then
+            if trainMovingForwards == carriage_faceingFrontOfTrain then
                 -- Count all forward moving loco's. Just assume they all have the same fuel to avoid inspecting each one.
                 forwardFacingLocoCount = forwardFacingLocoCount + 1
 
-                -- Just check one forward facing loco for fuel type. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
-                local carriage = carriageEntity or carraigeCachedData.entity
+                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
                 if fuelAccelerationBonus == nil then
+                    local carriage = carriageEntity or carriageCachedData.entity
                     local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
                     if currentFuelPrototype ~= nil then
                         -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
@@ -1981,8 +1992,9 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
     end
 
     trainData.trainFrictionForce = trainFrictionForce
-    trainData.trainWeightedFrictionForce = (trainData.trainFrictionForce / trainData.trainWeight)
-    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainData.trainWeight)
+    trainData.trainWeightedFrictionForce = (trainFrictionForce / trainWeight)
+    trainData.forwardFacingLocoCount = forwardFacingLocoCount
+    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainWeight)
     trainData.trainRawBrakingForce = trainRawBrakingForce
 
     local noFuelFound = false

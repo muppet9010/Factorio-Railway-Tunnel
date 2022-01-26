@@ -3,10 +3,13 @@
 local TrainCachedData = {}
 local Events = require("utility/events")
 local Common = require("scripts/common")
+local Utils = require("utility/utils")
 
 ---@class TrainCachedData
 ---@field id Id @ Train Id
 ---@field carriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train.
+---@field forwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the forward movement of this cached train.
+---@field backwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the backwards movement of this cached train.
 
 TrainCachedData.CreateGlobals = function()
     global.trainCachedData = global.trainCachedData or {}
@@ -28,6 +31,7 @@ TrainCachedData.OnLoad = function()
     MOD.Interfaces.TrainCachedData = MOD.Interfaces.TrainCachedData or {}
     MOD.Interfaces.TrainCachedData.CreateTrainCache = TrainCachedData.CreateTrainCache
     MOD.Interfaces.TrainCachedData.UpdateTrainCacheId = TrainCachedData.UpdateTrainCacheId
+    MOD.Interfaces.TrainCachedData.CalculateTrainSpeedCalculationData = TrainCachedData.CalculateTrainSpeedCalculationData
 end
 
 --- Called when a new train is created, which includes all train carriage changes apart from the removal of the final train carriage from the map.
@@ -71,7 +75,7 @@ end
 --- Creates a new train cache for the supplied train.
 ---@param train LuaTrain
 ---@param train_id Id
----@return Utils_TrainCarriageData[] carriagesCachedData
+---@return TrainCachedData trainCachedData
 TrainCachedData.CreateTrainCache = function(train, train_id)
     --- Get the initial cache's data.
     ---@type Utils_TrainCarriageData[]
@@ -90,7 +94,7 @@ TrainCachedData.CreateTrainCache = function(train, train_id)
     }
     global.trainCachedData.trains[train_id] = trainCachedData
 
-    return carriagesCachedData
+    return trainCachedData
 end
 
 --- Updates an existing train cache to a new train Id. Used when teleporting a train from 1 location to another.
@@ -101,6 +105,58 @@ TrainCachedData.UpdateTrainCacheId = function(oldId, newId)
     global.trainCachedData.trains[oldId] = nil
     global.trainCachedData.trains[newId] = trainCache
     trainCache.id = newId
+end
+
+--- Creates/Updates a train cache's trainSpeedCalculationData for the supplied train based on its movement direction.
+---@param train LuaTrain
+---@param train_speed double
+---@param trainCachedData TrainCachedData
+TrainCachedData.CalculateTrainSpeedCalculationData = function(train, train_speed, trainCachedData)
+    local trainMovingForwards = train_speed > 0
+    -- Looked at using the other direction's data if populated as base for new data, but the values that can be just copied are all cached base data already so basically just as quick to regenerate it and much simplier logic.
+    local updateAcceleration = false
+    local trainSpeedCalculationData
+    if trainMovingForwards then
+        -- Train moving forwards.
+        if trainCachedData.forwardMovingTrainSpeedCalculationData == nil then
+            -- No data held for current direction so generate it.
+            trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
+        else
+            -- Just update the locomotiveAccelerationPower.
+            updateAcceleration = true
+            trainSpeedCalculationData = trainCachedData.forwardMovingTrainSpeedCalculationData
+        end
+    else
+        -- Train moving backwards.
+        if trainCachedData.backwardMovingTrainSpeedCalculationData == nil then
+            -- No data held for current direction so generate it.
+            trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
+        else
+            -- Just update the locomotiveAccelerationPower.
+            updateAcceleration = true
+            trainSpeedCalculationData = trainCachedData.backwardMovingTrainSpeedCalculationData
+        end
+    end
+
+    -- Update the acceleration value back in to the cache on each calling.
+    if updateAcceleration then
+        local fuelAccelerationBonus
+        for _, carriageCachedData in pairs(trainCachedData.carriagesCachedData) do
+            -- Note: this is a partial clone from Utils.GetTrainSpeedCalculationData().
+            -- Only process locomotives that are powering the trains movement.
+            if carriageCachedData.prototypeName == "locomotive" and trainMovingForwards == carriageCachedData.faceingFrontOfTrain then
+                local carriage = carriageCachedData.entity
+                local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
+                if currentFuelPrototype ~= nil then
+                    -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
+                    fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
+                    -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
+                    break
+                end
+            end
+        end
+        trainSpeedCalculationData.locomotiveAccelerationPower = 10 * trainSpeedCalculationData.forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainSpeedCalculationData.trainWeight)
+    end
 end
 
 return TrainCachedData
