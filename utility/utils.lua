@@ -1876,7 +1876,7 @@ end
 ---@field entity LuaEntity
 ---@field prototypeName? string|null
 ---@field speed? double|null
----@field unit_number? UnitNumber|null
+---@field unitNumber? UnitNumber|null
 
 --- Get the data other Utils functions needed for calculating and estimating a trains future speed, time to cover distance, etc.
 --- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.

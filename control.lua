@@ -11,10 +11,12 @@ local Events = require("utility/events")
 local Commands = require("utility/commands")
 local PlayerAlerts = require("utility/player-alerts")
 local TunnelShared = require("scripts/tunnel-shared")
+local TrainCachedData = require("scripts/train-cached-data")
 
 local function CreateGlobals()
     global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
 
+    TrainCachedData.CreateGlobals()
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
     TrainManagerRemote.CreateGlobals()
@@ -81,6 +83,7 @@ local function OnLoad()
     )
 
     -- Call the module's OnLoad functions.
+    TrainCachedData.OnLoad()
     TunnelShared.OnLoad()
     TrainManager.OnLoad()
     Tunnel.OnLoad()

@@ -18,7 +18,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal. -- OVERHAUL - not used by anything any more other than in its populating function. Remove in any final tidyup if still not used.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field force LuaForce @ The force of the train carriages using the tunnel.
----@field trainCarriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train as we obtain them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes.
+---@field trainCarriagesCachedData Utils_TrainCarriageData[] @ Ref to the cached carriage details of the train as we obtain them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes.
 ---
 ---@field approachingTrain? LuaTrain|null @ Ref to the approaching train. Cleared when the train enters the tunnel.
 ---@field approachingTrainId? Id|null @ The approachingTrain LuaTrain id. Cleared when the train enters the tunnel.
@@ -340,7 +340,7 @@ TrainManager._TrainEnterTunnel_Internal = function(managedTrain, tick)
     TrainManager.UpdateScheduleForTargetRailBeingTunnelRail(managedTrain, approachingTrain)
 
     -- Clone the entering train to the exit position.
-    local leavingTrain = TrainManager.CloneEnteringTrainToExit(managedTrain) -- This updates managedTrain.trainCarriagesCachedData's entities to the leaving train ones.
+    local leavingTrain = TrainManager.CloneEnteringTrainToExit(managedTrain) -- This updates the train cache object and managedTrain.trainCarriagesCachedData's entities to the leaving train ones.
     local leavingTrainId = leavingTrain.id
     global.trainManager.trainIdToManagedTrain[leavingTrainId] = {
         trainId = leavingTrainId,
@@ -589,6 +589,12 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         local currentForcesBrakingBonus = managedTrain.force.train_braking_force_bonus
         distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - 6 -- Remove the 3 rails at the end of the portal that are listed in train's path. The train is already on these and so they can't be braked over.
 
+        if distanceBeyondTrainLeavingPosition <= 0 then
+            -- Hit at 0 distance with 1-1 on a loop post tunnel back to tunnel.
+            -- Hit at -2 with a 1 on a loop post tunnel back to tunnel.
+            error("bad braking requirement?")
+        end
+
         -- Work out the speed we should be going when leaving the tunnel to stop at the required location.
         local requiredSpeedAbsoluteAtPortalEnd = Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance(managedTrain.trainSpeedCalculationData, distanceBeyondTrainLeavingPosition, currentForcesBrakingBonus)
         managedTrain.trainLeavingSpeedAbsolute = requiredSpeedAbsoluteAtPortalEnd
@@ -661,8 +667,9 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
 
     -- Return the leaving train carriages to their origional force and let them take damage again.
     for _, carriageData in pairs(managedTrain.trainCarriagesCachedData) do
-        carriageData.entity.force = managedTrain.force
-        carriageData.entity.destructible = true
+        local carriage = carriageData.entity
+        carriage.force = managedTrain.force
+        carriage.destructible = true
     end
 
     -- Set the per tick event back to running. In some UndergroundOngoing states this was set to skip each tick as not needed due to scheduled events.
@@ -808,13 +815,9 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     -- Start building up the carriage data cache for later use.
     if upgradeManagedTrain == nil then
         -- Build data from scratch.
-        ---@type Utils_TrainCarriageData[]
-        managedTrain.trainCarriagesCachedData = {}
-        for i, carriage in pairs(train.carriages) do
-            managedTrain.trainCarriagesCachedData[i] = {entity = carriage}
-        end
+        managedTrain.trainCarriagesCachedData = MOD.Interfaces.TrainCachedData.CreateTrainCache(train, train_id)
     else
-        -- Use the old ManagedTrain's data object.
+        -- Use the old ManagedTrain's data objectas it can't have changed within the same ManagedTrain.
         managedTrain.trainCarriagesCachedData = upgradeManagedTrain.trainCarriagesCachedData
     end
     managedTrain.force = managedTrain.trainCarriagesCachedData[1].entity.force
@@ -827,7 +830,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         -- Cache the trains attributes for working out each speed. Only needed if its traversing the tunnel.
         managedTrain.approachingTrainExpectedSpeed = train_speed
         managedTrain.approachingTrainReachedFullSpeed = false
-        managedTrain.trainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, managedTrain.trainCarriagesCachedData)
+        managedTrain.trainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, managedTrain.trainCarriagesCachedData) -- TODO: cache this, but need to handle which direction the train is going in and always re-calc fuel bonuses as forwards locos, fuel type and force bonus will change between uses.
 
         global.trainManager.trainIdToManagedTrain[train_id] = {
             trainId = train_id,
@@ -950,16 +953,21 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
     end
 
     -- Iterate over the carriages and clone them.
-    local refCarriageData, refCarriageData_name
-    local lastPlacedCarriage, lastPlacedCarriage_name
+    local refCarriageData  ---@type Utils_TrainCarriageData
+    local refCarriageData_name  ---@type string
+    local lastPlacedCarriage  ---@type LuaEntity
+    local lastPlacedCarriage_name  ---@type string
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         refCarriageData = managedTrain.trainCarriagesCachedData[currentSourceTrainCarriageIndex]
 
+        -- Obtain the data from cache and if not present populate it.
         refCarriageData_name = refCarriageData.prototypeName
         if refCarriageData_name == nil then
             refCarriageData_name = refCarriageData.entity.name
-            refCarriageData.name = refCarriageData_name
+            refCarriageData.prototypeName = refCarriageData_name
         end
+
+        --TODO: shouldn't be cached.
         local refCarriageData_speed = refCarriageData.speed
         if refCarriageData_speed == nil then
             refCarriageData_speed = refCarriageData.entity.speed
@@ -992,7 +1000,12 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
         end
     end
 
-    return lastPlacedCarriage.train
+    local leavingTrain = lastPlacedCarriage.train
+
+    -- Update the train cache objects Id from the old train id to the new train id. As we've updated the entities in this object already.
+    MOD.Interfaces.TrainCachedData.UpdateTrainCacheId(managedTrain.approachingTrainId, leavingTrain.id)
+
+    return leavingTrain
 end
 
 --- Copy a carriage by cloning it to the new position and handle rotations.
