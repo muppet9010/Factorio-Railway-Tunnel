@@ -1008,3 +1008,11 @@ TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
         return 2 -- Half of vanilla carriages 4 joint distance.
     end
 end
+
+
+
+
+
+---@class TrainLeadCarriageCache
+---@field trainForwards boolean @ If the train was forwards when the cache was last updated.
+---@field carriage LuaEntity @ Cached ref to the lead carriage entity.

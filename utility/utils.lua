@@ -1872,10 +1872,11 @@ end
 ---@field maxSpeed double @ The max speed the train can achieve.
 ---@field trainRawBrakingForce double @ The total braking force of the train ignoring any force bonus percentage from LuaForce.train_braking_force_bonus.
 
----@class Utils_TrainCarriageData @ Data array of cached details on a train's carriage. Allows only obtaining required data pr carriage once. Only populate carriage data when required.
+---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
 ---@field entity LuaEntity
 ---@field prototypeName? string|null
 ---@field speed? double|null
+---@field unit_number? UnitNumber|null
 
 --- Get the data other Utils functions needed for calculating and estimating a trains future speed, time to cover distance, etc.
 --- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.
@@ -1887,10 +1888,10 @@ end
 ---@param trainCarriagesDataArray? Utils_TrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
 ---@return Utils_TrainSpeedCalculationData trainSpeedCalculationData
 ---@return boolean noFuelFound @ TRUE if no fuel was found in any forward facing locomotive. Generally FALSE is returned when all is normal.
-Utils.GetTrainsSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
+Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
     if train_speed == 0 then
         -- We can't work out what way is forward for counting locomotives that can assist with acceleration.
-        error("Utils.GetTrainsSpeedCalculationData() doesn't work for 0 speed train")
+        error("Utils.GetTrainSpeedCalculationData() doesn't work for 0 speed train")
     end
 
     ---@type Utils_TrainSpeedCalculationData

@@ -1,5 +1,12 @@
 Now
 ---
+    - Train data caching:
+        - Requires tracking train ID changes to remove old cached data.
+        - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to drop cached data for train Id changes. Also cached data would be for one direction of the train, so would have to iterate it carefully.
+        - Tunnel.CanTrainFitInTunnel() is getting some train carriage data that should be passed through in to the approaching train data cache as it overlaps.
+        - Train invalid checks - at present we check at the start of each function. See if its better UPS wise to monitor the train ID changed event and do a search for the old ID being one we were tracking, rather than having this valid API call once in every per tick event. As in lightweight functions there are only a few other API calls per tick.
+    - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
+    - Rename ManagedTrain.primaryTrainPartName to something more fitting under new logic.
 
 
 Bugs
@@ -42,11 +49,6 @@ Long term UPS/code plans
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
-    - Train data caching:
-        - Requires tracking train ID changes to remove old cached data.
-        - When a train leaves a tunnel we can cache a bunch of its details against its train id and if the same train ID approaches another tunnel we can get it from the cache. Would have to drop cached data for train Id changes. Also cached data would be for one direction of the train, so would have to iterate it carefully. The entering train data cache should be propigated through to the leaving and terminated train for this. As it alone takes 4% of total UPS to generate in large tests.
-        - Tunnel.CanTrainFitInTunnel() is getting some train carriage data that should be passed through in to the approaching train data cache as it overlaps.
-        - Train invalid checks - at present we check at the start of each function. See if its better UPS wise to monitor the train ID changed event and do a search for the old ID being one we were tracking, rather than having this valid API call once in every per tick event. As in lightweight functions there are only a few other API calls per tick.
 
 
 Long term feature plans
@@ -65,7 +67,7 @@ Long term feature plans
     - Mod Compatibility:
         - Look at TSM compatibility.
         - Look at LTN compatibility.
-        - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but Utils.GetTrainsSpeedCalculationData() locomotiveAccelerationPower doesn't account for max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. I believe the current hardcoded value of "10" is for the default loco attribute.
+        - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but Utils.GetTrainSpeedCalculationData() locomotiveAccelerationPower doesn't account for max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. I believe the current hardcoded value of "10" is for the default loco attribute.
         - My single train unit mod.
         - Detect any mods that have destroyed train carriages spill contents on the ground. Drop train contents on ground at tunnel portals when a tunnel is destroyed.
     - Diagonal tunnel crossings. Would have to be a 8 long tunnel section to get the track to clear the 6 wide tunnel. If the collision box of the crossing was made 0.5~ in from each edge then rails diagonal rails should be placable up to the edge of it. The width doesn't prevent close and spaced double diagonal tracks from being built over a tunnel. Technically some existing entities on the edge would overlap with the mod placed rails, however this is unavoidable to let the player build diagonal rails up to the crossing.

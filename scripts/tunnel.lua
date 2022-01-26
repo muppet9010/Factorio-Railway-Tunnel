@@ -387,6 +387,7 @@ end
 ---@param tunnel Tunnel
 ---@return boolean
 Tunnel.CanTrainFitInTunnel = function(train, tunnel)
+    --TODO: this should be cached train carriage data.
     local trainLength = 0
     local carriage_name
     for i, carriage in pairs(train.carriages) do
