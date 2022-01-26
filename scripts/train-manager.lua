@@ -826,7 +826,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
     -- Start building up the carriage data cache for later use.
     if upgradeManagedTrain == nil then
         -- Build data from scratch.
-        managedTrain.trainCachedData = MOD.Interfaces.TrainCachedData.CreateTrainCache(train, train_id)
+        managedTrain.trainCachedData = MOD.Interfaces.TrainCachedData.GetCreateTrainCache(train, train_id)
     else
         -- Use the old ManagedTrain's data object as it can't have changed within the same ManagedTrain.
         managedTrain.trainCachedData = upgradeManagedTrain.trainCachedData
@@ -841,7 +841,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         -- Cache the trains attributes for working out each speed. Only needed if its traversing the tunnel.
         managedTrain.approachingTrainExpectedSpeed = train_speed
         managedTrain.approachingTrainReachedFullSpeed = false
-        MOD.Interfaces.TrainCachedData.CalculateTrainSpeedCalculationData(train, train_speed, managedTrain.trainCachedData)
+        MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData(train, train_speed, managedTrain.trainCachedData)
         if trainMovingForwards then
             managedTrain.directionalTrainSpeedCalculationData = managedTrain.trainCachedData.forwardMovingTrainSpeedCalculationData
         else

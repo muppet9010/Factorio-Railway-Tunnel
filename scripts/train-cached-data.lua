@@ -29,9 +29,9 @@ TrainCachedData.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
 
     MOD.Interfaces.TrainCachedData = MOD.Interfaces.TrainCachedData or {}
-    MOD.Interfaces.TrainCachedData.CreateTrainCache = TrainCachedData.CreateTrainCache
+    MOD.Interfaces.TrainCachedData.GetCreateTrainCache = TrainCachedData.GetCreateTrainCache
     MOD.Interfaces.TrainCachedData.UpdateTrainCacheId = TrainCachedData.UpdateTrainCacheId
-    MOD.Interfaces.TrainCachedData.CalculateTrainSpeedCalculationData = TrainCachedData.CalculateTrainSpeedCalculationData
+    MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData = TrainCachedData.UpdateTrainSpeedCalculationData
 end
 
 --- Called when a new train is created, which includes all train carriage changes apart from the removal of the final train carriage from the map.
@@ -72,12 +72,18 @@ TrainCachedData.OnRollingStockRemoved = function(event)
     end
 end
 
---- Creates a new train cache for the supplied train.
+--- Gets a train cache for the supplied train and if one doesn't exist it creates it first.
 ---@param train LuaTrain
 ---@param train_id Id
 ---@return TrainCachedData trainCachedData
-TrainCachedData.CreateTrainCache = function(train, train_id)
-    --- Get the initial cache's data.
+TrainCachedData.GetCreateTrainCache = function(train, train_id)
+    -- If cache already exists return this.
+    local trainCache = global.trainCachedData.trains[train_id]
+    if trainCache ~= nil then
+        return trainCache
+    end
+
+    -- No cache found so create the initial cache's data.
     ---@type Utils_TrainCarriageData[]
     local carriagesCachedData = {}
     for i, carriage in pairs(train.carriages) do
@@ -86,12 +92,12 @@ TrainCachedData.CreateTrainCache = function(train, train_id)
             carriagesCachedData[1].unitNumber = carriage.unit_number
         end
     end
-
     ---@type TrainCachedData
     local trainCachedData = {
         id = train_id,
         carriagesCachedData = carriagesCachedData
     }
+    -- Regsiter the cache.
     global.trainCachedData.trains[train_id] = trainCachedData
 
     return trainCachedData
@@ -107,11 +113,11 @@ TrainCachedData.UpdateTrainCacheId = function(oldId, newId)
     trainCache.id = newId
 end
 
---- Creates/Updates a train cache's trainSpeedCalculationData for the supplied train based on its movement direction.
+--- Updates the train cache's trainSpeedCalculationData for the supplied train based on its movement direction.
 ---@param train LuaTrain
 ---@param train_speed double
 ---@param trainCachedData TrainCachedData
-TrainCachedData.CalculateTrainSpeedCalculationData = function(train, train_speed, trainCachedData)
+TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, trainCachedData)
     local trainMovingForwards = train_speed > 0
     -- Looked at using the other direction's data if populated as base for new data, but the values that can be just copied are all cached base data already so basically just as quick to regenerate it and much simplier logic.
     local updateAcceleration = false
