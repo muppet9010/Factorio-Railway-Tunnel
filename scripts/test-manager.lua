@@ -8,6 +8,7 @@ local Events = require("utility/events")
 local EventScheduler = require("utility/event-scheduler")
 local Utils = require("utility/utils")
 local Colors = require("utility/colors")
+local PlayerAlerts = require("utility/player-alerts")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -275,6 +276,11 @@ TestManager.ClearMap_Scheduled = function()
     -- Clear any previous console messages to make it easy to track each test.
     for _, player in pairs(game.connected_players) do
         player.clear_console()
+    end
+
+    -- Clear all alerts for all players so nothing lingers between tests. As a by product this will remove any alerts created when clearing the map.
+    for _, player in pairs(game.connected_players) do
+        PlayerAlerts.RemoveAllCustomAlertsFromForce(player.force)
     end
 
     -- Wait 1 tick so any end of tick mod events from the mpa clearing are raised and ignored, before we start the next test.

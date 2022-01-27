@@ -1224,7 +1224,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
     local train_id = train.id
 
     -- Check and handle if train can't fit in the tunnel's length.
-    if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
+    if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, train_id, portal.tunnel) then
         -- Note that we call this on a leaving train when we don't need to, but would be messy code to delay this check in to all of the branches.
         TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal.entryPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
@@ -1393,7 +1393,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
     local train_id = train.id
 
     -- Check and handle if train can't fit in the tunnel's length.
-    if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, portal.tunnel) then
+    if not MOD.Interfaces.Tunnel.CanTrainFitInTunnel(train, train_id, portal.tunnel) then
         TunnelShared.StopTrainFromEnteringTunnel(train, train_id, portal.blockedPortalEnd.entity, event.tick, {"message.railway_tunnel-train_too_long"})
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)
         return

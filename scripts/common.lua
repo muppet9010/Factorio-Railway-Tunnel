@@ -66,8 +66,8 @@ Common.TunnelSignalDirection = {
 }
 
 -- The managed train's state. Finished is for when the tunnel trip is completed.
----@class PrimaryTrainState
-Common.PrimaryTrainState = {
+---@class TunnelUsageState
+Common.TunnelUsageState = {
     portalTrack = "portalTrack",
     approaching = "approaching",
     underground = "underground",

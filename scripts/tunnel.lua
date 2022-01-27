@@ -384,24 +384,41 @@ end
 
 -- Checks if the train can fit within the tunnel's max allowed length.
 ---@param train LuaTrain
+---@param train_id Id
 ---@param tunnel Tunnel
 ---@return boolean
-Tunnel.CanTrainFitInTunnel = function(train, tunnel)
-    local trainLength = 0
-    local carriage_name
-    for i, carriage in pairs(train.carriages) do
-        carriage_name = carriage.name
-        trainLength = trainLength + Common.GetCarriageConnectedLength(carriage_name)
-        -- Remove the first carriages front gap as nothing will be connected to it.
-        if i == 1 then
-            trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+Tunnel.CanTrainFitInTunnel = function(train, train_id, tunnel)
+    local cachedTrain = MOD.Interfaces.TrainCachedData.GetCreateTrainCache(train, train_id)
+
+    -- If theres no cached train length for this train calculate and cache it.
+    if cachedTrain.trainLength == nil then
+        local trainLength = 0
+        local carriage_name
+
+        -- Get the length for each carriage.
+        for i, carriageData in pairs(cachedTrain.carriagesCachedData) do
+            -- Get the value and cache if not held.
+            carriage_name = carriageData.prototypeName
+            if carriage_name == nil then
+                carriage_name = carriageData.entity.name
+                carriageData.prototypeName = carriage_name
+            end
+
+            -- Add the carriages connected length (main body and joint distance to one other carriage) to the train length.
+            trainLength = trainLength + Common.GetCarriageConnectedLength(carriage_name)
+
+            -- Remove the first carriages front gap as nothing will be connected to it.
+            if i == 1 then
+                trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+            end
         end
+
+        -- Remove the last carriages rear gap as nothing will be connected to it.
+        cachedTrain.trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
     end
-    -- Remove the last carriages rear gap as nothing will be connected to it.
-    trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
 
     -- Check if the train can fit.
-    if trainLength > tunnel.maxTrainLengthTiles then
+    if cachedTrain.trainLength > tunnel.maxTrainLengthTiles then
         return false
     else
         return true
