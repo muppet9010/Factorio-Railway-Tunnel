@@ -1965,7 +1965,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
                     carriageCachedData.faceingFrontOfTrain = carriage_faceingFrontOfTrain
                 end
             else
-                if carriageCachedData.entity.speed == train_speed then
+                if carriageEntity.speed == train_speed then
                     carriage_faceingFrontOfTrain = trainMovingForwards
                 else
                     carriage_faceingFrontOfTrain = not trainMovingForwards

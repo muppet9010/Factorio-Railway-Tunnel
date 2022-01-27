@@ -13,6 +13,9 @@ local Events = require("utility/events")
 ---@field id Id @ Id of the alert object.
 ---@field force LuaForce @ The force that this alert applies to.
 ---@field alertEntity LuaEntity @ The entity the alert targets.
+---@field alertPrototypeName string
+---@field alertPosition Position
+---@field alertSurface LuaSurface
 ---@field alertSignalId SignalID
 ---@field alertMessage LocalisedString
 ---@field showOnMap boolean
@@ -65,6 +68,9 @@ PlayerAlerts.AddCustomAlertToForce = function(force, alertId, alertEntity, alert
         id = alertId,
         force = force,
         alertEntity = alertEntity,
+        alertPrototypeName = alertEntity.name,
+        alertPosition = alertEntity.position,
+        alertSurface = alertEntity.surface,
         alertSignalId = alertSignalId,
         alertMessage = alertMessage,
         showOnMap = showOnMap
@@ -90,14 +96,9 @@ PlayerAlerts.RemoveCustomAlertFromForce = function(force, alertId)
 
     -- Remove the alert from all players.
     for _, player in pairs(force.players) do
-        -- When the alerting entity becomes invalid the player alert will automatically vanish after a few seconds. So we can just skip removing it and just tidy up the state data as usual.
-        if player.valid and forceAlert.alertEntity.valid then
-            player.remove_alert {
-                entity = forceAlert.alertEntity,
-                type = defines.alert_type.custom,
-                icon = forceAlert.alertSignalId,
-                message = forceAlert.alertMessage
-            }
+        -- When the alerting entity becomes invalid the player alert will automatically vanish after a few seconds. So we can just skip removing it and just tidy up the state data as usual. Also no way to filter to just our alert without the entity being valid.
+        if player.valid then
+            PlayerAlerts._RemoveAlertFromPlayer(forceAlert, player)
         end
     end
 
@@ -106,9 +107,44 @@ PlayerAlerts.RemoveCustomAlertFromForce = function(force, alertId)
     global.UTILITYPLAYERALERTS.forceAlertsByAlert[alertId] = nil
 end
 
+--- Removes ALL custom alerts this mod created from this force.
+---@param force LuaForce
+PlayerAlerts.RemoveAllCustomAlertsFromForce = function(force)
+    local forceAlerts = PlayerAlerts._GetForceAlerts(force.index)
+    if forceAlerts == nil then
+        return
+    end
+    for _, forceAlert in pairs(forceAlerts) do
+        PlayerAlerts.RemoveCustomAlertFromForce(force, forceAlert.id)
+    end
+end
+
 --------------------------------------------------------------------------------------------
 --                                    Internal Functions
 --------------------------------------------------------------------------------------------
+
+--- Remove the actual alert from a player. Handles if the entity is valid or invalid.
+---@param forceAlert UtilityPlayerAlerts_ForceAlertObject
+---@param player LuaPlayer
+PlayerAlerts._RemoveAlertFromPlayer = function(forceAlert, player)
+    if forceAlert.alertEntity.valid then
+        player.remove_alert {
+            entity = forceAlert.alertEntity,
+            type = defines.alert_type.custom,
+            icon = forceAlert.alertSignalId,
+            message = forceAlert.alertMessage
+        }
+    else
+        player.remove_alert {
+            prototype = forceAlert.alertPrototypeName,
+            position = forceAlert.alertPosition,
+            surface = forceAlert.alertSurface,
+            type = defines.alert_type.custom,
+            icon = forceAlert.alertSignalId,
+            message = forceAlert.alertMessage
+        }
+    end
+end
 
 --- Creates (if needed) and returns a force's alerts Factorio global table.
 ---@param forceIndex Id @ the index of the LuaForce.
@@ -140,7 +176,7 @@ end
 
 --- Returns a force's alerts Factorio global table if it exists.
 ---@param forceIndex Id @ the index of the LuaForce.
----@return table<Id, UtilityPlayerAlerts_ForceAlertObject>|null forceAlerts
+---@return table<Id, UtilityPlayerAlerts_ForceAlertObject>|null forceAlerts @ nil if no alerts for this force.
 PlayerAlerts._GetForceAlerts = function(forceIndex)
     if global.UTILITYPLAYERALERTS == nil or global.UTILITYPLAYERALERTS.forceAlertsByForce == nil then
         return nil
@@ -187,12 +223,7 @@ PlayerAlerts._OnPlayerChangedForce = function(event)
     local oldForceAlerts = PlayerAlerts._GetForceAlerts(oldForce.index)
     if oldForceAlerts ~= nil then
         for _, oldForceAlert in pairs(oldForceAlerts) do
-            player.remove_alert {
-                entity = oldForceAlert.alertEntity,
-                type = defines.alert_type.custom,
-                icon = oldForceAlert.alertSignalId,
-                message = oldForceAlert.alertMessage
-            }
+            PlayerAlerts._RemoveAlertFromPlayer(oldForceAlert, player)
         end
     end
 
