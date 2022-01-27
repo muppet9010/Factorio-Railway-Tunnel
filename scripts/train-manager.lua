@@ -1203,7 +1203,7 @@ TrainManager.SetTrainSpeedInCorrectDirection = function(train, absoluteSpeed, ma
     end
 end
 
---- Called when the mod finds an invalid train and handles the situation. Calling fucntion will need to stop processing after this function.
+--- Called when the mod finds an invalid train and handles the situation. Calling function will need to stop processing after this function.
 ---@param managedTrain ManagedTrain
 TrainManager.InvalidTrainFound = function(managedTrain)
     -- Find a suitable target entity for the alert GUI.
@@ -1213,15 +1213,18 @@ TrainManager.InvalidTrainFound = function(managedTrain)
         if carriage.valid then
             local carriage_train = carriage.train
 
-            -- Cache a target for the GUI alert.
-            if alertEntity == nil then
-                alertEntity = carriage
-                train = carriage_train
-            end
+            -- The carriage will have no train if it is being removed and its decoupling has triggered this InvallidTrainFound() function. In this case skip this carriage as it will be gone at the end of the tick.
+            if carriage_train ~= nil then
+                -- Cache a target for the GUI alert.
+                if alertEntity == nil then
+                    alertEntity = carriage
+                    train = carriage_train
+                end
 
-            -- Stop the invalid train's carriages just to make things neater. The carriages may be in multiple trains now so do each one to be safe.
-            carriage_train.speed = 0
-            carriage_train.manual_mode = true
+                -- Stop the invalid train's carriages just to make things neater. The carriages may be in multiple trains now so do each one to be safe.
+                carriage_train.speed = 0
+                carriage_train.manual_mode = true
+            end
         end
     end
 
@@ -1241,7 +1244,7 @@ TrainManager.InvalidTrainFound = function(managedTrain)
         end
     end
 
-    -- Techncially this isn't ideal as a train remenant that ends up on the portal tracks should be known about. although the tunnel signals would all be closed at this point anyways. There may be 2 seperate new trains on the portal tracks and the tracking doesn't handle this currently so leave until it actually causes an issue.
+    -- Techncially this isn't ideal as a train remenant that ends up on the portal tracks should be known about. Although the tunnel signals would all be closed at this point anyways. There may be 2 seperate new trains on the portal tracks and the tracking doesn't handle this currently so leave until it actually causes an issue.
     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.invalidTrain)
 end
 

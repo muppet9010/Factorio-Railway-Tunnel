@@ -18,6 +18,8 @@ TrainCachedData.CreateGlobals = function()
 end
 
 TrainCachedData.OnLoad = function()
+    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainCachedData.OnTrainCreated", TrainCachedData.OnTrainCreated)
+
     local rollingStockTypeFilter = {}
     for _, rollingStockType in pairs(Common.RollingStockTypes) do
         table.insert(rollingStockTypeFilter, {filter = "type", type = rollingStockType})
@@ -33,7 +35,40 @@ TrainCachedData.OnLoad = function()
     MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData = TrainCachedData.UpdateTrainSpeedCalculationData
 end
 
---- Called by all the events that remove rolling stock.
+--- Called when a new train is created from train carriage changes. Primarily when a train has a carriage added to it, is decoupled in to 2 new trains or old 2 trains are coupled in to 1 new train.
+---@param event on_train_created
+TrainCachedData.OnTrainCreated = function(event)
+    -- Id no old train Id then its a brand new train being built.
+    if event.old_train_id_1 == nil then
+        return
+    end
+
+    -- Check if either/both old train had been cached and if so remove the cache.
+    local trainCachedData1 = global.trainCachedData.trains[event.old_train_id_1]
+    if trainCachedData1 ~= nil then
+        -- Removed the cached data for this train as the train is no longer valid.
+        global.trainCachedData.trains[trainCachedData1.id] = nil
+    end
+    local trainCachedData2 = global.trainCachedData.trains[event.old_train_id_2]
+    if trainCachedData2 ~= nil then
+        -- Removed the cached data for this train as the train is no longer valid.
+        global.trainCachedData.trains[trainCachedData2.id] = nil
+    end
+
+    -- Check if there is a managed train that needs stopping for either/both. Both could be using a tunnel if both leaving portals and are coupled togeather.
+    local trainIdToManagedTrain1 = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(event.old_train_id_1)
+    if trainIdToManagedTrain1 ~= nil then
+        -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
+        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain1.managedTrain)
+    end
+    local trainIdToManagedTrain2 = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(event.old_train_id_2)
+    if trainIdToManagedTrain2 ~= nil then
+        -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
+        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain2.managedTrain)
+    end
+end
+
+--- Called by all the events that remove rolling stock and thus change a train.
 ---@param event on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
 TrainCachedData.OnRollingStockRemoved = function(event)
     local entity = event.entity
