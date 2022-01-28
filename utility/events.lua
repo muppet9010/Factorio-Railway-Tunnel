@@ -2,6 +2,13 @@
     Events is used to register one or more functions to be run when a script.event occurs.
     It supports defines.events and custom events. Also offers a raise event method.
     Intended for use with a modular script design to avoid having to link to each modulars functions in a centralised event handler.
+
+    Caching of Event Field Attributes has some special considerations:
+        - Any fields on the event data that you want attributes to be centerally cached and returned to all handlerFunction's of that event. If in doubt don't cache things. This is intended for edge usage cases of event registration.
+        - Should only have fields and attributes added when multiple handler functions of the same event will want the same attributes for the same event instance. Ideal for caching attributes used in multiple handler functions on an event to identify which handler function actually needs to process the event with the others terminating their function.
+        - If populated all handler functions registered to the event will recieve a second argument "cachedData" of type UtilityEvents_CachedEventData with the event wide cache table in it. The first argument beign the default Factorio event data table.
+        - Only generic attributes that are obtainable from all instances of that field are supported. i.e. getting "name" and "type" of entity is fine, but trying to get "ghost_type" isn;t as it will fail for non ghost entities. The caching layer can't have smarts like this as it would be too UPS costly comapred to the savings.
+        - You want 3 or more functions to utilise the value to make it worth while caching. As most API calls are light and there is some overhead of managing the caching process at run time.
 ]]
 --
 
@@ -27,7 +34,7 @@ MOD.eventIdHandlerCachedFieldAttributes = MOD.eventIdHandlerCachedFieldAttribute
 ---@param handlerName string @ Unique name of this event handler instance. Used to avoid duplicate handler registration and if removal is required.
 ---@param handlerFunction function @ The function that is called when the event triggers.
 ---@param thisFilterData? EventFilter[]|null @ List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected). Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
----@param fieldCachedData? table<string, string[]>|null @ Any fields on the event data that you want attributes to be centerally cached and returned to the handlerFunction. Should only have fields and attributes added when multiple handler functions of the same event will want the same attributes for the same event instance. Ideal for caching attributes used in multiple handler functions on an event to identify which handler function actually needs to process the event with the others terminating their function. If populated all handler functions registered to the event will recieve a second argument "cachedData" of type UtilityEvents_CachedEventData with the event wide cache table in it. The first argument beign the default Factorio event data table.
+---@param fieldCachedData? table<string, string[]>|null @ Any fields on the event data that you want attributes to be centerally cached and returned to the handlerFunction. See the note in the header comment of this file as its got a number of special cases.
 ---@return uint @ Useful for custom event names when you need to store the eventId to return via a remote interface call.
 Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData, fieldCachedData)
     if eventName == nil or handlerName == nil or handlerFunction == nil then

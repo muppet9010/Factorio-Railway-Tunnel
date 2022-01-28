@@ -121,13 +121,13 @@ Underground.OnLoad = function()
     for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter, {created_entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter, {created_entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter, {entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter, {entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter, nil)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter, nil)
+    Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild, nil, nil)
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter, {entity = {"valid", "name"}})
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter, {entity = {"valid", "name"}})
 
@@ -135,9 +135,9 @@ Underground.OnLoad = function()
     for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter, {created_entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter, {created_entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter, {entity = {"valid", "type"}})
 
     MOD.Interfaces.Underground = MOD.Interfaces.Underground or {}
     MOD.Interfaces.Underground.On_PreTunnelCompleted = Underground.On_PreTunnelCompleted
@@ -147,20 +147,18 @@ Underground.OnLoad = function()
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Underground.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
-        return
-    end
-    local createdEntity_name = createdEntity.name
-    if UndergroundSegmentEntityNames[createdEntity_name] == nil then
+---@param cachedData UtilityEvents_CachedEventData
+Underground.OnBuiltEntity = function(event, cachedData)
+    local createdEntityCached = cachedData.created_entity or cachedData.entity
+    if not createdEntityCached.valid or UndergroundSegmentEntityNames[createdEntityCached.name] == nil then
         return
     end
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    Underground.UndergroundSegmentBuilt(createdEntity, placer, createdEntity_name)
+    local createdEntityNonCached = event.created_entity or event.entity
+    Underground.UndergroundSegmentBuilt(createdEntityNonCached, placer, createdEntityCached.name)
 end
 
 ---@param builtEntity LuaEntity
@@ -577,18 +575,21 @@ end
 
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
-Underground.OnBuiltEntityGhost = function(event)
-    local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
+---@param cachedData UtilityEvents_CachedEventData
+Underground.OnBuiltEntityGhost = function(event, cachedData)
+    local createdEntityCached = cachedData.created_entity or cachedData.entity
+    local createdEntityNonCached = event.created_entity or event.entity
+    if not createdEntityCached.valid or createdEntityCached.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntityNonCached.ghost_name] == nil then
         return
     end
+
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
-        TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
+    if not TunnelShared.IsPlacementOnRailGrid(createdEntityNonCached) then
+        TunnelShared.UndoInvalidTunnelPartPlacement(createdEntityNonCached, placer, false)
         return
     end
 end

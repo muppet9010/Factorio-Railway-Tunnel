@@ -18,14 +18,14 @@ TrainCachedData.CreateGlobals = function()
 end
 
 TrainCachedData.OnLoad = function()
-    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainCachedData.OnTrainCreated", TrainCachedData.OnTrainCreated)
+    Events.RegisterHandlerEvent(defines.events.on_train_created, "TrainCachedData.OnTrainCreated", TrainCachedData.OnTrainCreated, nil, nil)
 
     local rollingStockTypeFilter = {}
     for _, rollingStockType in pairs(Common.RollingStockTypes) do
         table.insert(rollingStockTypeFilter, {filter = "type", type = rollingStockType})
     end
-    Events.RegisterHandlerEvent(defines.events.on_player_mined_entity, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_mined_entity, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
+    Events.RegisterHandlerEvent(defines.events.on_player_mined_entity, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter, nil)
+    Events.RegisterHandlerEvent(defines.events.on_robot_mined_entity, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter, nil)
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter, {entity = {"valid"}})
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter, {entity = {"valid"}})
 
@@ -72,7 +72,7 @@ end
 ---@param event on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
 ---@param cachedData UtilityEvents_CachedEventData
 TrainCachedData.OnRollingStockRemoved = function(event, cachedData)
-    local diedEntityCached = cachedData.entity
+    local diedEntityCached = cachedData.entity or event.entity -- Only some of the event types that trigger this function are cached, as those events have multiple handler functions on them.
     local diedEntityNonCached = event.entity
     -- Handle any other registrations of this event across the mod.
     if not diedEntityCached.valid or Common.RollingStockTypes[diedEntityNonCached.type] == nil then

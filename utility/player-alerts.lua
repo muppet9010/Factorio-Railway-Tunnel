@@ -27,9 +27,9 @@ local Events = require("utility/events")
 --- Called from the root of Control.lua
 --- Only needs to be called once by the mod.
 PlayerAlerts.RegisterPlayerAlerts = function()
-    Events.RegisterHandlerEvent(defines.events.on_player_joined_game, "PlayerAlerts._OnPlayerJoinedGame", PlayerAlerts._OnPlayerJoinedGame)
-    Events.RegisterHandlerEvent(defines.events.on_player_changed_force, "PlayerAlerts._OnPlayerChangedForce", PlayerAlerts._OnPlayerChangedForce)
-    Events.RegisterHandlerEvent(defines.events.on_forces_merging, "PlayerAlerts._OnForcesMerging", PlayerAlerts._OnForcesMerging)
+    Events.RegisterHandlerEvent(defines.events.on_player_joined_game, "PlayerAlerts._OnPlayerJoinedGame", PlayerAlerts._OnPlayerJoinedGame, nil, nil)
+    Events.RegisterHandlerEvent(defines.events.on_player_changed_force, "PlayerAlerts._OnPlayerChangedForce", PlayerAlerts._OnPlayerChangedForce, nil, nil)
+    Events.RegisterHandlerEvent(defines.events.on_forces_merging, "PlayerAlerts._OnForcesMerging", PlayerAlerts._OnForcesMerging, nil, nil)
 end
 
 --------------------------------------------------------------------------------------------

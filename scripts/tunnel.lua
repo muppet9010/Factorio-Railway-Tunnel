@@ -34,8 +34,8 @@ Tunnel.CreateGlobals = function()
 end
 
 Tunnel.OnLoad = function()
-    Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState)
-    Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "Tunnel.OnPlayerRotatedEntity", Tunnel.OnPlayerRotatedEntity)
+    Events.RegisterHandlerEvent(defines.events.on_train_changed_state, "Tunnel.TrainEnteringTunnel_OnTrainChangedState", Tunnel.TrainEnteringTunnel_OnTrainChangedState, nil, nil)
+    Events.RegisterHandlerEvent(defines.events.on_player_rotated_entity, "Tunnel.OnPlayerRotatedEntity", Tunnel.OnPlayerRotatedEntity, nil, nil)
 
     MOD.Interfaces.Tunnel = MOD.Interfaces.Tunnel or {}
     MOD.Interfaces.Tunnel.CompleteTunnel = Tunnel.CompleteTunnel
@@ -55,10 +55,10 @@ Tunnel.OnLoad = function()
         {filter = "ghost_type", type = "fluid-wagon"},
         {filter = "ghost_type", type = "artillery-wagon"}
     }
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter, {created_entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter, {created_entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter, {entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter, {entity = {"valid", "type"}})
 end
 
 -- Needed so we detect when a train is targetting the transition signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
@@ -277,26 +277,28 @@ end
 
 -- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Tunnel.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
+---@param cachedData UtilityEvents_CachedEventData
+Tunnel.OnBuiltEntity = function(event, cachedData)
+    local createdEntityCached = cachedData.created_entity or cachedData.entity
+    local createdEntityNonCached = event.created_entity or event.entity
+    if not createdEntityCached.valid then
         return
     end
-    local createdEntity_type = createdEntity.type
-    if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
+    local createdEntity_type = createdEntityCached.type
+    if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntityNonCached.ghost_type] ~= nil) then
         return
     end
 
     if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
-        local train = createdEntity.train
+        local train = createdEntityNonCached.train
 
         if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train.id) then
             -- Carriage was built as part of a managed train, so just ignore it for these purposes.
             return
         end
 
-        local createdEntity_unitNumber = createdEntity.unit_number
+        local createdEntity_unitNumber = createdEntityNonCached.unit_number
         -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
         local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
         if train.front_stock.unit_number == createdEntity_unitNumber then
@@ -333,8 +335,8 @@ Tunnel.OnBuiltEntity = function(event)
         -- Known limitation that you can't place a single carriage ghost on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
 
         -- Have to check what rails are at the approximate ends of the ghost carriage.
-        local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
-        local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
+        local createdEntity_position, createdEntity_orientation = createdEntityNonCached.position, createdEntityNonCached.orientation
+        local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntityCached.name), createdEntityNonCached.surface, false
         local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
@@ -366,7 +368,7 @@ Tunnel.OnBuiltEntity = function(event)
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
+    TunnelShared.UndoInvalidPlacement(createdEntityNonCached, placer, createdEntity_type ~= "entity-ghost", false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
 -- Triggered when a player rotates a monitored entity type. This should only be possible in Editor mode as we make all parts un-rotatable to regular players.

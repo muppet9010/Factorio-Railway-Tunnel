@@ -37,7 +37,7 @@ MOD.scheduledEventNames =
 --- Called from the root of Control.lua
 --- Only needs to be called once by the mod.
 EventScheduler.RegisterScheduler = function()
-    Events.RegisterHandlerEvent(defines.events.on_tick, "EventScheduler._OnSchedulerCycle", EventScheduler._OnSchedulerCycle)
+    Events.RegisterHandlerEvent(defines.events.on_tick, "EventScheduler._OnSchedulerCycle", EventScheduler._OnSchedulerCycle, nil, nil)
 end
 
 --- Used to register an event name to an event function. The event name is scheduled seperately as desired.

@@ -199,12 +199,12 @@ Portal.OnLoad = function()
         table.insert(portalEntityNames_Filter, {filter = "name", name = name})
     end
 
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter, {created_entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter, {created_entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter, {entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter, {entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter, nil)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter, nil)
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter, {entity = {"valid", "name"}})
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter, {entity = {"valid", "name"}})
 
@@ -212,9 +212,9 @@ Portal.OnLoad = function()
     for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityGhostNames_Filter, {filter = "ghost_name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter, {created_entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter, {created_entity = {"valid", "type"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter, {entity = {"valid", "type"}})
 
     MOD.Interfaces.Portal = MOD.Interfaces.Portal or {}
     MOD.Interfaces.Portal.On_PreTunnelCompleted = Portal.On_PreTunnelCompleted
@@ -236,20 +236,19 @@ Portal.OnLoad = function()
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Portal.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
+---@param cachedData UtilityEvents_CachedEventData
+Portal.OnBuiltEntity = function(event, cachedData)
+    local createdEntityCached = cachedData.created_entity or cachedData.entity
+    if not createdEntityCached.valid or PortalEndAndSegmentEntityNames[createdEntityCached.name] == nil then
         return
     end
-    local createdEntity_name = createdEntity.name
-    if PortalEndAndSegmentEntityNames[createdEntity_name] == nil then
-        return
-    end
+
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
-    Portal.TunnelPortalPartBuilt(createdEntity, placer, createdEntity_name)
+    local createdEntityNonCached = event.created_entity or event.entity
+    Portal.TunnelPortalPartBuilt(createdEntityNonCached, placer, createdEntityCached.name)
 end
 
 ---@param builtEntity LuaEntity
@@ -938,18 +937,21 @@ end
 
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
-Portal.OnBuiltEntityGhost = function(event)
-    local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
+---@param cachedData UtilityEvents_CachedEventData
+Portal.OnBuiltEntityGhost = function(event, cachedData)
+    local createdEntityCached = cachedData.created_entity or cachedData.entity
+    local createdEntityNonCached = event.created_entity or event.entity
+    if not createdEntityCached.valid or createdEntityCached.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntityNonCached.ghost_name] == nil then
         return
     end
+
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
     end
 
-    if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
-        TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
+    if not TunnelShared.IsPlacementOnRailGrid(createdEntityNonCached) then
+        TunnelShared.UndoInvalidTunnelPartPlacement(createdEntityNonCached, placer, false)
         return
     end
 end

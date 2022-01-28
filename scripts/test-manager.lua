@@ -66,7 +66,7 @@ local TestsToRun = {
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
     InvalidTrainTests = {enabled = false, testScript = require("tests/invalid_train_tests")},
     -- Tunnel part tests:
-    MineDestroyTunnelTests = {enabled = true, testScript = require("tests/mine-destroy-tunnel-tests")},
+    MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
@@ -74,7 +74,7 @@ local TestsToRun = {
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
-    UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups_many_large_trains"), notInAllTests = true},
+    UpsManyLargeTrains = {enabled = true, testScript = require("tests/ups_many_large_trains"), notInAllTests = true},
     -- Template Tests:
     TemplateSingleInstance = {enabled = false, testScript = require("tests/__template_single_instance"), notInAllTests = true},
     TemplateMultiInstance = {enabled = false, testScript = require("tests/__template_multi_instance"), notInAllTests = true}
@@ -158,7 +158,7 @@ TestManager.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TestManager.RunTests_Scheduled", TestManager.RunTests_Scheduled)
     EventScheduler.RegisterScheduledEventType("TestManager.WaitForPlayerThenRunTests_Scheduled", TestManager.WaitForPlayerThenRunTests_Scheduled)
     EventScheduler.RegisterScheduledEventType("TestManager.ClearMap_Scheduled", TestManager.ClearMap_Scheduled)
-    Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated)
+    Events.RegisterHandlerEvent(defines.events.on_player_created, "TestManager.OnPlayerCreated", TestManager.OnPlayerCreated, nil, nil)
     EventScheduler.RegisterScheduledEventType("TestManager.OnPlayerCreatedMakeCharacter_Scheduled", TestManager.OnPlayerCreatedMakeCharacter_Scheduled)
 
     MOD.Interfaces.TestManager = MOD.Interfaces.TestManager or {}

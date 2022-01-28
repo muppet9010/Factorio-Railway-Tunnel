@@ -85,7 +85,7 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails = TrainManager.GetTrainIdsManagedTrainDetails
     MOD.Interfaces.TrainManager.InvalidTrainFound = TrainManager.InvalidTrainFound
 
-    Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
+    Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains, nil, nil)
     EventScheduler.RegisterScheduledEventType(
         "TrainManager.TrainUndergroundCompleted_Scheduled",
         function(event)

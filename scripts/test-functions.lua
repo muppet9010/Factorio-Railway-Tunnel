@@ -160,7 +160,7 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
             testFunction(event)
         end
     end
-    Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData)
+    Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData, nil)
 end
 
 --- Used to apply an optional filter list of keys against a full list. Includes error catching for passing in bad (empty) filter list.

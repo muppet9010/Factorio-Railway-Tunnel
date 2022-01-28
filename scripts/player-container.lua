@@ -28,7 +28,7 @@ end
 
 PlayerContainer.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-toggle_driving", "PlayerContainer.OnToggleDrivingInput", PlayerContainer.OnToggleDrivingInput)
-    Events.RegisterHandlerEvent(defines.events.on_player_driving_changed_state, "PlayerContainer.OnPlayerDrivingChangedState", PlayerContainer.OnPlayerDrivingChangedState)
+    Events.RegisterHandlerEvent(defines.events.on_player_driving_changed_state, "PlayerContainer.OnPlayerDrivingChangedState", PlayerContainer.OnPlayerDrivingChangedState, nil, nil)
     EventScheduler.RegisterScheduledEventType("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled", PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled)
 end
 
