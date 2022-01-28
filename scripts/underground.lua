@@ -128,8 +128,8 @@ Underground.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter, {entity = {"valid", "name"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter, {entity = {"valid", "name"}})
 
     local segmentEntityGhostNames_Filter = {}
     for _, name in pairs(UndergroundSegmentEntityNames) do
@@ -786,15 +786,17 @@ end
 
 -- Triggered when a monitored entity type is killed.
 ---@param event on_entity_died|script_raised_destroy
-Underground.OnDiedEntity = function(event)
+---@param cachedData UtilityEvents_CachedEventData
+Underground.OnDiedEntity = function(event, cachedData)
     -- Check its one of the entities this function wants to inspect.
-    local diedEntity = event.entity
-    if not diedEntity.valid or UndergroundSegmentEntityNames[diedEntity.name] == nil then
+    local diedEntityCached = cachedData.entity
+    local diedEntityNonCached = event.entity
+    if not diedEntityCached.valid or UndergroundSegmentEntityNames[diedEntityCached.name] == nil then
         return
     end
 
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
-    local segment = global.undergrounds.segments[diedEntity.unit_number]
+    local segment = global.undergrounds.segments[diedEntityNonCached.unit_number]
     if segment == nil then
         return
     end

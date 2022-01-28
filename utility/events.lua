@@ -9,23 +9,26 @@ local Utils = require("utility/utils")
 
 local Events = {}
 MOD = MOD or {}
-MOD.eventsById = MOD.eventsById or {} ---@type UtilityEvents_EventHandlerObject[]
-MOD.eventIdHandlerNameToEventIdsListIndex = MOD.eventIdHandlerNameToEventIdsListIndex or {} ---@type table<string, int> A way to get the id key from MOD.eventsById for a specific event id and handler name.
-MOD.eventsByActionName = MOD.eventsByActionName or {} ---@type UtilityEvents_EventHandlerObject[]
-MOD.eventActionNameHandlerNameToEventActionNamesListIndex = MOD.eventActionNameHandlerNameToEventActionNamesListIndex or {} ---@type table<string, int> @ A way to get the id key from MOD.eventsByActionName for a specific action name and handler name.
+MOD.eventsById = MOD.eventsById or {} ---@type UtilityEvents_EventIdHandlers
+MOD.eventsByActionName = MOD.eventsByActionName or {} ---@type UtilityEvents_EventActionNameHandlers
 MOD.customEventNameToId = MOD.customEventNameToId or {} ---@type table<string, int>
 MOD.eventFilters = MOD.eventFilters or {} ---@type table<int, table<string, table>>
 
 ---@class UtilityEvents_EventData : EventData @ The class is the minimum with any custom fields included in it being passed through to the recieveing event handler function.
 ---@field input_name? string|null @ Used by custom input event handlers registered with Events.RegisterHandlerCustomInput() as the actionName.
 
+---@alias UtilityEvents_CachedEventData table<string, UtilityEvents_CachedEventDataField> @ A cache of this event's data fields as requested across the whole mod. Key'd by the field name. Will include fields requested by other functions on this event as its a shared cache for all.
+
+---@alias UtilityEvents_CachedEventDataField table<string, any> @ A cache of the specific event data field's attributes. A nil value attribute will appear missing from the table, but it can be read out naturally by calling function still. If the field is not "valid" then no other attributes will be populated. If the thing is invalidated during an event handler function then the other handler function's will need to check this at execution time themselves, as this is unsual event handler function logic in most use cases.
+
 --- Called from OnLoad() from each script file. Registers the event in Factorio and the handler function for all event types and custom events.
 ---@param eventName defines.events|string @ Either Factorio event or a custom modded event name.
 ---@param handlerName string @ Unique name of this event handler instance. Used to avoid duplicate handler registration and if removal is required.
 ---@param handlerFunction function @ The function that is called when the event triggers.
 ---@param thisFilterData? EventFilter[]|null @ List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected). Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
+---@param fieldCachedData? table<string, string[]> @ Any fields on the event data that you want attributes to be centerally cached and returned to the handlerFunction. Should only have fields and attributes added when multiple handler functions of the same event will want the same attributes for the same event instance. Ideal for caching attributes used in multiple handlre functions on an event to identify whihc handler function actually needs to process the event with the others terminating their function. If populated the handler function will recieve a second argument of cachedData of type UtilityEvents_CachedEventData, in addition to the first argument of the events default data.
 ---@return uint @ Useful for custom event names when you need to store the eventId to return via a remote interface call.
-Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData)
+Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData, fieldCachedData)
     if eventName == nil or handlerName == nil or handlerFunction == nil then
         error("Events.RegisterHandlerEvent called with missing arguments")
     end
@@ -33,16 +36,49 @@ Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, 
     if eventId == nil then
         return nil
     end
-    if MOD.eventIdHandlerNameToEventIdsListIndex[eventId] == nil or MOD.eventIdHandlerNameToEventIdsListIndex[eventId][handlerName] == nil then
-        -- Is the first registering of this unique handler name for this event id.
-        MOD.eventsById[eventId] = MOD.eventsById[eventId] or {}
-        table.insert(MOD.eventsById[eventId], {handlerName = handlerName, handlerFunction = handlerFunction})
-        MOD.eventIdHandlerNameToEventIdsListIndex[eventId] = MOD.eventIdHandlerNameToEventIdsListIndex[eventId] or {}
-        MOD.eventIdHandlerNameToEventIdsListIndex[eventId][handlerName] = #MOD.eventsById[eventId]
-    else
-        -- Is a re-registering of a unique handler name for this event id, so just update everything.
-        MOD.eventsById[eventId][MOD.eventIdHandlerNameToEventIdsListIndex[eventId][handlerName]] = {handlerName = handlerName, handlerFunction = handlerFunction}
+
+    -- If this is the first function for the event then create its object.
+    MOD.eventsById[eventId] =
+        MOD.eventsById[eventId] or
+        {
+            handlers = {}
+        }
+
+    -- Record the handler name and function.
+    MOD.eventsById[eventId].handlers[handlerName] = handlerFunction
+
+    -- Process any fieldDataCache for this function.
+    if fieldCachedData ~= nil then
+        if next(fieldCachedData) == nil then
+            error("Events.RegisterHandlerEvent called with empty fieldCachedData table. Should be either nil or populated table.")
+        end
+
+        -- Create the requested data cache object if needed.
+        local requestedDataCache = MOD.eventsById[eventId].requestedDataCache
+        if requestedDataCache == nil then
+            MOD.eventsById[eventId].requestedDataCache = {}
+            requestedDataCache = MOD.eventsById[eventId].requestedDataCache
+        end
+
+        -- Process over the requested fields and then attributes and record them to the requested data cache object.
+        for fieldName, attributeNames in pairs(fieldCachedData) do
+            if next(attributeNames) == nil then
+                error("Events.RegisterHandlerEvent called with empty attributes list for field '" .. tostring(fieldName) .. "' in fieldCachedData table. Should either be not listed as a field or populated with attribute names.")
+            end
+
+            requestedDataCache[fieldName] = requestedDataCache[fieldName] or {}
+
+            for _, attributeName in pairs(attributeNames) do
+                -- We track how many functions request the attribute so we can stop caching them later if all functions are removed.
+                if requestedDataCache[fieldName][attributeName] == nil then
+                    requestedDataCache[fieldName][attributeName] = 1
+                else
+                    requestedDataCache[fieldName][attributeName] = requestedDataCache[fieldName][attributeName] + 1
+                end
+            end
+        end
     end
+
     return eventId
 end
 
@@ -55,16 +91,16 @@ Events.RegisterHandlerCustomInput = function(actionName, handlerName, handlerFun
         error("Events.RegisterHandlerCustomInput called with missing arguments")
     end
     script.on_event(actionName, Events._HandleEvent)
-    if MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName] == nil or MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName][handlerName] == nil then
-        -- Is the first registering of this unique handler name for this action name.
-        MOD.eventsByActionName[actionName] = MOD.eventsByActionName[actionName] or {}
-        table.insert(MOD.eventsByActionName[actionName], {handlerName = handlerName, handlerFunction = handlerFunction})
-        MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName] = MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName] or {}
-        MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName][handlerName] = #MOD.eventsByActionName[actionName]
-    else
-        -- Is a re-registering of a unique handler name for this action name, so just update everything.
-        MOD.eventsByActionName[actionName][MOD.eventActionNameHandlerNameToEventActionNamesListIndex[actionName][handlerName]] = {handlerName = handlerName, handlerFunction = handlerFunction}
-    end
+
+    -- If this is the first function for the event then create its object.
+    MOD.eventsByActionName[actionName] =
+        MOD.eventsByActionName[actionName] or
+        {
+            handlers = {}
+        }
+
+    -- Record the handler name and function.
+    MOD.eventsByActionName[actionName].handlers[handlerName] = handlerFunction
 end
 
 --- Called from OnLoad() from the script file. Registers the custom event name and returns an event ID for use by other mods in subscribing to custom events.
@@ -84,7 +120,7 @@ Events.RegisterCustomEventName = function(eventName)
     return eventId
 end
 
---- Called when needed
+--- Called when needed. Removes a registered handlerName from beign called when the specified event triggers.
 ---@param eventName defines.events|string @ Either a default Factorio event or a custom input action name.
 ---@param handlerName string @ The unique handler name to remove from this eventName.
 Events.RemoveHandler = function(eventName, handlerName)
@@ -92,19 +128,9 @@ Events.RemoveHandler = function(eventName, handlerName)
         error("Events.RemoveHandler called with missing arguments")
     end
     if MOD.eventsById[eventName] ~= nil then
-        for i, handler in pairs(MOD.eventsById[eventName]) do
-            if handler.handlerName == handlerName then
-                table.remove(MOD.eventsById[eventName], i)
-                break
-            end
-        end
+        MOD.eventsById[eventName].handlers[handlerName] = nil
     elseif MOD.eventsByActionName[eventName] ~= nil then
-        for i, handler in pairs(MOD.eventsByActionName[eventName]) do
-            if handler.handlerName == handlerName then
-                table.remove(MOD.eventsByActionName[eventName], i)
-                break
-            end
-        end
+        MOD.eventsByActionName[eventName].handlers[handlerName] = nil
     end
 end
 
@@ -145,17 +171,50 @@ end
 --------------------------------------------------------------------------------------------
 
 --- Runs when an event is triggered and calls all of the approperiate registered functions.
+--- Each function called will need to check that any fields are still valid if a previous function in the same mod could have invalidated them.
 ---@param eventData UtilityEvents_EventData
 Events._HandleEvent = function(eventData)
     if eventData.input_name == nil then
         -- All non custom input events (majority).
-        for _, handler in pairs(MOD.eventsById[eventData.name]) do
-            handler.handlerFunction(eventData)
+
+        local cachedData = {} ---@type UtilityEvents_CachedEventData
+        local eventHandlers = MOD.eventsById[eventData.name]
+
+        -- If there is requestedDataCache for this event then build up the cache.
+        if eventHandlers.requestedDataCache ~= nil then
+            for fieldName, attributes in pairs(eventHandlers.requestedDataCache) do
+                local field = eventData[fieldName]
+
+                -- Construct the results container if doesn't already exist.
+                local cachedDataFieldName = cachedData[fieldName]
+                if cachedDataFieldName == nil then
+                    cachedData[fieldName] = {
+                        valid = field.valid
+                    }
+                    cachedDataFieldName = cachedData[fieldName]
+                end
+
+                -- Check over each requested attribute for this field if it is valid.
+                if cachedDataFieldName.valid then
+                    for attributeName in pairs(attributes) do
+                        -- If the attribute isn't cached get it and add it.
+                        if cachedDataFieldName[attributeName] == nil then
+                            cachedDataFieldName[attributeName] = field[attributeName]
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Call each handler for this event.
+        for _, handlerFunction in pairs(eventHandlers.handlers) do
+            handlerFunction(eventData, cachedData)
         end
     else
         -- Custom Input type event.
-        for _, handler in pairs(MOD.eventsByActionName[eventData.input_name]) do
-            handler.handlerFunction(eventData)
+        -- TODO: does this need data cacheing, don't believe so?
+        for _, handlerFunction in pairs(MOD.eventsByActionName[eventData.input_name].handlers) do
+            handlerFunction(eventData)
         end
     end
 end
@@ -208,6 +267,9 @@ end
 
 return Events
 
----@class UtilityEvents_EventHandlerObject
----@field handlerName string
----@field handlerFunction function
+---@alias UtilityEvents_EventIdHandlers table<uint, UtilityEvents_EventHandlers>
+---@alias UtilityEvents_EventActionNameHandlers table<string, UtilityEvents_EventHandlers>
+
+---@class UtilityEvents_EventHandlers
+---@field handlers function[]
+---@field requestedDataCache? table<string, table<string, uint>>|null @ A table key'd by field name with its value a table of attribute names and how many times they were registered for that field. If they want the actual thing that is obtainable from the raw event data.

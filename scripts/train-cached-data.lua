@@ -26,8 +26,8 @@ TrainCachedData.OnLoad = function()
     end
     Events.RegisterHandlerEvent(defines.events.on_player_mined_entity, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
     Events.RegisterHandlerEvent(defines.events.on_robot_mined_entity, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter)
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter, {entity = {"valid"}})
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TrainCachedData.OnRollingStockRemoved", TrainCachedData.OnRollingStockRemoved, rollingStockTypeFilter, {entity = {"valid"}})
 
     MOD.Interfaces.TrainCachedData = MOD.Interfaces.TrainCachedData or {}
     MOD.Interfaces.TrainCachedData.GetCreateTrainCache = TrainCachedData.GetCreateTrainCache
@@ -70,14 +70,16 @@ end
 
 --- Called by all the events that remove rolling stock and thus change a train.
 ---@param event on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
-TrainCachedData.OnRollingStockRemoved = function(event)
-    local entity = event.entity
+---@param cachedData UtilityEvents_CachedEventData
+TrainCachedData.OnRollingStockRemoved = function(event, cachedData)
+    local diedEntityCached = cachedData.entity
+    local diedEntityNonCached = event.entity
     -- Handle any other registrations of this event across the mod.
-    if Common.RollingStockTypes[entity.type] == nil then
+    if not diedEntityCached.valid or Common.RollingStockTypes[diedEntityNonCached.type] == nil then
         return
     end
 
-    local trainId = entity.train.id
+    local trainId = diedEntityNonCached.train.id
 
     -- Check if the entity's train was one we had cached and if so remove the cache.
     if global.trainCachedData.trains[trainId] ~= nil then
