@@ -9,12 +9,15 @@ local Utils = require("utility/utils")
 
 local Events = {}
 MOD = MOD or {}
-MOD.eventsById = MOD.eventsById or {} ---@type table[]
+MOD.eventsById = MOD.eventsById or {} ---@type UtilityEvents_EventHandlerObject[]
 MOD.eventIdHandlerNameToEventIdsListIndex = MOD.eventIdHandlerNameToEventIdsListIndex or {} ---@type table<string, int> A way to get the id key from MOD.eventsById for a specific event id and handler name.
-MOD.eventsByActionName = MOD.eventsByActionName or {} ---@type table[]
+MOD.eventsByActionName = MOD.eventsByActionName or {} ---@type UtilityEvents_EventHandlerObject[]
 MOD.eventActionNameHandlerNameToEventActionNamesListIndex = MOD.eventActionNameHandlerNameToEventActionNamesListIndex or {} ---@type table<string, int> @ A way to get the id key from MOD.eventsByActionName for a specific action name and handler name.
 MOD.customEventNameToId = MOD.customEventNameToId or {} ---@type table<string, int>
 MOD.eventFilters = MOD.eventFilters or {} ---@type table<int, table<string, table>>
+
+---@class UtilityEvents_EventData : EventData @ The class is the minimum with any custom fields included in it being passed through to the recieveing event handler function.
+---@field input_name? string|null @ Used by custom input event handlers registered with Events.RegisterHandlerCustomInput() as the actionName.
 
 --- Called from OnLoad() from each script file. Registers the event in Factorio and the handler function for all event types and custom events.
 ---@param eventName defines.events|string @ Either Factorio event or a custom modded event name.
@@ -64,7 +67,9 @@ Events.RegisterHandlerCustomInput = function(actionName, handlerName, handlerFun
     end
 end
 
---Called from OnLoad() from the script file. Registers the custom event name and returns an event ID for use by other mods in subscribing to custom events.
+--- Called from OnLoad() from the script file. Registers the custom event name and returns an event ID for use by other mods in subscribing to custom events.
+---@param eventName string
+---@return uint eventId @ Bespoke event id for this custom event.
 Events.RegisterCustomEventName = function(eventName)
     if eventName == nil then
         error("Events.RegisterCustomEventName called with missing arguments")
@@ -79,7 +84,9 @@ Events.RegisterCustomEventName = function(eventName)
     return eventId
 end
 
--- Called when needed
+--- Called when needed
+---@param eventName defines.events|string @ Either a default Factorio event or a custom input action name.
+---@param handlerName string @ The unique handler name to remove from this eventName.
 Events.RemoveHandler = function(eventName, handlerName)
     if eventName == nil or handlerName == nil then
         error("Events.RemoveHandler called with missing arguments")
@@ -101,7 +108,9 @@ Events.RemoveHandler = function(eventName, handlerName)
     end
 end
 
--- Called when needed, but not before tick 0 as they are ignored
+--- Called when needed, but not before tick 0 as they are ignored. Can either raise a custom registered event registered by Events.RegisterCustomEventName(), or one of the limited events defined in the API: https://lua-api.factorio.com/latest/LuaBootstrap.html#LuaBootstrap.raise_event.
+--- Older Factorio versions allowed for raising any base Factorio event yourself, so review on upgrade.
+---@param eventData UtilityEvents_EventData
 Events.RaiseEvent = function(eventData)
     eventData.tick = game.tick
     local eventName = eventData.name
@@ -115,7 +124,9 @@ Events.RaiseEvent = function(eventData)
     end
 end
 
--- Called from anywhere, including OnStartup in tick 0. This won't be passed out to other mods however, only run within this mod.
+--- Called from anywhere, including OnStartup in tick 0. This won't be passed out to other mods however, only run within this mod.
+--- This calls this mod's event handler bypassing the Factorio event system.
+---@param eventData UtilityEvents_EventData
 Events.RaiseInternalEvent = function(eventData)
     eventData.tick = game.tick
     local eventName = eventData.name
@@ -129,22 +140,27 @@ Events.RaiseInternalEvent = function(eventData)
     end
 end
 
+--------------------------------------------------------------------------------------------
+--                                    Internal Functions
+--------------------------------------------------------------------------------------------
+
+--- Runs when an event is triggered and calls all of the approperiate registered functions.
+---@param eventData UtilityEvents_EventData
 Events._HandleEvent = function(eventData)
-    -- input_name only populated by custom_input, with eventId used by all other events
-    -- Numeric for loop is faster than pairs and this logic is black boxed from code developer using library.
-    if eventData.input_name ~= nil then
-        local eventsByInputName = MOD.eventsByActionName[eventData.input_name]
-        for i = 1, #eventsByInputName do
-            eventsByInputName[i].handlerFunction(eventData)
+    if eventData.input_name == nil then
+        -- All non custom input events (majority).
+        for _, handler in pairs(MOD.eventsById[eventData.name]) do
+            handler.handlerFunction(eventData)
         end
     else
-        local eventsById = MOD.eventsById[eventData.name]
-        for i = 1, #eventsById do
-            eventsById[i].handlerFunction(eventData)
+        -- Custom Input type event.
+        for _, handler in pairs(MOD.eventsByActionName[eventData.input_name]) do
+            handler.handlerFunction(eventData)
         end
     end
 end
 
+--- Registers the function in to the mods event to function matrix. Handles merging filters between multiple functions on the same event.
 ---@param eventName string
 ---@param thisFilterName string @ The handler name.
 ---@param thisFilterData? table|null
@@ -153,7 +169,8 @@ Events._RegisterEvent = function(eventName, thisFilterName, thisFilterData)
     if eventName == nil then
         error("Events.RegisterEvent called with missing arguments")
     end
-    local eventId, filterData
+    local eventId  ---@type uint
+    local filterData  ---@type table
     thisFilterData = Utils.DeepCopy(thisFilterData) -- Deepcopy it so if a persisted or shared table is passed in we don't cause changes to source table.
     if type(eventName) == "number" then
         eventId = eventName
@@ -190,3 +207,7 @@ Events._RegisterEvent = function(eventName, thisFilterName, thisFilterData)
 end
 
 return Events
+
+---@class UtilityEvents_EventHandlerObject
+---@field handlerName string
+---@field handlerFunction function

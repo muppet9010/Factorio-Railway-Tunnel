@@ -1,5 +1,7 @@
 Now
 ---
+    - Event registration should take a list of event fields and their attributes the function wants. This should be cached by the Event library so these are obtained once and passed in to the functions asking for them. This should be reasonably simple, low running cost and noticable savings on UPS. Should check valid one each function called as if we have 5 functions all reacting and the 2nd one invalids the object no need to check valid for each subsequent function when the 3rd one can discover it and know if for all remaining.
+    - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and having to use their own internal function call logic to filter events not relevent to them. Is secondary to the attribute caching change as this is much more complicated and higher risk of not saving UPS due to this vs complexity.
 
 
 Bugs
@@ -42,7 +44,6 @@ Features to add/change
 
 UPS / code plans
 ------------------------
-    - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.

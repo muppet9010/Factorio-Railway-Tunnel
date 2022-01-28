@@ -66,7 +66,7 @@ local TestsToRun = {
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
     InvalidTrainTests = {enabled = false, testScript = require("tests/invalid_train_tests")},
     -- Tunnel part tests:
-    MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
+    MineDestroyTunnelTests = {enabled = true, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
