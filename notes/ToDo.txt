@@ -1,6 +1,6 @@
 Now
 ---
-    - Try moving the frequently called events in to a single management function that calls the modules. To all caching of field attributes, but without the high overhead of doing it in the Event library.
+
 
 
 Bugs

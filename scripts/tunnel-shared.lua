@@ -2,11 +2,84 @@ local Utils = require("utility/utils")
 local Colors = require("utility/colors")
 local EventScheduler = require("utility/event-scheduler")
 local PlayerAlerts = require("utility/player-alerts")
+local Events = require("utility/events")
+local Common = require("scripts/common")
 local TunnelShared = {}
 
 TunnelShared.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelShared.SetTrainToManual_Scheduled", TunnelShared.SetTrainToManual_Scheduled)
     EventScheduler.RegisterScheduledEventType("TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled)
+
+    -------------------------------------------------------------------------------------
+    -- Shared event handlers to reduce duplicated relevence checking across many modules.
+    -------------------------------------------------------------------------------------
+
+    -- OnBuiltEntity type events
+    ----------------------------
+    local onBuiltEntityFilter = {}
+    -- Portal
+    for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
+        table.insert(onBuiltEntityFilter, {filter = "name", name = name})
+    end
+    for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
+        table.insert(onBuiltEntityFilter, {filter = "ghost_name", name = name})
+    end
+    -- Underground
+    for _, name in pairs(Common.UndergroundSegmentEntityNames) do
+        table.insert(onBuiltEntityFilter, {filter = "name", name = name})
+    end
+    for _, name in pairs(Common.UndergroundSegmentEntityNames) do
+        table.insert(onBuiltEntityFilter, {filter = "ghost_name", name = name})
+    end
+    -- Tunnel
+    table.insert(onBuiltEntityFilter, {filter = "rolling-stock"}) -- Just gets real entities, not ghosts.
+    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "locomotive"})
+    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "cargo-wagon"})
+    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "fluid-wagon"})
+    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "artillery-wagon"})
+    -- Register Events
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
+
+    -- OnDiedEntity type events
+    ----------------------------
+    local onDiedEntityFilter = {}
+    -- Portal
+    for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
+        table.insert(onDiedEntityFilter, {filter = "name", name = name})
+    end
+    table.insert(onDiedEntityFilter, {filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"})
+    table.insert(onDiedEntityFilter, {filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1"})
+    -- Underground
+    for _, name in pairs(Common.UndergroundSegmentEntityNames) do
+        table.insert(onDiedEntityFilter, {filter = "name", name = name})
+    end
+    -- Train Cached Data
+    for _, rollingStockType in pairs(Common.RollingStockTypes) do
+        table.insert(onDiedEntityFilter, {filter = "type", type = rollingStockType})
+    end
+    Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelShared.OnDiedEntity", TunnelShared.OnDiedEntity, onDiedEntityFilter)
+    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelShared.OnDiedEntity", TunnelShared.OnDiedEntity, onDiedEntityFilter)
+
+    -- OnDiedEntity type events
+    ----------------------------
+    local onPreMinedEntityFilter = {}
+    -- Portal
+    for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
+        table.insert(onPreMinedEntityFilter, {filter = "name", name = name})
+    end
+    -- Underground
+    for _, name in pairs(Common.UndergroundSegmentEntityNames) do
+        table.insert(onPreMinedEntityFilter, {filter = "name", name = name})
+    end
+    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelShared.OnPreMinedEntity", TunnelShared.OnPreMinedEntity, onPreMinedEntityFilter)
+    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelShared.OnPreMinedEntity", TunnelShared.OnPreMinedEntity, onPreMinedEntityFilter)
+
+    -------------------------------------------------------------------------------------
+    -- END Shared event handlers
+    -------------------------------------------------------------------------------------
 end
 
 ---@param builtEntity LuaEntity
@@ -202,6 +275,107 @@ TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled = function(event)
         -- Train is still stopped so schedule a check for next tick.
         EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", event.instanceId, event.data)
     end
+end
+
+--- Merged event handler to call the approperiate module function. More UPS effecient than other options and allows smart function calling based on known context.
+---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
+TunnelShared.OnBuiltEntity = function(event)
+    local createdEntity = event.created_entity or event.entity
+    if not createdEntity.valid then
+        return
+    end
+
+    -- A built entity can only meet one of these modules conditions. Ordered in lowest UPS cost overall.
+    -- Means we don't have to check if its still valid between handler functions called.
+
+    local createdEntity_type = createdEntity.type
+    if Common.RollingStockTypes[createdEntity_type] ~= nil then
+        MOD.Interfaces.Tunnel.OnBuiltEntity(event, createdEntity, createdEntity_type)
+        return
+    end
+
+    local createdEntity_name = createdEntity.name
+    if Common.PortalEndAndSegmentEntityNames[createdEntity_name] ~= nil then
+        MOD.Interfaces.Portal.OnBuiltEntity(event, createdEntity, createdEntity_name)
+        return
+    elseif Common.UndergroundSegmentEntityNames[createdEntity_name] ~= nil then
+        MOD.Interfaces.Underground.OnBuiltEntity(event, createdEntity, createdEntity_name)
+        return
+    end
+
+    if createdEntity_type == "entity-ghost" then
+        local createdEntity_ghostName = createdEntity.ghost_name
+        if Common.PortalEndAndSegmentEntityNames[createdEntity_ghostName] ~= nil then
+            MOD.Interfaces.Portal.OnBuiltEntityGhost(event, createdEntity)
+            return
+        elseif Common.UndergroundSegmentEntityNames[createdEntity_ghostName] ~= nil then
+            MOD.Interfaces.Underground.OnBuiltEntityGhost(event, createdEntity)
+            return
+        elseif Common.RollingStockTypes[createdEntity_ghostName] ~= nil then
+            MOD.Interfaces.Tunnel.OnBuiltEntity(event, createdEntity, createdEntity_type)
+            return
+        end
+    end
+
+    error("some function should have been called")
+end
+
+--- Merged event handler to call the approperiate module function. More UPS effecient than other options and allows smart function calling based on known context.
+---@param event on_entity_died|script_raised_destroy
+TunnelShared.OnDiedEntity = function(event)
+    local diedEntity = event.entity
+    if not diedEntity.valid then
+        return
+    end
+
+    -- A died entity can only meet one of these modules conditions. Ordered in lowest UPS cost overall.
+    -- Means we don't have to check if its still valid between handler functions called.
+
+    local diedEntity_type = diedEntity.type
+    if Common.RollingStockTypes[diedEntity_type] ~= nil then
+        MOD.Interfaces.TrainCachedData.OnRollingStockRemoved(event, diedEntity)
+        return
+    end
+
+    local diedEntity_name = diedEntity.name
+    if diedEntity_name == "railway_tunnel-portal_entry_train_detector_1x1" then
+        MOD.Interfaces.Portal.OnDiedEntityPortalEntryTrainDetector(event, diedEntity)
+        return
+    elseif diedEntity_name == "railway_tunnel-portal_transition_train_detector_1x1" then
+        MOD.Interfaces.Portal.OnDiedEntityPortalTransitionTrainDetector(event, diedEntity)
+        return
+    elseif Common.PortalEndAndSegmentEntityNames[diedEntity_name] ~= nil then
+        MOD.Interfaces.Portal.OnDiedEntity(event, diedEntity)
+        return
+    elseif Common.UndergroundSegmentEntityNames[diedEntity_name] ~= nil then
+        MOD.Interfaces.Underground.OnDiedEntity(event, diedEntity)
+        return
+    end
+
+    error("some function should have been called")
+end
+
+--- Merged event handler to call the approperiate module function. More UPS effecient than other options and allows smart function calling based on known context.
+---@param event on_pre_player_mined_item|on_robot_pre_mined
+TunnelShared.OnPreMinedEntity = function(event)
+    local minedEntity = event.entity
+    if not minedEntity.valid then
+        return
+    end
+
+    -- A pre-mined entity can only meet one of these modules conditions. Ordered in lowest UPS cost overall.
+    -- Means we don't have to check if its still valid between handler functions called.
+
+    local minedEntity_name = minedEntity.name
+    if Common.PortalEndAndSegmentEntityNames[minedEntity_name] ~= nil then
+        MOD.Interfaces.Portal.OnPreMinedEntity(event, minedEntity)
+        return
+    elseif Common.UndergroundSegmentEntityNames[minedEntity_name] ~= nil then
+        MOD.Interfaces.Underground.OnPreMinedEntity(event, minedEntity)
+        return
+    end
+
+    error("some function should have been called")
 end
 
 return TunnelShared
