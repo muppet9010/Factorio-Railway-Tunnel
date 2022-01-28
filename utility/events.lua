@@ -13,6 +13,7 @@ MOD.eventsById = MOD.eventsById or {} ---@type UtilityEvents_EventIdHandlers
 MOD.eventsByActionName = MOD.eventsByActionName or {} ---@type UtilityEvents_EventActionNameHandlers
 MOD.customEventNameToId = MOD.customEventNameToId or {} ---@type table<string, int>
 MOD.eventFilters = MOD.eventFilters or {} ---@type table<int, table<string, table>>
+MOD.eventIdHandlerCachedFieldAttributes = MOD.eventIdHandlerCachedFieldAttributes or {} ---@type table<int, table<string, table<string, string[]>>>
 
 ---@class UtilityEvents_EventData : EventData @ The class is the minimum with any custom fields included in it being passed through to the recieveing event handler function.
 ---@field input_name? string|null @ Used by custom input event handlers registered with Events.RegisterHandlerCustomInput() as the actionName.
@@ -26,7 +27,7 @@ MOD.eventFilters = MOD.eventFilters or {} ---@type table<int, table<string, tabl
 ---@param handlerName string @ Unique name of this event handler instance. Used to avoid duplicate handler registration and if removal is required.
 ---@param handlerFunction function @ The function that is called when the event triggers.
 ---@param thisFilterData? EventFilter[]|null @ List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected). Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
----@param fieldCachedData? table<string, string[]> @ Any fields on the event data that you want attributes to be centerally cached and returned to the handlerFunction. Should only have fields and attributes added when multiple handler functions of the same event will want the same attributes for the same event instance. Ideal for caching attributes used in multiple handlre functions on an event to identify whihc handler function actually needs to process the event with the others terminating their function. If populated the handler function will recieve a second argument of cachedData of type UtilityEvents_CachedEventData, in addition to the first argument of the events default data.
+---@param fieldCachedData? table<string, string[]>|null @ Any fields on the event data that you want attributes to be centerally cached and returned to the handlerFunction. Should only have fields and attributes added when multiple handler functions of the same event will want the same attributes for the same event instance. Ideal for caching attributes used in multiple handler functions on an event to identify which handler function actually needs to process the event with the others terminating their function. If populated all handler functions registered to the event will recieve a second argument "cachedData" of type UtilityEvents_CachedEventData with the event wide cache table in it. The first argument beign the default Factorio event data table.
 ---@return uint @ Useful for custom event names when you need to store the eventId to return via a remote interface call.
 Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData, fieldCachedData)
     if eventName == nil or handlerName == nil or handlerFunction == nil then
@@ -60,20 +61,32 @@ Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, 
             requestedDataCache = MOD.eventsById[eventId].requestedDataCache
         end
 
-        -- Process over the requested fields and then attributes and record them to the requested data cache object.
-        for fieldName, attributeNames in pairs(fieldCachedData) do
-            if next(attributeNames) == nil then
-                error("Events.RegisterHandlerEvent called with empty attributes list for field '" .. tostring(fieldName) .. "' in fieldCachedData table. Should either be not listed as a field or populated with attribute names.")
-            end
+        -- Log this event Id handler name having cached data.
+        MOD.eventIdHandlerCachedFieldAttributes[eventId] = MOD.eventIdHandlerCachedFieldAttributes[eventId] or {}
 
-            requestedDataCache[fieldName] = requestedDataCache[fieldName] or {}
+        -- Don't register repeated field lists as the attribute counts would be inflated.
+        if MOD.eventIdHandlerCachedFieldAttributes[eventId][handlerName] == nil then
+            MOD.eventIdHandlerCachedFieldAttributes[eventId][handlerName] = {}
+            local handlerCachedThings = MOD.eventIdHandlerCachedFieldAttributes[eventId][handlerName]
 
-            for _, attributeName in pairs(attributeNames) do
-                -- We track how many functions request the attribute so we can stop caching them later if all functions are removed.
-                if requestedDataCache[fieldName][attributeName] == nil then
-                    requestedDataCache[fieldName][attributeName] = 1
-                else
-                    requestedDataCache[fieldName][attributeName] = requestedDataCache[fieldName][attributeName] + 1
+            -- Process over the requested fields and then attributes and record them to the requested data cache object.
+            for fieldName, attributeNames in pairs(fieldCachedData) do
+                if next(attributeNames) == nil then
+                    error("Events.RegisterHandlerEvent called with empty attributes list for field '" .. tostring(fieldName) .. "' in fieldCachedData table. Should either be not listed as a field or populated with attribute names.")
+                end
+
+                requestedDataCache[fieldName] = requestedDataCache[fieldName] or {}
+                handlerCachedThings[fieldName] = {}
+
+                for _, attributeName in pairs(attributeNames) do
+                    -- We track how many functions request the attribute so we can stop caching them later if all functions are removed.
+                    if requestedDataCache[fieldName][attributeName] == nil then
+                        requestedDataCache[fieldName][attributeName] = 1
+                    else
+                        requestedDataCache[fieldName][attributeName] = requestedDataCache[fieldName][attributeName] + 1
+                    end
+
+                    table.insert(handlerCachedThings[fieldName], attributeName)
                 end
             end
         end
@@ -120,7 +133,7 @@ Events.RegisterCustomEventName = function(eventName)
     return eventId
 end
 
---- Called when needed. Removes a registered handlerName from beign called when the specified event triggers.
+--- Called when needed. Removes a registered handlerName from being called when the specified event triggers.
 ---@param eventName defines.events|string @ Either a default Factorio event or a custom input action name.
 ---@param handlerName string @ The unique handler name to remove from this eventName.
 Events.RemoveHandler = function(eventName, handlerName)
@@ -131,6 +144,29 @@ Events.RemoveHandler = function(eventName, handlerName)
         MOD.eventsById[eventName].handlers[handlerName] = nil
     elseif MOD.eventsByActionName[eventName] ~= nil then
         MOD.eventsByActionName[eventName].handlers[handlerName] = nil
+    end
+
+    -- Remove any cached fields this function had requested. May remove the need to cache certain fields or their attributes entirely.
+    local handlersCacheRequests = MOD.eventIdHandlerCachedFieldAttributes[eventName][handlerName]
+    if handlersCacheRequests ~= nil then
+        local eventsDataCache = MOD.eventsById[eventName].requestedDataCache
+        for fieldName, attributes in pairs(handlersCacheRequests) do
+            for _, attributeName in pairs(attributes) do
+                eventsDataCache[fieldName][attributeName] = eventsDataCache[fieldName][attributeName] - 1
+                -- If nothing still wants this attribute then remove it from the field.
+                if eventsDataCache[fieldName][attributeName] == 0 then
+                    eventsDataCache[fieldName][attributeName] = nil
+                end
+            end
+
+            -- If no attributes for this field any more remove the field.
+            if next(eventsDataCache[fieldName]) == nil then
+                eventsDataCache[fieldName] = nil
+            end
+        end
+
+        -- Remove the list of field attributes this handler wanted cached.
+        MOD.eventIdHandlerCachedFieldAttributes[eventName][handlerName] = nil
     end
 end
 
@@ -183,23 +219,17 @@ Events._HandleEvent = function(eventData)
         -- If there is requestedDataCache for this event then build up the cache.
         if eventHandlers.requestedDataCache ~= nil then
             for fieldName, attributes in pairs(eventHandlers.requestedDataCache) do
-                local field = eventData[fieldName]
-
-                -- Construct the results container if doesn't already exist.
-                local cachedDataFieldName = cachedData[fieldName]
-                if cachedDataFieldName == nil then
-                    cachedData[fieldName] = {
-                        valid = field.valid
-                    }
-                    cachedDataFieldName = cachedData[fieldName]
-                end
+                -- Construct the results container for this field.
+                cachedData[fieldName] = {
+                    valid = eventData[fieldName].valid
+                }
 
                 -- Check over each requested attribute for this field if it is valid.
-                if cachedDataFieldName.valid then
+                if cachedData[fieldName].valid then
                     for attributeName in pairs(attributes) do
-                        -- If the attribute isn't cached get it and add it.
-                        if cachedDataFieldName[attributeName] == nil then
-                            cachedDataFieldName[attributeName] = field[attributeName]
+                        -- If the attribute isn't "valid" (already cached) get it and add it.
+                        if attributeName ~= "valid" then
+                            cachedData[fieldName][attributeName] = eventData[fieldName][attributeName]
                         end
                     end
                 end

@@ -1,6 +1,5 @@
 Now
 ---
-    - Event registration should take a list of event fields and their attributes the function wants. This should be cached by the Event library so these are obtained once and passed in to the functions asking for them. This should be reasonably simple, low running cost and noticable savings on UPS. Should check valid one each function called as if we have 5 functions all reacting and the 2nd one invalids the object no need to check valid for each subsequent function when the 3rd one can discover it and know if for all remaining.
     - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and having to use their own internal function call logic to filter events not relevent to them. Is secondary to the attribute caching change as this is much more complicated and higher risk of not saving UPS due to this vs complexity.
 
 
