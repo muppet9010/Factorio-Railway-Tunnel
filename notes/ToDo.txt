@@ -2,6 +2,7 @@ Now
 ---
 
 
+
 Bugs
 ----
     - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
@@ -42,7 +43,6 @@ Features to add/change
 
 UPS / code plans
 ------------------------
-    - Filtering of events by entity type and name should be done centrally. As at present we have 5 functions all reacting to entity built events and getting fields indivudually for just 1 in 5 functions to look deeper at the event. This should form part of my library function. Will save on checking if things are valid and should return the type/name attribute as cached to each calling function. on_built_entity
     - Utils class - break out in to seperate files.
     - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.

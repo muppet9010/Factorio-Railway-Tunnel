@@ -1,8 +1,9 @@
-local Events = require("utility/events")
+--local Events = require("utility/events")
 local Utils = require("utility/utils")
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local PortalEndAndSegmentEntityNames, TunnelSignalDirection, TunnelUsageParts = Common.PortalEndAndSegmentEntityNames, Common.TunnelSignalDirection, Common.TunnelUsageParts
+local TunnelSignalDirection, TunnelUsageParts = Common.TunnelSignalDirection, Common.TunnelUsageParts
+--local PortalEndAndSegmentEntityNames = Common.PortalEndAndSegmentEntityNames
 local Portal = {}
 local EventScheduler = require("utility/event-scheduler")
 
@@ -194,27 +195,26 @@ Portal.CreateGlobals = function()
 end
 
 Portal.OnLoad = function()
-    local portalEntityNames_Filter = {}
+    --[[local portalEntityNames_Filter = {}
     for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityNames_Filter, {filter = "name", name = name})
-    end
+    end]]
+    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
 
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
-
-    local portalEntityGhostNames_Filter = {}
+    --[[local portalEntityGhostNames_Filter = {}
     for _, name in pairs(PortalEndAndSegmentEntityNames) do
         table.insert(portalEntityGhostNames_Filter, {filter = "ghost_name", name = name})
-    end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    end]]
+    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
 
     MOD.Interfaces.Portal = MOD.Interfaces.Portal or {}
     MOD.Interfaces.Portal.On_PreTunnelCompleted = Portal.On_PreTunnelCompleted
@@ -223,28 +223,37 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition = Portal.CanAPortalConnectAtItsInternalPosition
     MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
+    -- Merged event handler interfaces.
+    MOD.Interfaces.Portal.OnBuiltEntity = Portal.OnBuiltEntity
+    MOD.Interfaces.Portal.OnBuiltEntityGhost = Portal.OnBuiltEntityGhost
+    MOD.Interfaces.Portal.OnDiedEntity = Portal.OnDiedEntity
+    MOD.Interfaces.Portal.OnDiedEntityPortalEntryTrainDetector = Portal.OnDiedEntityPortalEntryTrainDetector
+    MOD.Interfaces.Portal.OnDiedEntityPortalTransitionTrainDetector = Portal.OnDiedEntityPortalTransitionTrainDetector
+    MOD.Interfaces.Portal.OnPreMinedEntity = Portal.OnPreMinedEntity
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
 
-    local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
+    --local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
+    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
 
-    local portalTransitionTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1"}}
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
+    --local portalTransitionTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1"}}
+    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Portal.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
+---@param createdEntity LuaEntity
+---@param createdEntity_name string
+Portal.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
+    --[[local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid then
         return
     end
     local createdEntity_name = createdEntity.name
     if PortalEndAndSegmentEntityNames[createdEntity_name] == nil then
         return
-    end
+    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -938,11 +947,12 @@ end
 
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
-Portal.OnBuiltEntityGhost = function(event)
-    local createdEntity = event.created_entity or event.entity
+---@param createdEntity LuaEntity
+Portal.OnBuiltEntityGhost = function(event, createdEntity)
+    --[[local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
-    end
+    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -956,13 +966,13 @@ end
 
 -- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
-Portal.OnPreMinedEntity = function(event)
+---@param minedEntity LuaEntity
+Portal.OnPreMinedEntity = function(event, minedEntity)
     -- Check its one of the entities this function wants to inspect.
-    local minedEntity = event.entity
+    --[[local minedEntity = event.entity
     if not minedEntity.valid or PortalEndAndSegmentEntityNames[minedEntity.name] == nil then
         return
-    end
-
+    end]]
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedPortalPart = global.portals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
     if minedPortalPart == nil then
@@ -1175,13 +1185,13 @@ end
 
 -- Triggered when a monitored entity type is killed.
 ---@param event on_entity_died|script_raised_destroy
-Portal.OnDiedEntity = function(event)
+---@param diedEntity LuaEntity
+Portal.OnDiedEntity = function(event, diedEntity)
     -- Check its one of the entities this function wants to inspect.
-    local diedEntity = event.entity
+    --[[local diedEntity = event.entity
     if not diedEntity.valid or PortalEndAndSegmentEntityNames[diedEntity.name] == nil then
         return
-    end
-
+    end]]
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local diedPortalPart = global.portals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
     if diedPortalPart == nil then
@@ -1193,13 +1203,12 @@ end
 
 -- Occurs when a train tries to pass through the border of a portal, when entering and exiting.
 ---@param event on_entity_died|script_raised_destroy
-Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
-    local diedEntity, carriageEnteringPortalTrack = event.entity, event.cause
-    if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
+---@param diedEntity LuaEntity
+Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
+    --[[if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
         -- Needed due to how died event handlers are all bundled togeather.
         return
-    end
-
+    end]]
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1215,6 +1224,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event)
         return
     end
 
+    local carriageEnteringPortalTrack = event.cause
     if carriageEnteringPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
         Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, true, false)
@@ -1362,13 +1372,12 @@ end
 
 -- Occurs when a train passes through the transition point of a portal when fully entering the tunnel.
 ---@param event on_entity_died|script_raised_destroy
-Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
-    local diedEntity, carriageAtTransitionOfPortalTrack = event.entity, event.cause
-    if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_transition_train_detector_1x1" then
+---@param diedEntity LuaEntity
+Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
+    --[[if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_transition_train_detector_1x1" then
         -- Needed due to how died event handlers are all bundled togeather.
         return
-    end
-
+    end]]
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1384,6 +1393,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event)
         return
     end
 
+    local carriageAtTransitionOfPortalTrack = event.cause
     if carriageAtTransitionOfPortalTrack == nil then
         -- As there's no cause this should only occur when a script removes the entity. Try to return the detection entity and if the portal is being removed that will handle all scenarios.
         Portal.AddTransitionUsageDetectionEntityToPortal(portal)

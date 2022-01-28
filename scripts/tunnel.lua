@@ -2,7 +2,8 @@ local Events = require("utility/events")
 local Tunnel = {}
 local TunnelShared = require("scripts/tunnel-shared")
 local Common = require("scripts/common")
-local RollingStockTypes, TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.RollingStockTypes, Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
+local TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
+--local RollingStockTypes = Common.RollingStockTypes
 local Utils = require("utility/utils")
 
 ---@class Tunnel @ the tunnel object that managed trains can pass through.
@@ -47,18 +48,20 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.TrainReleasedTunnel = Tunnel.TrainReleasedTunnel
     MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
     MOD.Interfaces.Tunnel.CanTrainFitInTunnel = Tunnel.CanTrainFitInTunnel
+    -- Merged event handler interfaces.
+    MOD.Interfaces.Tunnel.OnBuiltEntity = Tunnel.OnBuiltEntity
 
-    local rollingStockFilter = {
+    --[[local rollingStockFilter = {
         {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
         {filter = "ghost_type", type = "locomotive"},
         {filter = "ghost_type", type = "cargo-wagon"},
         {filter = "ghost_type", type = "fluid-wagon"},
         {filter = "ghost_type", type = "artillery-wagon"}
-    }
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    }]]
+    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    --Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
 -- Needed so we detect when a train is targetting the transition signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
@@ -277,16 +280,15 @@ end
 
 -- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Tunnel.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
+Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
+    --[[local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid then
         return
     end
     local createdEntity_type = createdEntity.type
     if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
         return
-    end
-
+    end]]
     if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
