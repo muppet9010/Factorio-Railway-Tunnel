@@ -1,8 +1,11 @@
--- Random utility functions that don't fit in to any other category.
+--- Random utility functions that don't fit in to any other category.
+--- These functions won't include input validation as in most cases its a waste of UPS.
 
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
 local PrototypeAttributes = require("utility/prototype-attributes")
+
+local math_min, math_max, math_floor, math_ceil, math_sqrt, math_abs, math_random, math_exp, math_rad, math_cos, math_sin = math.min, math.max, math.floor, math.ceil, math.sqrt, math.abs, math.random, math.exp, math.rad, math.cos, math.sin
 
 --- Copies a table and all of its children all the way down.
 ---@type fun(object:table):table
@@ -309,7 +312,7 @@ end
 ---@param pos Position
 ---@return ChunkPosition
 Utils.GetChunkPositionForTilePosition = function(pos)
-    return {x = math.floor(pos.x / 32), y = math.floor(pos.y / 32)}
+    return {x = math_floor(pos.x / 32), y = math_floor(pos.y / 32)}
 end
 
 ---@param chunkPos ChunkPosition
@@ -344,9 +347,9 @@ Utils.RotatePositionAround0 = function(orientation, position)
     end
 
     -- Handle any non cardinal direction orientation.
-    local rad = math.rad(orientation * 360)
-    local cosValue = math.cos(rad)
-    local sinValue = math.sin(rad)
+    local rad = math_rad(orientation * 360)
+    local cosValue = math_cos(rad)
+    local sinValue = math_sin(rad)
     local rotatedX = (position.x * cosValue) - (position.y * sinValue)
     local rotatedY = (position.x * sinValue) + (position.y * cosValue)
     return {x = rotatedX, y = rotatedY}
@@ -382,21 +385,30 @@ Utils.RotateOffsetAroundPosition = function(orientation, offset, position)
     end
 
     -- Handle any non cardinal direction orientation.
-    local rad = math.rad(orientation * 360)
-    local cosValue = math.cos(rad)
-    local sinValue = math.sin(rad)
+    local rad = math_rad(orientation * 360)
+    local cosValue = math_cos(rad)
+    local sinValue = math_sin(rad)
     local rotatedX = (position.x * cosValue) - (position.y * sinValue)
     local rotatedY = (position.x * sinValue) + (position.y * cosValue)
     return {x = position.x + rotatedX, y = position.y + rotatedY}
 end
 
 --- Rotates the directionToRotate by a direction difference from the referenceDirection to the appliedDirection. Useful for rotating entities direction in proportion to a parent's direction change from known direction.
+--- Should be done locally if called frequently.
 ---@param directionToRotate defines.direction
 ---@param referenceDirection defines.direction
 ---@param appliedDirection defines.direction
 Utils.RotateDirectionByDirection = function(directionToRotate, referenceDirection, appliedDirection)
     local directionDif = appliedDirection - referenceDirection
-    return Utils.LoopIntValueWithinRange(directionToRotate + directionDif, 0, 7)
+    local directionValue = directionToRotate + directionDif
+    -- Hard coded copy of Utils.LoopIntValueWithinRange().
+    if directionValue > 7 then
+        return 0 - (7 - directionValue) - 1
+    elseif directionValue < 0 then
+        return 7 + (directionValue - 7) + 1
+    else
+        return directionValue
+    end
 end
 
 ---@param point1 Position
@@ -490,20 +502,20 @@ Utils.IsCollisionBoxPopulated = function(collisionBox)
 end
 
 Utils.LogisticEquation = function(index, height, steepness)
-    return height / (1 + math.exp(steepness * (index - 0)))
+    return height / (1 + math_exp(steepness * (index - 0)))
 end
 
 Utils.ExponentialDecayEquation = function(index, multiplier, scale)
-    return multiplier * math.exp(-index * scale)
+    return multiplier * math_exp(-index * scale)
 end
 
 Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
     local result
     if numDecimalPlaces ~= nil and numDecimalPlaces > 0 then
         local mult = 10 ^ numDecimalPlaces
-        result = math.floor(num * mult + 0.5) / mult
+        result = math_floor(num * mult + 0.5) / mult
     else
-        result = math.floor(num + 0.5)
+        result = math_floor(num + 0.5)
     end
     if result == "nan" then
         result = 0
@@ -526,7 +538,7 @@ Utils.LoopIntValueWithinRange = function(value, min, max)
     end
 end
 
--- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
+--- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. Depending on starting input value you get either the min or max value at the border.
 ---@param value number
 ---@param min number
 ---@param max number
@@ -541,7 +553,8 @@ Utils.LoopFloatValueWithinRange = function(value, min, max)
     end
 end
 
--- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. But maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
+--- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. But maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
+--- Should be done locally if called frequently.
 ---@param value number
 ---@param minInclusive number
 ---@param maxExclusive number
@@ -556,21 +569,86 @@ Utils.LoopFloatValueWithinRangeMaxExclusive = function(value, minInclusive, maxE
     end
 end
 
--- Return the passed in number clamped to within the max and min limits inclusively.
+--- Return the passed in number clamped to within the max and min limits inclusively.
 ---@param value number
 ---@param min number
 ---@param max number
 ---@return number
 Utils.clampNumber = function(value, min, max)
-    return math.min(math.max(value, min), max)
+    return math_min(math_max(value, min), max)
+end
+
+--- Takes a orientation (0-1) and returns a direction (int 0-7).
+--- Should be done locally if called frequently.
+---@param orientation RealOrientation @ Will be rounded to the nearest cardinal or intercardinal direction.
+---@return defines.direction
+Utils.OrientationToDirection = function(orientation)
+    local directionValue = Utils.RoundNumberToDecimalPlaces(orientation * 8, 0)
+    -- Hard coded copy of Utils.LoopIntValueWithinRange().
+    if directionValue > 7 then
+        return 0 - (7 - directionValue) - 1
+    elseif directionValue < 0 then
+        return 7 + (directionValue - 7) + 1
+    else
+        return directionValue
+    end
+end
+
+--- Takes a direction (int 0-7) and returns an orientation (0-1).
+--- Should be done locally if called frequently.
+---@param directionValue defines.direction
+---@return RealOrientation
+Utils.DirectionToOrientation = function(directionValue)
+    return directionValue / 8
+end
+
+--- A dictionary of directionValue key's (0-7) to their direction name (label's of defines.direction).
+Utils.DirectionValueToName = {
+    [0] = "north",
+    [1] = "northeast",
+    [2] = "east",
+    [3] = "southeast",
+    [4] = "south",
+    [5] = "southwest",
+    [6] = "west",
+    [7] = "northwest"
+}
+
+--- Takes a direction input value and if it's greater/less than the allowed orientation range it loops it back within the range.
+---@param directionValue defines.direction @ A number from 0-7.
+---@return defines.direction
+Utils.LoopDirectionValue = function(directionValue)
+    -- Hard coded copy of Utils.LoopIntValueWithinRange().
+    if directionValue > 7 then
+        return 0 - (7 - directionValue) - 1
+    elseif directionValue < 0 then
+        return 7 + (directionValue - 7) + 1
+    else
+        return directionValue
+    end
+end
+
+--- Takes an orientation input value and if it's greater/less than the allowed orientation range it loops it back within the range.
+--- Should be done locally if called frequently.
+---@param orientationValue RealOrientation
+---@return RealOrientation
+Utils.LoopOrientationValue = function(orientationValue)
+    -- Hard coded copy of Utils.LoopFloatValueWithinRangeMaxExclusive().
+    if orientationValue >= 1 then
+        return 0 + (orientationValue - 1)
+    elseif orientationValue < 0 then
+        return 1 - (orientationValue - 0)
+    else
+        return orientationValue
+    end
 end
 
 Utils.HandleFloatNumberAsChancedValue = function(value)
-    local intValue = math.floor(value)
+    local intValue = math_floor(value)
     local partialValue = value - intValue
     local chancedValue = intValue
     if partialValue ~= 0 then
-        local rand = math.random()
+        local rand = math_random()
         if rand >= partialValue then
             chancedValue = chancedValue + 1
         end
@@ -690,7 +768,7 @@ Utils.CalculateTilesUnderPositionedBoundingBox = function(positionedBoundingBox)
     local tiles = {}
     for x = positionedBoundingBox.left_top.x, positionedBoundingBox.right_bottom.x do
         for y = positionedBoundingBox.left_top.y, positionedBoundingBox.right_bottom.y do
-            table.insert(tiles, {x = math.floor(x), y = math.floor(y)})
+            table.insert(tiles, {x = math_floor(x), y = math_floor(y)})
         end
     end
     return tiles
@@ -701,10 +779,9 @@ end
 ---@param pos2 Position
 ---@return number @ is inheriently a positive number.
 Utils.GetDistance = function(pos1, pos2)
-    -- Don't do any valid checks as called so frequently, big UPS wastage.
     local dx = pos1.x - pos2.x
     local dy = pos1.y - pos2.y
-    return math.sqrt(dx * dx + dy * dy)
+    return math_sqrt(dx * dx + dy * dy)
 end
 
 -- Gets the distance between a single axis of 2 positions.
@@ -713,8 +790,7 @@ end
 ---@param axis Axis
 ---@return number @ is inheriently a positive number.
 Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
-    -- Don't do any valid checks as called so frequently, big UPS wastage.
-    return math.abs(pos1[axis] - pos2[axis])
+    return math_abs(pos1[axis] - pos2[axis])
 end
 
 -- Returns the offset for the first position in relation to the second position.
@@ -1046,7 +1122,7 @@ Utils.TableInnerValueToKey = function(refTable, innerValueAttributeName)
 end
 
 Utils.GetRandomFloatInRange = function(lower, upper)
-    return lower + math.random() * (upper - lower)
+    return lower + math_random() * (upper - lower)
 end
 
 Utils.WasCreativeModeInstantDeconstructionUsed = function(event)
@@ -1079,7 +1155,7 @@ Utils.NormaliseChanceList = function(dataSet, chancePropertyName, skipFillingEmp
 end
 
 Utils.GetRandomEntryFromNormalisedDataSet = function(dataSet, chancePropertyName)
-    local random = math.random()
+    local random = math_random()
     local chanceRangeLow = 0
     local chanceRangeHigh
     for _, v in pairs(dataSet) do
@@ -1159,13 +1235,13 @@ Utils.DisplayTimeOfTicks = function(inputTicks, displayLargestTimeUnit, displayS
         negativeSign = "-"
         inputTicks = -inputTicks
     end
-    local hours = math.floor(inputTicks / 216000)
+    local hours = math_floor(inputTicks / 216000)
     local displayHours = Utils.PadNumberToMinimumDigits(hours, 2)
     inputTicks = inputTicks - (hours * 216000)
-    local minutes = math.floor(inputTicks / 3600)
+    local minutes = math_floor(inputTicks / 3600)
     local displayMinutes = Utils.PadNumberToMinimumDigits(minutes, 2)
     inputTicks = inputTicks - (minutes * 3600)
-    local seconds = math.floor(inputTicks / 60)
+    local seconds = math_floor(inputTicks / 60)
     local displaySeconds = Utils.PadNumberToMinimumDigits(seconds, 2)
 
     if displayLargestTimeUnit == nil or displayLargestTimeUnit == "" or displayLargestTimeUnit == "auto" then
@@ -1297,10 +1373,10 @@ Utils.ToBoolean = function(text)
 end
 
 Utils.RandomLocationInRadius = function(centrePos, maxRadius, minRadius)
-    local angle = math.random(0, 360)
+    local angle = math_random(0, 360)
     minRadius = minRadius or 0
     local radiusMultiplier = maxRadius - minRadius
-    local distance = minRadius + (math.random() * radiusMultiplier)
+    local distance = minRadius + (math_random() * radiusMultiplier)
     return Utils.GetPositionForAngledDistance(centrePos, distance, angle)
 end
 
@@ -1308,10 +1384,10 @@ Utils.GetPositionForAngledDistance = function(startingPos, distance, angle)
     if angle < 0 then
         angle = 360 + angle
     end
-    local angleRad = math.rad(angle)
+    local angleRad = math_rad(angle)
     local newPos = {
-        x = (distance * math.sin(angleRad)) + startingPos.x,
-        y = (distance * -math.cos(angleRad)) + startingPos.y
+        x = (distance * math_sin(angleRad)) + startingPos.x,
+        y = (distance * -math_cos(angleRad)) + startingPos.y
     }
     return newPos
 end
@@ -1334,9 +1410,9 @@ Utils.FindWhereLineCrossesCircle = function(radius, slope, yIntercept)
     if delta < 0 then
         return nil, nil
     else
-        local x1 = (-B + math.sqrt(delta)) / (2 * A)
+        local x1 = (-B + math_sqrt(delta)) / (2 * A)
 
-        local x2 = (-B - math.sqrt(delta)) / (2 * A)
+        local x2 = (-B - math_sqrt(delta)) / (2 * A)
 
         local y1 = slope * x1 + yIntercept
 
@@ -1353,8 +1429,8 @@ Utils.FindWhereLineCrossesCircle = function(radius, slope, yIntercept)
 end
 
 Utils.IsPositionWithinCircled = function(circleCenter, radius, position)
-    local deltaX = math.abs(position.x - circleCenter.x)
-    local deltaY = math.abs(position.y - circleCenter.y)
+    local deltaX = math_abs(position.x - circleCenter.x)
+    local deltaY = math_abs(position.y - circleCenter.y)
     if deltaX + deltaY <= radius then
         return true
     elseif deltaX > radius then
@@ -1388,7 +1464,7 @@ Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventor
     for index = 1, #sourceInventory do
         local itemStack = sourceInventory[index]
         if itemStack.valid_for_read then
-            local toMoveCount = math.ceil(itemStack.count * ratioToMove)
+            local toMoveCount = math_ceil(itemStack.count * ratioToMove)
             local itemStackToMove = Utils.DeepCopy(itemStack)
             itemStackToMove.count = toMoveCount
             local movedCount = targetInventory.insert(itemStackToMove)
@@ -1449,7 +1525,7 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
         ratioToMove = 1
     end
     for name, count in pairs(contents) do
-        local toMove = math.ceil(count * ratioToMove)
+        local toMove = math_ceil(count * ratioToMove)
         local moved = targetInventory.insert({name = name, count = toMove})
         local remaining = count - moved
         if moved > 0 then
@@ -1480,7 +1556,7 @@ Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGr
         ratioToMove = 1
     end
     for index, simpleItemStack in pairs(contents) do
-        local toMove = math.ceil(simpleItemStack.count * ratioToMove)
+        local toMove = math_ceil(simpleItemStack.count * ratioToMove)
         local moved = targetInventory.insert({name = simpleItemStack.name, count = toMove, health = simpleItemStack.health, durability = simpleItemStack.durablilty, ammo = simpleItemStack.ammo})
         local remaining = simpleItemStack.count - moved
         if moved > 0 then
@@ -1646,7 +1722,7 @@ Utils.GetRecipeIngredientsAddedTogeather = function(recipeIngredientHandlingTabl
                 ratioMultiplier = 1
             end
             for _, details in pairs(ingredients) do
-                local name, count = details[1] or details.name, math.ceil((details[2] or details.amount) * ratioMultiplier)
+                local name, count = details[1] or details.name, math_ceil((details[2] or details.amount) * ratioMultiplier)
                 if handling == "add" then
                     ingredientsList[name] = (ingredientsList[name] or 0) + count
                 elseif handling == "subtract" then
@@ -1757,39 +1833,6 @@ Utils.StringTrim = function(text)
     return string.match(text, "^()%s*$") and "" or string.match(text, "^%s*(.*%S)")
 end
 
--- Takes a orientation (0-1) and returns a direction (int 0-7).
----@param orientation RealOrientation @ Will be rounded to the nearest cardinal or intercardinal direction.
----@return defines.direction
-Utils.OrientationToDirection = function(orientation)
-    return Utils.LoopIntValueWithinRange(Utils.RoundNumberToDecimalPlaces(orientation * 8, 0), 0, 7)
-end
-
--- Takes a direction (int 0-7) and returns an orientation (0-1).
----@param directionValue defines.direction
----@return RealOrientation
-Utils.DirectionToOrientation = function(directionValue)
-    return directionValue / 8
-end
-
----@param directionValue defines.direction @ A number from 0-7.
----@return string
-Utils.DirectionValueToName = function(directionValue)
-    local names = {[0] = "north", [1] = "northeast", [2] = "east", [3] = "southeast", [4] = "south", [5] = "southwest", [6] = "west", [7] = "northwest"}
-    return names[directionValue]
-end
-
----@param directionValue defines.direction @ A number from 0-7.
----@return defines.direction
-Utils.LoopDirectionValue = function(directionValue)
-    return Utils.LoopIntValueWithinRange(directionValue, 0, 7)
-end
-
----@param orientationValue RealOrientation
----@return RealOrientation
-Utils.LoopOrientationValue = function(orientationValue)
-    return Utils.LoopFloatValueWithinRangeMaxExclusive(orientationValue, 0, 1)
-end
-
 -- Kills an entity and handles the optional arguments as Facotrio API doesn't accept nil arguments.
 ---@param entity LuaEntity
 ---@param killerForce LuaForce
@@ -1804,6 +1847,8 @@ end
 
 Utils.MaxTrainStopLimit = 4294967295 ---@type uint
 
+--- Returns a luaObject if its valid, else nil. Convientent for inline usage when rarely called.
+--- Should be done locally if called frequently.
 ---@param luaObject LuaBaseClass
 ---@return LuaBaseClass|null
 Utils.ReturnValidLuaObjectOrNil = function(luaObject)
@@ -1814,6 +1859,8 @@ Utils.ReturnValidLuaObjectOrNil = function(luaObject)
     end
 end
 
+--- Gets the carriage at the head (leading) the train in its current direction.
+--- Should be done locally if called frequently.
 ---@param train LuaTrain
 ---@param isFrontStockLeading boolean @ If the trains speed is > 0 then pass in true, if speed < 0 then pass in false.
 ---@return LuaEntity
@@ -1921,8 +1968,11 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
     end
 
     local firstCarriage = true
+    local carriageEntity  ---@type LuaEntity
+    local carriageCachedData  ---@type Utils_TrainCarriageData|null
+    local carriage_name  ---@type string
+    local carriage_faceingFrontOfTrain  ---@type boolean
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        local carriageEntity, carriageCachedData, carriage_name
         if trainCarriagesDataArray ~= nil then
             ---@type Utils_TrainCarriageData
             carriageCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
@@ -1952,7 +2002,6 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
         end
 
         if carriage_name == "locomotive" then
-            local carriage_faceingFrontOfTrain  ---@type boolean
             if trainCarriagesDataArray ~= nil then
                 carriage_faceingFrontOfTrain = carriageCachedData.faceingFrontOfTrain
                 if carriage_faceingFrontOfTrain == nil then
@@ -2010,7 +2059,7 @@ end
 ---@param initialSpeedAbsolute double
 ---@return number absoluteSpeed
 Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initialSpeedAbsolute)
-    return math.min(((initialSpeedAbsolute + trainData.locomotiveAccelerationPower) - trainData.trainWeightedFrictionForce) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
+    return math_min(((initialSpeedAbsolute + trainData.locomotiveAccelerationPower) - trainData.trainWeightedFrictionForce) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
 end
 
 --- Estimates how long an accelerating train takes to cover a distance, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
@@ -2022,7 +2071,7 @@ end
 Utils.EstimateAcceleratingTrainTicksToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
-    local ticks = math.ceil((math.sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration)
+    local ticks = math_ceil((math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration)
     return ticks
 end
 
@@ -2036,7 +2085,7 @@ end
 Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks = function(trainData, initialSpeedAbsolute, ticks)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
-    local newSpeedAbsolute = math.min(initialSpeedAbsolute + (acceleration * ticks), trainData.maxSpeed)
+    local newSpeedAbsolute = math_min(initialSpeedAbsolute + (acceleration * ticks), trainData.maxSpeed)
     local distanceTravelled = (ticks * initialSpeedAbsolute) + (((newSpeedAbsolute - initialSpeedAbsolute) * ticks) / 2)
     return newSpeedAbsolute, distanceTravelled
 end
@@ -2050,7 +2099,7 @@ end
 Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
-    local ticks = math.ceil((requiredSpeedAbsolute - initialSpeedAbsolute) / acceleration)
+    local ticks = math_ceil((requiredSpeedAbsolute - initialSpeedAbsolute) / acceleration)
     local distance = (ticks * initialSpeedAbsolute) + (((requiredSpeedAbsolute - initialSpeedAbsolute) * ticks) / 2)
     return ticks, distance
 end
@@ -2064,11 +2113,11 @@ end
 Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(trainData, initialSpeedAbsolute, distance, forcesBrakingForceBonus)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
-    local accelerationDistanceFormula = (math.sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration
+    local accelerationDistanceFormula = (math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local brakingDistanceFormula = (math.sqrt(2 * tickBrakingReduction * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / tickBrakingReduction
-    local ticks = math.ceil(accelerationDistanceFormula + brakingDistanceFormula)
+    local brakingDistanceFormula = (math_sqrt(2 * tickBrakingReduction * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / tickBrakingReduction
+    local ticks = math_ceil(accelerationDistanceFormula + brakingDistanceFormula)
     return ticks
 end
 
@@ -2082,7 +2131,7 @@ end
 Utils.CalculateBrakingTrainDistanceAndTimeFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute, forcesBrakingForceBonus)
     local speedToDropAbsolute = initialSpeedAbsolute - requiredSpeedAbsolute
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
-    local ticksToStop = math.ceil(speedToDropAbsolute / ((trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight))
+    local ticksToStop = math_ceil(speedToDropAbsolute / ((trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight))
     local breakingDistance = (ticksToStop * requiredSpeedAbsolute) + ((ticksToStop / 2.0) * speedToDropAbsolute)
     return ticksToStop, breakingDistance
 end
@@ -2108,7 +2157,7 @@ end
 Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance = function(trainData, distance, forcesBrakingForceBonus)
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local initialAbsoluteSpeed = math.sqrt(2 * tickBrakingReduction * distance)
+    local initialAbsoluteSpeed = math_sqrt(2 * tickBrakingReduction * distance)
     return initialAbsoluteSpeed
 end
 

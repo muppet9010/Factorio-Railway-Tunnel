@@ -362,9 +362,9 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
     local placementPosition = firstCarriageFrontLocation
     local locomotivesBuilt, cargoWagonsBuilt = {}, {}
     local trainReverseDirection = Utils.LoopDirectionValue(trainForwardsDirection + 4)
-    local trainForwardsOrientation = Utils.DirectionToOrientation(trainForwardsDirection)
+    local trainForwardsOrientation = trainForwardsDirection / 8
     for carriageNumber, carriageDetails in pairs(carriagesDetails) do
-        local carriageEndPositionOffset = Utils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.GetCarriagePlacementDistance(carriageDetails.prototypeName)})
+        local carriageEndPositionOffset = Utils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.CarriagePlacementDistances[carriageDetails.prototypeName]})
         -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
         local carriageBuildDirection

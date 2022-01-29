@@ -306,7 +306,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
         if segmentTypeData.placeCrossingRails then
             -- OVERHAUL - move this to be type data driven and not hard coded.
             segment.crossingRailEntities = {}
-            local crossignRailDirection, orientation = Utils.LoopDirectionValue(builtEntity_direction + 2), Utils.DirectionToOrientation(builtEntity_direction)
+            local crossignRailDirection, orientation = Utils.LoopDirectionValue(builtEntity_direction + 2), builtEntity_direction / 8
             for _, nextRailPos in pairs(
                 {
                     Utils.RotateOffsetAroundPosition(orientation, {x = -2, y = 0}, builtEntity_position),
@@ -575,7 +575,7 @@ end
 Underground.BuildSignalsForSegment = function(segment)
     for _, orientationModifier in pairs({0, 4}) do
         local signalDirection = Utils.LoopDirectionValue(segment.entity_direction + orientationModifier)
-        local orientation = Utils.DirectionToOrientation(signalDirection)
+        local orientation = signalDirection / 8
         local position = Utils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, segment.entity_position)
         local placedSignal = segment.surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
         segment.signalEntities[placedSignal.unit_number] = placedSignal

@@ -27,37 +27,37 @@ Common.RollingStockTypes = {
     ["artillery-wagon"] = "artillery-wagon"
 }
 
--- Gets the distance from the center of the carriage to the end of it for when placing carriages. This is half the combined connection and joint distance of the carriage.
----@param carriageEntityName string @ The entity name.
----@return double
-Common.GetCarriagePlacementDistance = function(carriageEntityName)
-    -- For now we assume all unknown carriages have a gap of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed for modded situations.
-    if carriageEntityName ~= nil then
-        return 3.5 -- Half of vanilla carriages 7 joint and connection distance.
-    end
-end
+--- The distance from the center of the carriage to the end of it for when placing carriages. This is half the combined connection and joint distance of the carriage.
+--- Hardcoded values as can't get the connection and joint distance via API.
+---@class CarriagePlacementDistances
+Common.CarriagePlacementDistances = {
+    ["locomotive"] = 3.5,
+    ["cargo-wagon"] = 3.5,
+    ["fluid-wagon"] = 3.5,
+    ["artillery-wagon"] = 3.5
+}
 
--- Gets the combined connection and joint distance of the carriage.
----@param carriageEntityName string @ The entity name.
----@return double
-Common.GetCarriageConnectedLength = function(carriageEntityName)
-    -- For now we assume all unknown carriages have a length of 7 as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
-    if carriageEntityName ~= nil then
-        return 7
-    end
-end
+--- Gets the combined connection and joint distance of the carriage.
+--- Hardcoded values as can't get the connection and joint distance via API.
+---@class CarriageConnectedLengths
+Common.CarriageConnectedLengths = {
+    ["locomotive"] = 7,
+    ["cargo-wagon"] = 7,
+    ["fluid-wagon"] = 7,
+    ["artillery-wagon"] = 7
+}
 
--- Gets the gap that the carriage has at one end of its entity when it connects to another carriage.
----@param carriageEntityName string @ The entity name.
----@return double
-Common.GetCarriageInterConnectionGap = function(carriageEntityName)
-    -- For now we assume all unknown carriages have a combined gap of 1 for both ends as we can't get the connection and joint distance via API. Can hard code custom values in future if needed.
-    -- This is the: (carriages connected length - double connection distance) / 2 as only 1 end of the entities total gap.
-    -- vaniall wagons: ( (3+4) - (3*2) ) / 2
-    if carriageEntityName ~= nil then
-        return 0.5 -- Half of vanilla carriages 1 gap total.
-    end
-end
+--- Gets the gap that the carriage has at one end of its entity when it connects to another carriage.
+--- Hardcoded values as can't get the connection and joint distance via API.
+--- This is the: (carriages connected length - double connection distance) / 2 as only 1 end of the entities total gap.
+--- vanilla wagons: ( (3+4) - (3*2) ) / 2
+---@class CarriageInterConnectionGaps
+Common.CarriagesOwnOffsetFromOtherConnectedCarriage = {
+    ["locomotive"] = 0.5,
+    ["cargo-wagon"] = 0.5,
+    ["fluid-wagon"] = 0.5,
+    ["artillery-wagon"] = 0.5
+}
 
 ---@class TunnelSignalDirection
 Common.TunnelSignalDirection = {

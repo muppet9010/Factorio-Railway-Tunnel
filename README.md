@@ -62,7 +62,7 @@ Editor Mode
 Debug Mode
 ==========
 
-In debug mode if an error occurs a full mod state dump will be done in to the clients Factorio Data "script-output" folder. This will be stated in the error message on screen at the time of the error. The file will be named "railway_tunnel error details - " and then a semi-random number. It should be provided with any bug report to the mod author.
+In debug mode some additional state checking will be done and hard errors thrown in some undesirable state situations. Does have a small UPS impact and turned off by default.
 Debug mode can be enabled/disabled via the command "railway_tunnel_toggle_debug_state" and it will report the new state in text upon changing.
 
 

@@ -336,7 +336,7 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
 
         -- Have to check what rails are at the approximate ends of the ghost carriage.
         local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
-        local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
+        local carriageLengthFromCenter, surface, tunnelRailFound = Common.CarriagePlacementDistances[createdEntity.ghost_name], createdEntity.surface, false
         local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
@@ -407,16 +407,16 @@ Tunnel.CanTrainFitInTunnel = function(train, train_id, tunnel)
             end
 
             -- Add the carriages connected length (main body and joint distance to one other carriage) to the train length.
-            trainLength = trainLength + Common.GetCarriageConnectedLength(carriage_name)
+            trainLength = trainLength + Common.CarriageConnectedLengths[carriage_name]
 
             -- Remove the first carriages front gap as nothing will be connected to it.
             if i == 1 then
-                trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+                trainLength = trainLength - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[carriage_name]
             end
         end
 
         -- Remove the last carriages rear gap as nothing will be connected to it.
-        cachedTrain.trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+        cachedTrain.trainLength = trainLength - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[carriage_name]
     end
 
     -- Check if the train can fit.

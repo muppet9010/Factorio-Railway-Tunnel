@@ -14,7 +14,7 @@ local TunnelShared = require("scripts/tunnel-shared")
 local TrainCachedData = require("scripts/train-cached-data")
 
 local function CreateGlobals()
-    global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
+    global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it does some additional state checks so makes code run slower.
 
     TrainCachedData.CreateGlobals()
     Force.CreateGlobals()
@@ -69,7 +69,7 @@ local function OnLoad()
     -- Handle the debugRelease global setting.
     Commands.Register(
         "railway_tunnel_toggle_debug_state",
-        ": toggles debug handling of mod logic",
+        ": toggles debug stat checking of mod",
         function()
             if global.debugRelease then
                 global.debugRelease = false

@@ -628,7 +628,7 @@ Portal.PortalComplete = function(portal)
         if next(endPortalPart.nonConnectedInternalSurfacePositionStrings) == endPortalPart.frontInternalSurfacePositionString then
             portalFacingOrientation = endPortalPart.entity_orientation
         else
-            portalFacingOrientation = Utils.LoopOrientationValue(endPortalPart.entity_orientation + 0.5)
+            portalFacingOrientation = Utils.LoopFloatValueWithinRangeMaxExclusive(endPortalPart.entity_orientation + 0.5, 0, 1)
         end
         endPortalPart.portalFacingOrientation = portalFacingOrientation
     end
@@ -724,8 +724,8 @@ Portal.On_PreTunnelCompleted = function(portals)
         end
         local reverseEntryDirection = Utils.LoopDirectionValue(entryDirection + 4)
         portal.entryDirection, portal.leavingDirection = entryDirection, reverseEntryDirection
-        local entryOrientation = Utils.DirectionToOrientation(entryDirection)
-        local reverseEntryOrientation = Utils.LoopOrientationValue(entryOrientation + 0.5)
+        local entryOrientation = entryDirection / 8
+        local reverseEntryOrientation = Utils.LoopFloatValueWithinRangeMaxExclusive(entryOrientation + 0.5, 0, 1)
         local surface, force = portal.surface, portal.force
 
         Portal.BuildRailForPortalsParts(portal)
@@ -1308,10 +1308,7 @@ end
 ---@param justplaceIt boolean @ If true the detector is built without a check first. Some weird edge cases whre the train has rammed the detector and stopped right next to it will blocks its build check, but it will work fine once just placed.
 ---@return LuaEntity @ The enteringTrainUsageDetectorEntity if successfully placed.
 Portal.AddEnteringTrainUsageDetectionEntityToPortal = function(portal, retry, justplaceIt)
-    if portal.tunnel == nil or not portal.isComplete or portal.enteringTrainUsageDetectorEntity ~= nil then
-        -- The portal has been removed, so we shouldn't add the detection entity back. Or another task has added the dector back and so we can stop.
-        return
-    end
+    -- The try function has all the protection against incorrect calling.
     return Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled(nil, portal, retry, justplaceIt)
 end
 

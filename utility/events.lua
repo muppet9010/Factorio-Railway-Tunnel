@@ -16,13 +16,13 @@ MOD.eventActionNameHandlerNameToEventActionNamesListIndex = MOD.eventActionNameH
 MOD.customEventNameToId = MOD.customEventNameToId or {} ---@type table<string, int>
 MOD.eventFilters = MOD.eventFilters or {} ---@type table<int, table<string, table>>
 
----@class UtilityEvents_EventData : EventData @ The class is the minimum with any custom fields included in it being passed through to the recieveing event handler function.
+---@class UtilityEvents_EventData : EventData @ The class is the minimum being passed through to the recieveing event handler function. It will include any Factorio event specific fields in it.
 ---@field input_name? string|null @ Used by custom input event handlers registered with Events.RegisterHandlerCustomInput() as the actionName.
 
 --- Called from OnLoad() from each script file. Registers the event in Factorio and the handler function for all event types and custom events.
 ---@param eventName defines.events|string @ Either Factorio event or a custom modded event name.
 ---@param handlerName string @ Unique name of this event handler instance. Used to avoid duplicate handler registration and if removal is required.
----@param handlerFunction function @ The function that is called when the event triggers.
+---@param handlerFunction function @ The function that is called when the event triggers. When the function is called it will recieve the standard single Factorio event specific data table argument.
 ---@param thisFilterData? EventFilter[]|null @ List of Factorio EventFilters the mod should recieve this eventName occurances for or nil for all occurances. If an empty table (not nil) is passed in then nothing is registered for this handler (silently rejected). Filtered events have to expect to recieve results outside of their own filters. As a Factorio event type can only be subscribed to one time with a combined Filter list of all desires across the mod.
 ---@return uint @ Useful for custom event names when you need to store the eventId to return via a remote interface call.
 Events.RegisterHandlerEvent = function(eventName, handlerName, handlerFunction, thisFilterData)

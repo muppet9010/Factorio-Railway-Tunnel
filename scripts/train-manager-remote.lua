@@ -1,7 +1,6 @@
 -- The remote interface functions of the Train Manager.
 
 local TrainManagerRemote = {}
-local Utils = require("utility/utils")
 local Events = require("utility/events")
 
 ---@class RemoteTunnelUsageEntry
@@ -43,7 +42,13 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
     -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
     tableToPopulate.tunnelUsageId = managedTrainId
     tableToPopulate.primaryState = managedTrain.tunnelUsageState
-    tableToPopulate.train = Utils.ReturnValidLuaObjectOrNil(managedTrain.portalTrackTrain) or Utils.ReturnValidLuaObjectOrNil(managedTrain.approachingTrain) or Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
+    if managedTrain.portalTrackTrain ~= nil then
+        tableToPopulate.train = managedTrain.portalTrackTrain
+    elseif managedTrain.approachingTrain ~= nil then
+        tableToPopulate.train = managedTrain.approachingTrain
+    elseif managedTrain.leavingTrain ~= nil then
+        tableToPopulate.train = managedTrain.leavingTrain
+    end
     tableToPopulate.tunnelId = managedTrain.tunnel.id
 end
 
