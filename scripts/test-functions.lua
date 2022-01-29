@@ -348,7 +348,7 @@ end
 ---@field prototypeName string
 ---@field facingForwards boolean
 
---- Builds a train from a set starting position away from the "forwards" direction.
+--- Builds a train from a set starting position away from the "forwards" direction. Locomotives are randomly colored.
 ---@param firstCarriageFrontLocation Position @ The front tip of the lead carriages collision box.
 ---@param carriagesDetails TestFunctions_TrainCarriageDetailsForBulding[] @ The carriages to be built, listed front to back.
 ---@param trainForwardsDirection defines.direction @ Only supports cardinal points.
@@ -536,9 +536,35 @@ end
 TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWagons, artilleryWagons)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
     if locomotives ~= nil then
+        local color, colorId, secondaryColorsRemaining
+        local primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
+        local currentColorRange = primaryColorsRemaining
         for _, carriage in pairs(locomotives) do
             carriage.train.manual_mode = false
-            carriage.color = {math.random(0, 255), math.random(0, 255), math.random(0, 255), 1}
+
+            -- Do preset colors to avoid 2 colors being very close to each other and don't repeat within the same train.
+
+            -- If theres no current colors left then nede to look for more.
+            if #currentColorRange == 0 then
+                if secondaryColorsRemaining == nil then
+                    -- Secondary colors not initialised so get them and switch to them.
+                    secondaryColorsRemaining = Utils.DeepCopy(TestFunctions.SecondaryLocomotiveColors)
+                    currentColorRange = secondaryColorsRemaining
+                else
+                    -- Second colors have all been used up so repopulate the primary and clear the secondary in case later use needs them.
+                    secondaryColorsRemaining = nil
+                    primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
+                    currentColorRange = primaryColorsRemaining
+                end
+            end
+
+            -- Get a random color and apply it.
+            colorId = math.random(1, #currentColorRange)
+            color = currentColorRange[colorId]
+            carriage.color = color
+
+            -- Remove the color from the current range.
+            table.remove(currentColorRange, colorId)
         end
     end
     if cargoWagons ~= nil then
@@ -594,6 +620,45 @@ TestFunctions.WriteTestScenariosToFile = function(testName, testScenarios)
     local fileName = testName .. "-TestScenarios.csv"
     game.write_file(fileName, logText, false)
 end
+
+--- A primary list of unique colors for use on locomotives.
+TestFunctions.PrimaryLocomotiveColors = {
+    Colors.red,
+    Colors.darkorange,
+    Colors.yellow,
+    Colors.lime,
+    Colors.green,
+    Colors.cyan,
+    Colors.teal,
+    Colors.lightblue,
+    Colors.navy,
+    Colors.purple,
+    Colors.deeppink,
+    Colors.grey,
+    Colors.black,
+    Colors.brown
+}
+
+--- A secondary list of less unique colors for use on locomotives.
+--- Note colors not reviewed in detail, just picked from list.
+TestFunctions.SecondaryLocomotiveColors = {
+    Colors.wheat,
+    Colors.pink,
+    Colors.olive,
+    Colors.white,
+    Colors.lavender,
+    Colors.darkred,
+    Colors.cadetblue,
+    Colors.darkviolet,
+    Colors.lightyellow,
+    Colors.salmon,
+    Colors.peachpuff,
+    Colors.lawngreen,
+    Colors.lightcyan,
+    Colors.slateblue,
+    Colors.orchid,
+    Colors.goldenrod
+}
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
