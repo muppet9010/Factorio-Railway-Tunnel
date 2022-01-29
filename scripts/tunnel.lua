@@ -71,11 +71,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if not train.valid or train.state ~= defines.train_state.arrive_signal then
         return
     end
-    local signal = train.signal
-    if signal == nil then
-        return
-    end
-    local transitionSignal = global.tunnels.transitionSignals[signal.unit_number]
+    local transitionSignal = global.tunnels.transitionSignals[train.signal.unit_number]
     if transitionSignal == nil then
         return
     end

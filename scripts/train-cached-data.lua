@@ -72,14 +72,22 @@ TrainCachedData.OnTrainCreated = function(event)
 end
 
 --- Called by all the events that remove rolling stock and thus change a train.
----@param _ on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
+---@param event on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
-TrainCachedData.OnRollingStockRemoved = function(_, diedEntity)
+TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
     --[[local diedEntity = event.entity
     -- Handle any other registrations of this event across the mod.
     if Common.RollingStockTypes[diedEntity.type] == nil then
         return
     end]]
+    -- This function can be called either by local event registration or from tunnel-shared event handlder function.
+    if diedEntity == nil then
+        diedEntity = event.entity
+        if not diedEntity.valid then
+            return
+        end
+    end
+
     local trainId = diedEntity.train.id
 
     -- Check if the entity's train was one we had cached and if so remove the cache.

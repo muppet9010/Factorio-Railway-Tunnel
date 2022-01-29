@@ -159,6 +159,7 @@ end
 --- Every tick loop over each train and process it as required.
 ---@param event on_tick
 TrainManager.ProcessManagedTrains = function(event)
+    -- As we remove managedTrains from this dictionary during looping over it numebric FOR loop isn't a viable option.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         -- A managedTrain can be put to sleep by some state changes when its known an external/scheduled event will be what wakes them up or terminates them.
         if not managedTrain.skipTickCheck then
@@ -624,8 +625,7 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.TrainLeavingOngoing = function(managedTrain)
     -- We are assuming that no train gets in to the portal rail segment before our main train gets out. This is far more UPS effecient than checking the trains last carriage and seeing if its rear rail signal is our portal entrance one. Must be closed rather than reserved as this is how we cleanly detect it having left (avoids any overlap with other train reserving it same tick this train leaves it).
-    local exitPortalEntrySignalEntity = managedTrain.exitPortal.entrySignals[TunnelSignalDirection.inSignal].entity -- TODO Cache this.
-    if exitPortalEntrySignalEntity.signal_state ~= defines.signal_state.closed then
+    if managedTrain.exitPortalExitSignalOut_entity.signal_state ~= defines.signal_state.closed then
         -- No train in the block so our one must have left.
         global.trainManager.trainIdToManagedTrain[managedTrain.leavingTrainId] = nil
         managedTrain.leavingTrain = nil
@@ -811,6 +811,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
             managedTrain.exitPortalTransitionSignal = portal.transitionSignals[TunnelSignalDirection.outSignal]
             managedTrain.exitPortal = portal
             managedTrain.exitPortalEntrySignalOut = portal.entrySignals[TunnelSignalDirection.outSignal]
+            managedTrain.exitPortalExitSignalOut_entity = portal.entrySignals[TunnelSignalDirection.inSignal].entity
         end
     end
 
