@@ -9,7 +9,6 @@ Bugs
     - Trains are overshooting station at end of tunnel when theres a signal just after the station and the braking distance calculation is basing something on this and setting a temporary stop out on the track miles from tunnel. Might just be 1 rail distance they are overshooting the station by, but in new test as this is a curve and thye are short trains they completely miss it. Present before recent branches, so longer term issue.
     - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?".
     - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
-    - Add picker tools dolly mod to blacklisted mods.
     - The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Either needs a special non map entity being used instead (UPS overhead) or documented as accepted downside right now.
 
 

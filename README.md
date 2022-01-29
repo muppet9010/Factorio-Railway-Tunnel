@@ -53,6 +53,9 @@ At present the mod isn't tested or supported with any mods that add custom train
 Notes on generic mod compatibility:
     - Any mod that moves or removes entities from the map without raising notification events is not supported.
 
+Blacklisted mods:
+    - Picker Dollies - lets player move entities randomly and life is too short to try and undo all the damage it could do.
+
 
 Editor Mode
 ===========
