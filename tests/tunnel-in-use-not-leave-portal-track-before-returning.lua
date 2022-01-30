@@ -34,7 +34,7 @@ Test.Start = function(testName)
     local testDataBespoke = {
         stationWestReached = false, ---@type boolean
         stationEastReached = false, ---@type boolean
-        trainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        trainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
         stationWest = stationWest, ---@type LuaEntity
         stationEast = stationEast ---@type LuaEntity
     }
@@ -57,8 +57,8 @@ Test.EveryTick = function(event)
     local stationWestTrain, stationEastTrain = testDataBespoke.stationWest.get_stopped_train(), testDataBespoke.stationEast.get_stopped_train()
 
     if stationWestTrain ~= nil and not testDataBespoke.stationWestReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationWestTrain)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at west station has differences after tunnel use")
             return
         end
@@ -66,8 +66,8 @@ Test.EveryTick = function(event)
         testDataBespoke.stationWestReached = true
     end
     if stationEastTrain ~= nil and not testDataBespoke.stationEastReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationEastTrain)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at east station has differences after tunnel use")
             return
         end

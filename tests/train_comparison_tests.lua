@@ -1,5 +1,5 @@
 -- Tests a lot of variations of trains against the snap shot comparison Test Function. Needed to ensure its accuracy as a lot of other tests rely upon it. Train comparison has a lot of reversal combinations that make the function logic surprisingly complicated.
--- Test with the flipped colors proves limitations with the TestFunctions.AreTrainSnapshotsIdentical() function not able to distinguish between reversed trains and trains with odd single attributes (color) as the train snapshot is taken with "facingForwards" in relation to the lead carriage in the train.
+-- Test with the flipped colors proves limitations with the TestFunctions.AreTrainSnapshotsProbablyIdentical() function not able to distinguish between reversed trains and trains with odd single attributes (color) as the train snapshot is taken with "facingForwards" in relation to the lead carriage in the train.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -130,7 +130,7 @@ Test.EveryTick = function(event)
     -- Checking if comparison matches the expected outcome.
     local train1Snapshot = Test.MakeTrainSnapshotFromShorthand(testScenario.firstTrainShorthand)
     local train2Shanpshot = Test.MakeTrainSnapshotFromShorthand(testScenario.secondTrainShorthand)
-    local comparisonResult = TestFunctions.AreTrainSnapshotsIdentical(train1Snapshot, train2Shanpshot, false)
+    local comparisonResult = TestFunctions.AreTrainSnapshotsProbablyIdentical(train1Snapshot, train2Shanpshot, false)
     local expectedSame = testScenario.expectedResult == ExpectedOutcome.same
     if comparisonResult == expectedSame then
         TestFunctions.TestCompleted(testName)

@@ -46,7 +46,7 @@ Test.Start = function(testName)
     local testDataBespoke = {
         northStationReached = false, ---@type boolean
         southStationReached = false, ---@type boolean
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
         trainStopNorth = trainStopNorth, ---@type LuaEntity
         trainStopSouth = trainStopSouth ---@type LuaEntity
     }
@@ -69,8 +69,8 @@ Test.EveryTick = function(event)
     local northTrain, southTrain = testDataBespoke.trainStopNorth.get_stopped_train(), testDataBespoke.trainStopSouth.get_stopped_train()
 
     if northTrain ~= nil and not testDataBespoke.northStationReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(northTrain)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached north station, but with train differences")
             return
         end
@@ -78,8 +78,8 @@ Test.EveryTick = function(event)
         testDataBespoke.northStationReached = true
     end
     if southTrain ~= nil and not testDataBespoke.southStationReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(southTrain)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached south station, but with train differences")
             return
         end

@@ -44,7 +44,7 @@ Test.Start = function(testName)
         stationSouthReached = false, ---@type boolean
         stationNorthReached = false, ---@type boolean
         repathTrain = repathTrain, ---@type LuaTrain
-        repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain),
+        repathTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(repathTrain),
         stationSouthEndViaTunnel = stationSouthEndViaTunnel, ---@type LuaEntity
         stationSouthEndNotTunnel = stationSouthEndNotTunnel, ---@type LuaEntity
         stationNorth = stationNorth ---@type LuaEntity
@@ -68,8 +68,8 @@ Test.EveryTick = function(event)
     local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testDataBespoke.stationSouthEndViaTunnel.get_stopped_train(), testDataBespoke.stationSouthEndNotTunnel.get_stopped_train(), testDataBespoke.stationNorth.get_stopped_train()
 
     if stationSouthEndViaTunnelTrain ~= nil and not testDataBespoke.stationSouthReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationSouthEndViaTunnelTrain)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at south station has differences")
             return
         end
@@ -82,8 +82,8 @@ Test.EveryTick = function(event)
         return
     end
     if stationNorthTrain ~= nil and not testDataBespoke.stationNorthReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationNorthTrain)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at north station has differences")
             return
         end

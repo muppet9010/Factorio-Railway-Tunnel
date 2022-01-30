@@ -1,4 +1,5 @@
 -- Test runs a train through a tunnel multiple times to ensure the cached data behaves correctly. The train does different train direction and train compositions multiple times to cover all angles.
+-- This test should be viewed manually as there currently isn't a way to reliably compare 2 trains makeup and detect all changes. See TestFunctions.AreTrainSnapshotsProbablyIdentical() for details.
 
 -- Requires and this tests class object.
 local Test = {}
@@ -117,7 +118,7 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_CTD_TestScenarioBespokeData
     local testDataBespoke = {
-        lastActionTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train), ---@type TestFunctions_TrainSnapshot
+        lastActionTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train), ---@type TestFunctions_TrainSnapshot
         loopsDone = 0, ---@type uint
         nextAction = Common.TunnelUsageAction.startApproaching, ---@type TunnelUsageAction
         testFinished = false ---@type boolean
@@ -151,9 +152,10 @@ Test.EveryTick = function(event)
     -- Train has completed the next action.
     if tunnelUsageChanges.lastAction == testDataBespoke.nextAction then
         -- Check trains are the same before and after tunnel usage.
-        --TODO: check the 2 snapshots are accurate for the trains states at the point of incorrect identification if the comparison test update doens't reproduce the issue. As somehow this is failing to detect the snapshot mis-match but the dedicated comparison test does identify them as being different.
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageChanges.train)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.lastActionTrainSnapshot, currentTrainSnapshot, false) then
+
+        --TODO: design an entirely new way to check that the trains are the same structure before and after the tunnel's usage. As this current one doesn't catch some bugs, i.e. carriages swapped across length of train from <1 >2 to >2 <1.
+        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(tunnelUsageChanges.train)
+        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.lastActionTrainSnapshot, currentTrainSnapshot, false) then
             TestFunctions.TestFailed(testName, "train snapshots not the same")
             return
         end

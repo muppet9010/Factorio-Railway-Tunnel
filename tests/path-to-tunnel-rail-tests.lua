@@ -192,7 +192,7 @@ Test.Start = function(testName)
         undergroundSegment = undergroundSegment, ---@type LuaEntity
         targetTunnelRailEntity = targetTunnelRailEntity, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
         tunnelRailReached = false, ---@type boolean
         nextStopReached = false ---@type boolean
     }

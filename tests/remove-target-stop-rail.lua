@@ -182,7 +182,7 @@ Test.Start = function(testName)
         exitPortalPart = exitPortalPart, ---@type LuaEntity
         exitPortalTrainDetector = exitPortalTrainDetector, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
         firstTargetRemoved = false ---@type boolean
     }
     testData.bespoke = testDataBespoke
@@ -240,8 +240,8 @@ Test.EveryTick = function(event)
         end
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
+                local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train)
+                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "train stopped doesn't match origional")
                     return
                 end
@@ -255,8 +255,8 @@ Test.EveryTick = function(event)
         if trainAtExitPortal ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
             if trainAtExitPortal.state == defines.train_state.wait_station or trainAtExitPortal.state == defines.train_state.no_schedule then
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
+                local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(trainAtExitPortal)
+                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "part of train at end of portal doesn't match origional")
                     return
                 end
@@ -271,8 +271,8 @@ Test.EveryTick = function(event)
             stationSecondTrain = testDataBespoke.stationSecondReverse.get_stopped_train()
         end
         if stationSecondTrain ~= nil then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
+            local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationSecondTrain)
+            if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                 TestFunctions.TestFailed(testName, "train at second station doesn't match origional")
                 return
             end

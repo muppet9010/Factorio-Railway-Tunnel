@@ -214,10 +214,10 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract meta data of a train to be compared later. No requirement for the train to be moving, but the train carriages "facingForwards" is relative to the lead carraige and not the train's front as such.
+--- Returns an approximate abstract meta data of a train to be compared later. No requirement for the train to be moving, but the train carriages "facingForwards" is relative to the lead carraige and not the train's front as such. So it's not an exact unique info of the train.
 ---@param train LuaTrain
 ---@return TestFunctions_TrainSnapshot
-TestFunctions.GetSnapshotOfTrain = function(train)
+TestFunctions.GetApproxSnapshotOfTrain = function(train)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.
@@ -257,12 +257,12 @@ TestFunctions.GetSnapshotOfTrain = function(train)
     return snapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure, ignoring train front/back direction.
----@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
----@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
+--- Compares 2 approximate train snapshots to see if they are probably the same train structure. As it has to ignore train front/back direction it also can't detect certain variations in train output, i.e. <1 >2 having their carriages swapped positions to >2 <1. As the "view" of this swapped carriage is the same as if the train had been reversed.
+---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetApproxSnapshotOfTrain().
+---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetApproxSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
 ---@return boolean ifSnapshotsAreIdentical.
-TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
+TestFunctions.AreTrainSnapshotsProbablyIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
     if not allowPartialCurrentSnapshot and #origionalTrainSnapshot.carriages ~= #currentTrainSnapshot.carriages then
