@@ -256,7 +256,7 @@ TestFunctions.GetSnapshotOfTrain = function(train)
     return snapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure.
+--- Compares 2 train snapshots to see if they are the same train structure, ignoring travel direction.
 ---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
 ---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
@@ -265,36 +265,49 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
     -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
 
-    local currentSnapshotCarriages = currentTrainSnapshot.carriages
-
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
     if not allowPartialCurrentSnapshot and origionalTrainSnapshot.carriageCount ~= currentTrainSnapshot.carriageCount then
         return false
     end
 
-    -- Check the 2 trains starting in the same order and facingForwards as this is most likely scenario (perfect copy). Then check combinations of facing backwards (new train is declared backwards due to build order by Factorio magic) and iterate the carriage list backwards (new train is generally running backwards).
-    for _, reverseFacingFowards in pairs({false, true}) do
-        for _, currentCarriageIterator in pairs({"iterateCarriagesForwards", "iterateCarriagesBackwards"}) do
-            local difference
-            for carriageNumber = 1, currentTrainSnapshot.carriageCount do
-                local currentCarriageCount
-                if currentCarriageIterator == "iterateCarriagesForwards" then
-                    currentCarriageCount = carriageNumber
-                else
-                    currentCarriageCount = (carriageNumber - #currentSnapshotCarriages) + 1
-                end
-                difference = TestFunctions._DoCarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
-                if difference then
-                    break
-                end
+    -- Check the 2 trains in various combinations to see if they match in any of them. If any match the trains are the same, if none match then its different trains. Checking starts in the same carriage order and facingForwards as this is most likely scenario (perfect copy). Then checks combinations of facing backwards (new train is declared backwards due to build order by Factorio magic), and iterating the carriage list backwards (reversing train).
+    --for _, reverseFacingFowards in pairs({false, true}) do
+    for _, currentCarriageIterator in pairs({"iterateCarriagesForwards", "iterateCarriagesBackwards"}) do
+        local difference
+        -- Loop over each carriage in the train for this comparison setup looking for differences.
+        for carriageNumber = 1, currentTrainSnapshot.carriageCount do
+            local currentCarriageCount, reverseFacingFowards
+            if currentCarriageIterator == "iterateCarriagesForwards" then
+                currentCarriageCount = carriageNumber
+                reverseFacingFowards = false
+            else
+                currentCarriageCount = (#currentTrainSnapshot.carriages - carriageNumber) + 1
+                reverseFacingFowards = true
             end
-            if difference == nil then
-                return true
+            difference = TestFunctions._DoCarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentTrainSnapshot.carriages[currentCarriageCount], reverseFacingFowards)
+            if difference ~= nil then
+                -- A difference found in this train's carriage so stop checking this comparison setup.
+
+                if not allowPartialCurrentSnapshot then
+                    -- If the function was called not allowing partial train compare then a mismatch of carriage counts here is a code bug in this compare function.
+                    if difference == "carriage1 is nil" or difference == "carriage2 is nil" then
+                        error("Comparing train snapshots went wrong on working out carriages to compare")
+                    end
+                end
+
+                -- Stop checking this train.
+                break
             end
         end
-    end
 
-    -- All combinations tested and none have 0 differences, so train snapshots don't match.
+        -- If no difference is found across the entire train then it must match in this configuration, thus is the same train snapshot.
+        if difference == nil then
+            return true
+        end
+    end
+    --end
+
+    -- All combinations tested and none had no differences, so train snapshots don't match.
     return false
 end
 
@@ -538,7 +551,7 @@ TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWago
     if locomotives ~= nil then
         local color, colorId, secondaryColorsRemaining
         local primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
-        local currentColorRange = primaryColorsRemaining
+        local currentColorRange, colorLoops = primaryColorsRemaining, 0
         for _, carriage in pairs(locomotives) do
             carriage.train.manual_mode = false
 
@@ -555,12 +568,14 @@ TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWago
                     secondaryColorsRemaining = nil
                     primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
                     currentColorRange = primaryColorsRemaining
+                    colorLoops = colorLoops + 1
                 end
             end
 
             -- Get a random color and apply it.
             colorId = math.random(1, #currentColorRange)
             color = currentColorRange[colorId]
+            color[4] = 255 - colorLoops -- This ensures that the color is techncially unique as on the full usage of all primary and secondary colors the alpha will be 1 lower for all colors in the new range usage.
             carriage.color = color
 
             -- Remove the color from the current range.
@@ -741,10 +756,11 @@ TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelPro
     end
 end
 
+--- Checks if 2 carriages are equal allowing for optionally reversing the 2nd carriages facing.
 ---@param carriage1 TestFunctions_CarriageSnapshot
 ---@param carriage2 TestFunctions_CarriageSnapshot
 ---@param reverseFacingForwardsCarriage2 boolean
----@return string
+---@return string|null differenceFound
 TestFunctions._DoCarriageSnapshotsMatch = function(carriage1, carriage2, reverseFacingForwardsCarriage2)
     if carriage1 == nil then
         return "carriage1 is nil"
@@ -752,7 +768,7 @@ TestFunctions._DoCarriageSnapshotsMatch = function(carriage1, carriage2, reverse
         return "carriage2 is nil"
     end
     for _, attribute in pairs({"name", "health", "facingForwards", "cargoInventory", "color"}) do
-        if attribute == "facingForwards" and reverseFacingForwardsCarriage2 then
+        if attribute == "facingForwards" and reverseFacingForwardsCarriage2 == true then
             -- Reverse the expected attribute value and so if they equal its really a difference.
             if carriage1[attribute] == carriage2[attribute] then
                 return attribute

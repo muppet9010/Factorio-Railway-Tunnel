@@ -305,7 +305,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     global.trainManager.trainIdToManagedTrain[managedTrain.approachingTrainId] = nil
     managedTrain.approachingTrain = nil
     managedTrain.approachingTrainId = nil
-    managedTrain.approachingTrainMovingForwards = nil
+    --managedTrain.approachingTrainMovingForwards = nil --TODO
     managedTrain.approachingTrainExpectedSpeed = nil
     managedTrain.approachingTrainReachedFullSpeed = nil
     managedTrain.portalTrackTrain = nil
@@ -601,6 +601,11 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Handle any players riding in the train.
     if managedTrain.undergroundTrainHasPlayersRiding then
         PlayerContainer.TransferPlayerFromContainerForClonedUndergroundCarriage(nil, nil)
+    end
+
+    --TODO:
+    if managedTrain.approachingTrainMovingForwards ~= managedTrain.leavingTrainMovingForwards then
+        local x = 1
     end
 
     -- Return the leaving train carriages to their origional force and let them take damage again.

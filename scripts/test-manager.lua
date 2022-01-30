@@ -56,7 +56,7 @@ local TestsToRun = {
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
     ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_abort")},
     ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_indecisive")},
-    CachedTunnelData = {enabled = true, testScript = require("tests/cached-tunnel-data")},
+    --CachedTunnelData = {enabled = true, testScript = require("tests/cached-tunnel-data")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
@@ -73,6 +73,7 @@ local TestsToRun = {
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Adhoc tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
+    TrainComparisonTests = {enabled = true, testScript = require("tests/train_comparison_tests")},
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups_many_large_trains"), notInAllTests = true},

@@ -1,4 +1,4 @@
--- Test runs a train through a tunnel multiple times to ensure the cached data behaves correctly. The train does shuttle and loop and different train compositions to cover all angles.
+-- Test runs a train through a tunnel multiple times to ensure the cached data behaves correctly. The train does different train direction and train compositions multiple times to cover all angles.
 
 -- Requires and this tests class object.
 local Test = {}
@@ -7,8 +7,9 @@ local Common = require("scripts/common")
 
 ---@class Tests_CTD_TrackShapes
 local TrackShapes = {
-    straight = "straight",
-    loop = "loop"
+    straight = "straight", -- Shuttle through the tunnel (bi-directional).
+    loop = "loop", -- Go through the tunnel in 1 direction with the train maintaining its orientation each loop.
+    reverseLoop = "reverseLoop" -- Go through the tunnel in 1 direction with the train flipping its orientation each loop via a reverse shunt.
 }
 --- Max tunnel train length is 4 carriages.
 ---@alias Tests_CTD_TrainCompositions TestFunctions_TrainSpecifiction
@@ -29,7 +30,7 @@ local TrainCompositions = {
 local DoMinimalTests = false -- The minimal test to prove the concept.
 
 local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrackShapesFilter = {"loop"} -- Pass in an array of TrackShapes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificTrackShapesFilter = {"reverseLoop"} -- Pass in an array of TrackShapes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificTrainCompositionsFilter = {"<>"} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
@@ -65,7 +66,13 @@ Test.Start = function(testName)
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
+    -- Test track shape specific extras.
     if testScenario.trackShape == TrackShapes.loop then
+        -- Adds a loop back from west to east on the ends of the existing rails making a full circle. Also a second east train station for the new loop direction and a signal to prevent the train reversing from west to east via the tunnel.
+        local extraBlueprint = "0eNqVmttu2kAURf9lnk3E3Me85yuqqiJgpZaIQdiJGiH+veZSWhJHXfspIYk3E5bXeOacOZinzWuz27fdYBYH0662XW8W3w6mb5+75eb0s+F915iFaYfmxVSmW76cXu2X7cYcK9N26+aXWdjj98o03dAObXO5/vzi/Uf3+vLU7Mc/uF25et2/NevZOaAyu20/XrPtTm805szqeWXex6/OjeHrdt+sLr9Nx+pTprtl9sMY9/xz+Cq1xGuqv091E6mep3qeGniq5akRp+aapyaemnlq5qkCrcJTBVo1TxVo2TmOTQIua3mswMtyvZIAzHK/kkDMcsGSgowbFhVkXLGoIOOORQUZlywqyLhlUUDmuGVBQOa4ZUFA5rhlQUDmuGVBQOa4ZUFBxi3zCjJumVeQccu8goxb5hVk3DIvIPPcMicg89wyJyDz3DKnLBW5ZU5A5rllTkHGLbMKMm6ZVZBxy6yCjFtmFWTcMisgC9wygVjgkgnAAndM4BW4YspujBum0MKCKaFYL+X/x3IpqLBayl2FxRIEiFgrRdaItVJmloi1UqbBiLVS5uyItVIeMBFrpTwNI/ZKeXRHLJayzojYLGVRFLFaygouYbeU5WbCbilr44TdUhbyCbul7DoSdkvZIiXslrKfS9gtZfOZsFvKTjlht5RtfcJuKTWIjN1SCiYZu6VUdzJ2SylFZeyWUjfL2C2lyJexW0pFMmO3lPJpxm4ptd6M3VIK0xm7pVTRC3ZLKfkX7JbSnijYLamVgt1S2j4Fu6W0qAp2S2mnFeyW0vor2C2lTVmwW0WhVbM+be2m27R+qpkmFDGuH6ut72PzVCxWq47TqXYq1dFGdbqGJhDq4adabplTKUEcWrkfWZjKjNrIPkTGqcgk444gNasHCMAdVMSbHTSOa/WmjP8XyM7nd+cuZtezGZ+fd/OHPzPIQyT96L8KnQbbzfphu/t6Avkwf4yc+2F5+d48LvvBnA6BnI+JLP45VVKZt2bfXwZRbMi1y9FG69P8ePwNsWNCiQ=="
+        TestFunctions.BuildBlueprintFromString(extraBlueprint, {x = 0, y = -10}, testName)
+    elseif testScenario.trackShape == TrackShapes.reverseLoop then
+        -- Adds a loop back from west to east, but approaching from the tunnel side. Also a signal to prevent the train reversing from west to east via the tunnel.
         local extraBlueprint = "0eNqVmduOokAUAP+ln9Fw+sIBfmWy2ThKZkkUDeJkjfHf1wtOVpfN1HnUkZrWoqC7Obn39aHZ9W03uPrk2uW227v67eT27Ue3WF/fG467xtWuHZqNy1y32Fxf9Yt27c6Za7tV89vVcv6RuaYb2qFt7sffXhx/dofNe9NfPvB15PLQfzar2Q2Qud12fzlm213/0YUzq8rMHV1d+At71fbN8v7H4pz9g/RfyP1woX38Gv4LDXeoPEP9BDRwqGBoxNCywtDEoYqhBYcmDFUO5aJKDuWiKgxVLkpyTuWmRDiVqxIelXJXwqtSLkt4VoXBFu+qMNjiYRUGW7yswmCLp1UYbPG2ErfleVuJ2/K8rcRted5W4rY8bytxW563FQ22eFvRYIu3FQ22eFvRYIu3FQ22eFuB2wq8rcBtBd5W4LYCbysYJoO8rcBtBd6WN9jibXmDLd6WN9jibXmDLd6WN9jibQm3FXlbwm1F3pZwW5G3JdxW5G2JYaXF2zLI4mkZXPGyDKp4WAZTvCuDKJwVZyYcFf/yCSfFLSUcFD+dEs7JsMOAYzIUmhLbCbqumCY2gsIUkqck+TjS9IzVKaw+7XbNxh2xiVVQnI/y/Tx9v2+VcE+PG8oLVKagFdxgkzzeoeX30AIH5ad/1jQFFStUwUhxUo8JhYKRBiu0AiPFUT0mVBUYaTJCVcBIcVbjhPIVOjlStUIDGGlpPPm1eIbGKSi+Q42z9NeRTn19za1Q0L7iosZVioJM1VuhIFMN7JIa8vGKqjoHV2rFTY2LPwX1a7JCQf1qv1Up6F/V9nil9OBHxbepcZ2OBgpvU4GPs8zhORXGc6qU13PKX59e3Z5v1X89DsvcZ9Pv7x8oJWrlNUmSUOTn8x/wKeqN"
         TestFunctions.BuildBlueprintFromString(extraBlueprint, {x = -24, y = -10}, testName)
     end
@@ -110,8 +117,6 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_CTD_TestScenarioBespokeData
     local testDataBespoke = {
-        eastTrainStop = eastTrainStop, ---@type LuaEntity
-        westTrainStop = westTrainStop, ---@type LuaEntity
         lastActionTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train), ---@type TestFunctions_TrainSnapshot
         loopsDone = 0, ---@type uint
         nextAction = Common.TunnelUsageAction.startApproaching, ---@type TunnelUsageAction
@@ -146,6 +151,7 @@ Test.EveryTick = function(event)
     -- Train has completed the next action.
     if tunnelUsageChanges.lastAction == testDataBespoke.nextAction then
         -- Check trains are the same before and after tunnel usage.
+        --TODO: check the 2 snapshots are accurate for the trains states at the point of incorrect identification if the comparison test update doens't reproduce the issue. As somehow this is failing to detect the snapshot mis-match but the dedicated comparison test does identify them as being different.
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageChanges.train)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.lastActionTrainSnapshot, currentTrainSnapshot, false) then
             TestFunctions.TestFailed(testName, "train snapshots not the same")
