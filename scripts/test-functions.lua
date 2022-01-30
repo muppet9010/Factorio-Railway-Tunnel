@@ -163,11 +163,14 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData)
 end
 
---- Used to apply an optional filter list of keys against a full list. Includes error catching for passing in bad (empty) filter list.
+--- Used to apply an optional filter list of keys against a full list of key/values. Includes error catching for passing in bad (empty) filter list.
 ---@param fullList table
 ---@param filterList? table|null
 ---@return table
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
+    if Utils.IsTableEmpty(fullList) then
+        error("empty/nil list provided to TestFunctions.ApplySpecificFilterToListByKeyName()")
+    end
     local listToTest
     if Utils.IsTableEmpty(filterList) then
         listToTest = fullList
@@ -202,17 +205,16 @@ TestFunctions.RegisterTunnelUsageChangesToTestFunction = function(testName, test
 end
 
 ---@class TestFunctions_TrainSnapshot
----@field carriageCount uint @ how many carriages are in this train.
 ---@field carriages TestFunctions_CarriageSnapshot[]
 
 ---@class TestFunctions_CarriageSnapshot
 ---@field name string @ Entity prototype name
 ---@field health float @ How much health the carriage has.
----@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front.
+---@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front carriage orientation.
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract meta data of a train to be compared later.
+--- Returns an abstract meta data of a train to be compared later. No requirement for the train to be moving, but the train carriages "facingForwards" is relative to the lead carraige and not the train's front as such.
 ---@param train LuaTrain
 ---@return TestFunctions_TrainSnapshot
 TestFunctions.GetSnapshotOfTrain = function(train)
@@ -222,13 +224,12 @@ TestFunctions.GetSnapshotOfTrain = function(train)
 
     ---@type TestFunctions_TrainSnapshot
     local snapshot = {
-        carriageCount = #train.carriages,
         carriages = {} ---@type TestFunctions_CarriageSnapshot[]
     }
     local previousCarriageOrientation, previousCarriageFacingFowards = train.front_stock.orientation, true
     for _, realCarriage in pairs(train.carriages) do
         ---@type TestFunctions_CarriageSnapshot
-        local snapCarriage = {
+        local snapshotCarriage = {
             name = realCarriage.name,
             health = realCarriage.health
         }
@@ -236,55 +237,52 @@ TestFunctions.GetSnapshotOfTrain = function(train)
         -- A train on a curve will have the same facing carriages roughly on the same orientation as the ones each side.
         -- Handle the number wraping within 1 and 0. If its closer < 0.25 either way then its facing same direction, > 0.25 and < 0.75 then its facing away.
         if (realCarriage.orientation > previousCarriageOrientation - 0.25 and realCarriage.orientation < previousCarriageOrientation + 0.25) or realCarriage.orientation > previousCarriageOrientation + 0.75 or realCarriage.orientation < previousCarriageOrientation - 0.75 then
-            snapCarriage.facingForwards = previousCarriageFacingFowards
+            snapshotCarriage.facingForwards = previousCarriageFacingFowards
         else
-            snapCarriage.facingForwards = not previousCarriageFacingFowards
+            snapshotCarriage.facingForwards = not previousCarriageFacingFowards
         end
 
         if realCarriage.type ~= "locomotive" then
             -- Exclude locomotives as we don't want to track their fuel amounts, as they'll be used as the train moves.
-            snapCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
+            snapshotCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
         end
-        table.insert(snapshot.carriages, snapCarriage)
+        table.insert(snapshot.carriages, snapshotCarriage)
 
         if realCarriage.color ~= nil then
-            snapCarriage.color = game.table_to_json(realCarriage.color)
+            snapshotCarriage.color = game.table_to_json(realCarriage.color)
         end
 
-        previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapCarriage.facingForwards
+        previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapshotCarriage.facingForwards
     end
     return snapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure, ignoring travel direction.
+--- Compares 2 train snapshots to see if they are the same train structure, ignoring train front/back direction.
 ---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
 ---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
----@return boolean
+---@return boolean ifSnapshotsAreIdentical.
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
-    -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
-    allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
-
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
-    if not allowPartialCurrentSnapshot and origionalTrainSnapshot.carriageCount ~= currentTrainSnapshot.carriageCount then
+    allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
+    if not allowPartialCurrentSnapshot and #origionalTrainSnapshot.carriages ~= #currentTrainSnapshot.carriages then
         return false
     end
 
-    -- Check the 2 trains in various combinations to see if they match in any of them. If any match the trains are the same, if none match then its different trains. Checking starts in the same carriage order and facingForwards as this is most likely scenario (perfect copy). Then checks combinations of facing backwards (new train is declared backwards due to build order by Factorio magic), and iterating the carriage list backwards (reversing train).
-    --for _, reverseFacingFowards in pairs({false, true}) do
-    for _, currentCarriageIterator in pairs({"iterateCarriagesForwards", "iterateCarriagesBackwards"}) do
+    -- Check the 2 trains in the 2 valid forms to see if they match in either of them and are thus the same train. Check the trains in the same iteration & facing first to see if they just match, and then check them in reverse iteration & reverse facing to see if they are just "flipped".
+    for _, comparisonType in pairs({"same", "reversed"}) do
         local difference
         -- Loop over each carriage in the train for this comparison setup looking for differences.
-        for carriageNumber = 1, currentTrainSnapshot.carriageCount do
-            local currentCarriageCount, reverseFacingFowards
-            if currentCarriageIterator == "iterateCarriagesForwards" then
-                currentCarriageCount = carriageNumber
-                reverseFacingFowards = false
+        for origionalCarriageNumber = 1, #origionalTrainSnapshot.carriages do
+            local currentCarriageCount, reverseCurrentCarriage
+            if comparisonType == "same" then
+                currentCarriageCount = origionalCarriageNumber
+                reverseCurrentCarriage = false
             else
-                currentCarriageCount = (#currentTrainSnapshot.carriages - carriageNumber) + 1
-                reverseFacingFowards = true
+                currentCarriageCount = (#origionalTrainSnapshot.carriages - origionalCarriageNumber) + 1
+                reverseCurrentCarriage = true
             end
-            difference = TestFunctions._DoCarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentTrainSnapshot.carriages[currentCarriageCount], reverseFacingFowards)
+            difference = TestFunctions._DifferenceBetween2CarriageSnapshots(origionalTrainSnapshot.carriages[origionalCarriageNumber], currentTrainSnapshot.carriages[currentCarriageCount], reverseCurrentCarriage)
             if difference ~= nil then
                 -- A difference found in this train's carriage so stop checking this comparison setup.
 
@@ -756,19 +754,19 @@ TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelPro
     end
 end
 
---- Checks if 2 carriages are equal allowing for optionally reversing the 2nd carriages facing.
+--- Checks if 2 carriages are equal allowing for if the 2nd carriage is from reversed train. Returns the first difference attribute if one is found, or nil if they are the same.
 ---@param carriage1 TestFunctions_CarriageSnapshot
 ---@param carriage2 TestFunctions_CarriageSnapshot
----@param reverseFacingForwardsCarriage2 boolean
----@return string|null differenceFound
-TestFunctions._DoCarriageSnapshotsMatch = function(carriage1, carriage2, reverseFacingForwardsCarriage2)
+---@param reversedCarriage2 boolean
+---@return string|null differenceFound @ First difference found or nil if the same.
+TestFunctions._DifferenceBetween2CarriageSnapshots = function(carriage1, carriage2, reversedCarriage2)
     if carriage1 == nil then
         return "carriage1 is nil"
     elseif carriage2 == nil then
         return "carriage2 is nil"
     end
     for _, attribute in pairs({"name", "health", "facingForwards", "cargoInventory", "color"}) do
-        if attribute == "facingForwards" and reverseFacingForwardsCarriage2 == true then
+        if attribute == "facingForwards" and reversedCarriage2 == true then
             -- Reverse the expected attribute value and so if they equal its really a difference.
             if carriage1[attribute] == carriage2[attribute] then
                 return attribute

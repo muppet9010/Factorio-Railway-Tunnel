@@ -2,7 +2,6 @@ Now
 ---
     - Trains are being inverted in some cases when using tunnel. Introduced in train_data_cache branch.
 
-
 Bugs
 ----
 
@@ -10,6 +9,8 @@ Bugs
     - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?".
     - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
     - The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Either needs a special non map entity being used instead (UPS overhead) or documented as accepted downside right now.
+    - Fix the typo's of "carraige" across the mod.
+    - Update TestFunctions_TrainSnapshot to be TestFunctions_TrainCarriageSnapshot and just be an array of train carriages (TestFunctions_CarriageSnapshot). So alias and not class.
 
 
 Features to add/change
