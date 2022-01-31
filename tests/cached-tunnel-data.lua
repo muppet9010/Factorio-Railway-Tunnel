@@ -168,9 +168,9 @@ Test.EveryTick = function(event)
             -- Train has left so wait for the train to start entering next tunnel.
             testDataBespoke.nextAction = Common.TunnelUsageAction.startApproaching
 
-            -- Tunnel loop complete, done after 4.
+            -- Tunnel loop complete, done after 6 cycles as this is 3 times in each direction. First is no cache, second onwards is loading from cache.
             testDataBespoke.loopsDone = testDataBespoke.loopsDone + 1
-            if testDataBespoke.loopsDone == 4 then
+            if testDataBespoke.loopsDone == 6 then
                 TestFunctions.TestCompleted(testName)
                 testDataBespoke.testFinished = true
                 return
