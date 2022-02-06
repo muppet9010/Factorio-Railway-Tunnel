@@ -1,5 +1,4 @@
 -- Test runs a train through a tunnel multiple times to ensure the cached data behaves correctly. The train does different train direction and train compositions multiple times to cover all angles.
--- This test should be viewed manually as there currently isn't a way to reliably compare 2 trains makeup and detect all changes. See TestFunctions.AreTrainSnapshotsProbablyIdentical() for details.
 
 -- Requires and this tests class object.
 local Test = {}
@@ -10,7 +9,7 @@ local Common = require("scripts/common")
 local TrackShapes = {
     straight = "straight", -- Shuttle through the tunnel (bi-directional).
     loop = "loop", -- Go through the tunnel in 1 direction with the train maintaining its orientation each loop.
-    reverseLoop = "reverseLoop" -- Go through the tunnel in 1 direction with the train flipping its orientation each loop via a reverse shunt.
+    loopShunt = "loopShunt" -- Go through the tunnel in 1 direction with the train doing a loop back to the starting station, approaching it from the oppositea direction and using it as a shunt before returning to the tunnel. This flips the train on each loop.
 }
 --- Max tunnel train length is 4 carriages.
 ---@alias Tests_CTD_TrainCompositions TestFunctions_TrainSpecifiction
@@ -21,22 +20,34 @@ local TrainCompositions = {
     ["><"] = {composition = "><"},
     ["><<"] = {composition = "><<"},
     [">><"] = {composition = ">><"},
-    ["<--"] = {composition = "<--"},
-    ["--<"] = {composition = "--<"},
+    ["<>--"] = {composition = "<>--"},
+    ["--<>"] = {composition = "--<>"},
+    ["><--"] = {composition = "><--"},
+    ["--><"] = {composition = "--><"},
+    ["<>=-"] = {composition = "<>=-"},
+    ["-=><"] = {composition = "-=><"},
+    ["<>-="] = {composition = "<>-="},
+    ["=-><"] = {composition = "=-><"},
     ["<->"] = {composition = "<->"},
-    ["<=>"] = {composition = "<=>"}
+    ["<=>"] = {composition = "<=>"},
+    ["<-->"] = {composition = "<-->"},
+    ["<==>"] = {composition = "<==>"},
+    [">-<"] = {composition = ">-<"},
+    [">=<"] = {composition = ">=<"},
+    [">--<"] = {composition = ">--<"},
+    [">==<"] = {composition = ">==<"}
 }
 
 -- Test configuration.
 local DoMinimalTests = false -- The minimal test to prove the concept.
 
-local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrackShapesFilter = {"reverseLoop"} -- Pass in an array of TrackShapes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrackShapesFilter = {"loopShunt"} -- Pass in an array of TrackShapes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificTrainCompositionsFilter = {"<>"} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
-Test.RunTime = 3600
+Test.RunTime = 7200
 Test.RunLoopsMax = 0
 ---@type Tests_CTD_TestScenario[]
 Test.TestScenarios = {}
@@ -72,7 +83,7 @@ Test.Start = function(testName)
         -- Adds a loop back from west to east on the ends of the existing rails making a full circle. Also a second east train station for the new loop direction and a signal to prevent the train reversing from west to east via the tunnel.
         local extraBlueprint = "0eNqVmttu2kAURf9lnk3E3Me85yuqqiJgpZaIQdiJGiH+veZSWhJHXfspIYk3E5bXeOacOZinzWuz27fdYBYH0662XW8W3w6mb5+75eb0s+F915iFaYfmxVSmW76cXu2X7cYcK9N26+aXWdjj98o03dAObXO5/vzi/Uf3+vLU7Mc/uF25et2/NevZOaAyu20/XrPtTm805szqeWXex6/OjeHrdt+sLr9Nx+pTprtl9sMY9/xz+Cq1xGuqv091E6mep3qeGniq5akRp+aapyaemnlq5qkCrcJTBVo1TxVo2TmOTQIua3mswMtyvZIAzHK/kkDMcsGSgowbFhVkXLGoIOOORQUZlywqyLhlUUDmuGVBQOa4ZUFA5rhlQUDmuGVBQOa4ZUFBxi3zCjJumVeQccu8goxb5hVk3DIvIPPcMicg89wyJyDz3DKnLBW5ZU5A5rllTkHGLbMKMm6ZVZBxy6yCjFtmFWTcMisgC9wygVjgkgnAAndM4BW4YspujBum0MKCKaFYL+X/x3IpqLBayl2FxRIEiFgrRdaItVJmloi1UqbBiLVS5uyItVIeMBFrpTwNI/ZKeXRHLJayzojYLGVRFLFaygouYbeU5WbCbilr44TdUhbyCbul7DoSdkvZIiXslrKfS9gtZfOZsFvKTjlht5RtfcJuKTWIjN1SCiYZu6VUdzJ2SylFZeyWUjfL2C2lyJexW0pFMmO3lPJpxm4ptd6M3VIK0xm7pVTRC3ZLKfkX7JbSnijYLamVgt1S2j4Fu6W0qAp2S2mnFeyW0vor2C2lTVmwW0WhVbM+be2m27R+qpkmFDGuH6ut72PzVCxWq47TqXYq1dFGdbqGJhDq4adabplTKUEcWrkfWZjKjNrIPkTGqcgk444gNasHCMAdVMSbHTSOa/WmjP8XyM7nd+cuZtezGZ+fd/OHPzPIQyT96L8KnQbbzfphu/t6Avkwf4yc+2F5+d48LvvBnA6BnI+JLP45VVKZt2bfXwZRbMi1y9FG69P8ePwNsWNCiQ=="
         TestFunctions.BuildBlueprintFromString(extraBlueprint, {x = 0, y = -10}, testName)
-    elseif testScenario.trackShape == TrackShapes.reverseLoop then
+    elseif testScenario.trackShape == TrackShapes.loopShunt then
         -- Adds a loop back from west to east, but approaching from the tunnel side. Also a signal to prevent the train reversing from west to east via the tunnel.
         local extraBlueprint = "0eNqVmduOokAUAP+ln9Fw+sIBfmWy2ThKZkkUDeJkjfHf1wtOVpfN1HnUkZrWoqC7Obn39aHZ9W03uPrk2uW227v67eT27Ue3WF/fG467xtWuHZqNy1y32Fxf9Yt27c6Za7tV89vVcv6RuaYb2qFt7sffXhx/dofNe9NfPvB15PLQfzar2Q2Qud12fzlm213/0YUzq8rMHV1d+At71fbN8v7H4pz9g/RfyP1woX38Gv4LDXeoPEP9BDRwqGBoxNCywtDEoYqhBYcmDFUO5aJKDuWiKgxVLkpyTuWmRDiVqxIelXJXwqtSLkt4VoXBFu+qMNjiYRUGW7yswmCLp1UYbPG2ErfleVuJ2/K8rcRted5W4rY8bytxW563FQ22eFvRYIu3FQ22eFvRYIu3FQ22eFuB2wq8rcBtBd5W4LYCbysYJoO8rcBtBd6WN9jibXmDLd6WN9jibXmDLd6WN9jibQm3FXlbwm1F3pZwW5G3JdxW5G2JYaXF2zLI4mkZXPGyDKp4WAZTvCuDKJwVZyYcFf/yCSfFLSUcFD+dEs7JsMOAYzIUmhLbCbqumCY2gsIUkqck+TjS9IzVKaw+7XbNxh2xiVVQnI/y/Tx9v2+VcE+PG8oLVKagFdxgkzzeoeX30AIH5ad/1jQFFStUwUhxUo8JhYKRBiu0AiPFUT0mVBUYaTJCVcBIcVbjhPIVOjlStUIDGGlpPPm1eIbGKSi+Q42z9NeRTn19za1Q0L7iosZVioJM1VuhIFMN7JIa8vGKqjoHV2rFTY2LPwX1a7JCQf1qv1Up6F/V9nil9OBHxbepcZ2OBgpvU4GPs8zhORXGc6qU13PKX59e3Z5v1X89DsvcZ9Pv7x8oJWrlNUmSUOTn8x/wKeqN"
         TestFunctions.BuildBlueprintFromString(extraBlueprint, {x = -24, y = -10}, testName)
@@ -118,7 +129,7 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_CTD_TestScenarioBespokeData
     local testDataBespoke = {
-        lastActionTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train), ---@type TestFunctions_TrainSnapshot
+        lastActionTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train), ---@type TestFunctions_TrainSnapshot
         loopsDone = 0, ---@type uint
         nextAction = Common.TunnelUsageAction.startApproaching, ---@type TunnelUsageAction
         testFinished = false ---@type boolean
@@ -153,19 +164,18 @@ Test.EveryTick = function(event)
     if tunnelUsageChanges.lastAction == testDataBespoke.nextAction then
         -- Check trains are the same before and after tunnel usage.
 
-        --TODO: design an entirely new way to check that the trains are the same structure before and after the tunnel's usage. As this current one doesn't catch some bugs, i.e. carriages swapped across length of train from <1 >2 to >2 <1.
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(tunnelUsageChanges.train)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.lastActionTrainSnapshot, currentTrainSnapshot, false) then
-            TestFunctions.TestFailed(testName, "train snapshots not the same")
-            return
-        end
-
-        -- Set next action to react to.
+        -- Handle the action and set the next action to react to.
         if tunnelUsageChanges.lastAction == Common.TunnelUsageAction.startApproaching then
-            -- Train has started appraoching so wait for the train to leave current tunnel.
+            -- Train has started approaching so take a snapshot prior to tunnel usage and wait for the train to leave the tunnel again.
             testDataBespoke.nextAction = Common.TunnelUsageAction.leaving
+            testDataBespoke.lastActionTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageChanges.train)
         else
-            -- Train has left so wait for the train to start entering next tunnel.
+            -- Train has left the tunnel so check its correct structure and then wait for the train to start entering next tunnel.
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageChanges.train)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.lastActionTrainSnapshot, currentTrainSnapshot, false) then
+                TestFunctions.TestFailed(testName, "train snapshots not the same")
+                return
+            end
             testDataBespoke.nextAction = Common.TunnelUsageAction.startApproaching
 
             -- Tunnel loop complete, done after 6 cycles as this is 3 times in each direction. First is no cache, second onwards is loading from cache.
@@ -176,7 +186,6 @@ Test.EveryTick = function(event)
                 return
             end
         end
-        testDataBespoke.lastActionTrainSnapshot = currentTrainSnapshot
     end
 end
 

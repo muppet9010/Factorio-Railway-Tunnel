@@ -214,10 +214,10 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an approximate abstract meta data of a train to be compared later. No requirement for the train to be moving, but the train carriages "facingForwards" is relative to the lead carraige and not the train's front as such. So it's not an exact unique info of the train.
+--- Returns an abstract meta data of a train purely for the purpose of being compared before and after using a tunnel. Train MUST be moving when taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
 ---@return TestFunctions_TrainSnapshot
-TestFunctions.GetApproxSnapshotOfTrain = function(train)
+TestFunctions.GetSnapshotOfTrain = function(train)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.
@@ -226,7 +226,14 @@ TestFunctions.GetApproxSnapshotOfTrain = function(train)
     local snapshot = {
         carriages = {} ---@type TestFunctions_CarriageSnapshot[]
     }
-    local previousCarriageOrientation, previousCarriageFacingFowards = train.front_stock.orientation, true
+    local previousCarriageOrientation = train.carriages[1].orientation
+    local previousCarriageFacingFowards
+    if train.speed == train.carriages[1].speed then
+        previousCarriageFacingFowards = true
+    else
+        previousCarriageFacingFowards = false
+    end
+
     for _, realCarriage in pairs(train.carriages) do
         ---@type TestFunctions_CarriageSnapshot
         local snapshotCarriage = {
@@ -257,12 +264,12 @@ TestFunctions.GetApproxSnapshotOfTrain = function(train)
     return snapshot
 end
 
---- Compares 2 approximate train snapshots to see if they are probably the same train structure. As it has to ignore train front/back direction it also can't detect certain variations in train output, i.e. <1 >2 having their carriages swapped positions to >2 <1. As the "view" of this swapped carriage is the same as if the train had been reversed.
----@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetApproxSnapshotOfTrain().
----@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetApproxSnapshotOfTrain().
+--- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel. Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
+---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
+---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
 ---@return boolean ifSnapshotsAreIdentical.
-TestFunctions.AreTrainSnapshotsProbablyIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
+TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
     if not allowPartialCurrentSnapshot and #origionalTrainSnapshot.carriages ~= #currentTrainSnapshot.carriages then
@@ -274,15 +281,15 @@ TestFunctions.AreTrainSnapshotsProbablyIdentical = function(origionalTrainSnapsh
         local difference
         -- Loop over each carriage in the train for this comparison setup looking for differences.
         for origionalCarriageNumber = 1, #origionalTrainSnapshot.carriages do
-            local currentCarriageCount, reverseCurrentCarriage
+            local reverseCurrentCarriage, currentCarriageNumber
             if comparisonType == "same" then
-                currentCarriageCount = origionalCarriageNumber
                 reverseCurrentCarriage = false
+                currentCarriageNumber = origionalCarriageNumber
             else
-                currentCarriageCount = (#origionalTrainSnapshot.carriages - origionalCarriageNumber) + 1
                 reverseCurrentCarriage = true
+                currentCarriageNumber = #origionalTrainSnapshot.carriages - (origionalCarriageNumber - 1)
             end
-            difference = TestFunctions._DifferenceBetween2CarriageSnapshots(origionalTrainSnapshot.carriages[origionalCarriageNumber], currentTrainSnapshot.carriages[currentCarriageCount], reverseCurrentCarriage)
+            difference = TestFunctions._DifferenceBetween2CarriageSnapshots(origionalTrainSnapshot.carriages[origionalCarriageNumber], currentTrainSnapshot.carriages[currentCarriageNumber], reverseCurrentCarriage)
             if difference ~= nil then
                 -- A difference found in this train's carriage so stop checking this comparison setup.
 
@@ -640,34 +647,26 @@ TestFunctions.PrimaryLocomotiveColors = {
     Colors.darkorange,
     Colors.yellow,
     Colors.lime,
-    Colors.green,
     Colors.cyan,
-    Colors.teal,
-    Colors.lightblue,
-    Colors.navy,
-    Colors.purple,
-    Colors.deeppink,
-    Colors.grey,
+    Colors.blue,
+    Colors.darkviolet,
     Colors.black,
-    Colors.brown
+    Colors.lavender
 }
 
 --- A secondary list of less unique colors for use on locomotives.
---- Note colors not reviewed in detail, just picked from list.
 TestFunctions.SecondaryLocomotiveColors = {
+    Colors.grey,
+    Colors.teal,
+    Colors.lightblue,
+    Colors.green,
+    Colors.brown,
     Colors.wheat,
-    Colors.pink,
+    Colors.deeppink,
     Colors.olive,
-    Colors.white,
-    Colors.lavender,
+    Colors.pink,
     Colors.darkred,
-    Colors.cadetblue,
-    Colors.darkviolet,
-    Colors.lightyellow,
     Colors.salmon,
-    Colors.peachpuff,
-    Colors.lawngreen,
-    Colors.lightcyan,
     Colors.slateblue,
     Colors.orchid,
     Colors.goldenrod

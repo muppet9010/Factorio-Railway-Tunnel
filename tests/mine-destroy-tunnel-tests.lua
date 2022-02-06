@@ -134,7 +134,7 @@ Test.Start = function(testName)
         exitPortalPart = exitPortalPart, ---@type LuaEntity
         tunnelSegmentToRemove = tunnelSegmentToRemove, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
         tunnelPartRemoved = false, ---@type boolean
         westReached = false, ---@type boolean
         eastReached = false ---@type boolean
@@ -244,8 +244,8 @@ Test.EveryTick = function(event)
         if not testDataBespoke.westReached then
             local stationWestTrain = testDataBespoke.stationWest.get_stopped_train()
             if stationWestTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationWestTrain)
-                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train at west station not identical")
                     return
                 end
@@ -254,8 +254,8 @@ Test.EveryTick = function(event)
         elseif not testDataBespoke.eastReached then
             local stationEastTrain = testDataBespoke.stationEast.get_stopped_train()
             if stationEastTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationEastTrain)
-                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train at east station not identical")
                     return
                 end
@@ -315,8 +315,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
         if tunnelUsageEntry ~= nil then
             -- Train is using the underground so it must be complete. There may be a surface train, but it will be incomplete and so check underground first.
             if tunnelUsageEntry.train ~= nil then
-                local currentSnapshot = TestFunctions.GetApproxSnapshotOfTrain(tunnelUsageEntry.train)
-                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.train)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train underground not identical")
                     return false
                 end
@@ -324,8 +324,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             end
         elseif trainOnSurface ~= nil then
             -- Train isn't underground and so the surface train must be complete.
-            local currentSnapshot = TestFunctions.GetApproxSnapshotOfTrain(trainOnSurface)
-            if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+            local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
                 TestFunctions.TestFailed(testName, "Train on surface not identical")
                 return false
             end
@@ -350,8 +350,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             TestFunctions.TestFailed(testName, "Should be a partial train on the surface")
             return false
         end
-        local currentSnapshot = TestFunctions.GetApproxSnapshotOfTrain(trainOnSurface)
-        if TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+        local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
+        if TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
             TestFunctions.TestFailed(testName, "Train on surface is the same, but should be partial")
             return false
         end

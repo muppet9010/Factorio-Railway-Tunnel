@@ -51,7 +51,7 @@ Test.Start = function(testName)
     ---@class Tests_PKRNG_TestScenarioBespokeData
     local testDataBespoke = {
         otherTrain = otherTrain, ---@type LuaTrain
-        tunnelTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(tunnelTrain),
+        tunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelTrain),
         stationEnd = stationEnd, ---@type LuaEntity
         otherStationStart = otherStationStart ---@type LuaEntity
     }
@@ -78,8 +78,8 @@ Test.EveryTick = function(event)
             TestFunctions.TestFailed(testName, "other train reached end station before tunnel train")
             return
         end
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationEndTrain)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.tunnelTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEndTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.tunnelTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "tunnel train has differences after tunnel use")
             return
         end

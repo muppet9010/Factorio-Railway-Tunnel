@@ -42,7 +42,7 @@ Test.Start = function(testName)
     local testDataBespoke = {
         farWestRailReached = false, ---@type boolean
         farEastRailReached = false, ---@type boolean
-        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
         farWestRail = farWestRail, ---@type LuaEntity
         farEastRail = farEastRail ---@type LuaEntity
     }
@@ -66,8 +66,8 @@ Test.EveryTick = function(event)
     local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
 
     if westTrain ~= nil and not testDataBespoke.farWestRailReached then
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(westTrain)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached west rail, but with train differences")
             return
         end
@@ -75,8 +75,8 @@ Test.EveryTick = function(event)
         testDataBespoke.farWestRailReached = true
     end
     if eastTrain ~= nil and not testDataBespoke.farEastRailReached then
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(eastTrain)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached east rail, but with train differences")
             return
         end

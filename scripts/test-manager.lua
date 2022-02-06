@@ -36,6 +36,7 @@ local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
+local HidePortalGraphics = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regualr player experience set this to FALSE.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 ---@type table<TestManager_TestName, TestManager_TestToRun>
@@ -56,7 +57,7 @@ local TestsToRun = {
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
     ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_abort")},
     ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_indecisive")},
-    CachedTunnelData = {enabled = false, testScript = require("tests/cached-tunnel-data")},
+    CachedTunnelData = {enabled = true, testScript = require("tests/cached-tunnel-data")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
@@ -73,7 +74,7 @@ local TestsToRun = {
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Adhoc tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
-    TrainComparisonTests = {enabled = false, testScript = require("tests/train_comparison_tests")},
+    TrainComparisonTests = {enabled = false, testScript = require("tests/train_comparison_tests")}, -- TODO: needs updating as snapshot generation likely wrong.
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups_many_large_trains"), notInAllTests = true},
@@ -208,7 +209,14 @@ TestManager.OnStartup = function()
     game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
-    -- Create the global test management state data. Lua script funcctions can't be included in to global object.
+    -- If option to hide portal graphics is set then change the Portal globla setting.
+    if HidePortalGraphics then
+        global.portalGraphicsLayerOverTrain = "lower-object"
+    else
+        global.portalGraphicsLayerOverTrain = "higher-object-above"
+    end
+
+    -- Create the global test management state data. Lua script functions can't be included in to global object.
     for testName, test in pairs(TestsToRun) do
         if test.enabled or (AllTests and not test.notInAllTests) then
             global.testManager.testsToRun[testName] = {
