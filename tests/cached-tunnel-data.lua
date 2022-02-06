@@ -41,7 +41,7 @@ local TrainCompositions = {
 -- Test configuration.
 local DoMinimalTests = false -- The minimal test to prove the concept.
 
-local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificTrackShapesFilter = {"loopShunt"} -- Pass in an array of TrackShapes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificTrainCompositionsFilter = {"<>"} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
@@ -155,7 +155,7 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_CTD_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    -- Don;t react to tunnel usage changes after the test is completed.
+    -- Don't react to tunnel usage changes after the test is completed.
     if testDataBespoke.testFinished then
         return
     end

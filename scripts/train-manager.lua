@@ -32,6 +32,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field approachingTrain? LuaTrain|null @ Ref to the approaching train. Cleared when the train enters the tunnel.
 ---@field approachingTrainId? Id|null @ The approachingTrain LuaTrain id. Cleared when the train enters the tunnel.
 ---@field approachingTrainMovingForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint. Cleared when the train enters the tunnel.
+---@field approachingTrainForwardsCacheData? boolean|null @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
 ---@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't breaking. Cleared when the train enters the tunnel.
 ---@field approachingTrainReachedFullSpeed? boolean|null @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
 ---@field entranceSignalClosingCarriage LuaEntity @ The carriage of the approaching train left behind on the entrance portal to keep the signals closed when the approaching train is cloned to the leaving portal. Reference not cleared when train enters tunnel.
@@ -767,8 +768,8 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalTransition
         -- Cache the trains attributes for working out each speed. Only needed if its traversing the tunnel.
         managedTrain.approachingTrainExpectedSpeed = train_speed
         managedTrain.approachingTrainReachedFullSpeed = false
-        MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData(train, train_speed, managedTrain.trainCachedData)
-        if trainMovingForwards then
+        managedTrain.approachingTrainForwardsCacheData = MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData(train, train_speed, managedTrain.trainCachedData)
+        if managedTrain.approachingTrainForwardsCacheData then
             managedTrain.forwardsDirectionalTrainSpeedCalculationDataUpdated = true
             managedTrain.directionalTrainSpeedCalculationData = managedTrain.trainCachedData.forwardMovingTrainSpeedCalculationData
             managedTrain.backwardsDirectionalTrainSpeedCalculationDataUpdated = false
@@ -891,9 +892,9 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator
-    if (managedTrain.approachingTrainExpectedSpeed > 0) then
+    if (managedTrain.approachingTrainForwardsCacheData) then
         minCarriageIndex, maxCarriageIndex, carriageIterator = 1, #managedTrain.trainCachedData.carriagesCachedData, 1
-    elseif (managedTrain.approachingTrainExpectedSpeed < 0) then
+    elseif (not managedTrain.approachingTrainForwardsCacheData) then
         minCarriageIndex, maxCarriageIndex, carriageIterator = #managedTrain.trainCachedData.carriagesCachedData, 1, -1
     else
         error("TrainManager.CopyEnteringTrainUnderground() doesn't support 0 speed refTrain.\nrefTrain id: " .. approachingTrain.id)
@@ -907,6 +908,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
     local lastPlacedCarriage  ---@type LuaEntity
     local lastPlacedCarriage_name  ---@type string
     local carriageOrientation, carriage_faceingFrontOfTrain, driver
+    local newLeadCarriageUnitNumber  ---@type UnitNumber
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         refCarriageData = managedTrain.trainCachedData.carriagesCachedData[currentSourceTrainCarriageIndex]
         -- Some carriage data will have been cached by Utils.GetTrainSpeedCalculationData() before this function call. With secodanry tunnel use by same train in same direction having all data pre-cached.
@@ -940,6 +942,11 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
         -- Update data cache.
         refCarriageData.entity = lastPlacedCarriage
 
+        -- If this is the first carriage in the trains carriage cache update the cache's lead carriage unit number for reference in future lookup of the data.
+        if currentSourceTrainCarriageIndex == 1 then
+            newLeadCarriageUnitNumber = lastPlacedCarriage.unit_number
+        end
+
         -- Make the cloned carriage invunerable so that it can't be killed while "underground".
         lastPlacedCarriage.destructible = false
 
@@ -956,7 +963,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
     local leavingTrain = lastPlacedCarriage.train
 
     -- Update the train cache objects Id from the old train id to the new train id. As we've updated the entities in this object already.
-    MOD.Interfaces.TrainCachedData.UpdateTrainCacheId(managedTrain.approachingTrainId, leavingTrain.id)
+    MOD.Interfaces.TrainCachedData.UpdateTrainCacheId(managedTrain.approachingTrainId, leavingTrain.id, newLeadCarriageUnitNumber)
 
     return leavingTrain
 end
@@ -1152,6 +1159,7 @@ TrainManager.SetTrainSpeedInCorrectDirection = function(train, absoluteSpeed, ma
                 managedTrain.directionalTrainSpeedCalculationData = managedTrain.trainCachedData.forwardMovingTrainSpeedCalculationData
             else
                 -- Data is old or non existint for this direction so get current data.
+                -- TODO: this isn't right as for a flipped train the speed results in the opposite acceleration cache being obtained. This is leaving so need to establish fresh what direction the train is going as it may have been flipped or it may actually be going back in to the tunnel.
                 MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData(train, relativeSpeed, managedTrain.trainCachedData)
                 managedTrain.directionalTrainSpeedCalculationData = managedTrain.trainCachedData.forwardMovingTrainSpeedCalculationData
                 managedTrain.forwardsDirectionalTrainSpeedCalculationDataUpdated = true
@@ -1163,6 +1171,7 @@ TrainManager.SetTrainSpeedInCorrectDirection = function(train, absoluteSpeed, ma
                 managedTrain.directionalTrainSpeedCalculationData = managedTrain.trainCachedData.backwardMovingTrainSpeedCalculationData
             else
                 -- Data is old or non existint for this direction so get current data.
+                -- TODO: this isn't right as for a flipped train the speed results in the opposite acceleration cache being obtained. This is leaving so need to establish fresh what direction the train is going as it may have been flipped or it may actually be going back in to the tunnel.
                 MOD.Interfaces.TrainCachedData.UpdateTrainSpeedCalculationData(train, relativeSpeed, managedTrain.trainCachedData)
                 managedTrain.directionalTrainSpeedCalculationData = managedTrain.trainCachedData.backwardMovingTrainSpeedCalculationData
                 managedTrain.backwardsDirectionalTrainSpeedCalculationDataUpdated = true
