@@ -1,5 +1,5 @@
 --[[
-    A series of tests that removes the target train stop and rail while the tunnel is in use. Covers:
+    A series of tests that removes the target train stop and rail while the tunnel is in use. The train will have an alternative station target either in fron of it, behind it, or none. As we remove the rail in all different tunnel states this tests the full range of reactions by the managed train. Covers:
         - TargetTypes = rail, trainStop
         - TunnelUsageStates = startApproaching, onPortalTrack, entered, leaving, partlyLeftExitPortalTracks.
         - NextScheduleOrder = none, forwards, reversal.
