@@ -374,7 +374,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
 
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainMovingForwards for later use.
         local leavingTrain = managedTrain.leavingTrain
-        TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainMovingForwards", managedTrain.dummyTrain.path_end_stop)
+        TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainMovingForwards", managedTrain.targetTrainStop)
 
         TrainManager.TrainUndergroundCompleted(managedTrain)
     end
@@ -393,7 +393,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
     local leavingTrain = managedTrain.leavingTrain
 
     -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.leavingTrainMovingForwards for later use.
-    TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainMovingForwards", managedTrain.dummyTrain.path_end_stop)
+    TrainManager.SetTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, "leavingTrainMovingForwards", managedTrain.targetTrainStop)
 
     -- Check if the train can just leave at its current speed and if so release it here.
     local leavingTrain_state = leavingTrain.state
@@ -510,7 +510,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
                 distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
                 table.remove(schedule.records, schedule.current)
                 -- Restore the train to its origional state.
-                TrainManager.SetTrainToAuto(leavingTrain, managedTrain.dummyTrain.path_end_stop)
+                TrainManager.SetTrainToAuto(leavingTrain, managedTrain.targetTrainStop)
 
                 scheduleFutureArrival = true
             end
