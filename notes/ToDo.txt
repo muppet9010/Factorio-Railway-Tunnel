@@ -1,7 +1,6 @@
 Now
 ---
-    - In cached-tunnel-data test: Using train speed or initial set orientation to calculate snapshot from was likely correct. But in my cached data test I needed to handle the reverse my train was doing with the shunt. As entering tunnel wouldn't be the same as leaving the previous tunnel as it had reversed at the shunt. So should just be 2 handled checks; forwards and backwards. As the train could be rebuilt heading backwards, but it would never flip through tunnel usage. Once done in real test bleed back in to TestFunctions, train_comparison_test and then the other tests.
-    - Trains are being inverted in some cases when using tunnel. Introduced in train_data_cache branch.
+    - Update all old tests to only get train snapshot when the train is moving and for 1 tunnel usage. This affects both the pre and post tunnel snapshots. Means we can't get snapshots when trains arrive at stations which affects all old tests as they don't track tunnel events. Delaying the initial snapshot until the train has started moving is easy.
 
 Bugs
 ----

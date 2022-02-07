@@ -214,10 +214,11 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract meta data of a train purely for the purpose of being compared before and after using a tunnel. Train MUST be moving when taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
+--- Returns an abstract meta data of a train purely for the purpose of being compared before and after using a tunnel. Train MUST be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
 ---@return TestFunctions_TrainSnapshot
 TestFunctions.GetSnapshotOfTrain = function(train)
+    --TODO: can this take a forwards orientation as an alternative to speed?
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.

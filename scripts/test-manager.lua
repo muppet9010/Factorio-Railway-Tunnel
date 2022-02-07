@@ -26,7 +26,7 @@ local PlayerAlerts = require("utility/player-alerts")
 local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
 
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
-local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting, but honors their "DoSpecificTests" setting if enabled. If false then each test just will honour their other settings.
+local ForceTestsFullSuite = true -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting, but honors their "DoSpecificTests" setting if enabled. If false then each test just will honour their other settings.
 
 local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "railway_tunnel_toggle_debug_state" command.
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
@@ -50,14 +50,14 @@ local TestsToRun = {
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
     PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
     TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
     ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_abort")},
     ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_indecisive")},
-    CachedTunnelData = {enabled = true, testScript = require("tests/cached-tunnel-data")},
+    CachedTunnelData = {enabled = false, testScript = require("tests/cached-tunnel-data")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
@@ -74,7 +74,7 @@ local TestsToRun = {
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Adhoc tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
-    TrainComparisonTests = {enabled = false, testScript = require("tests/train_comparison_tests")}, -- TODO: needs updating as snapshot generation likely wrong.
+    TrainComparisonTests = {enabled = false, testScript = require("tests/train_comparison_tests")},
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
     UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups_many_large_trains"), notInAllTests = true},
