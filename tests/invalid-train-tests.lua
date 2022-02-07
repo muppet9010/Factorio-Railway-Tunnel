@@ -1,4 +1,4 @@
--- Destroys a train carriage during each stage of a train's tunnel usage to check the mod handles invalid LuaTrain's. Will remove the carriage on a state being reached and a few ticks afterwards to let things settle each time. After a few seconds the remaining train carraige will be pathed to a train stop it can reach to "manually" clear the issue. There is a second train waiting to use the tunnel that confirms the tunnel has been left in a healthy state whe it reaches its target station.
+-- Destroys a train carriage during each stage of a train's tunnel usage to check the mod handles invalid LuaTrain's. Will remove the carriage on a state being reached and a few ticks afterwards to let things settle each time. After a few seconds the remaining train carriage will be pathed to a train stop it can reach to "manually" clear the issue. There is a second train waiting to use the tunnel that confirms the tunnel has been left in a healthy state whe it reaches its target station.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -75,7 +75,7 @@ Test.Start = function(testName)
         end
     end
 
-    -- Work out where to send the first train after it has a carraige removed.
+    -- Work out where to send the first train after it has a carriage removed.
     local firstTrainTargetStation
     if testScenario.carriageToRemove == CarriageToRemove.front then
         firstTrainTargetStation = eastStation

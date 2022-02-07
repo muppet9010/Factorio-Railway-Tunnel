@@ -16,7 +16,7 @@ local blueprintString = "0eNrNXUtu68YS3QvHksH+dxvIMLOMksweDIGWeG0iMilQlO+7uPAC3i
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 60}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
 
     -- Get the stations placed by name. There are 2 stations with the same name "Repathed-End" that are sorted by relative map position.
     local stationRepaths, stationLoopEnd = {}, nil

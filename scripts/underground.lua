@@ -121,23 +121,7 @@ Underground.OnLoad = function()
     for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
-    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild)
-    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
-
-    --[[local segmentEntityGhostNames_Filter = {}
-    for _, name in pairs(UndergroundSegmentEntityNames) do
-        table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
-    end]]
-    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
 
     MOD.Interfaces.Underground = MOD.Interfaces.Underground or {}
     MOD.Interfaces.Underground.On_PreTunnelCompleted = Underground.On_PreTunnelCompleted

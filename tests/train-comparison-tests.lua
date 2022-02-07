@@ -278,7 +278,7 @@ end
 
 ---@class Tests_TCT_TrainCarriageShorthand
 ---@field typeChar "<"|">"|"-"|"="
----@field colorNumber uint @ Color is just its order in the first train. As this is saved in to the carriage it will follow the carraige when the second trian has its carriages moved around.
+---@field colorNumber uint @ Color is just its order in the first train. As this is saved in to the carriage it will follow the carriage when the second trian has its carriages moved around.
 
 --- Converts shorthand in to a valid train snapshot for comparison. It assumes that the train is heading through a tunnel to the east.
 --- This can't be run during OnStartup as it references "game" so has to be called from OnTick.

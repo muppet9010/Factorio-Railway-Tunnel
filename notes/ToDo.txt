@@ -9,12 +9,8 @@ Bugs
     - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?".
     - When we create the dummy train we cache the path_end_stop `managedTrain.targetTrainStop = approachingTrain.path_end_stop`. But then elsewhere in the code we referene the dummyTrain (LuaTrain) and get its path_end_stop value. We should be using the cache. Do as own change and test fuly afterwards as may be reason for how it is, if so document and drop the caching.
     - The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Either needs a special non map entity being used instead (UPS overhead) or documented as accepted downside right now.
-    - Fix the typo's of "carraige" across the mod.
     - Update TestFunctions_TrainSnapshot to be TestFunctions_TrainCarriageSnapshot and just be an array of train carriages (TestFunctions_CarriageSnapshot). So alias and not class.
-    - Remove commented out event code from where event handlers where merged previously. Code has been run a fair bit since and can check commit history if needs referring to in future.
-    - Standardise test file names to use hypens and not underscores.
     - A train that losses its path when "entering" and has a path backwards, gets a stopping location set on the inside of the exit portal and not the outside. When it starts moving this is back in to the tunnel as a new transition causing its tunnel target rail to be moved to the exit end of the new exit portal (origional entrance). Fix the origional backwards target rail on no path and the second oddness shouldn't occur. This is "remove-target-stop-rail" with "rail" "entered" "reversal".
-    - All the tests are off centre which actually makes 0.2 or 0.3 zoom levels not work.
 
 
 Features to add/change
@@ -59,7 +55,7 @@ UPS / code plans
 
 Long term feature plans
 -----------------------
-    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carraiges and flipping them.
+    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
 	- Support manually driven trains:
         - When they try to enter a portal area they should be stopped dead if the tunnel is in use, as per automatic trains in trying to use a reserved tunnel.

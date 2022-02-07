@@ -15,7 +15,7 @@ local blueprintString = "0eNqtW9tu4zYQ/Rc924V4J/MrxSJQHK4rrCwZspxtEPjfS8VbJNs46R
 
 ---@param testName string
 Test.Start = function(testName)
-    local builtEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 45, y = 70}, testName)
+    local builtEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the end rails.
     local farWestRail, farEastRail

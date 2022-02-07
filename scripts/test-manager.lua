@@ -32,7 +32,7 @@ local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures. Results written to a text file in: script-output/RailwayTunnel_Tests.txt
 
-local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
+local PlayerStartingZoom = 0.2 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
@@ -55,8 +55,8 @@ local TestsToRun = {
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
-    ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_abort")},
-    ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching_on_portal_track_train_indecisive")},
+    ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-abort")},
+    ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-indecisive")},
     CachedTunnelData = {enabled = false, testScript = require("tests/cached-tunnel-data")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
@@ -66,21 +66,21 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
-    InvalidTrainTests = {enabled = false, testScript = require("tests/invalid_train_tests")},
+    InvalidTrainTests = {enabled = false, testScript = require("tests/invalid-train-tests")},
     -- Tunnel part tests:
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Adhoc tests:
-    TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel_usage_changed_events")},
-    TrainComparisonTests = {enabled = false, testScript = require("tests/train_comparison_tests")},
+    TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
+    TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
     -- UPS Tests:
-    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
-    UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups_many_large_trains"), notInAllTests = true},
+    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups-many-small-trains"), notInAllTests = true},
+    UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups-many-large-trains"), notInAllTests = true},
     -- Template Tests:
-    TemplateSingleInstance = {enabled = false, testScript = require("tests/__template_single_instance"), notInAllTests = true},
-    TemplateMultiInstance = {enabled = false, testScript = require("tests/__template_multi_instance"), notInAllTests = true}
+    TemplateSingleInstance = {enabled = false, testScript = require("tests/__template-single-instance"), notInAllTests = true},
+    TemplateMultiInstance = {enabled = false, testScript = require("tests/__template-multi-instance"), notInAllTests = true}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------

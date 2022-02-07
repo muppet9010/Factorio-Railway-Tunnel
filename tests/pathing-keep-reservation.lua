@@ -16,7 +16,7 @@ local blueprintString = "0eNrFXE2P2zYQ/S862wuTFEVxgRYo0GPRQ5JbERiyTXuJypJBSZtug/
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     local train = placedEntitiesByGroup["locomotive"][1].train
 

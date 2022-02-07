@@ -14,7 +14,7 @@ local blueprintString = "0eNqtWtty2jAU/Bc9QwZdLfHeb+hDJ5NxQCWeGpuxDSmT4d8rBxqSQJ
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000

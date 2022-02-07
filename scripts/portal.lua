@@ -171,7 +171,7 @@ local PortalTypeData = {
 local EntryEndPortalSetup = {
     trackEntryPointFromCenter = 3, -- The border of the portal on the entry side. -- OVERHAUL: likely not needed in the end and can then be removed.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
-    enteringTrainUsageDetectorEntityDistance = 1.95 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carraiges and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
+    enteringTrainUsageDetectorEntityDistance = 1.95 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carriages and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
 }
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
@@ -198,27 +198,6 @@ Portal.CreateGlobals = function()
 end
 
 Portal.OnLoad = function()
-    --[[local portalEntityNames_Filter = {}
-    for _, name in pairs(PortalEndAndSegmentEntityNames) do
-        table.insert(portalEntityNames_Filter, {filter = "name", name = name})
-    end]]
-    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Portal.OnBuiltEntity", Portal.OnBuiltEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Portal.OnPreMinedEntity", Portal.OnPreMinedEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntity", Portal.OnDiedEntity, portalEntityNames_Filter)
-
-    --[[local portalEntityGhostNames_Filter = {}
-    for _, name in pairs(PortalEndAndSegmentEntityNames) do
-        table.insert(portalEntityGhostNames_Filter, {filter = "ghost_name", name = name})
-    end]]
-    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Portal.OnBuiltEntityGhost", Portal.OnBuiltEntityGhost, portalEntityGhostNames_Filter)
-
     MOD.Interfaces.Portal = MOD.Interfaces.Portal or {}
     MOD.Interfaces.Portal.On_PreTunnelCompleted = Portal.On_PreTunnelCompleted
     MOD.Interfaces.Portal.On_TunnelRemoved = Portal.On_TunnelRemoved
@@ -235,14 +214,6 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.OnPreMinedEntity = Portal.OnPreMinedEntity
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
-
-    --local portalEntryTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"}}
-    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalEntryTrainDetector", Portal.OnDiedEntityPortalEntryTrainDetector, portalEntryTrainDetector1x1_Filter)
-
-    --local portalTransitionTrainDetector1x1_Filter = {{filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1"}}
-    --Events.RegisterHandlerEvent(defines.events.on_entity_died, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Portal.OnDiedEntityPortalTransitionTrainDetector", Portal.OnDiedEntityPortalTransitionTrainDetector, portalTransitionTrainDetector1x1_Filter)
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive

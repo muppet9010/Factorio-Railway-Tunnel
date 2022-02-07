@@ -1,5 +1,5 @@
 -- Use render_layer "higher-object-above" on the sprites wanted over the top of train caraiges. Has to be this specific layer to go over artillery wagon's cannons.
--- Use render_layer "lower-object" on the sprites wanted under the train carriages, as the position of the render position is techncially closer to the player and so we need to use a lower render_layer than the carraiges in order to appear behind them.
+-- Use render_layer "lower-object" on the sprites wanted under the train carriages, as the position of the render position is techncially closer to the player and so we need to use a lower render_layer than the carriages in order to appear behind them.
 
 data:extend(
     {

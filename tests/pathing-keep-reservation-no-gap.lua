@@ -22,7 +22,7 @@ local blueprintString = "0eNrFXFtu40YQvErAb8ngPDn0Z4CcIPkLDIGWaC0RihQoUhtjoQPkFj
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 24, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the trains - Tunnel train is most north in BP - Other train is most south in BP.
     local northMostLoco, northMostLocoYPos, southMostLoco, southMostLocoYPos = nil, 100000, nil, -100000

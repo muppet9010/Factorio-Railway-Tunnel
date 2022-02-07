@@ -14,7 +14,7 @@ local blueprintString = "0eNqtXNty4jgQ/Rc/w5Z1l/I+37APW6kUA96Ma8GmjMlsKpV/XxuYXJ
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 60}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 30}, testName)
 
     -- Get the stations placed by name.
     local trainStopWest, trainStopEast

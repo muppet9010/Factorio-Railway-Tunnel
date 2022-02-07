@@ -50,18 +50,6 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.CanTrainFitInTunnel = Tunnel.CanTrainFitInTunnel
     -- Merged event handler interfaces.
     MOD.Interfaces.Tunnel.OnBuiltEntity = Tunnel.OnBuiltEntity
-
-    --[[local rollingStockFilter = {
-        {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
-        {filter = "ghost_type", type = "locomotive"},
-        {filter = "ghost_type", type = "cargo-wagon"},
-        {filter = "ghost_type", type = "fluid-wagon"},
-        {filter = "ghost_type", type = "artillery-wagon"}
-    }]]
-    --Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    --Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    --Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
 end
 
 -- Needed so we detect when a train is targetting the transition signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
@@ -312,13 +300,13 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
         elseif trainFrontStockIsPlacedEntity then
             -- Placed carriage is front of train
             if TunnelRailEntityNames[train.front_rail.name] == nil then
-                -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
+                -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
                 return
             end
         elseif trainBackStockIsPlacedEntity then
             -- Placed carriage is rear of train
             if TunnelRailEntityNames[train.back_rail.name] == nil then
-                -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
+                -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
                 return
             end
         else
