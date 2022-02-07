@@ -26,7 +26,7 @@ local PlayerAlerts = require("utility/player-alerts")
 local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
 
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
-local ForceTestsFullSuite = true -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting, but honors their "DoSpecificTests" setting if enabled. If false then each test just will honour their other settings.
+local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting, but honors their "DoSpecificTests" setting if enabled. If false then each test just will honour their other settings.
 
 local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "railway_tunnel_toggle_debug_state" command.
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
@@ -43,14 +43,14 @@ local HidePortalGraphics = true -- Makes the portal graphics appear behind the t
 local TestsToRun = {
     -- Regular train using tunnel tests:
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
-    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
     DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
     PathingKeepReservationNoGap = {enabled = false, testScript = require("tests/pathing-keep-reservation-no-gap")},
     TunnelInUseNotLeavePortalTrackBeforeReturning = {enabled = false, testScript = require("tests/tunnel-in-use-not-leave-portal-track-before-returning.lua")},
-    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = true, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
+    InwardFacingTrainBlockedExitLeaveTunnel = {enabled = false, testScript = require("tests/inward-facing-train-blocked-exit-leave-tunnel")},
     TunnelInUseWaitingTrains = {enabled = false, testScript = require("tests/tunnel-in-use-waiting-trains")},
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},

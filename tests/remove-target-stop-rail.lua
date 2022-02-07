@@ -182,7 +182,7 @@ Test.Start = function(testName)
         exitPortalPart = exitPortalPart, ---@type LuaEntity
         exitPortalTrainDetector = exitPortalTrainDetector, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75),
         firstTargetRemoved = false ---@type boolean
     }
     testData.bespoke = testDataBespoke
@@ -240,7 +240,7 @@ Test.EveryTick = function(event)
         end
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75)
                 if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "train stopped doesn't match origional")
                     return
@@ -255,7 +255,7 @@ Test.EveryTick = function(event)
         if trainAtExitPortal ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
             if trainAtExitPortal.state == defines.train_state.wait_station or trainAtExitPortal.state == defines.train_state.no_schedule then
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal)
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal, 0.75)
                 if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "part of train at end of portal doesn't match origional")
                     return
@@ -267,11 +267,13 @@ Test.EveryTick = function(event)
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.secondTargetReached then
         -- Try both second stations, only one will end up with a train.
         local stationSecondTrain = testDataBespoke.stationSecondForwards.get_stopped_train()
+        local stoppedTrainFacing = 0.75
         if stationSecondTrain == nil then
             stationSecondTrain = testDataBespoke.stationSecondReverse.get_stopped_train()
+            stoppedTrainFacing = 0.75 -- Seems counter intuative, but gives the correct answer and the tunnel ahsn't been used so must be right.
         end
         if stationSecondTrain ~= nil then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain)
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain, stoppedTrainFacing)
             if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                 TestFunctions.TestFailed(testName, "train at second station doesn't match origional")
                 return

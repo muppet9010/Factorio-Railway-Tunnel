@@ -214,11 +214,11 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract meta data of a train purely for the purpose of being compared before and after using a tunnel. Train MUST be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
+--- Returns an abstract meta data of a train purely for the purpose of being compared before and after using a tunnel. Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
+---@param forwardsOrientation RealOrientation @ The forwards orientation of this train. If provided the function can be used for a 0 speed train.
 ---@return TestFunctions_TrainSnapshot
-TestFunctions.GetSnapshotOfTrain = function(train)
-    --TODO: can this take a forwards orientation as an alternative to speed?
+TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.
@@ -227,14 +227,26 @@ TestFunctions.GetSnapshotOfTrain = function(train)
     local snapshot = {
         carriages = {} ---@type TestFunctions_CarriageSnapshot[]
     }
-    local previousCarriageOrientation = train.carriages[1].orientation
-    local previousCarriageFacingFowards
-    if train.speed == train.carriages[1].speed then
+
+    -- Work out initial orientation and facing values. If forwardsOrientation of the train is given then use that, otherwise have to use the trains speed.
+    local previousCarriageOrientation  ---@type RealOrientation
+    local previousCarriageFacingFowards  ---@type boolean
+    if forwardsOrientation ~= nil then
+        previousCarriageOrientation = forwardsOrientation
         previousCarriageFacingFowards = true
     else
-        previousCarriageFacingFowards = false
+        if train.speed == 0 then
+            error("TestFunctions.GetSnapshotOfTrain() called for 0 speed train and no forwardsOrientation provided")
+        end
+        previousCarriageOrientation = train.carriages[1].orientation
+        if train.speed == train.carriages[1].speed then
+            previousCarriageFacingFowards = true
+        else
+            previousCarriageFacingFowards = false
+        end
     end
 
+    -- Iterate over the trian carriages and work out their facing details.
     for _, realCarriage in pairs(train.carriages) do
         ---@type TestFunctions_CarriageSnapshot
         local snapshotCarriage = {

@@ -129,7 +129,7 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_CTD_TestScenarioBespokeData
     local testDataBespoke = {
-        lastActionTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train), ---@type TestFunctions_TrainSnapshot
+        lastActionTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75), ---@type TestFunctions_TrainSnapshot
         loopsDone = 0, ---@type uint
         nextAction = Common.TunnelUsageAction.startApproaching, ---@type TunnelUsageAction
         testFinished = false ---@type boolean

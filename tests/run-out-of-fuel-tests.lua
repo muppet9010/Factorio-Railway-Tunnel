@@ -84,7 +84,7 @@ Test.Start = function(testName)
     local testDataBespoke = {
         stationEnd = stationEnd, ---@type LuaEntity
         enteringtrain = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75),
         trainhasStartedMoving = false ---@type boolean
     }
     testData.bespoke = testDataBespoke
@@ -143,7 +143,7 @@ Test.EveryTick = function(event)
     end
 
     -- At present if a train reaches the transition point of the entrance portal with no fuel it is treated equally to a train that has fuel for the transition. So the results for running nout of fuel as entering and as leaving are currently equal.
-    local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(leavingTrain)
+    local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(leavingTrain, 0.75)
     if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
         TestFunctions.TestFailed(testName, "train not identical to starting, but is stopped.")
     else

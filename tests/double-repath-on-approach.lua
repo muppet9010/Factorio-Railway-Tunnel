@@ -44,7 +44,7 @@ Test.Start = function(testName)
         stationSouthReached = false, ---@type boolean
         stationNorthReached = false, ---@type boolean
         repathTrain = repathTrain, ---@type LuaTrain
-        repathTrainPreFirstTunnelSnapshot = nil, ---@type TestFunctions_TrainSnapshot
+        repathTrainPreFirstTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain, 0.25), ---@type TestFunctions_TrainSnapshot
         repathTrainPreSecondTunnelSnapshot = nil, ---@type TestFunctions_TrainSnapshot
         stationSouthEndViaTunnel = stationSouthEndViaTunnel, ---@type LuaEntity
         stationSouthEndNotTunnel = stationSouthEndNotTunnel, ---@type LuaEntity
@@ -66,23 +66,17 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
     local testDataBespoke = testData.bespoke ---@type Tests_DROA_TestScenarioBespokeData
 
-    -- Get the initial snapshot once the train is moving.
-    if testDataBespoke.repathTrainPreFirstTunnelSnapshot == nil and testDataBespoke.repathTrain.speed ~= 0 then
-        testDataBespoke.repathTrainPreFirstTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(testDataBespoke.repathTrain)
-    end
-
     local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testDataBespoke.stationSouthEndViaTunnel.get_stopped_train(), testDataBespoke.stationSouthEndNotTunnel.get_stopped_train(), testDataBespoke.stationNorth.get_stopped_train()
 
     if stationSouthEndViaTunnelTrain ~= nil and not testDataBespoke.stationSouthReached then
-        --TODO: this test is still bad as we get snapshots whne train has STOPPED at station.
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain)
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain, 0.75)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainPreFirstTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at south station has differences")
             return
         end
         game.print("train reached tunnel usage south station")
         testDataBespoke.stationSouthReached = true
-        testDataBespoke.repathTrainPreSecondTunnelSnapshot = currentTrainSnapshot
+        testDataBespoke.repathTrainPreSecondTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain, 0.25)
     end
     if stationSouthEndNotTunnelTrain ~= nil then
         -- The train should never reach this specific station as it should use the tunnel.
@@ -91,7 +85,7 @@ Test.EveryTick = function(event)
     end
     if stationNorthTrain ~= nil and not testDataBespoke.stationNorthReached then
         --TODO: this test is still bad as we get snapshots whne train has STOPPED at station.
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain, 0.75)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainPreSecondTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at north station has differences")
             return

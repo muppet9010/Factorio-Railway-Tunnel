@@ -50,10 +50,10 @@ Test.Start = function(testName)
         stationEast2Reached = false, ---@type boolean
         stationWest1Reached = false, ---@type boolean
         stationWest2Reached = false, ---@type boolean
-        trainHeadingEast1Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingEast1),
-        trainHeadingEast2Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingEast2),
-        trainHeadingWest1Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingWest1),
-        trainHeadingWest2Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingWest2),
+        trainHeadingEast1Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingEast1, 0.25),
+        trainHeadingEast2Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingEast2, 0.25),
+        trainHeadingWest1Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingWest1, 0.75),
+        trainHeadingWest2Snapshot = TestFunctions.GetSnapshotOfTrain(trainHeadingWest2, 0.75),
         stationEast = stationEast, ---@type LuaEntity
         stationWest = stationWest ---@type LuaEntity
     }
@@ -78,7 +78,7 @@ Test.EveryTick = function(event)
     -- Tracked trains should arrive to their expected station in order before any other train gets to reach its second station.
     if stationEastTrain ~= nil then
         if not testDataBespoke.stationEast1Reached then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain, 0.75)
             if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainHeadingEast1Snapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "unexpected train reached east station before first train: trainHeadingEast1")
                 return
@@ -86,7 +86,7 @@ Test.EveryTick = function(event)
             game.print("trainHeadingEast1 reached east station")
             testDataBespoke.stationEast1Reached = true
         elseif not testDataBespoke.stationEast2Reached then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain, 0.75)
             if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainHeadingEast2Snapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "unexpected train reached east station before second train: trainHeadingEast2")
                 return
@@ -97,7 +97,7 @@ Test.EveryTick = function(event)
     end
     if stationWestTrain ~= nil then
         if not testDataBespoke.stationWest1Reached then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain, 0.25)
             if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainHeadingWest1Snapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "unexpected train reached west station before first train: trainHeadingWest1")
                 return
@@ -105,7 +105,7 @@ Test.EveryTick = function(event)
             game.print("trainHeadingWest1 reached west station")
             testDataBespoke.stationWest1Reached = true
         elseif not testDataBespoke.stationWest2Reached then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain, 0.25)
             if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainHeadingWest2Snapshot, currentTrainSnapshot) then
                 TestFunctions.TestFailed(testName, "unexpected train reached west station before second train:  trainHeadingWest2")
                 return

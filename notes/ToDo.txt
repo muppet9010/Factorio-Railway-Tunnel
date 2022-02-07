@@ -1,6 +1,6 @@
 Now
 ---
-    - Update all old tests to only get train snapshot when the train is moving and for 1 tunnel usage. This affects both the pre and post tunnel snapshots. Means we can't get snapshots when trains arrive at stations which affects all old tests as they don't track tunnel events. Delaying the initial snapshot until the train has started moving is easy.
+
 
 Bugs
 ----
@@ -14,6 +14,7 @@ Bugs
     - Remove commented out event code from where event handlers where merged previously. Code has been run a fair bit since and can check commit history if needs referring to in future.
     - Standardise test file names to use hypens and not underscores.
     - A train that losses its path when "entering" and has a path backwards, gets a stopping location set on the inside of the exit portal and not the outside. When it starts moving this is back in to the tunnel as a new transition causing its tunnel target rail to be moved to the exit end of the new exit portal (origional entrance). Fix the origional backwards target rail on no path and the second oddness shouldn't occur. This is "remove-target-stop-rail" with "rail" "entered" "reversal".
+    - All the tests are off centre which actually makes 0.2 or 0.3 zoom levels not work.
 
 
 Features to add/change

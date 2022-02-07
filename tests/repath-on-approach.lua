@@ -56,7 +56,7 @@ Test.Start = function(testName)
         stationLoopEndReached = false, ---@type boolean
         stationRepathEndNotTunnelReached = false, ---@type boolean
         repathTrain = repathTrain, ---@type LuaTrain
-        loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain),
+        loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain, 0.25),
         stationRepathEndViaTunnel = stationRepathEndViaTunnel, ---@type LuaEntity
         stationRepathEndNotTunnel = stationRepathEndNotTunnel, ---@type LuaEntity
         stationLoopEnd = stationLoopEnd ---@type LuaEntity
@@ -95,7 +95,7 @@ Test.EveryTick = function(event)
         return
     end
     if stationLoopEndTrain ~= nil and not testDataBespoke.stationLoopEndReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationLoopEndTrain)
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationLoopEndTrain, 0.25)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.loopTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "loop train has differences after tunnel use")
             return
