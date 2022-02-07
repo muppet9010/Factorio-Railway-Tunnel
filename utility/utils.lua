@@ -1,6 +1,13 @@
 --- Random utility functions that don't fit in to any other category.
 --- These functions won't include input validation as in most cases its a waste of UPS.
 
+--[[
+    Future Improvements:
+        - Break out in to seperate files.
+        - Make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions already.
+--]]
+--
+
 local Utils = {}
 local factorioUtil = require("__core__/lualib/util")
 local PrototypeAttributes = require("utility/prototype-attributes")

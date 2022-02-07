@@ -5,9 +5,13 @@ Now
 Bugs
 ----
     - Trains are overshooting station at end of tunnel when theres a signal just after the station and the braking distance calculation is basing something on this and setting a temporary stop out on the track miles from tunnel. Might just be 1 rail distance they are overshooting the station by, but in new test as this is a curve and thye are short trains they completely miss it. Present before recent branches, so longer term issue.
-    - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?".
-    - The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Either needs a special non map entity being used instead (UPS overhead) or documented as accepted downside right now. If leaving might make sense to leave the entire entering train for the traversing time as atleast then it will be whole trains flashing on/off the map. Or could have an additional scheduled task to tidy them up 1 tick after entering? would be overhead of another scheduled task, but thats it.
+    - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?". Theres a blueprint of a small loop that triggers the issue.
     - A train that losses its path when "entering" and has a path backwards, gets a stopping location set on the inside of the exit portal and not the outside. When it starts moving this is back in to the tunnel as a new transition causing its tunnel target rail to be moved to the exit end of the new exit portal (origional entrance). Fix the origional backwards target rail on no path and the second oddness shouldn't occur. This is "remove-target-stop-rail" with "rail" "entered" "reversal".
+	- The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Something must be here for a few ticks to keep the entry singals closed until the exit portal signals circuit wires do the job. Options are below; I think using a new entity entirely is best as neater and saves on having to stop the current train making it roughly UPS cost neutral (first in list):
+        - Add a special non map entity of tunnel force to block the signals instead of leaving one of the entering train's carriages. Has UPS cost of new entity creation (17k) and the extra entities removal (12k), but nothing else. Can leave until we remove with the leaving event so no new event schedule required. TOTAL: 29k
+        - Leave it and document as accepted downside right now. Has current UPS cost of having to stop the remining carriage this and next tick (16k), set the entities force and destructible (5.5k). TOTAL: 21.5k
+        - Delay the whole train's removal for the whole traversal time length. Would make the map look more right, but would see both entering and leaving train sitting still in tunnel. Would require having to stop the remining carriage this and next tick (16k). all carriages having their force and destructible set (5.5k x carriages).  TOTAL (1-4-1): 49k
+        - Have an additional scheduled task to tidy the 1 remaing carriage up a few ticks after the train enters. UPS cost of an extra scheduled event being added and run (12k + 1.5K function overhead?), plus the current stop next tick (16k), force and destructible (5.5k) being set just in case. Saves on having to stop the current train. TOTAL: 35k
 
 
 Features to add/change
@@ -41,13 +45,11 @@ Features to add/change
 
 UPS / code plans
 ------------------------
-    - Utils class - break out in to seperate files.
-    - Utils class - make use of ProtoTypeAttributes library to cache prototype data automatically. Present in the new train functions.
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
     - Look at the speed distance test and see if what still causes the slowness on long tunnel/rail test instances. Maybe cloning long distances of track/tunnel parts would help. Or does it flag slowless with large tunnel constructions and this will also affect large BP's being built?
     - Upgrade ManagedTrain rather than calling CreateManagedTrainObject() to recreate it. Theres an OVERHAUL note against it.
-    - Adhoc tests around which force see's a train. Looks like if we set the first carriage in the train to a non player force the player's train list doesn't include the train. If so we can reduce how many carriages we have to change the force of when its traversing the tunnel.
+    - From adhoc tests around which force see's a train it looks like if we set the first carriage in the train to the rail force the player's train list doesn't include the train. If so we can set the rest of the carriages to the player's force when initially cloning the train and save having to update them all from tunnel to player force upon it starting to leave the tunnel. In worst case may have to set first and last carriage only to tunnel force just to avoid any oddness in new trains lead carriage flipping.
 
 
 Long term feature plans
