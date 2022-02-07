@@ -285,7 +285,7 @@ end
 ---@param trainCarriagesShorthand Tests_TCT_TrainCarriageShorthand[]
 ---@return TestFunctions_TrainSnapshot trainSnapshot
 Test.MakeTrainSnapshotFromShorthand = function(trainCarriagesShorthand)
-    local trainSnapshot = {carriages = {}}
+    local trainSnapshot = {} ---@type TestFunctions_TrainSnapshot
 
     for _, carriageShorthand in pairs(trainCarriagesShorthand) do
         local carriageName
@@ -307,7 +307,7 @@ Test.MakeTrainSnapshotFromShorthand = function(trainCarriagesShorthand)
         end
 
         table.insert(
-            trainSnapshot.carriages,
+            trainSnapshot,
             {
                 name = carriageName,
                 facingForwards = facingForwards,

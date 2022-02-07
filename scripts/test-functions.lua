@@ -204,8 +204,7 @@ TestFunctions.RegisterTunnelUsageChangesToTestFunction = function(testName, test
     TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions.RegisterTunnelUsageChangesToTestFunction", testCallbackFunction)
 end
 
----@class TestFunctions_TrainSnapshot
----@field carriages TestFunctions_CarriageSnapshot[]
+---@alias TestFunctions_TrainSnapshot TestFunctions_CarriageSnapshot[]
 
 ---@class TestFunctions_CarriageSnapshot
 ---@field name string @ Entity prototype name
@@ -214,7 +213,7 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract meta data of a train purely for the purpose of being compared before and after using a tunnel. Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
+--- Returns an abstract view of a train purely for the purpose of being compared before and after using a tunnel. Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
 ---@param forwardsOrientation RealOrientation @ The forwards orientation of this train. If provided the function can be used for a 0 speed train.
 ---@return TestFunctions_TrainSnapshot
@@ -224,9 +223,7 @@ TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.
 
     ---@type TestFunctions_TrainSnapshot
-    local snapshot = {
-        carriages = {} ---@type TestFunctions_CarriageSnapshot[]
-    }
+    local trainSnapshot = {}
 
     -- Work out initial orientation and facing values. If forwardsOrientation of the train is given then use that, otherwise have to use the trains speed.
     local previousCarriageOrientation  ---@type RealOrientation
@@ -266,7 +263,7 @@ TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
             -- Exclude locomotives as we don't want to track their fuel amounts, as they'll be used as the train moves.
             snapshotCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
         end
-        table.insert(snapshot.carriages, snapshotCarriage)
+        table.insert(trainSnapshot, snapshotCarriage)
 
         if realCarriage.color ~= nil then
             snapshotCarriage.color = game.table_to_json(realCarriage.color)
@@ -274,7 +271,7 @@ TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
 
         previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapshotCarriage.facingForwards
     end
-    return snapshot
+    return trainSnapshot
 end
 
 --- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel. Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
@@ -285,7 +282,7 @@ end
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
     allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
-    if not allowPartialCurrentSnapshot and #origionalTrainSnapshot.carriages ~= #currentTrainSnapshot.carriages then
+    if not allowPartialCurrentSnapshot and #origionalTrainSnapshot ~= #currentTrainSnapshot then
         return false
     end
 
@@ -293,16 +290,16 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
     for _, comparisonType in pairs({"same", "reversed"}) do
         local difference
         -- Loop over each carriage in the train for this comparison setup looking for differences.
-        for origionalCarriageNumber = 1, #origionalTrainSnapshot.carriages do
+        for origionalCarriageNumber = 1, #origionalTrainSnapshot do
             local reverseCurrentCarriage, currentCarriageNumber
             if comparisonType == "same" then
                 reverseCurrentCarriage = false
                 currentCarriageNumber = origionalCarriageNumber
             else
                 reverseCurrentCarriage = true
-                currentCarriageNumber = #origionalTrainSnapshot.carriages - (origionalCarriageNumber - 1)
+                currentCarriageNumber = #origionalTrainSnapshot - (origionalCarriageNumber - 1)
             end
-            difference = TestFunctions._DifferenceBetween2CarriageSnapshots(origionalTrainSnapshot.carriages[origionalCarriageNumber], currentTrainSnapshot.carriages[currentCarriageNumber], reverseCurrentCarriage)
+            difference = TestFunctions._DifferenceBetween2CarriageSnapshots(origionalTrainSnapshot[origionalCarriageNumber], currentTrainSnapshot[currentCarriageNumber], reverseCurrentCarriage)
             if difference ~= nil then
                 -- A difference found in this train's carriage so stop checking this comparison setup.
 
