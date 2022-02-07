@@ -30,7 +30,7 @@ Test.Start = function(testName)
     local testData = TestFunctions.GetTestDataObject(testName)
     ---@class Tests_PKR_TestScenarioBespokeData
     local testDataBespoke = {
-        trainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
+        trainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75),
         stationTarget = stationTarget ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
@@ -52,8 +52,8 @@ Test.EveryTick = function(event)
     local stationTargetTrain = testDataBespoke.stationTarget.get_stopped_train()
 
     if stationTargetTrain ~= nil then
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationTargetTrain)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationTargetTrain, 0.75)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train has differences after tunnel use")
             return
         end

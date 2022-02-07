@@ -8,6 +8,7 @@ local Utils = require("utility/utils")
 ---@class TrainCachedData
 ---@field id Id @ Train Id
 ---@field carriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train.
+---@field leadCarriageUnitNumber UnitNumber @ The carriage unit number of the first carriage in the train, regardless of travelling direction or speed.
 ---@field trainLength double @ How much tunnel space the train takes up.
 ---@field forwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the forward movement of this cached train.
 ---@field backwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the backwards movement of this cached train.
@@ -116,15 +117,19 @@ TrainCachedData.GetCreateTrainCache = function(train, train_id)
     end
 
     -- No cache found so create the initial cache's data.
-    ---@type Utils_TrainCarriageData[]
-    local carriagesCachedData = {}
+    local carriagesCachedData = {} ---@type Utils_TrainCarriageData[]
+    local leadCarriageUnitNumber  ---@type UnitNumber
     for i, carriage in pairs(train.carriages) do
         carriagesCachedData[i] = {entity = carriage}
+        if i == 1 then
+            leadCarriageUnitNumber = carriage.unit_number
+        end
     end
     ---@type TrainCachedData
     local trainCachedData = {
         id = train_id,
-        carriagesCachedData = carriagesCachedData
+        carriagesCachedData = carriagesCachedData,
+        leadCarriageUnitNumber = leadCarriageUnitNumber
     }
     -- Regsiter the cache.
     global.trainCachedData.trains[train_id] = trainCachedData
@@ -132,30 +137,43 @@ TrainCachedData.GetCreateTrainCache = function(train, train_id)
     return trainCachedData
 end
 
---- Updates an existing train cache to a new train Id. Used when teleporting a train from 1 location to another.
+--- Updates an existing train cache to a new train Id and the lead carriage unit number. Used when teleporting a train from 1 location to another.
 ---@param oldId Id
 ---@param newId Id
-TrainCachedData.UpdateTrainCacheId = function(oldId, newId)
+---@param newLeadCarriageUnitNumber UnitNumber
+TrainCachedData.UpdateTrainCacheId = function(oldId, newId, newLeadCarriageUnitNumber)
     local trainCache = global.trainCachedData.trains[oldId]
     global.trainCachedData.trains[oldId] = nil
     global.trainCachedData.trains[newId] = trainCache
     trainCache.id = newId
+    trainCache.leadCarriageUnitNumber = newLeadCarriageUnitNumber
 end
 
 --- Updates the train cache's trainSpeedCalculationData for the supplied train based on its movement direction.
 ---@param train LuaTrain
 ---@param train_speed double
 ---@param trainCachedData TrainCachedData
+---@return boolean trainForwardsCacheData @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
 TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, trainCachedData)
-    local trainMovingForwards = train_speed > 0
-    -- Looked at using the other direction's data if populated as base for new data, but the values that can be just copied are all cached base data already so basically just as quick to regenerate it and much simplier logic.
-    local trainSpeedCalculationData
-    if trainMovingForwards then
+    -- Code Dev Note: Looked at using the other direction's data if populated as base for new data, but the values that can be just copied are all cached base data already so basically just as quick to regenerate it and much simplier logic.
+    local trainForwardsCacheData  ---@type boolean
+    local trainSpeedCalculationData  ---@type Utils_TrainSpeedCalculationData
+
+    -- Check if the train is the same layout or a flip (180 degree rotated) of what we cached before.
+    if train.carriages[1].unit_number == trainCachedData.leadCarriageUnitNumber then
+        -- Is the same layout so can just use speed to identify relationship between current train and cached train.
+        trainForwardsCacheData = train_speed > 0
+    else
+        -- Is the flipped layout so its the opposite to the train's speed for the relationship between the current train and the cache.
+        trainForwardsCacheData = train_speed < 0
+    end
+
+    if trainForwardsCacheData then
         -- Train moving forwards.
         if trainCachedData.forwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
             trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
-            return
+            return trainForwardsCacheData
         else
             -- Just update the locomotiveAccelerationPower.
             trainSpeedCalculationData = trainCachedData.forwardMovingTrainSpeedCalculationData
@@ -165,7 +183,7 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         if trainCachedData.backwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
             trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
-            return
+            return trainForwardsCacheData
         else
             -- Just update the locomotiveAccelerationPower.
             trainSpeedCalculationData = trainCachedData.backwardMovingTrainSpeedCalculationData
@@ -177,7 +195,7 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
     for _, carriageCachedData in pairs(trainCachedData.carriagesCachedData) do
         -- Note: this is a partial clone from Utils.GetTrainSpeedCalculationData().
         -- Only process locomotives that are powering the trains movement.
-        if carriageCachedData.prototypeName == "locomotive" and trainMovingForwards == carriageCachedData.faceingFrontOfTrain then
+        if carriageCachedData.prototypeName == "locomotive" and trainForwardsCacheData == carriageCachedData.faceingFrontOfTrain then
             local carriage = carriageCachedData.entity
             local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
             if currentFuelPrototype ~= nil then
@@ -189,6 +207,8 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         end
     end
     trainSpeedCalculationData.locomotiveAccelerationPower = 10 * trainSpeedCalculationData.forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainSpeedCalculationData.trainWeight)
+
+    return trainForwardsCacheData
 end
 
 return TrainCachedData

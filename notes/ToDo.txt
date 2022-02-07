@@ -1,7 +1,6 @@
 Now
 ---
-    - In cached-tunnel-data test: Using train speed or initial set orientation to calculate snapshot from was likely correct. But in my cached data test I needed to handle the reverse my train was doing with the shunt. As entering tunnel wouldn't be the same as leaving the previous tunnel as it had reversed at the shunt. So should just be 2 handled checks; forwards and backwards. As the train could be rebuilt heading backwards, but it would never flip through tunnel usage. Once done in real test bleed back in to TestFunctions, train_comparison_test and then the other tests.
-    - Trains are being inverted in some cases when using tunnel. Introduced in train_data_cache branch.
+
 
 Bugs
 ----
@@ -14,6 +13,8 @@ Bugs
     - Update TestFunctions_TrainSnapshot to be TestFunctions_TrainCarriageSnapshot and just be an array of train carriages (TestFunctions_CarriageSnapshot). So alias and not class.
     - Remove commented out event code from where event handlers where merged previously. Code has been run a fair bit since and can check commit history if needs referring to in future.
     - Standardise test file names to use hypens and not underscores.
+    - A train that losses its path when "entering" and has a path backwards, gets a stopping location set on the inside of the exit portal and not the outside. When it starts moving this is back in to the tunnel as a new transition causing its tunnel target rail to be moved to the exit end of the new exit portal (origional entrance). Fix the origional backwards target rail on no path and the second oddness shouldn't occur. This is "remove-target-stop-rail" with "rail" "entered" "reversal".
+    - All the tests are off centre which actually makes 0.2 or 0.3 zoom levels not work.
 
 
 Features to add/change

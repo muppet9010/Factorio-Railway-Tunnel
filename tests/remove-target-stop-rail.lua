@@ -1,5 +1,5 @@
 --[[
-    A series of tests that removes the target train stop and rail while the tunnel is in use. Covers:
+    A series of tests that removes the target train stop and rail while the tunnel is in use. The train will have an alternative station target either in fron of it, behind it, or none. As we remove the rail in all different tunnel states this tests the full range of reactions by the managed train. Covers:
         - TargetTypes = rail, trainStop
         - TunnelUsageStates = startApproaching, onPortalTrack, entered, leaving, partlyLeftExitPortalTracks.
         - NextScheduleOrder = none, forwards, reversal.
@@ -182,7 +182,7 @@ Test.Start = function(testName)
         exitPortalPart = exitPortalPart, ---@type LuaEntity
         exitPortalTrainDetector = exitPortalTrainDetector, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75),
         firstTargetRemoved = false ---@type boolean
     }
     testData.bespoke = testDataBespoke
@@ -240,8 +240,8 @@ Test.EveryTick = function(event)
         end
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then
-                local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train)
-                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "train stopped doesn't match origional")
                     return
                 end
@@ -255,8 +255,8 @@ Test.EveryTick = function(event)
         if trainAtExitPortal ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
             if trainAtExitPortal.state == defines.train_state.wait_station or trainAtExitPortal.state == defines.train_state.no_schedule then
-                local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(trainAtExitPortal)
-                if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal, 0.75)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "part of train at end of portal doesn't match origional")
                     return
                 end
@@ -267,12 +267,14 @@ Test.EveryTick = function(event)
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.secondTargetReached then
         -- Try both second stations, only one will end up with a train.
         local stationSecondTrain = testDataBespoke.stationSecondForwards.get_stopped_train()
+        local stoppedTrainFacing = 0.75
         if stationSecondTrain == nil then
             stationSecondTrain = testDataBespoke.stationSecondReverse.get_stopped_train()
+            stoppedTrainFacing = 0.75 -- Seems counter intuative, but gives the correct answer and the tunnel ahsn't been used so must be right.
         end
         if stationSecondTrain ~= nil then
-            local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(stationSecondTrain)
-            if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain, stoppedTrainFacing)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                 TestFunctions.TestFailed(testName, "train at second station doesn't match origional")
                 return
             end

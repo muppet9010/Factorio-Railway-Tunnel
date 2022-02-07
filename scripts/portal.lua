@@ -192,6 +192,9 @@ Portal.CreateGlobals = function()
     global.portals.transitionUsageDetectorEntityIdToPortal = global.portals.transitionUsageDetectorEntityIdToPortal or {} ---@type table<UnitNumber, Portal> @ Used to be able to identify the portal when the transition train detection entity is killed.
     global.portals.portalPartInternalConnectionSurfacePositionStrings = global.portals.portalPartInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalPartSurfacePositionObject> @ a lookup for internal positions that portal parts can be connected on. Includes the parts's frontInternalSurfacePositionString and rearInternalSurfacePositionString as keys for lookup.
     global.portals.portalTunnelInternalConnectionSurfacePositionStrings = global.portals.portalTunnelInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by internal position string for trying to connect to an underground.
+
+    --- The layer to draw graphics at that hide the train. Debug options can lower this so that trains appear on top of it for visual inspection.
+    global.portalGraphicsLayerOverTrain = "higher-object-above"
 end
 
 Portal.OnLoad = function()
@@ -639,7 +642,7 @@ Portal.PortalComplete = function(portal)
             endPortalPart.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
-                render_layer = "higher-object-above",
+                render_layer = global.portalGraphicsLayerOverTrain,
                 target = endPortalPart.entity_position,
                 surface = endPortalPart.surface
             }
@@ -653,7 +656,7 @@ Portal.PortalComplete = function(portal)
                 portalSegment.graphicRenderIds,
                 rendering.draw_sprite {
                     sprite = "railway_tunnel-portal_graphics-portal_complete-middle-0_" .. tostring(portalSegment.entity_orientation * 100),
-                    render_layer = "higher-object-above",
+                    render_layer = global.portalGraphicsLayerOverTrain,
                     target = portalSegment.entity_position,
                     surface = portalSegment.surface
                 }
@@ -868,7 +871,7 @@ Portal.On_PreTunnelCompleted = function(portals)
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-near-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
-                render_layer = "higher-object-above",
+                render_layer = global.portalGraphicsLayerOverTrain,
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
             }
@@ -1127,7 +1130,7 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
-                render_layer = "higher-object-above",
+                render_layer = global.portalGraphicsLayerOverTrain,
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
             }

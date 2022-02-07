@@ -1,5 +1,5 @@
 -- Tests a lot of variations of trains against the snap shot comparison Test Function. Needed to ensure its accuracy as a lot of other tests rely upon it. Train comparison has a lot of reversal combinations that make the function logic surprisingly complicated.
--- Test with the flipped colors proves limitations with the TestFunctions.AreTrainSnapshotsProbablyIdentical() function not able to distinguish between reversed trains and trains with odd single attributes (color) as the train snapshot is taken with "facingForwards" in relation to the lead carriage in the train.
+-- The expected outcome test logic used to define what trains are viewed as identical shows much of the complexity in variation combinations of "wrong" changes that togeatehr give the same output as the correct flipping of a train.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -37,12 +37,12 @@ local SecondTrainCarriageFacing = {
 
 ---@class Tests_TCT_SecondTrainCarriageColors
 local SecondTrainCarriageColors = {
-    followCarriage = "followCarriage" -- Color will stay with the carriage when its position in the train is re-arranged.
-    --oppositeCarriage = "oppositeCarriage" -- Color will switch to the opposite to the current carriage's color. - DONT USE as it proves the limitations to the test functions ability to check flipped and mutilated trains.
+    followCarriage = "followCarriage", -- Color will stay with the carriage when its position in the train is re-arranged.
+    oppositeCarriage = "oppositeCarriage" -- Color will switch to the opposite to the current carriage's color.
 }
 
 -- Test configuration.
-local DoMinimalTests = false -- The minimal test to prove the concept.
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificFirstTrainFilter = {} -- Pass in an array of FirstTrain keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
@@ -120,7 +120,7 @@ Test.EveryTick = function(event)
 
     -- Wait for 10 ticks before fdoing the test so the onscreen text can appear.
     if testDataBespoke.doActionTick == nil then
-        testDataBespoke.doActionTick = event.tick + 10
+        testDataBespoke.doActionTick = event.tick + 30
         return
     end
     if event.tick < testDataBespoke.doActionTick then
@@ -130,7 +130,7 @@ Test.EveryTick = function(event)
     -- Checking if comparison matches the expected outcome.
     local train1Snapshot = Test.MakeTrainSnapshotFromShorthand(testScenario.firstTrainShorthand)
     local train2Shanpshot = Test.MakeTrainSnapshotFromShorthand(testScenario.secondTrainShorthand)
-    local comparisonResult = TestFunctions.AreTrainSnapshotsProbablyIdentical(train1Snapshot, train2Shanpshot, false)
+    local comparisonResult = TestFunctions.AreTrainSnapshotsIdentical(train1Snapshot, train2Shanpshot, false)
     local expectedSame = testScenario.expectedResult == ExpectedOutcome.same
     if comparisonResult == expectedSame then
         TestFunctions.TestCompleted(testName)
@@ -224,20 +224,29 @@ Test.GenerateTestScenarios = function(testName)
                             end
                         end
                     end
-                    -- Code not used due to limitations in trian snapshot handling manipulated individual values, see comment at top of file.
-                    --[[if secondTrainCarriageColors == SecondTrainCarriageColors.oppositeCarriage then
+                    if secondTrainCarriageColors == SecondTrainCarriageColors.oppositeCarriage then
                         for i, carriage in pairs(secondTrainShorthand) do
                             carriage.colorNumber = (#secondTrainShorthand - i) + 1
                         end
-                    end]]
-                    -- Work out the expected result for each combination. Same ones are identical and when the carriages are all in reverse order (colors stay with carriage) and the carriages all face reverse.
+                    end
+
+                    -- Work out the expected result for each combination.
                     ---@type Tests_TCT_ExpectedOutcome
                     local expectedResult
                     if secondTrainCarriageOrder == SecondTrainCarriageOrder.forward and secondTrainCarriageFacing == SecondTrainCarriageFacing.regular and secondTrainCarriageColors == SecondTrainCarriageColors.followCarriage then
-                        -- All teh same as first train.
+                        -- All the same as first train.
                         expectedResult = ExpectedOutcome.same
                     elseif secondTrainCarriageOrder == SecondTrainCarriageOrder.reverse and secondTrainCarriageFacing == SecondTrainCarriageFacing.flipped and secondTrainCarriageColors == SecondTrainCarriageColors.followCarriage then
-                        -- Train carriage order reversed and backwards facing, but colors remain with carriages.
+                        -- Train carriage order reversed and backwards facing, but colors remain with carriages. This is a natural flipping of the the train
+                        expectedResult = ExpectedOutcome.same
+                    elseif secondTrainCarriageOrder == SecondTrainCarriageOrder.reverse and secondTrainCarriageFacing == SecondTrainCarriageFacing.flipped and secondTrainCarriageColors == SecondTrainCarriageColors.oppositeCarriage then
+                        -- This is a false positive type situation, but end result is identical to if it had flipped correctly.
+                        expectedResult = ExpectedOutcome.same
+                    elseif secondTrainCarriageOrder == SecondTrainCarriageOrder.forward and secondTrainCarriageFacing == SecondTrainCarriageFacing.regular and secondTrainCarriageColors == SecondTrainCarriageColors.followCarriage then
+                        -- This is a false positive type situation, but end result is identical to if it had flipped correctly.
+                        expectedResult = ExpectedOutcome.same
+                    elseif #secondTrainShorthand == 2 and secondTrainCarriageOrder == SecondTrainCarriageOrder.forward and secondTrainCarriageFacing == SecondTrainCarriageFacing.regular and secondTrainCarriageColors == SecondTrainCarriageColors.oppositeCarriage then
+                        -- When there are exactly 2 carriages in a train the flipped colors looks identical to the test. This is an oddity.
                         expectedResult = ExpectedOutcome.same
                     else
                         -- All of manipulations in any combination.
@@ -271,7 +280,7 @@ end
 ---@field typeChar "<"|">"|"-"|"="
 ---@field colorNumber uint @ Color is just its order in the first train. As this is saved in to the carriage it will follow the carraige when the second trian has its carriages moved around.
 
---- Converts shorthand in to a valid train snapshot for comparison.
+--- Converts shorthand in to a valid train snapshot for comparison. It assumes that the train is heading through a tunnel to the east.
 --- This can't be run during OnStartup as it references "game" so has to be called from OnTick.
 ---@param trainCarriagesShorthand Tests_TCT_TrainCarriageShorthand[]
 ---@return TestFunctions_TrainSnapshot trainSnapshot

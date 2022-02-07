@@ -36,14 +36,15 @@ local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
+local HidePortalGraphics = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regualr player experience set this to FALSE.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 ---@type table<TestManager_TestName, TestManager_TestToRun>
 local TestsToRun = {
     -- Regular train using tunnel tests:
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
-    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
     DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
@@ -208,7 +209,14 @@ TestManager.OnStartup = function()
     game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
-    -- Create the global test management state data. Lua script funcctions can't be included in to global object.
+    -- If option to hide portal graphics is set then change the Portal globla setting.
+    if HidePortalGraphics then
+        global.portalGraphicsLayerOverTrain = "lower-object"
+    else
+        global.portalGraphicsLayerOverTrain = "higher-object-above"
+    end
+
+    -- Create the global test management state data. Lua script functions can't be included in to global object.
     for testName, test in pairs(TestsToRun) do
         if test.enabled or (AllTests and not test.notInAllTests) then
             global.testManager.testsToRun[testName] = {

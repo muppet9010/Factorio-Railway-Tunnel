@@ -1,4 +1,4 @@
--- Sends a short train across a tunnel pathign to a rail, rather than station.
+-- Sends a short train across a tunnel pathing to a rail, rather than station.
 
 local Test = {}
 local TestFunctions = require("scripts/test-functions")
@@ -42,7 +42,8 @@ Test.Start = function(testName)
     local testDataBespoke = {
         farWestRailReached = false, ---@type boolean
         farEastRailReached = false, ---@type boolean
-        origionalTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(train),
+        preFirstTunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75), ---@type TestFunctions_TrainSnapshot
+        preSecondTunnelTrainSnapshot = nil, ---@type TestFunctions_TrainSnapshot
         farWestRail = farWestRail, ---@type LuaEntity
         farEastRail = farEastRail ---@type LuaEntity
     }
@@ -66,17 +67,18 @@ Test.EveryTick = function(event)
     local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
 
     if westTrain ~= nil and not testDataBespoke.farWestRailReached then
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(westTrain)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain, 0.75)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preFirstTunnelTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached west rail, but with train differences")
             return
         end
         game.print("train reached west rail")
         testDataBespoke.farWestRailReached = true
+        testDataBespoke.preSecondTunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain, 0.25)
     end
     if eastTrain ~= nil and not testDataBespoke.farEastRailReached then
-        local currentTrainSnapshot = TestFunctions.GetApproxSnapshotOfTrain(eastTrain)
-        if not TestFunctions.AreTrainSnapshotsProbablyIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(eastTrain, 0.25)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preSecondTunnelTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached east rail, but with train differences")
             return
         end
