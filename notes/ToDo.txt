@@ -3,7 +3,6 @@ Now
     - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?". Theres a blueprint of a small loop that triggers the issue.
         - The 1-0 train is leaving the tunnel very fast and going on a small loop back in to its own tunnel. The arrive signal is the entrance signal on the portal it is currently leaving. We don't detect this as special, only the exit signal. The path is quite long, but then when we path directly to the target rail it ends up very short, and our general code doesn't handle this very short distance it seems (as usaully this would be the special case exit signal).
         - With a 1-1 train the target signal is the blocker signal in the portal the train is leaving, but its done a loop and come back in. This train only triggres the 0 distance in 1 direction through the tunnel as it doesn't have enough speed after triggering the oddity by the time it next re-enters the tunnel (1-1 accelerates slower than 1-0).
-    Question is how do I deal with it. A regular train doing a non stop loop on equivilent track doesn't slow down at all. I could cache the 2 entry signals that are targetted across the examples and have them treated as full speed ahead, i.e. ignore that its arriving at a signal. It would thne likely mirror vaniall train and should just requiring checkign a few extra cached signal unit numbers to cover the edge case.
 
 
 Bugs

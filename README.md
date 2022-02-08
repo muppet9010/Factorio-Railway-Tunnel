@@ -42,8 +42,11 @@ Usage Notes
 Known Limitations
 =================
 
+There are certain limitations of the mod which have been chosen over alternatives. The reasons for these choices can include keeping the mod as light UPS wise as possible, to avoid overly complciated code logic for non standard (edge) use cases or just due to limitations in Factorio and how a mod can interact with it.
+
 - When a tunnel is being used bi-directionally (2 ways) and 2 trains simultaneously approach the tunnel from opposite ends at slow speeds, in some cases they can both be allowed to reserve a path into the tunnel. When they both reach the portal they will be mutually blocking each other from using the tunnel, leaving the rails deadlocked. At present the 2 trains are stopped and a GUI alert is raised for both trains to the player to manually resolve as it should be a very rare occurrence. This is not an issue when the tunnel is being used in a single direction rail line, as is the mod's primary expected use case.
 - Trains kill counts will be lost when using a tunnel as the Factorio API doesn't allow this to be set by a mod. It will also be artificially inflated by 1 when a train leaves the tunnel. Factorio API request: https://forums.factorio.com/viewtopic.php?f=28&t=99049
+- Trains leaving a portal very fast which plan to do a non stop loop straight back in to the same tunnel portal will instead leave very slowly. This is to protect against a leaving train haven't already reserved its own tunnel again, as this is an unsupported usage case and shouldn't ever exist in a real rail network.
 
 
 Mod Compatibility

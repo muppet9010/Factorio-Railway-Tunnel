@@ -58,7 +58,7 @@ local TestsToRun = {
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
     ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-abort")},
     ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-indecisive")},
-    CachedTunnelData = {enabled = false, testScript = require("tests/cached-tunnel-data")},
+    BidirectionalTunnelLoop = {enabled = false, testScript = require("tests/bidirectional-tunnel-loop")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
@@ -76,6 +76,7 @@ local TestsToRun = {
     -- Code Internal tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
     TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
+    CachedTunnelData = {enabled = false, testScript = require("tests/cached-tunnel-data")},
     -- Odd scenario tests (raised for fixing odd real world issue and just kept since):
     ClosedSignalPostTunnelStoppingPositionTest = {enabled = false, testScript = require("tests.closed-signal-post-tunnel-stopping-position-test")},
     -- UPS Tests:
