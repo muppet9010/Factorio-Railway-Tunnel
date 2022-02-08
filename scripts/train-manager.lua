@@ -524,7 +524,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         -- Calculate the delayed arrival time and delay the schedule to this. This will account for the full speed change and will account for if the train entered the tunnel overly fast, making the total duration and leaving speed correct.
 
         local currentForcesBrakingBonus = managedTrain.force.train_braking_force_bonus
-        distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - 6 -- Remove the 3 rails at the end of the portal that are listed in train's path. The train is already on these and so they can't be braked over.
+        distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - 6 -- Remove the 3 straight rails at the end of the portal that are listed in train's path. The train is already on these and so they can't be braked over.
 
         if distanceBeyondTrainLeavingPosition <= 0 then
             -- Hit at 0 distance with 1-1 on a loop post tunnel back to tunnel.
