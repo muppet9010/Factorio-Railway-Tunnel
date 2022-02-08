@@ -200,11 +200,11 @@ Test.GenerateTestScenarios = function(testName)
 
     -- Work out what specific instances of each type to do.
     local finalActionChangeReasonsToTest  ---@type Tests_TUCE_FinalActionChangeReasons[]
-    if DoMinimalTests then
-        finalActionChangeReasonsToTest = FinalActionChangeReasons
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         finalActionChangeReasonsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(FinalActionChangeReasons, SpecificFinalActionChangeReasonsFilter)
+    elseif DoMinimalTests then
+        finalActionChangeReasonsToTest = FinalActionChangeReasons
     else
         -- Do whole test suite.
         finalActionChangeReasonsToTest = FinalActionChangeReasons

@@ -159,18 +159,18 @@ Test.GenerateTestScenarios = function(testName)
     local secondTrainCarriageOrderToTest  ---@type Tests_TCT_SecondTrainCarriageOrder[]
     local secondTrainCarriageFacingToTest  ---@type Tests_TCT_SecondTrainCarriageFacing[]
     local secondTrainCarriageColorsToTest  ---@type Tests_TCT_SecondTrainCarriageColors[]
-    if DoMinimalTests then
-        -- Do all combinations as this working is so critical and really quick.
-        firstTrainToTest = FirstTrain
-        secondTrainCarriageOrderToTest = SecondTrainCarriageOrder
-        secondTrainCarriageFacingToTest = SecondTrainCarriageFacing
-        secondTrainCarriageColorsToTest = SecondTrainCarriageColors
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         firstTrainToTest = TestFunctions.ApplySpecificFilterToListByKeyName(FirstTrain, SpecificFirstTrainFilter)
         secondTrainCarriageOrderToTest = TestFunctions.ApplySpecificFilterToListByKeyName(SecondTrainCarriageOrder, SpecificSecondTrainCarriageOrderFilter)
         secondTrainCarriageFacingToTest = TestFunctions.ApplySpecificFilterToListByKeyName(SecondTrainCarriageFacing, SpecificSecondTrainCarriageFacingFilter)
         secondTrainCarriageColorsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(SecondTrainCarriageColors, SpecificSecondTrainCarriageColorsFilter)
+    elseif DoMinimalTests then
+        -- Do all combinations as this working is so critical and really quick.
+        firstTrainToTest = FirstTrain
+        secondTrainCarriageOrderToTest = SecondTrainCarriageOrder
+        secondTrainCarriageFacingToTest = SecondTrainCarriageFacing
+        secondTrainCarriageColorsToTest = SecondTrainCarriageColors
     else
         -- Do whole test suite.
         firstTrainToTest = FirstTrain

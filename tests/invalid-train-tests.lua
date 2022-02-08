@@ -239,15 +239,15 @@ Test.GenerateTestScenarios = function(testName)
     local stateToRemoveOnToTest  ---@type Tests_ITT_StateToRemoveOn[]
     local delayToTest  ---@type Tests_ITT_Delay[]
     local carriageToRemoveToTest  ---@type Tests_ITT_CarriageToRemove[]
-    if DoMinimalTests then
-        stateToRemoveOnToTest = StateToRemoveOn
-        delayToTest = {Delay.none}
-        carriageToRemoveToTest = {CarriageToRemove.front}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         stateToRemoveOnToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StateToRemoveOn, SpecificStateToRemoveOnFilter)
         delayToTest = TestFunctions.ApplySpecificFilterToListByKeyName(Delay, SpecificDelayFilter)
         carriageToRemoveToTest = TestFunctions.ApplySpecificFilterToListByKeyName(CarriageToRemove, SpecificCarriageToRemoveFilter)
+    elseif DoMinimalTests then
+        stateToRemoveOnToTest = StateToRemoveOn
+        delayToTest = {Delay.none}
+        carriageToRemoveToTest = {CarriageToRemove.front}
     else
         -- Do whole test suite.
         stateToRemoveOnToTest = StateToRemoveOn

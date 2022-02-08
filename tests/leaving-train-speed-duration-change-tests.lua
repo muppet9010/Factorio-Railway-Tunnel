@@ -482,17 +482,17 @@ Test.GenerateTestScenarios = function(testName)
     local tunnelOversizedToTest  ---@type Tests_LTSDCT_TunnelOversized
     local startingSpeedToTest  ---@type Tests_LTSDCT_StartingSpeed
     local leavingTrackConditionToTest  ---@type Tests_LTSDCT_LeavingTrackCondition
-    if DoMinimalTests then
-        trainCompositionToTest = {TrainComposition["<---->"]}
-        tunnelOversizedToTest = {TunnelOversized.none}
-        startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
-        leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         trainCompositionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainComposition, SpecificTrainCompositionFilter)
         tunnelOversizedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelOversized, SpecificTunnelOversizedFilter)
         startingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StartingSpeed, SpecificStartingSpeedFilter)
         leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
+    elseif DoMinimalTests then
+        trainCompositionToTest = {TrainComposition["<---->"]}
+        tunnelOversizedToTest = {TunnelOversized.none}
+        startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
+        leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
     else
         -- Do whole test suite.
         trainCompositionToTest = TrainComposition

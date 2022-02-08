@@ -140,13 +140,13 @@ Test.GenerateTestScenarios = function(testName)
     -- Work out what specific instances of each type to do.
     local firstLettersToTest  ---@type Tests_TMI_FirstLetterTypes[]
     local trainStartingSpeedToTest  ---@type Tests_TMI_TrainStartingSpeeds[]
-    if DoMinimalTests then
-        firstLettersToTest = {FirstLetterTypes.b}
-        trainStartingSpeedToTest = {TrainStartingSpeeds.none, TrainStartingSpeeds.full}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         firstLettersToTest = TestFunctions.ApplySpecificFilterToListByKeyName(FirstLetterTypes, SpecificFirstLetterFilter)
         trainStartingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStartingSpeeds, SpecificTrainStartingSpeedFilter)
+    elseif DoMinimalTests then
+        firstLettersToTest = {FirstLetterTypes.b}
+        trainStartingSpeedToTest = {TrainStartingSpeeds.none, TrainStartingSpeeds.full}
     else
         -- Do whole test suite.
         firstLettersToTest = FirstLetterTypes

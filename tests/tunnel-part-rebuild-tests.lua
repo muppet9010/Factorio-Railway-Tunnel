@@ -250,15 +250,15 @@ Test.GenerateTestScenarios = function(testName)
     local partToRemoveToTest  ---@type Tests_TPRT_PartToRemove[]
     local numberOfPartsToRemoveToTest  ---@type Tests_TPRT_NumberOfPartsToRemove
     local rebuildPartOrderToTest  ---@type Tests_TPRT_RebuildPartOrder
-    if DoMinimalTests then
-        partToRemoveToTest = {PartToRemove.portal_entrance_innerEnd, PartToRemove.portal_entrance_innerSegment, PartToRemove.portal_entrance_middleSegment, PartToRemove.underground_entranceSegment, PartToRemove.underground_middleSegment}
-        numberOfPartsToRemoveToTest = {NumberOfPartsToRemove[2]}
-        rebuildPartOrderToTest = {RebuildPartOrder.removedOrder}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         partToRemoveToTest = TestFunctions.ApplySpecificFilterToListByKeyName(PartToRemove, SpecificPartToRemoveFilter)
         numberOfPartsToRemoveToTest = TestFunctions.ApplySpecificFilterToListByKeyName(NumberOfPartsToRemove, SpecificNumberOfPartsToRemoveFilter)
         rebuildPartOrderToTest = TestFunctions.ApplySpecificFilterToListByKeyName(RebuildPartOrder, SpecificRebuildPartOrderFilter)
+    elseif DoMinimalTests then
+        partToRemoveToTest = {PartToRemove.portal_entrance_innerEnd, PartToRemove.portal_entrance_innerSegment, PartToRemove.portal_entrance_middleSegment, PartToRemove.underground_entranceSegment, PartToRemove.underground_middleSegment}
+        numberOfPartsToRemoveToTest = {NumberOfPartsToRemove[2]}
+        rebuildPartOrderToTest = {RebuildPartOrder.removedOrder}
     else
         -- Do whole test suite.
         partToRemoveToTest = PartToRemove

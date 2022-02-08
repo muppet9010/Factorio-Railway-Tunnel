@@ -271,13 +271,13 @@ Test.GenerateTestScenarios = function(testName)
 
     local targetTunnelRailsToTest  ---@type Tests_PTTRT_TargetTunnelRail
     local nextStopsToTest  ---@type  Tests_PTTRT_NextStopTypes
-    if DoMinimalTests then
-        targetTunnelRailsToTest = {TargetTunnelRail.undergroundSegment}
-        nextStopsToTest = {NextStopTypes.station}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         targetTunnelRailsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TargetTunnelRail, SpecificTargetTunnelRailFilter)
         nextStopsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(NextStopTypes, SpecificNextStopFilter)
+    elseif DoMinimalTests then
+        targetTunnelRailsToTest = {TargetTunnelRail.undergroundSegment}
+        nextStopsToTest = {NextStopTypes.station}
     else
         -- Do whole test suite.
         targetTunnelRailsToTest = TargetTunnelRail

@@ -170,15 +170,15 @@ Test.GenerateTestScenarios = function(testName)
     local actionTypesToTest  ---@type Tests_MDCRTT_ActionTypes[]
     local blockingTrainTypesToTest  ---@type Tests_MDCRTT_BlockingTrainTypes[]
     local segmentsToRemoveToTest  ---@type Tests_MDCRTT_SegmentsToRemove[]
-    if DoMinimalTests then
-        actionTypesToTest = ActionTypes
-        segmentsToRemoveToTest = SegmentsToRemove
-        blockingTrainTypesToTest = {BlockingTrainTypes.onCrossingRail}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         actionTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ActionTypes, SpecificActionTypesFilter)
         segmentsToRemoveToTest = TestFunctions.ApplySpecificFilterToListByKeyName(SegmentsToRemove, SpecificSegmentsToRemoveFilter)
         blockingTrainTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(BlockingTrainTypes, SpecificBlockingTrainTypesFilter)
+    elseif DoMinimalTests then
+        actionTypesToTest = ActionTypes
+        segmentsToRemoveToTest = SegmentsToRemove
+        blockingTrainTypesToTest = {BlockingTrainTypes.onCrossingRail}
     else
         -- Do whole test suite.
         actionTypesToTest = ActionTypes

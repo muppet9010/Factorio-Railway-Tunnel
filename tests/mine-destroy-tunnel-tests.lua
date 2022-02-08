@@ -371,16 +371,16 @@ Test.GenerateTestScenarios = function(testName)
     local trainStatesToTest  ---@type Tests_MDTT_TrainStates
     local tunnelPartsToTest  ---@type Tests_MDTT_TunnelParts
     local removalActionsToTest  ---@type Tests_MDTT_RemovalActions
-    if DoMinimalTests then
-        -- Minimal tests.
-        trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.partiallyOnPortalTrack] = TrainStates.partiallyOnPortalTrack, [TrainStates.leaving] = TrainStates.leaving}
-        tunnelPartsToTest = {TunnelParts.entrancePortal}
-        removalActionsToTest = RemovalActions
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         trainStatesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStates, SpecificTrainStateFilter)
         tunnelPartsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelParts, SpecificTunnelPartFilter)
         removalActionsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(RemovalActions, SpecificRemovalActionFilter)
+    elseif DoMinimalTests then
+        -- Minimal tests.
+        trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.partiallyOnPortalTrack] = TrainStates.partiallyOnPortalTrack, [TrainStates.leaving] = TrainStates.leaving}
+        tunnelPartsToTest = {TunnelParts.entrancePortal}
+        removalActionsToTest = RemovalActions
     else
         -- Do whole test suite.
         trainStatesToTest = TrainStates

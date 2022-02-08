@@ -295,15 +295,15 @@ Test.GenerateTestScenarios = function(testName)
     local targetTypesToTest  ---@type Tests_RTSR_TargetTypes
     local tunnelUsageStatesToTest  ---@type Tests_RTSR_TunnelUsageStates
     local nextScheduleOrdersToTest  ---@type Tests_RTSR_NextScheduleOrders
-    if DoMinimalTests then
-        targetTypesToTest = {TargetTypes.trainStop}
-        tunnelUsageStatesToTest = {TunnelUsageStates.onPortalTrack, TunnelUsageStates.entered, TunnelUsageStates.leaving}
-        nextScheduleOrdersToTest = {NextScheduleOrders.reversal, NextScheduleOrders.none}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         targetTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TargetTypes, SpecificTargetTypesFilter)
         tunnelUsageStatesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelUsageStates, SpecificTunnelUsageStatesFilter)
         nextScheduleOrdersToTest = TestFunctions.ApplySpecificFilterToListByKeyName(NextScheduleOrders, SpecificNextScheduleOrdersFilter)
+    elseif DoMinimalTests then
+        targetTypesToTest = {TargetTypes.trainStop}
+        tunnelUsageStatesToTest = {TunnelUsageStates.onPortalTrack, TunnelUsageStates.entered, TunnelUsageStates.leaving}
+        nextScheduleOrdersToTest = {NextScheduleOrders.reversal, NextScheduleOrders.none}
     else
         -- Do whole test suite.
         targetTypesToTest = TargetTypes

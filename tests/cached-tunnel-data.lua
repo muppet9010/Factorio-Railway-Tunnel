@@ -200,13 +200,13 @@ Test.GenerateTestScenarios = function(testName)
     -- Work out what specific instances of each type to do.
     local trackShapesToTest  ---@type Tests_CTD_TrackShapes[]
     local trainCompositionsToTest  ---@type Tests_CTD_TrainCompositions[]
-    if DoMinimalTests then
-        trackShapesToTest = TrackShapes
-        trainCompositionsToTest = {TrainCompositions["<>"]}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         trackShapesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrackShapes, SpecificTrackShapesFilter)
         trainCompositionsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainCompositions, SpecificTrainCompositionsFilter)
+    elseif DoMinimalTests then
+        trackShapesToTest = TrackShapes
+        trainCompositionsToTest = {TrainCompositions["<>"]}
     else
         -- Do whole test suite.
         trackShapesToTest = TrackShapes
