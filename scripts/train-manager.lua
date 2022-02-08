@@ -487,7 +487,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
                 -- Create a temporary schedule to the signals rail, get the distance and then remove the schedule entry.
                 local signalRail = leavingTrain_signal.get_connected_rails()[1]
                 local schedule = leavingTrain.schedule
-                -- Make the new schedule have a wait condition so we path to this signal rail and not through it towards the real target. Its going to be remvoed before being acted upon anyways.
+                -- Make the new schedule have a wait condition so we path to this signal rail and not through it towards the real target. Its going to be removed before being acted upon anyways.
                 table.insert(
                     schedule.records,
                     schedule.current,
@@ -504,11 +504,11 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
                     }
                 )
                 leavingTrain.schedule = schedule
-                leavingTrain.recalculate_path(true)
-                leavingTrain.manual_mode = false
+                -- Setting a new current schedule record triggers an update of path.
                 distanceBeyondTrainLeavingPosition = leavingTrain.path.total_distance
                 distanceBeyondTrainLeavingPosition = distanceBeyondTrainLeavingPosition - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
                 table.remove(schedule.records, schedule.current)
+                leavingTrain.schedule = schedule
                 -- Restore the train to its origional state.
                 TrainManager.SetTrainToAuto(leavingTrain, managedTrain.targetTrainStop)
 

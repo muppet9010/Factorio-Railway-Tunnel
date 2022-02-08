@@ -1,10 +1,9 @@
 Now
 ---
-
+    - Replace all my require's "/" with "." as auto complete handles this.
 
 Bugs
 ----
-    - Trains are overshooting station at end of tunnel when theres a signal just after the station and the braking distance calculation is basing something on this and setting a temporary stop out on the track miles from tunnel. Might just be 1 rail distance they are overshooting the station by, but in new test as this is a curve and thye are short trains they completely miss it. Present before recent branches, so longer term issue.
     - Short train on small loop through tunnel caused error (added min value to get tests through for now). error text "bad braking requirement?". Theres a blueprint of a small loop that triggers the issue.
     - A train that losses its path when "entering" and has a path backwards, gets a stopping location set on the inside of the exit portal and not the outside. When it starts moving this is back in to the tunnel as a new transition causing its tunnel target rail to be moved to the exit end of the new exit portal (origional entrance). Fix the origional backwards target rail on no path and the second oddness shouldn't occur. This is "remove-target-stop-rail" with "rail" "entered" "reversal".
 	- The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Something must be here for a few ticks to keep the entry singals closed until the exit portal signals circuit wires do the job. Options are below; I think using a new entity entirely is best as neater and saves on having to stop the current train making it roughly UPS cost neutral (first in list):

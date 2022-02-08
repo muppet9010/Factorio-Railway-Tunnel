@@ -41,7 +41,7 @@ local HidePortalGraphics = true -- Makes the portal graphics appear behind the t
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 ---@type table<TestManager_TestName, TestManager_TestToRun>
 local TestsToRun = {
-    -- Regular train using tunnel tests:
+    -- Regular core functionality tests (train using tunnel):
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
     --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
     --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
@@ -72,9 +72,11 @@ local TestsToRun = {
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
-    -- Adhoc tests:
+    -- Code Internal tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
     TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
+    -- Odd scenario tests (raised for fixing odd real world issue and just kept since):
+    ClosedSignalPostTunnelStoppingPositionTest = {enabled = false, testScript = require("tests.closed-signal-post-tunnel-stopping-position-test")},
     -- UPS Tests:
     UpsManyShortTrains = {enabled = false, testScript = require("tests/ups-many-small-trains"), notInAllTests = true},
     UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups-many-large-trains"), notInAllTests = true},
