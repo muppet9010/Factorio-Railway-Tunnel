@@ -1,7 +1,7 @@
 -- UPS only test - Has a lot of short loco's going through medium sized tunnels at once.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = nil
 

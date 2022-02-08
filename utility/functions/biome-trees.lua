@@ -7,11 +7,11 @@
         - Call the desired functions when needed (non _ functions at top of file).
     Supports specifically coded modded trees with meta data. If a tree has tile restrictions this is used for selection after temp and water, otherwise the tags of tile and tree are checked. This logic comes from suppporting alien biomes.
 ]]
-local Utils = require("utility/utils")
-local Logging = require("utility/logging")
+local Utils = require("utility.utils")
+local Logging = require("utility.logging")
 
-local BaseGameData = require("utility/functions/biome-trees-data/base-game")
-local AlienBiomesData = require("utility/functions/biome-trees-data/alien-biomes")
+local BaseGameData = require("utility.functions.biome-trees-data.base-game")
+local AlienBiomesData = require("utility.functions.biome-trees-data.alien-biomes")
 
 local BiomeTrees = {}
 local logNonPositives = false

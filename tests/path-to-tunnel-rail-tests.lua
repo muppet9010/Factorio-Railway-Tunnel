@@ -4,9 +4,9 @@
         nextStop: none, station, rail
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
+local Common = require("scripts.common")
 local TunnelRailEntityNames = Common.TunnelRailEntityNames
 
 ---@class Tests_PTTRT_TargetTunnelRail

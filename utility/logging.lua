@@ -2,7 +2,7 @@
 
 local Logging = {}
 local Constants = require("constants")
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 
 ---@param position Position
 ---@return string

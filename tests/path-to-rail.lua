@@ -1,8 +1,8 @@
 -- Sends a short train across a tunnel pathing to a rail, rather than station.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
 
 Test.RunTime = 1800
 

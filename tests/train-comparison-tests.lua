@@ -2,8 +2,8 @@
 -- The expected outcome test logic used to define what trains are viewed as identical shows much of the complexity in variation combinations of "wrong" changes that togeatehr give the same output as the correct flipping of a train.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
 
 ---@class Tests_TCT_FirstTrain
 local FirstTrain = {

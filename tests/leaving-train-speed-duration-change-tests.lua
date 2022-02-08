@@ -8,9 +8,9 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
+local Common = require("scripts.common")
 
 -- Internal test types.
 ---@type table<string, TestFunctions_TrainSpecifiction> @ The key is generally the train specification composition text string with the speed if set.

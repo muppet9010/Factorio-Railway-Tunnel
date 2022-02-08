@@ -1,9 +1,9 @@
 local TestFunctions = {}
-local Utils = require("utility/utils")
-local EventScheduler = require("utility/event-scheduler")
-local Events = require("utility/events")
-local Colors = require("utility/colors")
-local Common = require("scripts/common")
+local Utils = require("utility.utils")
+local EventScheduler = require("utility.event-scheduler")
+local Events = require("utility.events")
+local Colors = require("utility.colors")
+local Common = require("scripts.common")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------

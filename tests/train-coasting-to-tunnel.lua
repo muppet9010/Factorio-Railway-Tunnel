@@ -1,7 +1,7 @@
 -- Sends a single short train coasting in to a tunnel portal entrance while it is in the differnt schedule states. All should be stopped with the loco at the entrance portal entry point.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 ---@class Tests_TCTT_TrainScheduleStates
 local TrainScheduleStates = {

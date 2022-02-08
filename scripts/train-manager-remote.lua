@@ -1,7 +1,7 @@
 -- The remote interface functions of the Train Manager.
 
 local TrainManagerRemote = {}
-local Events = require("utility/events")
+local Events = require("utility.events")
 
 ---@class RemoteTunnelUsageEntry
 ---@field tunnelUsageId Id

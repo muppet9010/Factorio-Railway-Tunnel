@@ -1,4 +1,4 @@
-local CommonPrototypeFunctions = require("prototypes/common-prototype-functions")
+local CommonPrototypeFunctions = require("prototypes.common-prototype-functions")
 
 local tunnelSignalSurfaceCollisionLayer = MODDATA.railway_tunnel.tunnelSignalSurfaceCollisionLayer
 

@@ -1,8 +1,8 @@
 -- This test runs a train at a tunnel and reserves the tunnel via signal. Then shortly after crossing on to the portal tracks it stops and reverses out of the portal. This is a downgrade from approaching to onPortalTrack. The whole time there is a second train from the other end of the tunnel waiting to enter. The test is completed once the first train aborted and left the portal and the second train can enter the tunnel.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 Test.RunTime = 3600
 

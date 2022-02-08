@@ -2,7 +2,7 @@
     The train moves through the tunnel, but doesn't clear the portal track at one end before returning.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 

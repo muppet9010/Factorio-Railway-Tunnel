@@ -1,9 +1,9 @@
 -- Manages the cached data of trains for use by other modules.
 
 local TrainCachedData = {}
-local Events = require("utility/events")
-local Common = require("scripts/common")
-local Utils = require("utility/utils")
+local Events = require("utility.events")
+local Common = require("scripts.common")
+local Utils = require("utility.utils")
 
 ---@class TrainCachedData
 ---@field id Id @ Train Id

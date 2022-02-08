@@ -5,7 +5,7 @@
 ]]
 --
 
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 
 local Events = {}
 MOD = MOD or {}

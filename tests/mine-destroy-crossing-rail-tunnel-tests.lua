@@ -2,8 +2,8 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
 
 -- Internal test types.
 ---@class Tests_MDCRTT_ActionTypes

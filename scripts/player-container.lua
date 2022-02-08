@@ -2,10 +2,10 @@
 -- Calls to this module from train-manager should be made via interface calls.
 
 local PlayerContainer = {}
-local Events = require("utility/events")
-local Utils = require("utility/utils")
-local EventScheduler = require("utility/event-scheduler")
-local Common = require("scripts/common")
+local Events = require("utility.events")
+local Utils = require("utility.utils")
+local EventScheduler = require("utility.event-scheduler")
+local Common = require("scripts.common")
 local RollingStockTypes = Common.RollingStockTypes
 -- This is required by train-manager as its the parent file and will make a lot of interface calls in otherwise. It also directly uses the managedTrain object passed in, rather than being abstracted.
 

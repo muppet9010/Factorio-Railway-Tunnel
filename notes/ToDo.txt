@@ -1,6 +1,6 @@
 Now
 ---
-    - Replace all my require's "/" with "." as auto complete handles this.
+
 
 Bugs
 ----

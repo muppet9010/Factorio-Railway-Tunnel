@@ -2,7 +2,7 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 ---@class Tests_TOPEMDT_ActionTypes
 local ActionTypes = {

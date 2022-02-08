@@ -3,8 +3,8 @@
         noFuelPoint: onPortalTrack, asEntering, asLeaving
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 ---@class Tests_ROOFT_NoFuelPoints
 local NoFuelPoints = {

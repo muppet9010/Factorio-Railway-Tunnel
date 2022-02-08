@@ -7,7 +7,7 @@
 -- Tests should only use their own blueprint items lists and any searches based off thier own tracked entities. So no getting a forces train list, etc. This is to enable future concurrent running of tests.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 --- How long the test runs for (ticks) before being failed as un-completed. Should be safely longer than the test should take to complete, but can otherwise be approx.
 Test.RunTime = 3600

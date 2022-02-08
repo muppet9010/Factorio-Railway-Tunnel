@@ -3,7 +3,7 @@
     Then when the train passes in to (triggers) the second circuit connected signal the stations switch back, routing the train back through the tunnel.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 

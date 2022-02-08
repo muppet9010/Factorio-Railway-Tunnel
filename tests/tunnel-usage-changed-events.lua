@@ -3,8 +3,8 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 local TunnelUsageAction, TunnelUsageChangeReason = Common.TunnelUsageAction, Common.TunnelUsageChangeReason
 
 ---@class Tests_TUCE_FinalActionChangeReasons

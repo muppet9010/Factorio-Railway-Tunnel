@@ -2,7 +2,7 @@
 -- Note the player being in the train after the tunnel traversal isn't checked by the test.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 Test.RunLoopsMax = 2

@@ -1,4 +1,4 @@
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 
 --[[
     Use a spidertron as it can only have 1 player in it. So no worry about another player trying to get in accidently.

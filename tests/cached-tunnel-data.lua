@@ -2,8 +2,8 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 ---@class Tests_CTD_TrackShapes
 local TrackShapes = {

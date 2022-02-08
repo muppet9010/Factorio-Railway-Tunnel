@@ -3,7 +3,7 @@
 -- Found on a congested train network that was found to have the trains leaving the tunnel overshooting the target station in some cases; resulting in No-Path state. Target station was just before a corner with a rail signal that may have been red at time of train leaving tunnel.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 local Common = require("scripts.common")
 
 --- How long the test runs for (ticks) before being failed as un-completed. Should be safely longer than the test should take to complete, but can otherwise be approx.

@@ -1,7 +1,7 @@
 -- Sends a single loco from the east to the west and loops back again through the tunnel the opposite way.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 

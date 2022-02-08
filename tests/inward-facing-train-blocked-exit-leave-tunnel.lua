@@ -1,8 +1,8 @@
 --[[
     A train that has its locomotive facing inwards, so can't path on its own when it emerges from the tunnel. The entrance signal on the exit portal is blocked in the next rail segment. Short train so fully leaves the tunnel before stopping. After the train has fully stopped the blocking wagon is removed so the train can compete its journey.
 ]]
-local Utils = require("utility/utils")
-local TestFunctions = require("scripts/test-functions")
+local Utils = require("utility.utils")
+local TestFunctions = require("scripts.test-functions")
 local Test = {}
 
 Test.RunTime = 1800

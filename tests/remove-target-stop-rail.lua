@@ -5,9 +5,9 @@
         - NextScheduleOrder = none, forwards, reversal.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
+local Common = require("scripts.common")
 
 ---@class Tests_RTSR_TargetTypes
 local TargetTypes = {

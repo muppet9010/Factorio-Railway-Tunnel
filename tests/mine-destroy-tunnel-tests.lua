@@ -9,8 +9,8 @@
         - Check that the tunnel can/can't be used in both directions based on if the tunnel part was healed (automatically replaced) for an invalid mining or if the train is left with no path to its destination.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 -- These must be the same name as Common.TunnelUsageAction, with the exception of "none" and "partiallyOnPortalTrack".
 ---@class Tests_MDTT_TrainStates

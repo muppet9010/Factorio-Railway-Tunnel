@@ -9,7 +9,7 @@
     Purpose of the test is to ensure that the reservation on the target station is held continuously without any gaps while the train is traveling through the tunnel, so that no other train can start moving towards the target station if it is full
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 

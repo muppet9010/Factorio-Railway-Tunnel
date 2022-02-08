@@ -8,7 +8,7 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 -- Internal test types.
 --- Class name includes the abbreviation of the test name to make it unique across the mod.

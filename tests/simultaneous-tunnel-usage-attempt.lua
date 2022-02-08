@@ -4,8 +4,8 @@
     Breaks due to known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed. At present the 2 trains are stopped and a GUI alert is raised for both trains and the player has to resolve it. This test currently verifies this work around situation.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
 
 -- How the train triggers the portal first. Done by setting train's starting speed.
 local PortalTriggered = {

@@ -3,7 +3,7 @@
     The loop train is there to test that the tunnel is properly cleared for the next crossing when a train already on the approach repathes away from the tunnel.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 

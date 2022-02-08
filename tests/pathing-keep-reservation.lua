@@ -3,7 +3,7 @@
     When the train returns to the reset station, the RS latch resets and the train limit on target station is set to 1 again. Ready for another test loop.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 

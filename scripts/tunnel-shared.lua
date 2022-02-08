@@ -1,9 +1,9 @@
-local Utils = require("utility/utils")
-local Colors = require("utility/colors")
-local EventScheduler = require("utility/event-scheduler")
-local PlayerAlerts = require("utility/player-alerts")
-local Events = require("utility/events")
-local Common = require("scripts/common")
+local Utils = require("utility.utils")
+local Colors = require("utility.colors")
+local EventScheduler = require("utility.event-scheduler")
+local PlayerAlerts = require("utility.player-alerts")
+local Events = require("utility.events")
+local Common = require("scripts.common")
 local TunnelShared = {}
 
 TunnelShared.OnLoad = function()

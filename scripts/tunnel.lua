@@ -1,10 +1,10 @@
-local Events = require("utility/events")
+local Events = require("utility.events")
 local Tunnel = {}
-local TunnelShared = require("scripts/tunnel-shared")
-local Common = require("scripts/common")
+local TunnelShared = require("scripts.tunnel-shared")
+local Common = require("scripts.common")
 local TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
 --local RollingStockTypes = Common.RollingStockTypes
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 
 ---@class Tunnel @ the tunnel object that managed trains can pass through.
 ---@field id Id @ unqiue id of the tunnel.

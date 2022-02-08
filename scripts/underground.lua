@@ -1,7 +1,7 @@
-local Events = require("utility/events")
-local Utils = require("utility/utils")
-local TunnelShared = require("scripts/tunnel-shared")
-local Common = require("scripts/common")
+local Events = require("utility.events")
+local Utils = require("utility.utils")
+local TunnelShared = require("scripts.tunnel-shared")
+local Common = require("scripts.common")
 local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
 local Underground = {}
 

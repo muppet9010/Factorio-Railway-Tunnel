@@ -1,4 +1,4 @@
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 local Common = {}
 
 -- Make the entity lists.

@@ -7,14 +7,14 @@
 --
 
 local TrainManager = {}
-local Utils = require("utility/utils")
-local Events = require("utility/events")
-local Logging = require("utility/logging")
-local EventScheduler = require("utility/event-scheduler")
-local PlayerContainer = require("scripts/player-container")
-local Common = require("scripts/common")
-local TrainManagerRemote = require("scripts/train-manager-remote")
-local TunnelShared = require("scripts/tunnel-shared")
+local Utils = require("utility.utils")
+local Events = require("utility.events")
+local Logging = require("utility.logging")
+local EventScheduler = require("utility.event-scheduler")
+local PlayerContainer = require("scripts.player-container")
+local Common = require("scripts.common")
+local TrainManagerRemote = require("scripts.train-manager-remote")
+local TunnelShared = require("scripts.tunnel-shared")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageState, Common.TunnelUsageAction
 
 ---@class ManagedTrain

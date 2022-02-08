@@ -4,7 +4,7 @@
     Train set to wait for green signal at train stop. As this green signal is fed by circuit logic on a train arriving this leads to a 1 tick wai before moving off.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 3600
 

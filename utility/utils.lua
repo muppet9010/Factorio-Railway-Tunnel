@@ -9,8 +9,8 @@
 --
 
 local Utils = {}
-local factorioUtil = require("__core__/lualib/util")
-local PrototypeAttributes = require("utility/prototype-attributes")
+local factorioUtil = require("__core__.lualib.util")
+local PrototypeAttributes = require("utility.prototype-attributes")
 
 local math_min, math_max, math_floor, math_ceil, math_sqrt, math_abs, math_random, math_exp, math_rad, math_cos, math_sin = math.min, math.max, math.floor, math.ceil, math.sqrt, math.abs, math.random, math.exp, math.rad, math.cos, math.sin
 local string_match, string_rep, string_find, string_sub, string_len, string_gsub, string_lower = string.match, string.rep, string.find, string.sub, string.len, string.gsub, string.lower

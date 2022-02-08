@@ -1,7 +1,7 @@
 --[[
     Simple entity that only collides with the train layer to block trains placement and passing (if indestructible). Doesn't trigger signals.
 ]]
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 
 local tunnelTrainCollisionLayer = MODDATA.railway_tunnel.tunnelTrainCollisionLayer
 
