@@ -18,10 +18,14 @@ Features to add/change
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
         - Do player riding in train with body and editor mode for all tests to make sure character is/isn't present is tested.
     - Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots. Some thooughts on this and options to resolve:
-        - Can't use active state on rolling stock.
-        - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
-        - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate.
-        - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this.
+        - Observations:
+            - Can't use active state on rolling stock.
+            - Can try setting the transitioning train's artillery wagon's relative_turret_orientation to 0 every tick unless the leavingTrain is in manual_control or has stopped at a station. This doesn't help with player roboports however.
+            - Bobs mods add's equipment grid to all standard carriage prototypes, so can't distinguish robot trains from regular trains purely by carriage prototype name. mod name: bobvehicleequipment.
+        - Options:
+            - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate. Would require identifying if the train has either roboports or artillary wagons in it and then shuffling just that train. Would have a high UPS cost for when robot mods are active on the save..
+            - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this in the neatest and most UPS effecient manner.
+            - Could remove the ammo/robots from the carriages on entry and add them back on leaving. Would require identifying if the train has either roboports or artillary wagons in it and then checking each carriage and caching the removed counts. Sounds fine for artillery wagons as they are simple prototype type check, but roboports would be lots of checking carriage inventories every time when a mod that adds logistic robots to trains is present (bobs mod).
     - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
         - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on breaking time.
         - Will probably need to account for excessive speeds entering the tunnel.
@@ -32,7 +36,7 @@ Features to add/change
             - 2 trains follow each other through the same portal very closely. The first train traverses the tunnel and the second is rejected at the transition point. The second train is asusmed to just sit there un-fixed by the player and it will have been set to manual so it won't auto correct. 2 follow on cases can cause issues:
                 A: The first train leaves the portal and the tunnel is released. The entry signals would still show red entry, but the mod would believe the tunnel is free. This would allow a new manual/coasting/etc train (third) to enter the portal against the red signal and successfully reserve the tunnel as the second train is invisible to the mod. When this third train traverses it would try and be cloned on top of the second train.
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
-    - Make better graphics and use tunnel shadows to hide train carriage shadows of the traversing train.
+    - Make better graphics and use tunnel shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
     - Add a tips & tricks section to cover tunnel and portal construction.
 
 
@@ -43,6 +47,24 @@ UPS / code plans
     - Look at the speed distance test and see if what still causes the slowness on long tunnel/rail test instances. Maybe cloning long distances of track/tunnel parts would help. Or does it flag slowless with large tunnel constructions and this will also affect large BP's being built?
     - Upgrade ManagedTrain rather than calling CreateManagedTrainObject() to recreate it. Theres an OVERHAUL note against it.
     - From adhoc tests around which force see's a train it looks like if we set the first carriage in the train to the rail force the player's train list doesn't include the train. If so we can set the rest of the carriages to the player's force when initially cloning the train and save having to update them all from tunnel to player force upon it starting to leave the tunnel. In worst case may have to set first and last carriage only to tunnel force just to avoid any oddness in new trains lead carriage flipping.
+
+
+Concept change ideas
+--------------------
+    - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
+        - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
+        - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well. Would it be an advantage?
+        - using the real train would resolve the artillery and espcially the roboport mod issue in a very effecient manenr.
+    - Commit train to use tunnel upon triggering portal entry train detector.
+        Pros:
+            - If we did we could create the dummy train at this point, rather than at traversing time.
+            - Set the approaching train to manual and force its speed. Also stop player from affecting its schedule in any way.
+            - Would replace TrainManager.TrainOnPortalTrackOngoing() with calling TrainManager.TrainApproachingOngoing() and letting that manage it.
+            - This probably won't have any UPS impact overall, but should make the logic simplier for edge cases.
+            - Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
+            - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
+        Cons:
+            - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
 
 
 Long term feature plans
@@ -69,25 +91,8 @@ Long term feature plans
 	- Handle forces being merged via event and also surfaces being cleared and deleted. Just to mass updates or state deletion in these cases as they are extreme events.
 
 
-Concept change ideas
---------------------
-    - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
-        - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
-        - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well. Would it be an advantage?
-    - Commit train to use tunnel upon triggering portal entry train detector.
-        Pros:
-            - If we did we could create the dummy train at this point, rather than at traversing time.
-            - Set the approaching train to manual and force its speed. Also stop player from affecting its schedule in any way.
-            - Would replace TrainManager.TrainOnPortalTrackOngoing() with calling TrainManager.TrainApproachingOngoing() and letting that manage it.
-            - This probably won't have any UPS impact overall, but should make the logic simplier for edge cases.
-            - Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
-            - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
-        Cons:
-            - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
-
-
-Ideas
------
+Feature Ideas
+-------------
     - Review what to allow to be built on top of the tunnel segments, either just belts & power poles or anything non trains. At present is nothing, but can be driven over.
     - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels going under them or cause the cliffs to vanish as they can't reshape.
     - Look at if tunnel segments (not rail crossing ones) can be built under water. Should be same placement entity, just a differnet graphics entity on top to show the tunnel on the lake bed. If possible have to work out transition point.
