@@ -467,18 +467,22 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         if leavingTrain_signal_unitNumber == managedTrain.exitPortalEntrySignalOut.id then
             -- Its the exit signal of this portal so just crawl forwards.
             leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
-            scheduleFutureArrival = false --TODO: shouldn't this still be scheduled so that the trains breaking time is accounted for?
+            scheduleFutureArrival = false
         elseif leavingTrain_signal_unitNumber == managedTrain.exitPortalExitSignalIn.id then
-            -- Its the entry signal of this portal as the leaving train has looped back around to the same tunnel. Cccurs for single direction trains.
+            -- Its the entry signal of this portal as the leaving train has looped back around to the same tunnel.
             -- Train can NOT just leave at full speed while it has reserved a full path back around to this tunnel portal's signals. As it triggers the portals entry signals before leaving and thus is trying to chained 2 tunnel usages over each other, which isn't supported. So we need to make it leave very slowly so it will complete leaving the tunnel before its path reserved its loop back to its exit portal. It only occurs on a silly edge case when maing a tiny figure 8 through a tunnel with non stop trains and stations.
             leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
             scheduleFutureArrival = false
         elseif leavingTrain_signal_unitNumber == managedTrain.exitPortalEntryTransitionSignal.id then
-            -- Its the transition signal of this portal as the leaving train has looped back around to the same tunnel. Occurs for dual direction trains.
-            -- Train can NOT just leave at full speed while it has reserved a full path back around to this tunnel portal's signals. As it triggers the portals entry signals before leaving and thus is trying to chained 2 tunnel usages over each other, which isn't supported. So we need to make it leave very slowly so it will complete leaving the tunnel before its path reserved its loop back to its exit portal. It only occurs on a silly edge case when maing a tiny figure 8 through a tunnel with non stop trains and stations.
-            leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
-            --TODO : In this scenario the leaving train has actually stopped and is reversing back in to the tunnel rather than coming out and doing a loop. This happens for trains that can go in both directions, but not for single direciton trains that target the protal entry signal instead (previous if block). So this handling and notes are likely wrong.
-            scheduleFutureArrival = false --TODO: is this right for this werid situation ???
+            -- Its the transition signal of this portal as the leaving train has reversed at speed when trying to leave the tunnel. Occurs for dual direction trains only.
+            -- This should never be a reached state with curretn logic, as if the leaving train is reversing it should start at 0 speed, but this state requires it to start at higher speed.
+            if global.debugRelease then
+                error("leaving train is reversing at starting speed back in to tunnel")
+            else
+                -- Same logic as if it is the exitPortalExitSignalIn which is an expected and supported usage case.
+                leavingTrainNewAbsoluteSpeed = crawlAbsSpeed
+                scheduleFutureArrival = false
+            end
         else
             -- Signal on main rail network so need to work out the rough distance.
 
@@ -1136,45 +1140,66 @@ end
 ---@param managedTrain ManagedTrain
 ---@param schedulePathEndStop? LuaEntity|null @ Just pass through the targeted schedule end stop value and if its nil it will be handled.
 TrainManager.SetLeavingTrainSpeedInCorrectDirection = function(train, absoluteSpeed, managedTrain, schedulePathEndStop)
-    --TODO: if a train has a forwards and a reverse path to the current target this is a certainty on only 1 result. So need to make sure we test the desired forwards first.
     local relativeSpeed = absoluteSpeed -- Updated throughout the function as its found to be wrong.
     local initiallySetForwardsSpeed  ---@type boolean
     local speedWasWrongDirection = false -- If unchnaged means final speed dictates if facing right way. Allows some wrong ways having to set a speed to 0 for it just to be set straight back to a new value.
 
     -- Work out an initial speed to try.
     if managedTrain.leavingTrainMovingForwards == nil then
-        -- No previous forwards known and dual direction trains with loop tracks can path in both directions.
+        -- No previous forwards direction known.
 
-        -- Set the train to auto so it gets a path. We will use the path to work out the correct leaving speed direction for the train.
-        TrainManager.SetTrainToAuto(train, schedulePathEndStop)
-        local trainPath = train.path
-        if trainPath == nil then
-            -- No path so just abort this and the calling code will handle this state.
-            return
-        end
-        local initialPathRail_unitNumber = trainPath.rails[1].unit_number
+        -- Handle the train differently based on if it has loco's in one or 2 directions
+        if managedTrain.trainCachedData.forwardFacingLocomotiveCount == 0 or managedTrain.trainCachedData.backwardFacingLocomotiveCount == 0 then
+            -- Train can only go in 1 direction so we can just set one and if it turns out to be wrong set it for correcting at the end of the function.
+            if managedTrain.trainFacingForwardsToCacheData then
+                train.speed = absoluteSpeed
+                initiallySetForwardsSpeed = true
+            else
+                relativeSpeed = -relativeSpeed
+                train.speed = relativeSpeed
+                initiallySetForwardsSpeed = false
+            end
 
-        -- Have to set train back to manual before trying to set its speed as otherwise as it has a path and its the wrong direction it will error.
-        train.manual_mode = true
+            -- Set the train to auto as this will trigger Factorio to set the speed to 0 if its an invalid direction speed.
+            TrainManager.SetTrainToAuto(train, schedulePathEndStop)
 
-        -- Set an initial best guess on the direction speed to try.
-        -- TODO: is the train entering forwards value any more accurate here? Otherwise it looks to be 50/50.
-        if managedTrain.trainFacingForwardsToCacheData then
-            train.speed = absoluteSpeed
-            initiallySetForwardsSpeed = true
+            -- If speed is back to 0 then it was in the wrong direction.
+            if train.speed == 0 then
+                speedWasWrongDirection = true
+            end
         else
-            relativeSpeed = -relativeSpeed
-            train.speed = relativeSpeed
-            initiallySetForwardsSpeed = false
-        end
-        TrainManager.SetTrainToAuto(train, schedulePathEndStop) -- Have to do after setting speed again to get the train state to update right now.
+            -- With dual direction trains and bi-directional tracks from the tunnel the train can path in both directions to its target conceptually. So we have to do a convoluted check to make sure we set it off in the right direction based on path. This layout could occur on some "normal" rail networks and so has to be handled nicely, despite it baing found in testing with an extreme edge case network (figure 8 through tunnel - BidirectionalTunnelLoop test).
 
-        -- Check if the path with speed has the same first rail as the 0 speed one. If it is then this is the right direction, if its not then we have told a dual direction train to go on some reverse loop.
-        local newTrainPath = train.path
-        if newTrainPath == nil or newTrainPath.rails[1].unit_number ~= initialPathRail_unitNumber then
-            -- Train is pathing the wrong direction or has no path in that direction. This function will correct it later on from the variable being set and will overwrite the speed.
-            speedWasWrongDirection = true
-            train.manual_mode = true -- Needed so we can correct the speed later on.
+            -- Set the train to auto so it gets a path. We will use the path to work out the correct leaving speed direction for the train.
+            TrainManager.SetTrainToAuto(train, schedulePathEndStop)
+            local trainPath = train.path
+            if trainPath == nil then
+                -- No path so just abort this and the calling code will handle this state.
+                return
+            end
+            local initialPathRail_unitNumber = trainPath.rails[1].unit_number
+
+            -- Have to set train back to manual before trying to set its speed as otherwise as it has a path and its the wrong direction it will error.
+            train.manual_mode = true
+
+            -- Set an initial best guess on the direction speed to try. The build forwards for the cache data is more accurate than the train's entering forwards state.
+            if managedTrain.trainFacingForwardsToCacheData then
+                train.speed = absoluteSpeed
+                initiallySetForwardsSpeed = true
+            else
+                relativeSpeed = -relativeSpeed
+                train.speed = relativeSpeed
+                initiallySetForwardsSpeed = false
+            end
+            TrainManager.SetTrainToAuto(train, schedulePathEndStop) -- Have to do after setting speed again to get the train state to update right now.
+
+            -- Check if the path with speed has the same first rail as the 0 speed one. If it is then this is the right direction, if its not then we have told a dual direction train to go on some reverse loop.
+            local newTrainPath = train.path
+            if newTrainPath == nil or newTrainPath.rails[1].unit_number ~= initialPathRail_unitNumber then
+                -- Train is pathing the wrong direction or has no path in that direction. This function will correct it later on from the variable being set and will overwrite the speed.
+                speedWasWrongDirection = true
+                train.manual_mode = true -- Needed so we can correct the speed later on.
+            end
         end
     else
         -- Previous forwards known so use this.

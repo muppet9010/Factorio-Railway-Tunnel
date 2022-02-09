@@ -10,6 +10,8 @@ local Utils = require("utility.utils")
 ---@field carriagesCachedData Utils_TrainCarriageData[] @ The cached carriage details of the train.
 ---@field leadCarriageUnitNumber UnitNumber @ The carriage unit number of the first carriage in the train, regardless of travelling direction or speed.
 ---@field trainLength double @ How much tunnel space the train takes up.
+---@field forwardFacingLocomotiveCount? uint|null @ How many locomotives are facing forwards for the cached carriage data. Only populated when either train speed calculation data is generated.
+---@field backwardFacingLocomotiveCount? uint|null @ How many locomotives are facing backwards for the cached carriage data. Only populated when either train speed calculation data is generated.
 ---@field forwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the forward movement of this cached train.
 ---@field backwardMovingTrainSpeedCalculationData? Utils_TrainSpeedCalculationData|null @ Only populated when required for the backwards movement of this cached train.
 
@@ -129,7 +131,7 @@ TrainCachedData.GetCreateTrainCache = function(train, train_id)
         carriagesCachedData = carriagesCachedData,
         leadCarriageUnitNumber = leadCarriageUnitNumber
     }
-    -- Regsiter the cache.
+    -- Register the cache.
     global.trainCachedData.trains[train_id] = trainCachedData
 
     return trainCachedData
@@ -171,7 +173,6 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         if trainCachedData.forwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
             trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
-            return trainForwardsCacheData
         else
             -- Just update the locomotiveAccelerationPower.
             trainSpeedCalculationData = trainCachedData.forwardMovingTrainSpeedCalculationData
@@ -181,11 +182,41 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         if trainCachedData.backwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
             trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
-            return trainForwardsCacheData
         else
             -- Just update the locomotiveAccelerationPower.
             trainSpeedCalculationData = trainCachedData.backwardMovingTrainSpeedCalculationData
         end
+    end
+
+    -- Only run when speed calculated data is being generated for the first time
+    if trainSpeedCalculationData == nil then
+        -- Record how many locomotives are facing each direction if needed.
+        if trainCachedData.forwardFacingLocomotiveCount == nil then
+            local otherDirectionName, otherDirectionFacing
+            if trainForwardsCacheData then
+                -- Generated full speed data for forwards.
+                trainCachedData.forwardFacingLocomotiveCount = trainCachedData.forwardMovingTrainSpeedCalculationData.forwardFacingLocoCount
+                otherDirectionName = "backwardFacingLocomotiveCount"
+                otherDirectionFacing = false
+            else
+                -- Generated full speed data for backwards.
+                trainCachedData.backwardFacingLocomotiveCount = trainCachedData.backwardMovingTrainSpeedCalculationData.forwardFacingLocoCount
+                otherDirectionName = "forwardFacingLocomotiveCount"
+                otherDirectionFacing = true
+            end
+
+            -- Loop over the cached carriage data and count how many locos are facing the other direction.
+            local otherDirectionCount = 0
+            for _, carriage in pairs(trainCachedData.carriagesCachedData) do
+                if carriage.faceingFrontOfTrain == otherDirectionFacing then
+                    otherDirectionCount = otherDirectionCount + 1
+                end
+            end
+            trainCachedData[otherDirectionName] = otherDirectionCount
+        end
+
+        -- Nothing else needs doing as all data was generated during function call.
+        return trainForwardsCacheData
     end
 
     -- Update the acceleration value back in to the cache on each calling.

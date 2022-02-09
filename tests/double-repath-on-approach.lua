@@ -84,7 +84,6 @@ Test.EveryTick = function(event)
         return
     end
     if stationNorthTrain ~= nil and not testDataBespoke.stationNorthReached then
-        --TODO: this test is still bad as we get snapshots whne train has STOPPED at station.
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain, 0.75)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainPreSecondTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at north station has differences")

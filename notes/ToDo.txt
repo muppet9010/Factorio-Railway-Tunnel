@@ -28,6 +28,7 @@ Features to add/change
         - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate.
         - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this.
     - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
+        - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on breaking time.
         - Will probably need to account for excessive speeds entering the tunnel.
         - Check the train traversing final speed and if it ends up at max then its likely our estimate went over max at some point. So do a backwards calculation to correct it somehow if needed? Check if this is an issue and cause of speed wrongness as just a passing thought noted down, not specifically observed.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
