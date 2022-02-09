@@ -4,11 +4,6 @@ Now
 
 Bugs
 ----
-	- The carriage left behind when a train enters the tunnel appears on the map despite being for another force. Something must be here for a few ticks to keep the entry singals closed until the exit portal signals circuit wires do the job. Options are below; I think using a new entity entirely is best as neater and saves on having to stop the current train making it roughly UPS cost neutral (first in list):
-        - Add a special non map entity of tunnel force to block the signals instead of leaving one of the entering train's carriages. Has UPS cost of new entity creation (17k) and the extra entities removal (12k), but nothing else. Can leave until we remove with the leaving event so no new event schedule required. TOTAL: 29k
-        - Leave it and document as accepted downside right now. Has current UPS cost of having to stop the remining carriage this and next tick (16k), set the entities force and destructible (5.5k). TOTAL: 21.5k
-        - Delay the whole train's removal for the whole traversal time length. Would make the map look more right, but would see both entering and leaving train sitting still in tunnel. Would require having to stop the remining carriage this and next tick (16k). all carriages having their force and destructible set (5.5k x carriages).  TOTAL (1-4-1): 49k
-        - Have an additional scheduled task to tidy the 1 remaing carriage up a few ticks after the train enters. UPS cost of an extra scheduled event being added and run (12k + 1.5K function overhead?), plus the current stop next tick (16k), force and destructible (5.5k) being set just in case. Saves on having to stop the current train. TOTAL: 35k
 
 
 Features to add/change

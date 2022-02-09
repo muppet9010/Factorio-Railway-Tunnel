@@ -35,7 +35,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field approachingTrainMovingForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint. Cleared when the train enters the tunnel.
 ---@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't breaking. Cleared when the train enters the tunnel.
 ---@field approachingTrainReachedFullSpeed? boolean|null @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
----@field entranceSignalClosingCarriage LuaEntity @ The carriage of the approaching train left behind on the entrance portal to keep the signals closed when the approaching train is cloned to the leaving portal. Reference not cleared when train enters tunnel.
+---@field entranceSignalClosingCarriage LuaEntity @ A dummy carriage added on the entrance portal to keep its entry signals closed when the entering train is cloned to the leaving portal. Reference not cleared when train enters tunnel.
 ---
 ---@field portalTrackTrain? LuaTrain|null @ The train thats on the portal track and reserved the tunnel. Cleared when the train enters the tunnel.
 ---@field portalTrackTrainId? Id|null @ The LuaTrain ID of the portalTrackTrain. Cleared when the train enters the tunnel.
@@ -47,7 +47,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field traversalArrivalTick? Tick|null @ The tick the train reaches the far end of the tunnel and is restarted.
 ---@field trainLeavingSpeedAbsolute? double|null @ The absolute speed the train will be set too at the moment it starts leaving the tunnel.
 ---@field traversalInitialSpeedAbsolute? double|null @ The absolute speed the train was going at when it started its traversal.
----@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive
+---@field dummyTrainCarriage? LuaEntity|null @ The dummy train carriage used to keep the train stop reservation alive while the main train is traversing the tunel.
 ---@field targetTrainStop? LuaEntity|null @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
 ---
@@ -318,7 +318,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     -- Set up DummyTrain to maintain station requests.
     managedTrain.tunnelUsageState = TunnelUsageState.underground
     managedTrain.targetTrainStop = approachingTrain.path_end_stop
-    managedTrain.dummyTrain = TrainManager.CreateDummyTrain(managedTrain.exitPortal, approachingTrain.schedule, managedTrain.targetTrainStop, false, managedTrain.force)
+    managedTrain.dummyTrainCarriage = TrainManager.CreateDummyTrain(managedTrain.exitPortal, managedTrain.exitPortal.dummyLocomotivePosition, approachingTrain.schedule, managedTrain.targetTrainStop, false, managedTrain.force)
 
     -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
     -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
@@ -331,22 +331,13 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     managedTrain.traversalArrivalTick = tick + estimatedTicks
     managedTrain.trainLeavingSpeedAbsolute = estimatedSpeedAbsolute
 
-    -- Handle the entering train's carriage entities. Keep the first carriage that we will use to keep the signals closed, as there's a delay in the circuit wires between the exit portal signals triggering the entrance portal signals to close, thus we leave a carriage behind to keep the entrance portal signals closed. Destroy the other train entities as we have finished with them.
-    -- Have to use this reference and not the cached data as it was updated earlier in this function.
-    local entranceSignalClosingCarriage
+    -- Remove the entering train's carriage entities. Have to use this reference and not the cached data as it was updated earlier in this function.
     for i, carriage in pairs(approachingTrain.carriages) do
-        if i == 1 then
-            entranceSignalClosingCarriage = carriage
-        else
-            carriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
-        end
+        carriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
     end
-    -- Cache and handle the carriage from the entering train we are using to keep the signals closed.
-    managedTrain.entranceSignalClosingCarriage = entranceSignalClosingCarriage
-    local entranceSignalClosingCarriage_train = entranceSignalClosingCarriage.train
-    TunnelShared.StopTrainOnEntityCollision(entranceSignalClosingCarriage_train, entranceSignalClosingCarriage_train.id, tick)
-    entranceSignalClosingCarriage.force = global.force.tunnelForce
-    entranceSignalClosingCarriage.destructible = false
+
+    -- Add the entry signal closing entity to keep the signals closed as it takes a few ticks for the signals to update from the cloned carriage.
+    managedTrain.entranceSignalClosingCarriage = TrainManager.CreateDummyTrain(managedTrain.entrancePortal, managedTrain.entrancePortal.leavingTrainFrontPosition, nil, nil, true, global.force.tunnelForce)
 
     -- Complete the state transition.
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel(managedTrain)
@@ -681,24 +672,6 @@ TrainManager.UpdateScheduleForTargetRailBeingTunnelRail = function(managedTrain,
             end
         end
     end
-end
-
----@param managedTrain ManagedTrain
-TrainManager.DestroyDummyTrain = function(managedTrain)
-    -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
-    if managedTrain.dummyTrain ~= nil and managedTrain.dummyTrain.valid then
-        managedTrain.dummyTrain.front_stock.destroy()
-    end
-    managedTrain.dummyTrain = nil
-end
-
--- Remove the carriage that was forcing closed the entrance portal entry signal if its still present.
----@param managedTrain ManagedTrain
-TrainManager.DestroyEntranceSignalClosingLocomotive = function(managedTrain)
-    if managedTrain.entranceSignalClosingCarriage ~= nil and managedTrain.entranceSignalClosingCarriage.valid then
-        managedTrain.entranceSignalClosingCarriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
-    end
-    managedTrain.entranceSignalClosingCarriage = nil
 end
 
 ---@param tunnelRemoved Tunnel
@@ -1052,19 +1025,20 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, sa
     return placedCarriage
 end
 
--- Dummy train keeps the train stop reservation as it has near 0 power and so while actively moving, it will never actaully move any distance.
+-- Dummy train can be used to keep the train stop reservations as it has near 0 power and so while actively moving, it will never actaully move any distance. Also can be used without a schedule to block tracks and trigger signals.
 ---@param exitPortal Portal
+---@param dummyTrainPosition Position
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity
 ---@param skipScheduling boolean
 ---@param force LuaForce
----@return LuaTrain
-TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainStop, skipScheduling, force)
+---@return LuaEntity dummyTrain
+TrainManager.CreateDummyTrain = function(exitPortal, dummyTrainPosition, trainSchedule, targetTrainStop, skipScheduling, force)
     skipScheduling = skipScheduling or false
     local locomotive =
         exitPortal.surface.create_entity {
         name = "railway_tunnel-tunnel_exit_dummy_locomotive",
-        position = exitPortal.dummyLocomotivePosition,
+        position = dummyTrainPosition,
         direction = exitPortal.leavingDirection,
         force = force,
         raise_built = false,
@@ -1075,13 +1049,31 @@ TrainManager.CreateDummyTrain = function(exitPortal, trainSchedule, targetTrainS
 
     local dummyTrain = locomotive.train
     if not skipScheduling then
-        TrainManager.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop)
+        TrainManager.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop, false)
         if global.debugRelease and dummyTrain.state == defines.train_state.destination_full then
             -- If the train ends up in one of those states something has gone wrong.
-            error("dummy train has unexpected state :" .. tonumber(dummyTrain.state) .. "\nexitPortal position: " .. Logging.PositionToString(exitPortal.blockedPortalEnd.entity_position))
+            error("dummy train has unexpected state '" .. tonumber(dummyTrain.state) .. "' at position: " .. Logging.PositionToString(dummyTrainPosition))
         end
     end
-    return dummyTrain
+    return locomotive
+end
+
+---@param managedTrain ManagedTrain
+TrainManager.DestroyDummyTrain = function(managedTrain)
+    -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
+    if managedTrain.dummyTrainCarriage ~= nil and managedTrain.dummyTrainCarriage.valid then
+        managedTrain.dummyTrainCarriage.destroy()
+    end
+    managedTrain.dummyTrainCarriage = nil
+end
+
+-- Remove the carriage that was forcing closed the entrance portal entry signal if its still present.
+---@param managedTrain ManagedTrain
+TrainManager.DestroyEntranceSignalClosingLocomotive = function(managedTrain)
+    if managedTrain.entranceSignalClosingCarriage ~= nil and managedTrain.entranceSignalClosingCarriage.valid then
+        managedTrain.entranceSignalClosingCarriage.destroy {raise_destroy = false} -- Is a special carriage so no other mods need notifying.
+    end
+    managedTrain.entranceSignalClosingCarriage = nil
 end
 
 --- Sets a trains schedule and returns it to automatic, while handling if the train should be in manual mode.
@@ -1091,7 +1083,7 @@ end
 ---@param targetTrainStop LuaEntity
 ---@param skipStateCheck boolean
 TrainManager.TrainSetSchedule = function(train, schedule, isManual, targetTrainStop, skipStateCheck)
-    train.schedule, skipStateCheck = schedule, skipStateCheck or false
+    train.schedule = schedule
     if not isManual then
         TrainManager.SetTrainToAuto(train, targetTrainStop)
         if global.debugRelease and not skipStateCheck and not TrainManager.IsTrainHealthlyState(train) then
@@ -1120,7 +1112,7 @@ end
 ---@param train LuaTrain
 ---@param targetTrainStop LuaEntity
 TrainManager.SetTrainToAuto = function(train, targetTrainStop)
-    --- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The trains on route to a station count don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station
+    --- Train limits on the original target train stop of the train going through the tunnel might prevent the exiting (dummy or real) train from pathing there, so we have to ensure that the original target stop has a slot open before setting the train to auto. The count of trains on route to a station don't update in real time and so during the tick both the deleted train and our new train will both be heading for the station.
     if targetTrainStop ~= nil and targetTrainStop.valid then
         local oldLimit = targetTrainStop.trains_limit
         targetTrainStop.trains_limit = targetTrainStop.trains_count + 1
