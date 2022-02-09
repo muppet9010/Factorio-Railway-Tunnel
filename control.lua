@@ -1,20 +1,22 @@
-local EventScheduler = require("utility/event-scheduler")
-local Tunnel = require("scripts/tunnel")
-local Portal = require("scripts/portal")
-local Underground = require("scripts/underground")
-local TrainManager = require("scripts/train-manager")
-local TrainManagerRemote = require("scripts/train-manager-remote")
-local TestManager = require("scripts/test-manager")
-local Force = require("scripts/force")
-local PlayerContainer = require("scripts/player-container")
-local Events = require("utility/events")
-local Commands = require("utility/commands")
-local PlayerAlerts = require("utility/player-alerts")
-local TunnelShared = require("scripts/tunnel-shared")
+local EventScheduler = require("utility.event-scheduler")
+local Tunnel = require("scripts.tunnel")
+local Portal = require("scripts.portal")
+local Underground = require("scripts.underground")
+local TrainManager = require("scripts.train-manager")
+local TrainManagerRemote = require("scripts.train-manager-remote")
+local TestManager = require("scripts.test-manager")
+local Force = require("scripts.force")
+local PlayerContainer = require("scripts.player-container")
+local Events = require("utility.events")
+local Commands = require("utility.commands")
+local PlayerAlerts = require("utility.player-alerts")
+local TunnelShared = require("scripts.tunnel-shared")
+local TrainCachedData = require("scripts.train-cached-data")
 
 local function CreateGlobals()
-    global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it runs key mod logic code in a try/catch and it does UPS intensive state check so makes code run slower.
+    global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it does some additional state checks so makes code run slower.
 
+    TrainCachedData.CreateGlobals()
     Force.CreateGlobals()
     TrainManager.CreateGlobals()
     TrainManagerRemote.CreateGlobals()
@@ -67,7 +69,7 @@ local function OnLoad()
     -- Handle the debugRelease global setting.
     Commands.Register(
         "railway_tunnel_toggle_debug_state",
-        ": toggles debug handling of mod logic",
+        ": toggles debug stat checking of mod",
         function()
             if global.debugRelease then
                 global.debugRelease = false
@@ -81,6 +83,7 @@ local function OnLoad()
     )
 
     -- Call the module's OnLoad functions.
+    TrainCachedData.OnLoad()
     TunnelShared.OnLoad()
     TrainManager.OnLoad()
     Tunnel.OnLoad()

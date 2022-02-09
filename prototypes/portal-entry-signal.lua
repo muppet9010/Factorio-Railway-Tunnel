@@ -1,6 +1,6 @@
 -- Signal that doesn't appear on the map and has a heavily shifted graphics position so its visible around the portal structure.
 
-local CommonPrototypeFunctions = require("prototypes/common-prototype-functions")
+local CommonPrototypeFunctions = require("prototypes.common-prototype-functions")
 
 local tunnelSignalSurfaceCollisionLayer = MODDATA.railway_tunnel.tunnelSignalSurfaceCollisionLayer
 

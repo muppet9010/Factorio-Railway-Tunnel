@@ -1,5 +1,5 @@
-local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
-local Utils = require("utility/utils")
+local CollisionMaskUtil = require("__core__.lualib.collision-mask-util")
+local Utils = require("utility.utils")
 
 -- Has a collision box, joint distance and connection distance that will make connecting vanilla train carriages impossible to it.
 data:extend(

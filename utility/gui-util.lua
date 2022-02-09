@@ -1,11 +1,11 @@
 -- Library to support making, storing and accessing GUI elements.
 
 local GuiUtil = {}
-local Utils = require("utility/utils")
-local GuiActionsClick = require("utility/gui-actions-click")
-local Logging = require("utility/logging")
+local Utils = require("utility.utils")
+local GuiActionsClick = require("utility.gui-actions-click")
+local Logging = require("utility.logging")
 local Constants = require("constants")
-local StyleDataStyleVersion = require("utility/style-data").styleVersion
+local StyleDataStyleVersion = require("utility.style-data").styleVersion
 
 --[[
     - elementDetails takes everything that GuiElement.add() accepts in Factorio API. Plus compulsory "parent" argument of who to create the GUI element under if it isn't a child element.

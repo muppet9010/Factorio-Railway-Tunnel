@@ -1,4 +1,4 @@
-local Utils = require("utility/utils")
+local Utils = require("utility.utils")
 local CommonPrototypeFunctions = {}
 
 CommonPrototypeFunctions.GetBlankAnimations = function(rotations)

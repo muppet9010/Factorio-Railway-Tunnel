@@ -1,9 +1,9 @@
 local TestFunctions = {}
-local Utils = require("utility/utils")
-local EventScheduler = require("utility/event-scheduler")
-local Events = require("utility/events")
-local Colors = require("utility/colors")
-local Common = require("scripts/common")
+local Utils = require("utility.utils")
+local EventScheduler = require("utility.event-scheduler")
+local Events = require("utility.events")
+local Colors = require("utility.colors")
+local Common = require("scripts.common")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -163,11 +163,14 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData)
 end
 
---- Used to apply an optional filter list of keys against a full list. Includes error catching for passing in bad (empty) filter list.
+--- Used to apply an optional filter list of keys against a full list of key/values. Includes error catching for passing in bad (empty) filter list.
 ---@param fullList table
 ---@param filterList? table|null
 ---@return table
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
+    if Utils.IsTableEmpty(fullList) then
+        error("empty/nil list provided to TestFunctions.ApplySpecificFilterToListByKeyName()")
+    end
     local listToTest
     if Utils.IsTableEmpty(filterList) then
         listToTest = fullList
@@ -183,65 +186,67 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
     return listToTest
 end
 
---- Registers for tunnel usage change notifications to be recorded in the Test Data object's default fields.
+--- Registers for tunnel usage change notifications to be recorded in the Test Data object's tunnelUsageChanges field. To be called from Start().
+--- Used when a test will check tunnel usage events once per tick.
+--- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
+--- If multiple actions occur in the same tick only the last one is visible in the "lastAction" and "lastChangeReason" fields which shouldn't be an issue for normal tests. All the events are in the "actions" field.
+--- If a test needs to react to each train state change in turn then the TestFunctions.RegisterTunnelUsageChangesToTestFunction() function should be used instead.
 ---@param testName string
 TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
-    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions.RecordTunnelUsageChanges", TestFunctions.RecordTunnelUsageChanges)
+    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions._RecordTunnelUsageChanges", TestFunctions._RecordTunnelUsageChanges)
 end
 
----@class TestFunctions_RemoteTunnelUsageChangedEvent : RemoteTunnelUsageChanged
----@field testName string
-
---- Records a tunnel usage change event's details to the test's Test Data object for usage within the test script.
----@param event TestFunctions_RemoteTunnelUsageChangedEvent
-TestFunctions.RecordTunnelUsageChanges = function(event)
-    local testData = TestFunctions.GetTestDataObject(event.testName)
-
-    -- Record the action for later reference.
-    local actionListEntry = testData.actions[event.action]
-    if actionListEntry then
-        actionListEntry.count = actionListEntry.count + 1
-        actionListEntry.recentChangeReason = event.changeReason
-    else
-        testData.actions[event.action] = {
-            name = event.action,
-            count = 1,
-            recentChangeReason = event.changeReason
-        }
-    end
-
-    testData.lastAction = event.action
-    testData.train = event.train
+--- Registers for tunnel usage change notifications to be passed to a test function for processing sequentially. To be called from Start().
+--- Used when a tests needs to react to each event in turn. In most use cases tests only need to check the lastest tunnel usage event per tick and the TestFunctions.RegisterRecordTunnelUsageChanges() function is more approperiate.
+---@param testName string
+---@param testCallbackFunction function @ When called recieves a single argument "event" of type TestFunctions_RemoteTunnelUsageChangedEvent.
+TestFunctions.RegisterTunnelUsageChangesToTestFunction = function(testName, testCallbackFunction)
+    TestFunctions.RegisterTestsEventHandler(testName, remote.call("railway_tunnel", "get_tunnel_usage_changed_event_id"), "TestFunctions.RegisterTunnelUsageChangesToTestFunction", testCallbackFunction)
 end
 
----@class TestFunctions_TrainSnapshot
----@field carriageCount uint @ how many carriages are in this train.
----@field carriages TestFunctions_CarriageSnapshot[]
+---@alias TestFunctions_TrainSnapshot TestFunctions_CarriageSnapshot[]
 
 ---@class TestFunctions_CarriageSnapshot
 ---@field name string @ Entity prototype name
 ---@field health float @ How much health the carriage has.
----@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front.
+---@field facingForwards boolean @ If the carriage is facing forwards relative to the train's front carriage orientation.
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract meta data of a train to be compared later.
+--- Returns an abstract view of a train purely for the purpose of being compared before and after using a tunnel. Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
+---@param forwardsOrientation RealOrientation @ The forwards orientation of this train. If provided the function can be used for a 0 speed train.
 ---@return TestFunctions_TrainSnapshot
-TestFunctions.GetSnapshotOfTrain = function(train)
+TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
     -- Gets a snapshot of a train carriages details. Allows comparing train carriages without having to use their unit_number, so supports post cloning, etc.
     -- Doesn't check fuel as this can be used up between snapshots.
     -- Any table values for comparing should be converted to JSON to make them simple to compare later.
 
     ---@type TestFunctions_TrainSnapshot
-    local snapshot = {
-        carriageCount = #train.carriages,
-        carriages = {} ---@type TestFunctions_CarriageSnapshot[]
-    }
-    local previousCarriageOrientation, previousCarriageFacingFowards = train.front_stock.orientation, true
+    local trainSnapshot = {}
+
+    -- Work out initial orientation and facing values. If forwardsOrientation of the train is given then use that, otherwise have to use the trains speed.
+    local previousCarriageOrientation  ---@type RealOrientation
+    local previousCarriageFacingFowards  ---@type boolean
+    if forwardsOrientation ~= nil then
+        previousCarriageOrientation = forwardsOrientation
+        previousCarriageFacingFowards = true
+    else
+        if train.speed == 0 then
+            error("TestFunctions.GetSnapshotOfTrain() called for 0 speed train and no forwardsOrientation provided")
+        end
+        previousCarriageOrientation = train.carriages[1].orientation
+        if train.speed == train.carriages[1].speed then
+            previousCarriageFacingFowards = true
+        else
+            previousCarriageFacingFowards = false
+        end
+    end
+
+    -- Iterate over the trian carriages and work out their facing details.
     for _, realCarriage in pairs(train.carriages) do
         ---@type TestFunctions_CarriageSnapshot
-        local snapCarriage = {
+        local snapshotCarriage = {
             name = realCarriage.name,
             health = realCarriage.health
         }
@@ -249,65 +254,75 @@ TestFunctions.GetSnapshotOfTrain = function(train)
         -- A train on a curve will have the same facing carriages roughly on the same orientation as the ones each side.
         -- Handle the number wraping within 1 and 0. If its closer < 0.25 either way then its facing same direction, > 0.25 and < 0.75 then its facing away.
         if (realCarriage.orientation > previousCarriageOrientation - 0.25 and realCarriage.orientation < previousCarriageOrientation + 0.25) or realCarriage.orientation > previousCarriageOrientation + 0.75 or realCarriage.orientation < previousCarriageOrientation - 0.75 then
-            snapCarriage.facingForwards = previousCarriageFacingFowards
+            snapshotCarriage.facingForwards = previousCarriageFacingFowards
         else
-            snapCarriage.facingForwards = not previousCarriageFacingFowards
+            snapshotCarriage.facingForwards = not previousCarriageFacingFowards
         end
 
         if realCarriage.type ~= "locomotive" then
             -- Exclude locomotives as we don't want to track their fuel amounts, as they'll be used as the train moves.
-            snapCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
+            snapshotCarriage.cargoInventory = game.table_to_json(realCarriage.get_inventory(defines.inventory.cargo_wagon).get_contents())
         end
-        table.insert(snapshot.carriages, snapCarriage)
+        table.insert(trainSnapshot, snapshotCarriage)
 
         if realCarriage.color ~= nil then
-            snapCarriage.color = game.table_to_json(realCarriage.color)
+            snapshotCarriage.color = game.table_to_json(realCarriage.color)
         end
 
-        previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapCarriage.facingForwards
+        previousCarriageOrientation, previousCarriageFacingFowards = realCarriage.orientation, snapshotCarriage.facingForwards
     end
-    return snapshot
+    return trainSnapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure.
----@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
----@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.GetSnapshotOfTrain().
+--- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel. Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
+---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
+---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
----@return boolean
+---@return boolean ifSnapshotsAreIdentical.
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
-    -- Handles if the "front" of the train has reversed as when trains are placed Factorio can flip the "front" compared to before. Does mean that this function won't detect if a symetrical train has been flipped.
-    allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
-
-    local currentSnapshotCarriages = currentTrainSnapshot.carriages
-
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
-    if not allowPartialCurrentSnapshot and origionalTrainSnapshot.carriageCount ~= currentTrainSnapshot.carriageCount then
+    allowPartialCurrentSnapshot = allowPartialCurrentSnapshot or false
+    if not allowPartialCurrentSnapshot and #origionalTrainSnapshot ~= #currentTrainSnapshot then
         return false
     end
 
-    -- Check the 2 trains starting in the same order and facingForwards as this is most likely scenario (perfect copy). Then check combinations of facing backwards (new train is declared backwards due to build order by Factorio magic) and iterate the carriage list backwards (new train is generally running backwards).
-    for _, reverseFacingFowards in pairs({false, true}) do
-        for _, currentCarriageIterator in pairs({"iterateCarriagesForwards", "iterateCarriagesBackwards"}) do
-            local difference
-            for carriageNumber = 1, currentTrainSnapshot.carriageCount do
-                local currentCarriageCount
-                if currentCarriageIterator == "iterateCarriagesForwards" then
-                    currentCarriageCount = carriageNumber
-                else
-                    currentCarriageCount = (carriageNumber - #currentSnapshotCarriages) + 1
-                end
-                difference = TestFunctions._DoCarriageSnapshotsMatch(origionalTrainSnapshot.carriages[carriageNumber], currentSnapshotCarriages[currentCarriageCount], reverseFacingFowards)
-                if difference then
-                    break
-                end
+    -- Check the 2 trains in the 2 valid forms to see if they match in either of them and are thus the same train. Check the trains in the same iteration & facing first to see if they just match, and then check them in reverse iteration & reverse facing to see if they are just "flipped".
+    for _, comparisonType in pairs({"same", "reversed"}) do
+        local difference
+        -- Loop over each carriage in the train for this comparison setup looking for differences.
+        for origionalCarriageNumber = 1, #origionalTrainSnapshot do
+            local reverseCurrentCarriage, currentCarriageNumber
+            if comparisonType == "same" then
+                reverseCurrentCarriage = false
+                currentCarriageNumber = origionalCarriageNumber
+            else
+                reverseCurrentCarriage = true
+                currentCarriageNumber = #origionalTrainSnapshot - (origionalCarriageNumber - 1)
             end
-            if difference == nil then
-                return true
+            difference = TestFunctions._DifferenceBetween2CarriageSnapshots(origionalTrainSnapshot[origionalCarriageNumber], currentTrainSnapshot[currentCarriageNumber], reverseCurrentCarriage)
+            if difference ~= nil then
+                -- A difference found in this train's carriage so stop checking this comparison setup.
+
+                if not allowPartialCurrentSnapshot then
+                    -- If the function was called not allowing partial train compare then a mismatch of carriage counts here is a code bug in this compare function.
+                    if difference == "carriage1 is nil" or difference == "carriage2 is nil" then
+                        error("Comparing train snapshots went wrong on working out carriages to compare")
+                    end
+                end
+
+                -- Stop checking this train.
+                break
             end
         end
-    end
 
-    -- All combinations tested and none have 0 differences, so train snapshots don't match.
+        -- If no difference is found across the entire train then it must match in this configuration, thus is the same train snapshot.
+        if difference == nil then
+            return true
+        end
+    end
+    --end
+
+    -- All combinations tested and none had no differences, so train snapshots don't match.
     return false
 end
 
@@ -361,7 +376,7 @@ end
 ---@field prototypeName string
 ---@field facingForwards boolean
 
---- Builds a train from a set starting position away from the "forwards" direction.
+--- Builds a train from a set starting position away from the "forwards" direction. Locomotives are randomly colored.
 ---@param firstCarriageFrontLocation Position @ The front tip of the lead carriages collision box.
 ---@param carriagesDetails TestFunctions_TrainCarriageDetailsForBulding[] @ The carriages to be built, listed front to back.
 ---@param trainForwardsDirection defines.direction @ Only supports cardinal points.
@@ -375,9 +390,9 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
     local placementPosition = firstCarriageFrontLocation
     local locomotivesBuilt, cargoWagonsBuilt = {}, {}
     local trainReverseDirection = Utils.LoopDirectionValue(trainForwardsDirection + 4)
-    local trainForwardsOrientation = Utils.DirectionToOrientation(trainForwardsDirection)
+    local trainForwardsOrientation = trainForwardsDirection / 8
     for carriageNumber, carriageDetails in pairs(carriagesDetails) do
-        local carriageEndPositionOffset = Utils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.GetCarriagePlacementDistance(carriageDetails.prototypeName)})
+        local carriageEndPositionOffset = Utils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.CarriagePlacementDistances[carriageDetails.prototypeName]})
         -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
         placementPosition = Utils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
         local carriageBuildDirection
@@ -549,9 +564,37 @@ end
 TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWagons, artilleryWagons)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
     if locomotives ~= nil then
+        local color, colorId, secondaryColorsRemaining
+        local primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
+        local currentColorRange, colorLoops = primaryColorsRemaining, 0
         for _, carriage in pairs(locomotives) do
             carriage.train.manual_mode = false
-            carriage.color = {math.random(0, 255), math.random(0, 255), math.random(0, 255), 1}
+
+            -- Do preset colors to avoid 2 colors being very close to each other and don't repeat within the same train.
+
+            -- If theres no current colors left then nede to look for more.
+            if #currentColorRange == 0 then
+                if secondaryColorsRemaining == nil then
+                    -- Secondary colors not initialised so get them and switch to them.
+                    secondaryColorsRemaining = Utils.DeepCopy(TestFunctions.SecondaryLocomotiveColors)
+                    currentColorRange = secondaryColorsRemaining
+                else
+                    -- Second colors have all been used up so repopulate the primary and clear the secondary in case later use needs them.
+                    secondaryColorsRemaining = nil
+                    primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
+                    currentColorRange = primaryColorsRemaining
+                    colorLoops = colorLoops + 1
+                end
+            end
+
+            -- Get a random color and apply it.
+            colorId = math.random(1, #currentColorRange)
+            color = currentColorRange[colorId]
+            color[4] = 255 - colorLoops -- This ensures that the color is techncially unique as on the full usage of all primary and secondary colors the alpha will be 1 lower for all colors in the new range usage.
+            carriage.color = color
+
+            -- Remove the color from the current range.
+            table.remove(currentColorRange, colorId)
         end
     end
     if cargoWagons ~= nil then
@@ -608,6 +651,37 @@ TestFunctions.WriteTestScenariosToFile = function(testName, testScenarios)
     game.write_file(fileName, logText, false)
 end
 
+--- A primary list of unique colors for use on locomotives.
+TestFunctions.PrimaryLocomotiveColors = {
+    Colors.red,
+    Colors.darkorange,
+    Colors.yellow,
+    Colors.lime,
+    Colors.cyan,
+    Colors.blue,
+    Colors.darkviolet,
+    Colors.black,
+    Colors.lavender
+}
+
+--- A secondary list of less unique colors for use on locomotives.
+TestFunctions.SecondaryLocomotiveColors = {
+    Colors.grey,
+    Colors.teal,
+    Colors.lightblue,
+    Colors.green,
+    Colors.brown,
+    Colors.wheat,
+    Colors.deeppink,
+    Colors.olive,
+    Colors.pink,
+    Colors.darkred,
+    Colors.salmon,
+    Colors.slateblue,
+    Colors.orchid,
+    Colors.goldenrod
+}
+
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -619,6 +693,33 @@ end
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
+
+---@class TestFunctions_RemoteTunnelUsageChangedEvent : RemoteTunnelUsageChanged
+---@field testName string
+
+--- Records the tunnel usage change event's details to the test's Test Data object for usage within the test script in once per tick test processing. In most tests its limitations are fine.
+---@param event TestFunctions_RemoteTunnelUsageChangedEvent
+TestFunctions._RecordTunnelUsageChanges = function(event)
+    local testData = TestFunctions.GetTestDataObject(event.testName)
+    local tunnelUsageChanges = testData.tunnelUsageChanges
+
+    -- Record the action for later reference.
+    local actionListEntry = tunnelUsageChanges.actions[event.action]
+    if actionListEntry then
+        actionListEntry.count = actionListEntry.count + 1
+        actionListEntry.recentChangeReason = event.changeReason
+    else
+        tunnelUsageChanges.actions[event.action] = {
+            name = event.action,
+            count = 1,
+            recentChangeReason = event.changeReason
+        }
+    end
+
+    tunnelUsageChanges.lastAction = event.action
+    tunnelUsageChanges.lastChangeReason = event.changeReason
+    tunnelUsageChanges.train = event.train
+end
 
 -- The function called to revive the ghosts on the first and second attempt. It populates a bunch of passed in tables, rather than returning anything itself.
 ---@param ghost LuaEntity
@@ -662,18 +763,19 @@ TestFunctions._ReviveGhost = function(ghost, pass2GhostsTableToPopulate, fuelPro
     end
 end
 
+--- Checks if 2 carriages are equal allowing for if the 2nd carriage is from reversed train. Returns the first difference attribute if one is found, or nil if they are the same.
 ---@param carriage1 TestFunctions_CarriageSnapshot
 ---@param carriage2 TestFunctions_CarriageSnapshot
----@param reverseFacingForwardsCarriage2 boolean
----@return string
-TestFunctions._DoCarriageSnapshotsMatch = function(carriage1, carriage2, reverseFacingForwardsCarriage2)
+---@param reversedCarriage2 boolean
+---@return string|null differenceFound @ First difference found or nil if the same.
+TestFunctions._DifferenceBetween2CarriageSnapshots = function(carriage1, carriage2, reversedCarriage2)
     if carriage1 == nil then
         return "carriage1 is nil"
     elseif carriage2 == nil then
         return "carriage2 is nil"
     end
     for _, attribute in pairs({"name", "health", "facingForwards", "cargoInventory", "color"}) do
-        if attribute == "facingForwards" and reverseFacingForwardsCarriage2 then
+        if attribute == "facingForwards" and reversedCarriage2 == true then
             -- Reverse the expected attribute value and so if they equal its really a difference.
             if carriage1[attribute] == carriage2[attribute] then
                 return attribute

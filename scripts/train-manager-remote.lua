@@ -1,12 +1,11 @@
 -- The remote interface functions of the Train Manager.
 
 local TrainManagerRemote = {}
-local Utils = require("utility/utils")
-local Events = require("utility/events")
+local Events = require("utility.events")
 
 ---@class RemoteTunnelUsageEntry
 ---@field tunnelUsageId Id
----@field primaryState PrimaryTrainState
+---@field primaryState TunnelUsageState
 ---@field train LuaTrain @ The train entering or leaving the tunnel. Will be nil while primaryState is "underground".
 ---@field tunnelId Id
 
@@ -14,7 +13,7 @@ local Events = require("utility/events")
 ---@field name string @ The custom event name that this event is bveing raised for. Used by the Events library to find the remote Id to publish it under.
 ---@field action TunnelUsageAction
 ---@field changeReason TunnelUsageChangeReason
----@field replacedtunnelUsageId Id
+---@field replacedTunnelUsageId Id
 
 TrainManagerRemote.CreateGlobals = function()
     global.trainManager.eventsToRaise = global.trainManager.eventsToRaise or {} ---@type table[] @ Events are raised at end of tick to avoid other mods interupting this mod's process and breaking things.
@@ -42,16 +41,22 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
 
     -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
     tableToPopulate.tunnelUsageId = managedTrainId
-    tableToPopulate.primaryState = managedTrain.primaryTrainPartName
-    tableToPopulate.train = Utils.ReturnValidLuaObjectOrNil(managedTrain.portalTrackTrain) or Utils.ReturnValidLuaObjectOrNil(managedTrain.approachingTrain) or Utils.ReturnValidLuaObjectOrNil(managedTrain.leavingTrain)
+    tableToPopulate.primaryState = managedTrain.tunnelUsageState
+    if managedTrain.portalTrackTrain ~= nil then
+        tableToPopulate.train = managedTrain.portalTrackTrain
+    elseif managedTrain.approachingTrain ~= nil then
+        tableToPopulate.train = managedTrain.approachingTrain
+    elseif managedTrain.leavingTrain ~= nil then
+        tableToPopulate.train = managedTrain.leavingTrain
+    end
     tableToPopulate.tunnelId = managedTrain.tunnel.id
 end
 
 ---@param managedTrainId Id
 ---@param action TunnelUsageAction
 ---@param changeReason TunnelUsageChangeReason
----@param replacedtunnelUsageId Id
-TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedtunnelUsageId)
+---@param replacedTunnelUsageId Id
+TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedTunnelUsageId)
     -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
     -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.
     ---@type RemoteTunnelUsageChanged
@@ -60,7 +65,7 @@ TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeR
         name = "RailwayTunnel.TunnelUsageChanged",
         action = action,
         changeReason = changeReason,
-        replacedtunnelUsageId = replacedtunnelUsageId
+        replacedTunnelUsageId = replacedTunnelUsageId
     }
     table.insert(global.trainManager.eventsToRaise, data)
 end

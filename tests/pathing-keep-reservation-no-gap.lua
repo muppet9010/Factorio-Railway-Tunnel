@@ -9,7 +9,7 @@
     Purpose of the test is to ensure that the reservation on the target station is held continuously without any gaps while the train is traveling through the tunnel, so that no other train can start moving towards the target station if it is full
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 
@@ -22,7 +22,7 @@ local blueprintString = "0eNrFXFtu40YQvErAb8ngPDn0Z4CcIPkLDIGWaC0RihQoUhtjoQPkFj
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 24, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the trains - Tunnel train is most north in BP - Other train is most south in BP.
     local northMostLoco, northMostLocoYPos, southMostLoco, southMostLocoYPos = nil, 100000, nil, -100000
@@ -51,7 +51,7 @@ Test.Start = function(testName)
     ---@class Tests_PKRNG_TestScenarioBespokeData
     local testDataBespoke = {
         otherTrain = otherTrain, ---@type LuaTrain
-        tunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelTrain),
+        tunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelTrain, 0.25),
         stationEnd = stationEnd, ---@type LuaEntity
         otherStationStart = otherStationStart ---@type LuaEntity
     }
@@ -78,7 +78,7 @@ Test.EveryTick = function(event)
             TestFunctions.TestFailed(testName, "other train reached end station before tunnel train")
             return
         end
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEndTrain)
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationEndTrain, 0.25)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.tunnelTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "tunnel train has differences after tunnel use")
             return

@@ -8,7 +8,7 @@
     This file is now version controlled to avoid conflicts with different versions used by different mods.
 
     Require the file and call GeneratePrototypes in data.lua:
-        require("utility/style-data").GeneratePrototypes()
+        require("utility.style-data").GeneratePrototypes()
 ]]
 --
 
@@ -17,7 +17,7 @@ local styleData = {}
 styleData.styleVersion = "_1_0_0"
 
 styleData.GeneratePrototypes = function()
-    local Colors = require("utility/colors")
+    local Colors = require("utility.colors")
     local defaultStyle = data.raw["gui-style"]["default"]
 
     local frameShadowRisenColor = {0, 0, 0, 0.35}

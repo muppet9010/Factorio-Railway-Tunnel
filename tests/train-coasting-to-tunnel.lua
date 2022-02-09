@@ -1,7 +1,7 @@
 -- Sends a single short train coasting in to a tunnel portal entrance while it is in the differnt schedule states. All should be stopped with the loco at the entrance portal entry point.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 ---@class Tests_TCTT_TrainScheduleStates
 local TrainScheduleStates = {
@@ -33,11 +33,11 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the blueprinted entities.
     local train = placedEntitiesByGroup["locomotive"][1].train ---@type LuaTrain
-    train.speed = 2
+    train.speed = 1.4 -- Max locomotive speed.
     if testScenario.trainScheduleState == "manualMode" then
         train.manual_mode = true
     elseif testScenario.trainScheduleState == "automaticNoSchedule" then

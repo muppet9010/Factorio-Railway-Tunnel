@@ -1,9 +1,10 @@
-local Events = require("utility/events")
+local Events = require("utility.events")
 local Tunnel = {}
-local TunnelShared = require("scripts/tunnel-shared")
-local Common = require("scripts/common")
-local RollingStockTypes, TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.RollingStockTypes, Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
-local Utils = require("utility/utils")
+local TunnelShared = require("scripts.tunnel-shared")
+local Common = require("scripts.common")
+local TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
+--local RollingStockTypes = Common.RollingStockTypes
+local Utils = require("utility.utils")
 
 ---@class Tunnel @ the tunnel object that managed trains can pass through.
 ---@field id Id @ unqiue id of the tunnel.
@@ -47,18 +48,8 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.TrainReleasedTunnel = Tunnel.TrainReleasedTunnel
     MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
     MOD.Interfaces.Tunnel.CanTrainFitInTunnel = Tunnel.CanTrainFitInTunnel
-
-    local rollingStockFilter = {
-        {filter = "rolling-stock"}, -- Just gets real entities, not ghosts.
-        {filter = "ghost_type", type = "locomotive"},
-        {filter = "ghost_type", type = "cargo-wagon"},
-        {filter = "ghost_type", type = "fluid-wagon"},
-        {filter = "ghost_type", type = "artillery-wagon"}
-    }
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Tunnel.OnBuiltEntity", Tunnel.OnBuiltEntity, rollingStockFilter)
+    -- Merged event handler interfaces.
+    MOD.Interfaces.Tunnel.OnBuiltEntity = Tunnel.OnBuiltEntity
 end
 
 -- Needed so we detect when a train is targetting the transition signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
@@ -68,11 +59,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     if not train.valid or train.state ~= defines.train_state.arrive_signal then
         return
     end
-    local signal = train.signal
-    if signal == nil then
-        return
-    end
-    local transitionSignal = global.tunnels.transitionSignals[signal.unit_number]
+    local transitionSignal = global.tunnels.transitionSignals[train.signal.unit_number]
     if transitionSignal == nil then
         return
     end
@@ -83,7 +70,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     local tunnel, train_id = transitionSignal.portal.tunnel, train.id
     if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id and tunnel.managedTrain.leavingTrainId ~= train_id then
         -- Tunnel already reserved so this reservation is bad.
-        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, transitionSignal.portal, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+        TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
         return
     end
 
@@ -277,16 +264,15 @@ end
 
 -- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Tunnel.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
+Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
+    --[[local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid then
         return
     end
     local createdEntity_type = createdEntity.type
     if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
         return
-    end
-
+    end]]
     if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
@@ -314,13 +300,13 @@ Tunnel.OnBuiltEntity = function(event)
         elseif trainFrontStockIsPlacedEntity then
             -- Placed carriage is front of train
             if TunnelRailEntityNames[train.front_rail.name] == nil then
-                -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
+                -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
                 return
             end
         elseif trainBackStockIsPlacedEntity then
             -- Placed carriage is rear of train
             if TunnelRailEntityNames[train.back_rail.name] == nil then
-                -- Ignore if train doesn't have a tunnel rail at the end the carraige was just placed at. We assume the other end is fine.
+                -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
                 return
             end
         else
@@ -334,7 +320,7 @@ Tunnel.OnBuiltEntity = function(event)
 
         -- Have to check what rails are at the approximate ends of the ghost carriage.
         local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
-        local carriageLengthFromCenter, surface, tunnelRailFound = Common.GetCarriagePlacementDistance(createdEntity.name), createdEntity.surface, false
+        local carriageLengthFromCenter, surface, tunnelRailFound = Common.CarriagePlacementDistances[createdEntity.ghost_name], createdEntity.surface, false
         local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
         local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
         -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
@@ -384,24 +370,41 @@ end
 
 -- Checks if the train can fit within the tunnel's max allowed length.
 ---@param train LuaTrain
+---@param train_id Id
 ---@param tunnel Tunnel
 ---@return boolean
-Tunnel.CanTrainFitInTunnel = function(train, tunnel)
-    local trainLength = 0
-    local carriage_name
-    for i, carriage in pairs(train.carriages) do
-        carriage_name = carriage.name
-        trainLength = trainLength + Common.GetCarriageConnectedLength(carriage_name)
-        -- Remove the first carriages front gap as nothing will be connected to it.
-        if i == 1 then
-            trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
+Tunnel.CanTrainFitInTunnel = function(train, train_id, tunnel)
+    local cachedTrain = MOD.Interfaces.TrainCachedData.GetCreateTrainCache(train, train_id)
+
+    -- If theres no cached train length for this train calculate and cache it.
+    if cachedTrain.trainLength == nil then
+        local trainLength = 0
+        local carriage_name
+
+        -- Get the length for each carriage.
+        for i, carriageData in pairs(cachedTrain.carriagesCachedData) do
+            -- Get the value and cache if not held.
+            carriage_name = carriageData.prototypeName
+            if carriage_name == nil then
+                carriage_name = carriageData.entity.name
+                carriageData.prototypeName = carriage_name
+            end
+
+            -- Add the carriages connected length (main body and joint distance to one other carriage) to the train length.
+            trainLength = trainLength + Common.CarriageConnectedLengths[carriage_name]
+
+            -- Remove the first carriages front gap as nothing will be connected to it.
+            if i == 1 then
+                trainLength = trainLength - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[carriage_name]
+            end
         end
+
+        -- Remove the last carriages rear gap as nothing will be connected to it.
+        cachedTrain.trainLength = trainLength - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[carriage_name]
     end
-    -- Remove the last carriages rear gap as nothing will be connected to it.
-    trainLength = trainLength - Common.GetCarriageInterConnectionGap(carriage_name)
 
     -- Check if the train can fit.
-    if trainLength > tunnel.maxTrainLengthTiles then
+    if cachedTrain.trainLength > tunnel.maxTrainLengthTiles then
         return false
     else
         return true

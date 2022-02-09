@@ -1,8 +1,8 @@
 --[[
     A train that has its locomotive facing inwards, so can't path on its own when it emerges from the tunnel. The entrance signal on the exit portal is blocked in the next rail segment. Short train so fully leaves the tunnel before stopping. After the train has fully stopped the blocking wagon is removed so the train can compete its journey.
 ]]
-local Utils = require("utility/utils")
-local TestFunctions = require("scripts/test-functions")
+local Utils = require("utility.utils")
+local TestFunctions = require("scripts.test-functions")
 local Test = {}
 
 Test.RunTime = 1800
@@ -17,7 +17,7 @@ end
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 80}, testName)
 
     -- Get the trains/wagons
     local blockingWagon, movingTrain
@@ -47,7 +47,8 @@ Test.Start = function(testName)
         blockingWagonReached = false, ---@type boolean
         northStationReached = false, ---@type boolean
         southStationReached = false, ---@type boolean
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(movingTrain),
+        trainPreFirstTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(movingTrain, 0), ---@type TestFunctions_TrainSnapshot
+        trainPreSecondTunnelSnapshot = nil, ---@type TestFunctions_TrainSnapshot
         trainStopNorth = trainStopNorth, ---@type LuaEntity
         trainStopSouth = trainStopSouth ---@type LuaEntity
     }
@@ -105,17 +106,18 @@ Test.EveryTick = function(event)
     local northTrain, southTrain = testDataBespoke.trainStopNorth.get_stopped_train(), testDataBespoke.trainStopSouth.get_stopped_train()
 
     if northTrain ~= nil and not testDataBespoke.northStationReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain, 0)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainPreFirstTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached north station, but with train differences")
             return
         end
         game.print("train reached north station")
         testDataBespoke.northStationReached = true
+        testDataBespoke.trainPreSecondTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(northTrain, 0.5)
     end
     if southTrain ~= nil and not testDataBespoke.southStationReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(southTrain, 0.5)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainPreSecondTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train reached south station, but with train differences")
             return
         end

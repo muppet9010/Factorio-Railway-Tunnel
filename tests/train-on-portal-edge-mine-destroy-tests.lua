@@ -2,7 +2,7 @@
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 ---@class Tests_TOPEMDT_ActionTypes
 local ActionTypes = {
@@ -96,22 +96,23 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_TOPEMDT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_TOPEMDT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     -- We have to prepare the test and give Factorio 1 tick for the destroyed carriage to fully dissapear, otherwise the tess give wrong result.
     if not testDataBespoke.testPrepared then
         -- Do nothing until the tunnel train has used the tunnel.
-        if testData.lastAction ~= "leaving" then
+        if tunnelUsageChanges.lastAction ~= "leaving" then
             return
         end
 
         -- Do nothing until the moving trains have stopped.
-        if testDataBespoke.waitingTrain.speed ~= 0 or testData.train.speed ~= 0 then
+        if testDataBespoke.waitingTrain.speed ~= 0 or tunnelUsageChanges.train.speed ~= 0 then
             return
         end
 
         -- Stop the waiting train and remove the tunnel train so it doesn't block any test actions.
         testDataBespoke.waitingTrain.manual_mode = true
-        testData.train.carriages[1].destroy()
+        tunnelUsageChanges.train.carriages[1].destroy()
         testDataBespoke.testPrepared = true
         return
     end

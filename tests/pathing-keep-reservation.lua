@@ -3,7 +3,7 @@
     When the train returns to the reset station, the RS latch resets and the train limit on target station is set to 1 again. Ready for another test loop.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 
@@ -16,7 +16,7 @@ local blueprintString = "0eNrFXE2P2zYQ/S862wuTFEVxgRYo0GPRQ5JbERiyTXuJypJBSZtug/
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     local train = placedEntitiesByGroup["locomotive"][1].train
 
@@ -30,7 +30,7 @@ Test.Start = function(testName)
     local testData = TestFunctions.GetTestDataObject(testName)
     ---@class Tests_PKR_TestScenarioBespokeData
     local testDataBespoke = {
-        trainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        trainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75),
         stationTarget = stationTarget ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
@@ -52,7 +52,7 @@ Test.EveryTick = function(event)
     local stationTargetTrain = testDataBespoke.stationTarget.get_stopped_train()
 
     if stationTargetTrain ~= nil then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationTargetTrain)
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationTargetTrain, 0.75)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.trainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train has differences after tunnel use")
             return

@@ -155,11 +155,11 @@ end
 ---@return Position
 TrainManagerStateFuncs.GetUndergroundFirstWagonPosition = function(managedTrain)
     -- Work out the distance in rail tracks between the train and the portal's transition signal's rail. This accounts for curves/U-bends and gives us a straight line distance as an output.
-    local firstCarriageDistanceFromPortalTransitionSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.entrancePortalTransitionSignal.entity, managedTrain.enteringTrainForwards)
+    local firstCarriageDistanceFromPortalTransitionSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.entrancePortalEntryTransitionSignal.entity, managedTrain.enteringTrainForwards)
 
     -- Apply the straight line distance to the above portal's transition signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
     local firstCarriageOffsetFromTransitionSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalTransitionSignalsRail})
-    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.entrancePortalTransitionSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
+    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.entrancePortalEntryTransitionSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
     local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromTransitionSignalsRail)
 
     -- Get the underground position for this above ground spot.
@@ -584,9 +584,9 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
 
     newManagedTrain.surface = oldManagedTrain.surface
     newManagedTrain.entrancePortal = oldManagedTrain.exitPortal
-    newManagedTrain.entrancePortalTransitionSignal = oldManagedTrain.exitPortalTransitionSignal
+    newManagedTrain.entrancePortalEntryTransitionSignal = oldManagedTrain.exitPortalEntryTransitionSignal
     newManagedTrain.exitPortal = oldManagedTrain.entrancePortal
-    newManagedTrain.exitPortalTransitionSignal = oldManagedTrain.entrancePortalTransitionSignal
+    newManagedTrain.exitPortalEntryTransitionSignal = oldManagedTrain.entrancePortalEntryTransitionSignal
     newManagedTrain.exitPortalEntrySignalOut = oldManagedTrain.entrancePortal.entrySignals[TunnelSignalDirection.outSignal]
     newManagedTrain.tunnel = oldManagedTrain.tunnel
 
@@ -658,20 +658,20 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.leftTrainId = nil
     -- global.trainManager.trainIdToManagedTrain[leftTrainId] - Nothing to set or nil, but included for ease of checking all global objects included in reversal.
 
-    if oldManagedTrain.primaryTrainPartName == PrimaryTrainState.leaving then
+    if oldManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
         if oldManagedTrain.enteringTrainState == EnteringTrainStates.finished then
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.underground
+            newManagedTrain.tunnelUsageState = TunnelUsageState.underground
         elseif oldManagedTrain.enteringTrainState == EnteringTrainStates.entering then
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.leaving
+            newManagedTrain.tunnelUsageState = TunnelUsageState.leaving
         end
-    elseif oldManagedTrain.primaryTrainPartName == PrimaryTrainState.underground then
+    elseif oldManagedTrain.tunnelUsageState == TunnelUsageState.underground then
         if newManagedTrain.leavingTrainCarriagesPlaced == nil then
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.underground
+            newManagedTrain.tunnelUsageState = TunnelUsageState.underground
         else
-            newManagedTrain.primaryTrainPartName = PrimaryTrainState.leaving
+            newManagedTrain.tunnelUsageState = TunnelUsageState.leaving
         end
     else
-        error("Unexpected reversed old managed train primaryTrainPartName: " .. oldManagedTrain.primaryTrainPartName)
+        error("Unexpected reversed old managed train tunnelUsageState: " .. oldManagedTrain.tunnelUsageState)
     end
 
     -- Player Container updating as required. Only scenario that needs detailed updating is when a player was in a leaving carriage that has become an entering carriage.
@@ -1008,3 +1008,11 @@ TrainManagerFuncs.GetCarriageJointDistance = function(carriageEntityName)
         return 2 -- Half of vanilla carriages 4 joint distance.
     end
 end
+
+
+
+
+
+---@class TrainLeadCarriageCache
+---@field trainForwards boolean @ If the train was forwards when the cache was last updated.
+---@field carriage LuaEntity @ Cached ref to the lead carriage entity.

@@ -1,7 +1,7 @@
-local Events = require("utility/events")
-local Utils = require("utility/utils")
-local TunnelShared = require("scripts/tunnel-shared")
-local Common = require("scripts/common")
+local Events = require("utility.events")
+local Utils = require("utility.utils")
+local TunnelShared = require("scripts.tunnel-shared")
+local Common = require("scripts.common")
 local UndergroundSegmentEntityNames = Common.UndergroundSegmentEntityNames
 local Underground = {}
 
@@ -121,41 +121,32 @@ Underground.OnLoad = function()
     for _, name in pairs(UndergroundSegmentEntityNames) do
         table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
     end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_revive, "Underground.OnBuiltEntity", Underground.OnBuiltEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "Underground.OnPreMinedEntity", Underground.OnPreMinedEntity, segmentEntityNames_Filter)
     Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild)
-    Events.RegisterHandlerEvent(defines.events.on_entity_died, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "Underground.OnDiedEntity", Underground.OnDiedEntity, segmentEntityNames_Filter)
-
-    local segmentEntityGhostNames_Filter = {}
-    for _, name in pairs(UndergroundSegmentEntityNames) do
-        table.insert(segmentEntityGhostNames_Filter, {filter = "ghost_name", name = name})
-    end
-    Events.RegisterHandlerEvent(defines.events.on_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
-    Events.RegisterHandlerEvent(defines.events.script_raised_built, "Underground.OnBuiltEntityGhost", Underground.OnBuiltEntityGhost, segmentEntityGhostNames_Filter)
 
     MOD.Interfaces.Underground = MOD.Interfaces.Underground or {}
     MOD.Interfaces.Underground.On_PreTunnelCompleted = Underground.On_PreTunnelCompleted
     MOD.Interfaces.Underground.On_TunnelRemoved = Underground.On_TunnelRemoved
     MOD.Interfaces.Underground.CanAnUndergroundConnectAtItsInternalPosition = Underground.CanAnUndergroundConnectAtItsInternalPosition
     MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal = Underground.CanUndergroundSegmentConnectToAPortal
+    -- Merged event handler interfaces.
+    MOD.Interfaces.Underground.OnBuiltEntity = Underground.OnBuiltEntity
+    MOD.Interfaces.Underground.OnBuiltEntityGhost = Underground.OnBuiltEntityGhost
+    MOD.Interfaces.Underground.OnDiedEntity = Underground.OnDiedEntity
+    MOD.Interfaces.Underground.OnPreMinedEntity = Underground.OnPreMinedEntity
 end
 
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Underground.OnBuiltEntity = function(event)
-    local createdEntity = event.created_entity or event.entity
+---@param createdEntity LuaEntity
+---@param createdEntity_name string
+Underground.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
+    --[[local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid then
         return
     end
     local createdEntity_name = createdEntity.name
     if UndergroundSegmentEntityNames[createdEntity_name] == nil then
         return
-    end
+    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -299,7 +290,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
         if segmentTypeData.placeCrossingRails then
             -- OVERHAUL - move this to be type data driven and not hard coded.
             segment.crossingRailEntities = {}
-            local crossignRailDirection, orientation = Utils.LoopDirectionValue(builtEntity_direction + 2), Utils.DirectionToOrientation(builtEntity_direction)
+            local crossignRailDirection, orientation = Utils.LoopDirectionValue(builtEntity_direction + 2), builtEntity_direction / 8
             for _, nextRailPos in pairs(
                 {
                     Utils.RotateOffsetAroundPosition(orientation, {x = -2, y = 0}, builtEntity_position),
@@ -568,7 +559,7 @@ end
 Underground.BuildSignalsForSegment = function(segment)
     for _, orientationModifier in pairs({0, 4}) do
         local signalDirection = Utils.LoopDirectionValue(segment.entity_direction + orientationModifier)
-        local orientation = Utils.DirectionToOrientation(signalDirection)
+        local orientation = signalDirection / 8
         local position = Utils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, segment.entity_position)
         local placedSignal = segment.surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
         segment.signalEntities[placedSignal.unit_number] = placedSignal
@@ -577,11 +568,12 @@ end
 
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
-Underground.OnBuiltEntityGhost = function(event)
-    local createdEntity = event.created_entity or event.entity
+---@param createdEntity LuaEntity
+Underground.OnBuiltEntityGhost = function(event, createdEntity)
+    --[[local createdEntity = event.created_entity or event.entity
     if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
         return
-    end
+    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -621,13 +613,13 @@ end
 
 -- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
-Underground.OnPreMinedEntity = function(event)
+---@param minedEntity LuaEntity
+Underground.OnPreMinedEntity = function(event, minedEntity)
     -- Check its one of the entities this function wants to inspect.
-    local minedEntity = event.entity
+    --[[local minedEntity = event.entity
     if not minedEntity.valid or UndergroundSegmentEntityNames[minedEntity.name] == nil then
         return
-    end
-
+    end]]
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedSegment = global.undergrounds.segments[minedEntity.unit_number]
     if minedSegment == nil then
@@ -786,13 +778,13 @@ end
 
 -- Triggered when a monitored entity type is killed.
 ---@param event on_entity_died|script_raised_destroy
-Underground.OnDiedEntity = function(event)
+---@param diedEntity LuaEntity
+Underground.OnDiedEntity = function(event, diedEntity)
     -- Check its one of the entities this function wants to inspect.
-    local diedEntity = event.entity
+    --[[local diedEntity = event.entity
     if not diedEntity.valid or UndergroundSegmentEntityNames[diedEntity.name] == nil then
         return
-    end
-
+    end]]
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local segment = global.undergrounds.segments[diedEntity.unit_number]
     if segment == nil then

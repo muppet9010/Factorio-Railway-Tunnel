@@ -4,10 +4,11 @@
         - Tests don't load if a dedicated server makes the game and saves the map, then loads the save to run the game. It must be created by the player, saved and then uploaded to the server for running tests in MP.
 --]]
 local TestManager = {}
-local Events = require("utility/events")
-local EventScheduler = require("utility/event-scheduler")
-local Utils = require("utility/utils")
-local Colors = require("utility/colors")
+local Events = require("utility.events")
+local EventScheduler = require("utility.event-scheduler")
+local Utils = require("utility.utils")
+local Colors = require("utility.colors")
+local PlayerAlerts = require("utility.player-alerts")
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -22,7 +23,7 @@ local Colors = require("utility/colors")
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 -- If DoTests is enabled the map is replaced with a test science lab tile world and the tests placed and run. Otherwise the testing framework is disabled and the world unchanged.
-local DoTests = false -- Enable test mode and does the enabled tests below if TRUE.
+local DoTests = true -- Enable test mode and does the enabled tests below if TRUE.
 
 local AllTests = false -- Does all the tests regardless of their enabled state below if TRUE.
 local ForceTestsFullSuite = false -- If true each test will do their full range, ignoring the tests "DoMinimalTests" setting, but honors their "DoSpecificTests" setting if enabled. If false then each test just will honour their other settings.
@@ -31,18 +32,20 @@ local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
 local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures. Results written to a text file in: script-output/RailwayTunnel_Tests.txt
 
-local PlayerStartingZoom = 0.1 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
+local PlayerStartingZoom = 0.2 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
+local HidePortalGraphics = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regualr player experience set this to FALSE.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
+-- There must use "/" in their require paths rather than "." for some Lua reason.
 ---@type table<TestManager_TestName, TestManager_TestToRun>
 local TestsToRun = {
-    -- Regular train using tunnel tests:
+    -- Regular core functionality tests (train using tunnel):
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
-    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
+    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
     DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
@@ -53,6 +56,9 @@ local TestsToRun = {
     PathfinderWeightings = {enabled = false, testScript = require("tests/pathfinder-weightings")},
     SimultaneousTunnelUsageAttempt = {enabled = false, testScript = require("tests/simultaneous-tunnel-usage-attempt")},
     LeavingTrainSpeedDurationChangeTests = {enabled = false, testScript = require("tests/leaving-train-speed-duration-change-tests")},
+    ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-abort")},
+    ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-indecisive")},
+    BidirectionalTunnelLoop = {enabled = false, testScript = require("tests/bidirectional-tunnel-loop")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
@@ -61,16 +67,24 @@ local TestsToRun = {
     TrainCoastingToTunnel = {enabled = false, testScript = require("tests/train-coasting-to-tunnel")},
     RunOutOfFuelTests = {enabled = false, testScript = require("tests/run-out-of-fuel-tests")},
     TrainTooLong = {enabled = false, testScript = require("tests/train-too-long")},
+    InvalidTrainTests = {enabled = false, testScript = require("tests/invalid-train-tests")},
     -- Tunnel part tests:
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
-    --UPS Tests:
-    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups_many_small_trains"), notInAllTests = true},
-    --Template Tests:
-    TemplateSingleInstance = {enabled = false, testScript = require("tests/__template_single_instance"), notInAllTests = true},
-    TemplateMultiInstance = {enabled = false, testScript = require("tests/__template_multi_instance"), notInAllTests = true}
+    -- Code Internal tests:
+    TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
+    TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
+    CachedTunnelData = {enabled = false, testScript = require("tests/cached-tunnel-data")},
+    -- Odd scenario tests (raised for fixing odd real world issue and just kept since):
+    ClosedSignalPostTunnelStoppingPositionTest = {enabled = false, testScript = require("tests.closed-signal-post-tunnel-stopping-position-test")},
+    -- UPS Tests:
+    UpsManyShortTrains = {enabled = false, testScript = require("tests/ups-many-small-trains"), notInAllTests = true},
+    UpsManyLargeTrains = {enabled = false, testScript = require("tests/ups-many-large-trains"), notInAllTests = true},
+    -- Template Tests:
+    TemplateSingleInstance = {enabled = false, testScript = require("tests/__template-single-instance"), notInAllTests = true},
+    TemplateMultiInstance = {enabled = false, testScript = require("tests/__template-multi-instance"), notInAllTests = true}
 }
 
 ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -115,11 +129,17 @@ local TestsToRun = {
 --- The base object for storing test data during a test iteration run between ticks. It will have additional test specific fields set within it by the script.
 ---@class TestManager_TestData
 ---@field bespoke table<string, any> @ The bespoke test data for only this test will be registered under here.
----@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction> @ A list of the tunnel usage change actions and some meta data on them.
----@field lastAction? TunnelUsageAction|null @ The last tunnel usage change action reported or nil if none.
----@field train? LuaTrain|null @ The train entering or leaving the tunnel. Will be nil while the train is underground, lastAction is "entered".
+---@field tunnelUsageChanges TestManaged_TunnelUsageChanges @ Only populated upon a tunnel usage change event occuring if recording these has been registered by TestFunctions.RegisterRecordTunnelUsageChanges().
 ---@field testScenario? table<string, any>|null @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
 
+--- The Tunnel Usage Change data automatically captured by TestFunctions.RegisterRecordTunnelUsageChanges().
+---@class TestManaged_TunnelUsageChanges
+---@field lastAction? TunnelUsageAction|null @ The last tunnel usage change action reported or nil if none.
+---@field lastChangeReason? TunnelUsageChangeReason|null @ The last tunnel usage change reason reported or nil if none.
+---@field train? LuaTrain|null @ The train using the tunnel. Will be nil while the train is underground, identified by lastAction being "entered".
+---@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction>
+
+--- A list of the tunnel usage change actions and some meta data on them.
 ---@class TestManager_TunnelUsageChangeAction
 ---@field name TunnelUsageAction @ The action name string, same as the key in the table.
 ---@field count uint @ How many times the event has occured.
@@ -193,7 +213,14 @@ TestManager.OnStartup = function()
     game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
-    -- Create the global test management state data. Lua script funcctions can't be included in to global object.
+    -- If option to hide portal graphics is set then change the Portal globla setting.
+    if HidePortalGraphics then
+        global.portalGraphicsLayerOverTrain = "lower-object"
+    else
+        global.portalGraphicsLayerOverTrain = "higher-object-above"
+    end
+
+    -- Create the global test management state data. Lua script functions can't be included in to global object.
     for testName, test in pairs(TestsToRun) do
         if test.enabled or (AllTests and not test.notInAllTests) then
             global.testManager.testsToRun[testName] = {
@@ -263,6 +290,11 @@ TestManager.ClearMap_Scheduled = function()
     -- Clear any previous console messages to make it easy to track each test.
     for _, player in pairs(game.connected_players) do
         player.clear_console()
+    end
+
+    -- Clear all alerts for all players so nothing lingers between tests. As a by product this will remove any alerts created when clearing the map.
+    for _, player in pairs(game.connected_players) do
+        PlayerAlerts.RemoveAllCustomAlertsFromForce(player.force)
     end
 
     -- Wait 1 tick so any end of tick mod events from the mpa clearing are raised and ignored, before we start the next test.
@@ -386,7 +418,10 @@ end
 TestManager.CreateTestDataObject = function()
     ---@type TestManager_TestData
     local testData = {
-        actions = {}
+        bespoke = {}, -- Expected to be overwritten witihn the test's Start(). But can also have entries just added to it if already present.
+        tunnelUsageChanges = {
+            actions = {}
+        }
     }
     return testData
 end

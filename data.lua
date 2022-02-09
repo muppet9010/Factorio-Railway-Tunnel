@@ -1,5 +1,5 @@
-local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
-local Common = require("scripts/common")
+local CollisionMaskUtil = require("__core__.lualib.collision-mask-util")
+local Common = require("scripts.common")
 MODDATA = MODDATA or {}
 MODDATA.railway_tunnel = MODDATA.railway_tunnel or {}
 
@@ -27,27 +27,27 @@ for _, prototypeTypeName in pairs(Common.RollingStockTypes) do
 end
 MODDATA.railway_tunnel.tunnelTrainCollisionLayer = tunnelTrainCollisionLayer
 
-require("prototypes/internal-rails")
-require("prototypes/invisible-rails")
-require("prototypes/portal-entry-signal")
-require("prototypes/invisible-signal-not-on-map")
+require("prototypes.internal-rails")
+require("prototypes.invisible-rails")
+require("prototypes.portal-entry-signal")
+require("prototypes.invisible-signal-not-on-map")
 
-require("prototypes/portal-end")
-require("prototypes/portal-segment")
-require("prototypes/portal-graphics")
-require("prototypes/tunnel-portal-blocking-locomotive")
-require("prototypes/tunnel-exit-dummy-locomotive")
+require("prototypes.portal-end")
+require("prototypes.portal-segment")
+require("prototypes.portal-graphics")
+require("prototypes.tunnel-portal-blocking-locomotive")
+require("prototypes.tunnel-exit-dummy-locomotive")
 
-require("prototypes/underground-segment")
-require("prototypes/underground-segment-rail-crossing")
+require("prototypes.underground-segment")
+require("prototypes.underground-segment-rail-crossing")
 
-require("prototypes/item-groups")
-require("prototypes/custom-inputs")
-require("prototypes/technology")
-require("prototypes/recipe")
-require("prototypes/player-container")
-require("prototypes/character-placement-leave-tunnel")
-require("prototypes/placement-highlights")
-require("prototypes/train-blocker")
-require("prototypes/temporary-fuel")
-require("prototypes/virtual-signals")
+require("prototypes.item-groups")
+require("prototypes.custom-inputs")
+require("prototypes.technology")
+require("prototypes.recipe")
+require("prototypes.player-container")
+require("prototypes.character-placement-leave-tunnel")
+require("prototypes.placement-highlights")
+require("prototypes.train-blocker")
+require("prototypes.temporary-fuel")
+require("prototypes.virtual-signals")

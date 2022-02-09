@@ -9,8 +9,8 @@
         - Check that the tunnel can/can't be used in both directions based on if the tunnel part was healed (automatically replaced) for an invalid mining or if the train is left with no path to its destination.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 -- These must be the same name as Common.TunnelUsageAction, with the exception of "none" and "partiallyOnPortalTrack".
 ---@class Tests_MDTT_TrainStates
@@ -89,7 +89,7 @@ Test.Start = function(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     local surface = TestFunctions.GetTestSurface()
 
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEast, stationWest
@@ -134,7 +134,8 @@ Test.Start = function(testName)
         exitPortalPart = exitPortalPart, ---@type LuaEntity
         tunnelSegmentToRemove = tunnelSegmentToRemove, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        preFirstTunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75), ---@type TestFunctions_TrainSnapshot
+        preSecondTunnelTrainSnapshot = nil, ---@type TestFunctions_TrainSnapshot
         tunnelPartRemoved = false, ---@type boolean
         westReached = false, ---@type boolean
         eastReached = false ---@type boolean
@@ -244,18 +245,19 @@ Test.EveryTick = function(event)
         if not testDataBespoke.westReached then
             local stationWestTrain = testDataBespoke.stationWest.get_stopped_train()
             if stationWestTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain, 0.75)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preFirstTunnelTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train at west station not identical")
                     return
                 end
                 testDataBespoke.westReached = true
+                testDataBespoke.preSecondTunnelTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationWestTrain, 0.25)
             end
         elseif not testDataBespoke.eastReached then
             local stationEastTrain = testDataBespoke.stationEast.get_stopped_train()
             if stationEastTrain ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(stationEastTrain, 0.25)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preSecondTunnelTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train at east station not identical")
                     return
                 end
@@ -273,6 +275,7 @@ end
 Test.ShouldTunnelPartBeRemoved = function(testData)
     local testScenario = testData.testScenario ---@type Tests_MDTT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_MDTT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     if testScenario.trainState == TrainStates.none then
         -- Always the right time with "none" train state requirement.
@@ -286,7 +289,7 @@ Test.ShouldTunnelPartBeRemoved = function(testData)
         end
     else
         -- All other train states check if they have been reported as being reached yet.
-        if testData.actions[testScenario.trainState] ~= nil and testData.actions[testScenario.trainState].count == 1 then
+        if tunnelUsageChanges.actions[testScenario.trainState] ~= nil and tunnelUsageChanges.actions[testScenario.trainState].count == 1 then
             return true
         else
             return false
@@ -294,6 +297,7 @@ Test.ShouldTunnelPartBeRemoved = function(testData)
     end
 end
 
+--- Tunnel part is always removed while the train is heading west.
 ---@param testData TestManager_TestData
 ---@param testName string
 ---@param tunnelObject RemoteTunnelDetails
@@ -314,8 +318,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
         if tunnelUsageEntry ~= nil then
             -- Train is using the underground so it must be complete. There may be a surface train, but it will be incomplete and so check underground first.
             if tunnelUsageEntry.train ~= nil then
-                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.train)
-                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+                local currentSnapshot = TestFunctions.GetSnapshotOfTrain(tunnelUsageEntry.train, 0.75)
+                if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preFirstTunnelTrainSnapshot, currentSnapshot, false) then
                     TestFunctions.TestFailed(testName, "Train underground not identical")
                     return false
                 end
@@ -323,8 +327,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             end
         elseif trainOnSurface ~= nil then
             -- Train isn't underground and so the surface train must be complete.
-            local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
-            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+            local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface, 0.75)
+            if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preFirstTunnelTrainSnapshot, currentSnapshot, false) then
                 TestFunctions.TestFailed(testName, "Train on surface not identical")
                 return false
             end
@@ -349,8 +353,8 @@ Test.CheckTrainPostTunnelPartRemoval = function(testData, testName, tunnelObject
             TestFunctions.TestFailed(testName, "Should be a partial train on the surface")
             return false
         end
-        local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface)
-        if TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentSnapshot, false) then
+        local currentSnapshot = TestFunctions.GetSnapshotOfTrain(trainOnSurface, 0.75)
+        if TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.preFirstTunnelTrainSnapshot, currentSnapshot, false) then
             TestFunctions.TestFailed(testName, "Train on surface is the same, but should be partial")
             return false
         end
@@ -367,16 +371,16 @@ Test.GenerateTestScenarios = function(testName)
     local trainStatesToTest  ---@type Tests_MDTT_TrainStates
     local tunnelPartsToTest  ---@type Tests_MDTT_TunnelParts
     local removalActionsToTest  ---@type Tests_MDTT_RemovalActions
-    if DoMinimalTests then
-        -- Minimal tests.
-        trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.partiallyOnPortalTrack] = TrainStates.partiallyOnPortalTrack, [TrainStates.leaving] = TrainStates.leaving}
-        tunnelPartsToTest = {TunnelParts.entrancePortal}
-        removalActionsToTest = RemovalActions
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         trainStatesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStates, SpecificTrainStateFilter)
         tunnelPartsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelParts, SpecificTunnelPartFilter)
         removalActionsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(RemovalActions, SpecificRemovalActionFilter)
+    elseif DoMinimalTests then
+        -- Minimal tests.
+        trainStatesToTest = {[TrainStates.none] = TrainStates.none, [TrainStates.partiallyOnPortalTrack] = TrainStates.partiallyOnPortalTrack, [TrainStates.leaving] = TrainStates.leaving}
+        tunnelPartsToTest = {TunnelParts.entrancePortal}
+        removalActionsToTest = RemovalActions
     else
         -- Do whole test suite.
         trainStatesToTest = TrainStates

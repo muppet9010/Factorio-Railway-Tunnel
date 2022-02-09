@@ -1,13 +1,14 @@
 -- SAMPLE TEST FILE - Functions are populated with sample code in keeping with the other test design.
 -- As a multi instance test this test file is run multiple times with each instance having different variations.
+
 -- Any created test has to be added to the test list at the top of test-manager.lua.
 -- A single test is run at a time and if the test is successful the map is cleared and the next test started. Each test only has to manage its own activities and feed back via the listed Interfaces.
 -- The referenced TestFunctions file has comments on the functions for their use.
--- Tests should only use their own blueprint items lists and any searched based off thier own tracked entities. SO no getting a forces train list, etc. This is to enable future concurrent running of tests.
+-- Tests should only use their own blueprint items lists and any searches based off thier own tracked entities. So no getting a forces train list, etc. This is to enable future concurrent running of tests.
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 -- Internal test types.
 --- Class name includes the abbreviation of the test name to make it unique across the mod.
@@ -44,9 +45,9 @@ Test.TestScenarios = {}
 --- Any scheduled event types for the test must be Registered here.
 ---@param testName string
 Test.OnLoad = function(testName)
-    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick) -- Register for enabling during Start().
     Test.GenerateTestScenarios(testName)
-    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName) -- Have tunnel usage changes being added to the test's TestData object.
 end
 
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
@@ -76,7 +77,7 @@ Test.Start = function(testName)
     -- Set the trains starting speed based on the test scenario.
     local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
     if testScenario.trainStartingSpeed == TrainStartingSpeeds.full then
-        train.speed = -2 -- Train is moving backwards for Factorio reasons.
+        train.speed = -1.4 -- Max locomotive speed. Train is moving backwards for Factorio reasons.
     end
 
     -- Add test data for use in the EveryTick().
@@ -108,8 +109,9 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_TMI_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_TMI_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    if testData.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+    if tunnelUsageChanges.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
         game.print("train has completed tunnel trip")
     end
@@ -138,13 +140,13 @@ Test.GenerateTestScenarios = function(testName)
     -- Work out what specific instances of each type to do.
     local firstLettersToTest  ---@type Tests_TMI_FirstLetterTypes[]
     local trainStartingSpeedToTest  ---@type Tests_TMI_TrainStartingSpeeds[]
-    if DoMinimalTests then
-        firstLettersToTest = {FirstLetterTypes.b}
-        trainStartingSpeedToTest = {TrainStartingSpeeds.none, TrainStartingSpeeds.full}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         firstLettersToTest = TestFunctions.ApplySpecificFilterToListByKeyName(FirstLetterTypes, SpecificFirstLetterFilter)
         trainStartingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStartingSpeeds, SpecificTrainStartingSpeedFilter)
+    elseif DoMinimalTests then
+        firstLettersToTest = {FirstLetterTypes.b}
+        trainStartingSpeedToTest = {TrainStartingSpeeds.none, TrainStartingSpeeds.full}
     else
         -- Do whole test suite.
         firstLettersToTest = FirstLetterTypes

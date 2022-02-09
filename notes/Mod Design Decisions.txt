@@ -84,8 +84,14 @@ Notes on this area:
     - Once a graphic layer is put above the portals and has a selection option for the portal/tunnel player GUI then the train carriages on the portal will no longer be selectable.
 
 
--- Portal design and layout
----------------------------
+Portal part design
+---------------------
+
+The internal and external end of each portal needs to support having a rail singal 1 tile in. This is so that signals can be placed freely by the player outside of the portal, and for adjacent tunnel segment signals which are on the near portal side for one of the tunnel's 2 portals. This required the ends of portals to be atleast a 2 tile straight rail length and ruled out curved portal ends. Using the special larger end pieces that don't count towards max supported train length seemed more natural for the player, than forcing a short straight at each end and subtracting 12 tiles from the portal's total supported length.
+
+
+Portal graphics
+------------------
 
 - The front 3 tiles of the portal area floor can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding). Note that when the open end of the portal is facing the player the tunnel roof is pushed back due to its height.
 - A portal will have a base graphic under regular entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics on both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
@@ -98,14 +104,14 @@ Notes on this area:
 - On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
 
 
--- Processing trains per tick
+Processing trains per tick
 -----------------------------
 
 Explored delaying the TrainManager per tick functions (TrainApproachingOngoing, TrainLeavingOngoing, TrainOnPortalTrackOngoing) to be run every 10 ticks rather than per tick in branch "less_frequent_tick_processing". This did save some mod execution time, estimated around 15%. But it introduced a lot of risk as there could become odd timings between different events that I couldn't test and reasonably reproduce. So decided the UPS savings aren't worth the risk.
 The TrainApproachingOngoing function for setting speed seems less risky to delay as it would just make entering speed less stable, but when tested on a big train and 10 second initial delay it could cause the entering train to double call its signal reservation, flagging the risks involved.
 
 
--- Train entry detector
+Train entry detector
 ----------------------------
 
 The train entry detector is intended to prevent *most* invalid tunnel uses while the train is outside of the portal and thus easiest for players to resolve. With the future introduction of manual train driving and other features this protection will likely be weakened. An example of when it won't detect a bad train is if a second train tails a first train into the same portal.

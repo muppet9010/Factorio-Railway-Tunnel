@@ -1,5 +1,5 @@
-local Utils = require("utility/utils")
-local CollisionMaskUtil = require("__core__/lualib/collision-mask-util")
+local Utils = require("utility.utils")
+local CollisionMaskUtil = require("__core__.lualib.collision-mask-util")
 
 local refCharacter = data.raw["character"]["character"]
 local characterPlacementLeaveTunnelCollisionMask = Utils.DeepCopy(CollisionMaskUtil.get_mask(refCharacter))

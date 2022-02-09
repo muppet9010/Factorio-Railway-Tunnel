@@ -1,13 +1,13 @@
 --[[
-    A series of tests that removes the target train stop and rail while the tunnel is in use. Covers:
+    A series of tests that removes the target train stop and rail while the tunnel is in use. The train will have an alternative station target either in fron of it, behind it, or none. As we remove the rail in all different tunnel states this tests the full range of reactions by the managed train. Covers:
         - TargetTypes = rail, trainStop
         - TunnelUsageStates = startApproaching, onPortalTrack, entered, leaving, partlyLeftExitPortalTracks.
         - NextScheduleOrder = none, forwards, reversal.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
+local Common = require("scripts.common")
 
 ---@class Tests_RTSR_TargetTypes
 local TargetTypes = {
@@ -78,7 +78,7 @@ Test.Start = function(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     local surface = TestFunctions.GetTestSurface()
 
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationSecondForwards, stationRemove, stationSecondReverse
@@ -182,7 +182,7 @@ Test.Start = function(testName)
         exitPortalPart = exitPortalPart, ---@type LuaEntity
         exitPortalTrainDetector = exitPortalTrainDetector, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
+        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75),
         firstTargetRemoved = false ---@type boolean
     }
     testData.bespoke = testDataBespoke
@@ -201,10 +201,11 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_RTSR_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_RTSR_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
 
     if not testDataBespoke.firstTargetRemoved then
         local removeFirstTarget = false
-        if (testScenario.tunnelUsageState == TunnelUsageStates.startApproaching or testScenario.tunnelUsageState == TunnelUsageStates.entered or testScenario.tunnelUsageState == TunnelUsageStates.leaving) and testScenario.tunnelUsageState == testData.lastAction then
+        if (testScenario.tunnelUsageState == TunnelUsageStates.startApproaching or testScenario.tunnelUsageState == TunnelUsageStates.entered or testScenario.tunnelUsageState == TunnelUsageStates.leaving) and testScenario.tunnelUsageState == tunnelUsageChanges.lastAction then
             removeFirstTarget = true
         elseif testScenario.tunnelUsageState == TunnelUsageStates.onPortalTrack and not testDataBespoke.entrancePortalTrainDetector.valid then
             removeFirstTarget = true
@@ -235,11 +236,11 @@ Test.EveryTick = function(event)
         local train = testDataBespoke.train -- Check for train pre entering.
         if train == nil or not train.valid then
             -- Try to get the leaving train. No other states should have this outcome.
-            train = testData.train
+            train = tunnelUsageChanges.train
         end
         if train ~= nil and train.valid then
             if train.state == defines.train_state.no_path then
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train)
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train, 0.75)
                 if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "train stopped doesn't match origional")
                     return
@@ -254,7 +255,7 @@ Test.EveryTick = function(event)
         if trainAtExitPortal ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
             if trainAtExitPortal.state == defines.train_state.wait_station or trainAtExitPortal.state == defines.train_state.no_schedule then
-                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal)
+                local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(trainAtExitPortal, 0.75)
                 if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                     TestFunctions.TestFailed(testName, "part of train at end of portal doesn't match origional")
                     return
@@ -266,11 +267,13 @@ Test.EveryTick = function(event)
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.secondTargetReached then
         -- Try both second stations, only one will end up with a train.
         local stationSecondTrain = testDataBespoke.stationSecondForwards.get_stopped_train()
+        local stoppedTrainFacing = 0.75
         if stationSecondTrain == nil then
             stationSecondTrain = testDataBespoke.stationSecondReverse.get_stopped_train()
+            stoppedTrainFacing = 0.75 -- Seems counter intuative, but gives the correct answer and the tunnel ahsn't been used so must be right.
         end
         if stationSecondTrain ~= nil then
-            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain)
+            local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSecondTrain, stoppedTrainFacing)
             if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.origionalTrainSnapshot, currentTrainSnapshot, false) then
                 TestFunctions.TestFailed(testName, "train at second station doesn't match origional")
                 return
@@ -292,15 +295,15 @@ Test.GenerateTestScenarios = function(testName)
     local targetTypesToTest  ---@type Tests_RTSR_TargetTypes
     local tunnelUsageStatesToTest  ---@type Tests_RTSR_TunnelUsageStates
     local nextScheduleOrdersToTest  ---@type Tests_RTSR_NextScheduleOrders
-    if DoMinimalTests then
-        targetTypesToTest = {TargetTypes.trainStop}
-        tunnelUsageStatesToTest = {TunnelUsageStates.onPortalTrack, TunnelUsageStates.entered, TunnelUsageStates.leaving}
-        nextScheduleOrdersToTest = {NextScheduleOrders.reversal, NextScheduleOrders.none}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         targetTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TargetTypes, SpecificTargetTypesFilter)
         tunnelUsageStatesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelUsageStates, SpecificTunnelUsageStatesFilter)
         nextScheduleOrdersToTest = TestFunctions.ApplySpecificFilterToListByKeyName(NextScheduleOrders, SpecificNextScheduleOrdersFilter)
+    elseif DoMinimalTests then
+        targetTypesToTest = {TargetTypes.trainStop}
+        tunnelUsageStatesToTest = {TunnelUsageStates.onPortalTrack, TunnelUsageStates.entered, TunnelUsageStates.leaving}
+        nextScheduleOrdersToTest = {NextScheduleOrders.reversal, NextScheduleOrders.none}
     else
         -- Do whole test suite.
         targetTypesToTest = TargetTypes

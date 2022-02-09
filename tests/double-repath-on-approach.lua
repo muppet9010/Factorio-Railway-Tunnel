@@ -3,7 +3,7 @@
     Then when the train passes in to (triggers) the second circuit connected signal the stations switch back, routing the train back through the tunnel.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 
@@ -16,7 +16,7 @@ local blueprintString = "0eNrNXUty4zoSvAvXkoP4A46YK8xmZveiQ0FLbDfjyaSCovyeo8MHmF
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 50, y = 60}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
 
     -- Get the stations placed by name.
     local stationSouths, stationNorth = {}, nil
@@ -44,7 +44,8 @@ Test.Start = function(testName)
         stationSouthReached = false, ---@type boolean
         stationNorthReached = false, ---@type boolean
         repathTrain = repathTrain, ---@type LuaTrain
-        repathTrainSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain),
+        repathTrainPreFirstTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(repathTrain, 0.25), ---@type TestFunctions_TrainSnapshot
+        repathTrainPreSecondTunnelSnapshot = nil, ---@type TestFunctions_TrainSnapshot
         stationSouthEndViaTunnel = stationSouthEndViaTunnel, ---@type LuaEntity
         stationSouthEndNotTunnel = stationSouthEndNotTunnel, ---@type LuaEntity
         stationNorth = stationNorth ---@type LuaEntity
@@ -68,13 +69,14 @@ Test.EveryTick = function(event)
     local stationSouthEndViaTunnelTrain, stationSouthEndNotTunnelTrain, stationNorthTrain = testDataBespoke.stationSouthEndViaTunnel.get_stopped_train(), testDataBespoke.stationSouthEndNotTunnel.get_stopped_train(), testDataBespoke.stationNorth.get_stopped_train()
 
     if stationSouthEndViaTunnelTrain ~= nil and not testDataBespoke.stationSouthReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain, 0.75)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainPreFirstTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at south station has differences")
             return
         end
         game.print("train reached tunnel usage south station")
         testDataBespoke.stationSouthReached = true
+        testDataBespoke.repathTrainPreSecondTunnelSnapshot = TestFunctions.GetSnapshotOfTrain(stationSouthEndViaTunnelTrain, 0.25)
     end
     if stationSouthEndNotTunnelTrain ~= nil then
         -- The train should never reach this specific station as it should use the tunnel.
@@ -82,8 +84,8 @@ Test.EveryTick = function(event)
         return
     end
     if stationNorthTrain ~= nil and not testDataBespoke.stationNorthReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain)
-        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainSnapshot, currentTrainSnapshot) then
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationNorthTrain, 0.75)
+        if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.repathTrainPreSecondTunnelSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "train at north station has differences")
             return
         end

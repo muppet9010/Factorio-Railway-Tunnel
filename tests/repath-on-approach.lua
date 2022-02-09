@@ -3,7 +3,7 @@
     The loop train is there to test that the tunnel is properly cleared for the next crossing when a train already on the approach repathes away from the tunnel.
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
 
@@ -16,7 +16,7 @@ local blueprintString = "0eNrNXUtu68YS3QvHksH+dxvIMLOMksweDIGWeG0iMilQlO+7uPAC3i
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 60}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)
 
     -- Get the stations placed by name. There are 2 stations with the same name "Repathed-End" that are sorted by relative map position.
     local stationRepaths, stationLoopEnd = {}, nil
@@ -56,7 +56,7 @@ Test.Start = function(testName)
         stationLoopEndReached = false, ---@type boolean
         stationRepathEndNotTunnelReached = false, ---@type boolean
         repathTrain = repathTrain, ---@type LuaTrain
-        loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain),
+        loopTrainSnapshot = TestFunctions.GetSnapshotOfTrain(loopTrain, 0.25),
         stationRepathEndViaTunnel = stationRepathEndViaTunnel, ---@type LuaEntity
         stationRepathEndNotTunnel = stationRepathEndNotTunnel, ---@type LuaEntity
         stationLoopEnd = stationLoopEnd ---@type LuaEntity
@@ -95,7 +95,7 @@ Test.EveryTick = function(event)
         return
     end
     if stationLoopEndTrain ~= nil and not testDataBespoke.stationLoopEndReached then
-        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationLoopEndTrain)
+        local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(stationLoopEndTrain, 0.25)
         if not TestFunctions.AreTrainSnapshotsIdentical(testDataBespoke.loopTrainSnapshot, currentTrainSnapshot) then
             TestFunctions.TestFailed(testName, "loop train has differences after tunnel use")
             return

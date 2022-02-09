@@ -4,9 +4,9 @@
         nextStop: none, station, rail
 ]]
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
+local Common = require("scripts.common")
 local TunnelRailEntityNames = Common.TunnelRailEntityNames
 
 ---@class Tests_PTTRT_TargetTunnelRail
@@ -74,7 +74,7 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 60, y = 0}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the stations from the blueprint
     local stationEnd
@@ -192,7 +192,6 @@ Test.Start = function(testName)
         undergroundSegment = undergroundSegment, ---@type LuaEntity
         targetTunnelRailEntity = targetTunnelRailEntity, ---@type LuaEntity
         train = train, ---@type LuaTrain
-        origionalTrainSnapshot = TestFunctions.GetSnapshotOfTrain(train),
         tunnelRailReached = false, ---@type boolean
         nextStopReached = false ---@type boolean
     }
@@ -272,13 +271,13 @@ Test.GenerateTestScenarios = function(testName)
 
     local targetTunnelRailsToTest  ---@type Tests_PTTRT_TargetTunnelRail
     local nextStopsToTest  ---@type  Tests_PTTRT_NextStopTypes
-    if DoMinimalTests then
-        targetTunnelRailsToTest = {TargetTunnelRail.undergroundSegment}
-        nextStopsToTest = {NextStopTypes.station}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         targetTunnelRailsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TargetTunnelRail, SpecificTargetTunnelRailFilter)
         nextStopsToTest = TestFunctions.ApplySpecificFilterToListByKeyName(NextStopTypes, SpecificNextStopFilter)
+    elseif DoMinimalTests then
+        targetTunnelRailsToTest = {TargetTunnelRail.undergroundSegment}
+        nextStopsToTest = {NextStopTypes.station}
     else
         -- Do whole test suite.
         targetTunnelRailsToTest = TargetTunnelRail

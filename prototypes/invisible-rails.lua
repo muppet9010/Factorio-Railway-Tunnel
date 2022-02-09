@@ -1,5 +1,5 @@
-local Utils = require("utility/utils")
-local CommonPrototypeFunctions = require("prototypes/common-prototype-functions")
+local Utils = require("utility.utils")
+local CommonPrototypeFunctions = require("prototypes.common-prototype-functions")
 
 local MakeEmptyRailImages = function()
     return {

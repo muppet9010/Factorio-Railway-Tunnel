@@ -1,7 +1,7 @@
 -- Sends a long train at a short portal tunnel. Should be stopped with the loco at the entrance portal entry point. After it sits there for 5 seconds it then moves away from the tunnel. Confirms the alerts appear and then vanish as expected for player 1.
 
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
+local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1000
 
@@ -14,7 +14,7 @@ local blueprintString = "0eNqtWtty2jAU/Bc9QwZdLfHeb+hDJ5NxQCWeGpuxDSmT4d8rBxqSQJ
 
 ---@param testName string
 Test.Start = function(testName)
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 40, y = 70}, testName)
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)
 
     -- Get the east portal's entry portal end entity.
     local entrancePortalEntryPortalEnd, entrancePortalEntryPortalEndXPos = nil, -100000

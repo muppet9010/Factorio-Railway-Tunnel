@@ -1,15 +1,16 @@
 --[[
     Tests that run different train types, tunnel compositions, starting speeds and leaving track scenarios. Confirms that the mod completes the activities and provides a non tunnel identical track and train for visual speed comparison.
     Repathing back through the tunnel is handled by force-repath-back-through-tunnel-tests.lua as there are a lot of combinations for it.
-    Note: this is a slower test to run as it places varying numbers of entities everywhere so no BP's are currently used in it. Advised to run logging results to text file when all iterations are used and run Facotrio outside of the debugger so its much faster.
+    Usage Note: this is a slower test to run as it places varying numbers of entities everywhere so no BP's are currently used in it. Advised to run  Factorio outside of the debugger as it runs much faster.
+    Code Note: this test's Start() function has been made quite messy to enable it to run much faster by reducing the amount of leaving track built. This required the train to be built mid track building so leaving track length requirements could be calculated.
 --]]
 --
 
 -- Requires and this tests class object.
 local Test = {}
-local TestFunctions = require("scripts/test-functions")
-local Utils = require("utility/utils")
-local Common = require("scripts/common")
+local TestFunctions = require("scripts.test-functions")
+local Utils = require("utility.utils")
+local Common = require("scripts.common")
 
 -- Internal test types.
 ---@type table<string, TestFunctions_TrainSpecifiction> @ The key is generally the train specification composition text string with the speed if set.
@@ -49,7 +50,7 @@ local TunnelOversized = {
 local StartingSpeed = {
     none = "none",
     half = "half", -- Will be set to 0.6 as an approximate half speed.
-    full = "full" -- Will be set to 2 as this will drop to the trains real max after 1 tick.
+    full = "full" -- Will be set to 1.4 as this is locomotive max.
 }
 ---@class Tests_LTSDCT_LeavingTrackCondition
 local LeavingTrackCondition = {
@@ -64,10 +65,10 @@ local LeavingTrackCondition = {
 
 -- Test configuration.
 local MaxTimeVariationPercentage = 80 -- The maximum approved time variation as a percentage of the journey time between the train using the tunnel the train on regualr tracks. Time variation applies in both directions, so either is allowed to be faster than the other. Time variations greater than this will cause the test to fail. 80% passes at present for all variations, but the current larger variations do indicate future improvement areas (logged in "Long term UPS/code plans").
-local DoMinimalTests = true -- The minimal test to prove the concept. Just does the letter "b".
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionFilter = {"--<>--"} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificTrainCompositionFilter = {} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificTunnelOversizedFilter = {} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificStartingSpeedFilter = {} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
@@ -106,6 +107,8 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
+    -- Note: building the track manually is roughly the same UPS/time as using TestFunctions.BuildBlueprint() with its ghost revive.
+
     local tunnelTrackY, aboveTrackY, centerX, testSurface, testForce = -5, 5, 0, TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local tunnelEndStation, aboveEndStation, currentPos, offset
 
@@ -119,12 +122,40 @@ Test.Start = function(testName)
         portalSegments = portalSegments * 4
     end
 
-    -- Work out how much rail to build at the ends of the tunnel portals.
-    local railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 10 -- Start the train very close to the portal so its speed is around the starting speed still.
-    local railCountLeavingEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 40 -- Seems that 40 is safely far away at max speed for "clear" LeavingTrackCondition.
+    -- Work out how much rail to build at the start of the tunnel.
+    local railCountEntranceEndOfPortal
+    if testScenario.startingSpeed == StartingSpeed.full then
+        -- Start the train far enough away from the portal so its starting abstract high speed doesn't trigger the tunnel and then instantly release it when Factorio clamps to train max speed in first tick. The train isn;t going to go any faster so greater starting distances only smooth out the variation value (we want aas little smoothing as possible).
+        railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) * 4
+    else
+        -- Start the train very close to the portal so its speed hasn't climbed much from the starting speed.
+        railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 10
+    end
+
+    -- Work out how much rail to build at the end of the tunnel.
+    local nearPositionDistance, farPositionDistance = 20, 100
+    local railCountLeavingEndOfPortal
+    if testScenario.leavingTrackCondition ~= LeavingTrackCondition.clear then
+        -- Just make a short track as all thats needed for all but the clear leaving condition. Clear leaving condition is calculated during track building loop.
+        railCountLeavingEndOfPortal = (farPositionDistance + 10) / 2 -- Far rail distance plus 10 as the max rail distance needed for any test. Is for a loco after a signal placed at far distance.
+    end
 
     -- Stores the various placement position X's worked out during setup for use by other elements later.
-    local nearPositionX, farPositionX, beginningEntranceRailPositionX
+    local nearPositionX, farPositionX
+
+    -- Get the train data worked out as its added in a messy way as we need the train data during setup.
+    local trainStartXPos, tunnelTrain, aboveTrain  -- Populated during rail building time.
+    local startingSpeedValue
+    if testScenario.startingSpeed == StartingSpeed.none then
+        startingSpeedValue = 0
+    elseif testScenario.startingSpeed == StartingSpeed.half then
+        startingSpeedValue = 0.6
+    elseif testScenario.startingSpeed == StartingSpeed.full then
+        startingSpeedValue = 1.4
+    else
+        error("unrecognised StartignSpeed: " .. testScenario.startingSpeed)
+    end
+    local trainFuel = {name = "rocket-fuel", count = 10}
 
     -- Place the Tunnel Track's various standard parts, starting in middle of underground and going towards train, then in middle going towards end.
     -- Set the currentXPos before and after placing each entity, so its left on the entity border between them. This means nothing special is needed between entity types.
@@ -162,8 +193,15 @@ Test.Start = function(testName)
 
         -- Store the specific X position on the exit side of the track for these 2 possible placements.
         if orientationCount == 2 then
-            nearPositionX = currentPos.x - 20
-            farPositionX = currentPos.x - 100
+            nearPositionX = currentPos.x - nearPositionDistance
+            farPositionX = currentPos.x - farPositionDistance
+        end
+
+        -- If its a clear exit test then work out the railCountLeavingEndOfPortal length from the built train after building the entrance side of the portal. Otherwise the value was calculated preivously.
+        if orientationCount == 2 and testScenario.leavingTrackCondition == LeavingTrackCondition.clear then
+            local trainData = Utils.GetTrainSpeedCalculationData(tunnelTrain, tunnelTrain.speed, tunnelTrain.carriages)
+            local stoppingDistance = Utils.CalculateBrakingTrainDistanceAndTimeFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
+            railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10 -- This is excessive still as many trains won't be going at max speed when leaving, but I don't know how to simply work out leaving speed from test starting data only. But much better than the old code that was 40 times train length.
         end
 
         -- Place the track to the required distance
@@ -180,9 +218,13 @@ Test.Start = function(testName)
             currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
         end
 
-        -- Store the beginning end of the entrance rail for use later on.
+        -- Build the tunnel train on the entrance track as needed to calculate exit track length on next loop of the FOR.
         if orientationCount == 1 then
-            beginningEntranceRailPositionX = currentPos.x
+            -- Store the beginning end of the entrance rail for use later on.
+            trainStartXPos = currentPos.x - (#testScenario.trainCarriageDetails * 7)
+
+            -- Make the train as we need it present.
+            tunnelTrain = TestFunctions.BuildTrain({x = trainStartXPos, y = tunnelTrackY}, testScenario.trainCarriageDetails, defines.direction.west, nil, 0.001, trainFuel)
         end
 
         -- Place the station on the exit side of the track.
@@ -239,6 +281,11 @@ Test.Start = function(testName)
             currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
         end
 
+        -- Build the train.
+        if orientationCount == 1 then
+            aboveTrain = TestFunctions.BuildTrain({x = trainStartXPos, y = aboveTrackY}, testScenario.trainCarriageDetails, defines.direction.west, nil, 0.001, trainFuel)
+        end
+
         -- Place the station on the exit side of the track.
         if orientationCount == 2 then
             local railStopPosition
@@ -276,24 +323,16 @@ Test.Start = function(testName)
         aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = farPositionX - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
     end
 
-    -- Add trains to both tracks. Do last as we want the rail network state all set before we add the trains and get them to path.
-    local trainTileLength = #testScenario.trainCarriageDetails * 7
-    local trainStartXPos = beginningEntranceRailPositionX - trainTileLength
-    local startingSpeedValue
-    if testScenario.startingSpeed == StartingSpeed.none then
-        startingSpeedValue = 0
-    elseif testScenario.startingSpeed == StartingSpeed.half then
-        startingSpeedValue = 0.6
-    elseif testScenario.startingSpeed == StartingSpeed.full then
-        startingSpeedValue = 2
-    else
-        error("unrecognised StartignSpeed: " .. testScenario.startingSpeed)
+    -- Set the trains schedules and state last as we want the rail network all set before we getthe trains to try and find their real paths.
+    -- A temporary speed was set at build time just to allow functions to run correctly, so set it to its real value.
+    local speedDirectionMultiplier = 1
+    if tunnelTrain.speed < 0 then
+        speedDirectionMultiplier = -1
     end
-    local trainFuel = {name = "rocket-fuel", count = 10}
-    local tunnelTrain = TestFunctions.BuildTrain({x = trainStartXPos, y = tunnelTrackY}, testScenario.trainCarriageDetails, defines.direction.west, nil, startingSpeedValue, trainFuel)
+    tunnelTrain.speed = startingSpeedValue * speedDirectionMultiplier
     tunnelTrain.schedule = {current = 1, records = {{station = "End"}}}
     tunnelTrain.manual_mode = false
-    local aboveTrain = TestFunctions.BuildTrain({x = trainStartXPos, y = aboveTrackY}, testScenario.trainCarriageDetails, defines.direction.west, nil, startingSpeedValue, trainFuel)
+    tunnelTrain.speed = startingSpeedValue * speedDirectionMultiplier
     aboveTrain.schedule = {current = 1, records = {{station = "End"}}}
     aboveTrain.manual_mode = false
 
@@ -339,6 +378,15 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(testName)
     local testScenario = testData.testScenario ---@type Tests_LTSDCT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_LTSDCT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
+
+    -- Check that no starting speed variations has caused the tunnel to be reserved/released on the first tick.
+    if event.tick == testDataBespoke.testStartedTick then
+        if tunnelUsageChanges.lastAction ~= nil then
+            TestFunctions.TestFailed(testName, "train triggered tunnel in first tick and is therefore bad test setup")
+            return
+        end
+    end
 
     -- LeavingTrackCondition.noPath only - track when to remove the rail to cause a noPath.
     if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
@@ -363,8 +411,8 @@ Test.EveryTick = function(event)
     end
 
     -- Capture the leaving train when it first emerges.
-    if testDataBespoke.tunnelTrainPostTunnel == nil and testData.lastAction == Common.TunnelUsageAction.leaving then
-        testDataBespoke.tunnelTrainPostTunnel = testData.train
+    if testDataBespoke.tunnelTrainPostTunnel == nil and tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving then
+        testDataBespoke.tunnelTrainPostTunnel = tunnelUsageChanges.train
     end
 
     -- Monitor the train times when they stop.
@@ -434,17 +482,17 @@ Test.GenerateTestScenarios = function(testName)
     local tunnelOversizedToTest  ---@type Tests_LTSDCT_TunnelOversized
     local startingSpeedToTest  ---@type Tests_LTSDCT_StartingSpeed
     local leavingTrackConditionToTest  ---@type Tests_LTSDCT_LeavingTrackCondition
-    if DoMinimalTests then
-        trainCompositionToTest = {TrainComposition["<---->"]}
-        tunnelOversizedToTest = {TunnelOversized.none}
-        startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
-        leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
-    elseif DoSpecificTests then
+    if DoSpecificTests then
         -- Adhock testing option.
         trainCompositionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainComposition, SpecificTrainCompositionFilter)
         tunnelOversizedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelOversized, SpecificTunnelOversizedFilter)
         startingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StartingSpeed, SpecificStartingSpeedFilter)
         leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
+    elseif DoMinimalTests then
+        trainCompositionToTest = {TrainComposition["<---->"]}
+        tunnelOversizedToTest = {TunnelOversized.none}
+        startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
+        leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
     else
         -- Do whole test suite.
         trainCompositionToTest = TrainComposition
