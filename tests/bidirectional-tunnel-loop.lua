@@ -1,8 +1,9 @@
--- Tests that a train can do a figure of 8 smoothly through a single tunnel at speed a few times. Uses some different train compositions to get different tunnel signals being triggered at different speeds. We don't support reserving the same tunnel you are leaving and so the leavng train is just massively slowed down in this edge case.
+-- Tests that a train can do a figure of 8 smoothly through a single tunnel at speed a few times. Uses some different train compositions to get different tunnel signals being triggered at different speeds. We don't support reserving the same tunnel you are leaving and so the leaving train is just massively slowed down in this edge case. The number of times the train reaches the stations are tracked to make sure thye are doing a figure of 8 and not just flip/flopping in/out of the tunnel.
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
 local Common = require("scripts.common")
+local Utils = require("utility.utils")
 
 ---@class Tests_BTL_TrainCompositions
 local TrainCompositions = {
@@ -18,10 +19,10 @@ local StartingSpeeds = {
 }
 
 -- Test configuration.
-local DoMinimalTests = false -- The minimal test to prove the concept.
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
-local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionsFilter = {"<>"} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrainCompositionsFilter = {} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 local SpecificStartingSpeedsFilter = {} -- Pass in an array of StartingSpeeds keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
@@ -59,11 +60,13 @@ Test.Start = function(testName)
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
     -- North station.
-    local northStation
+    local northStation, southStation
     if placedEntitiesByGroup["train-stop"][1].backer_name == "North" then
         northStation = placedEntitiesByGroup["train-stop"][1]
+        southStation = placedEntitiesByGroup["train-stop"][2]
     else
         northStation = placedEntitiesByGroup["train-stop"][2]
+        southStation = placedEntitiesByGroup["train-stop"][1]
     end
 
     -- Add the train.
@@ -83,7 +86,11 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_BTL_TestScenarioBespokeData
     local testDataBespoke = {
-        leavingStateshandled = 0 ---@type uint
+        leavingStateshandled = 0, ---@type uint
+        northStationPositionCheck = {x = northStation.position.x - 2, y = northStation.position.y}, ---@type Position
+        southStationPositionCheck = {x = southStation.position.x + 2, y = southStation.position.y}, ---@type Position
+        northStationTrainIds = {}, ---@type Id[]
+        southStationTrainIds = {} ---@type Id[]
     }
     testData.bespoke = testDataBespoke
 
@@ -105,11 +112,35 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_BTL_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    -- Check that the train does 6 tunnel transitions without issues.
+    -- Check that the right number of trains actually went via the stations and didn't just get stuck flipping back and fourth via the tunnel.
+    -- Add by train Id as key, then it doesn't matter how many times the same train is detected.
+    local northStationTrain = TestFunctions.GetTrainAtPosition(testDataBespoke.northStationPositionCheck)
+    if northStationTrain ~= nil then
+        testDataBespoke.northStationTrainIds[northStationTrain.id] = true
+    end
+    local southStationTrain = TestFunctions.GetTrainAtPosition(testDataBespoke.southStationPositionCheck)
+    if southStationTrain ~= nil then
+        testDataBespoke.southStationTrainIds[southStationTrain.id] = true
+    end
+
+    -- Count how many times the train has used the tunnel.
     if tunnelUsageChanges.actions[Common.TunnelUsageAction.leaving] ~= nil and tunnelUsageChanges.actions[Common.TunnelUsageAction.leaving].count > testDataBespoke.leavingStateshandled then
         testDataBespoke.leavingStateshandled = testDataBespoke.leavingStateshandled + 1
 
-        if testDataBespoke.leavingStateshandled >= 6 then
+        -- See if the test should be over.
+        local loopCountNeeded = 7
+        if testDataBespoke.leavingStateshandled >= loopCountNeeded then
+            -- Check if the required number of trains went through the 2 stations.
+            -- We have to do one more tunnel usage than stations reached as we start and end with a tunnel usage, rather than a station visit.
+            if Utils.GetTableNonNilLength(testDataBespoke.northStationTrainIds) ~= math.floor(loopCountNeeded / 2) then
+                TestFunctions.TestFailed(testName, "train dodn't go through the north station the required count")
+                return
+            end
+            if Utils.GetTableNonNilLength(testDataBespoke.southStationTrainIds) ~= math.floor(loopCountNeeded / 2) then
+                TestFunctions.TestFailed(testName, "train dodn't go through the south station the required count")
+                return
+            end
+
             TestFunctions.TestCompleted(testName)
             return
         end
