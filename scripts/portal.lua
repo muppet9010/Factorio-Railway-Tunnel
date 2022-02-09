@@ -619,6 +619,7 @@ Portal.PortalComplete = function(portal)
             }
         )
     end
+
     -- Add the portal segment's graphics.
     for _, portalSegment in pairs(portal.portalSegments) do
         local segmentPortalTypeData = portalSegment.typeData ---@type SegmentPortalTypeData
