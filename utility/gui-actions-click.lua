@@ -1,6 +1,6 @@
---- Library to register and handle GUI button clicks, allows registering and handling functions in a modular way.
---- Must call the MonitorGuiClickActions() function once in root of control.lua for this library to be activated.
---- Requires the utility "constants" file to be populated within the root of the mod.
+-- Library to register and handle GUI button clicks, allows registering and handling functions in a modular way.
+-- Must call the MonitorGuiClickActions() function once in root of control.lua for this library to be activated.
+-- Requires the utility "constants" file to be populated within the root of the mod.
 
 local GuiActionsClick = {}
 local Constants = require("constants")
@@ -9,7 +9,7 @@ MOD.guiClickActions = MOD.guiClickActions or {}
 
 ---@class UtilityGuiActionsClick_ActionData @ The response object passed to the callback function when the GUI element is clicked. Registered with GuiActionsClick.RegisterGuiForClick().
 ---@field actionName string @ The action name registered to this GUI element beign clicked.
----@field playerIndex uint @ The player_index of the player who clicked the GUI.
+---@field playerIndex Id @ The player_index of the player who clicked the GUI.
 ---@field data any @ The data argument passed in when registering this function action name to the GUI element.
 ---@field eventData on_gui_click @ The raw Factorio event data for the on_gui_click event.
 
@@ -53,7 +53,7 @@ end
 --- Called when desired to remove a specific button or other GuiElement from triggering its action.
 --- Should be called to remove links for buttons when their elements are removed to stop global data lingering.
 ---@param elementName string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
----@param elementType? string|null @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
+---@param elementType string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
 GuiActionsClick.RemoveGuiForClick = function(elementName, elementType)
     if elementName == nil then
         error("GuiActions.RemoveButtonName called with missing arguments")
@@ -69,6 +69,8 @@ end
 --                                    Internal Functions
 --------------------------------------------------------------------------------------------
 
+--- Called when each on_gui_click event orrurs and identifies any registered actionName functions to trigger.
+---@param rawFactorioEventData on_gui_click
 GuiActionsClick._HandleGuiClickAction = function(rawFactorioEventData)
     if global.UTILITYGUIACTIONSGUICLICK == nil then
         return
@@ -89,13 +91,19 @@ GuiActionsClick._HandleGuiClickAction = function(rawFactorioEventData)
     end
 end
 
--- Just happens to be the same as in GuiUtil, but not a requirement.
-GuiActionsClick._GenerateGuiElementName = function(name, type)
-    if name == nil then
+--- Makes a UtilityGuiActionsClick_GuiElementName by combining the element's name and type.
+--- Just happens to be the same as in GuiUtil, but not a requirement.
+---@param elementName string
+---@param elementType string
+---@return UtilityGuiActionsClick_GuiElementName guiElementName
+GuiActionsClick._GenerateGuiElementName = function(elementName, elementType)
+    if elementName == nil or elementType == nil then
         return nil
     else
-        return Constants.ModName .. "-" .. name .. "-" .. type
+        return Constants.ModName .. "-" .. elementName .. "-" .. elementType
     end
 end
+
+---@alias UtilityGuiActionsClick_GuiElementName string @ A single unique string made by combining an elements name and type with mod name.
 
 return GuiActionsClick

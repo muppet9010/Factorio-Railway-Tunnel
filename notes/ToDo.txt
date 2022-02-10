@@ -2,6 +2,7 @@ Now
 ---
     - Portal/Tunnel GUI:
         - Clickable on portal area's will raise a GUI showing this portal and the other end portal if part of a valid tunnel. Should be available at all times.
+        - Track if a player opened a GUI on a portal part and then escalte that up to the portal and tunnel as arrays of player GUIs. When a train changes state it can check if the tunnel has any GUIs and if so call functions to the GUI class for the changes. Portal part, portal and tunnel changes can just call in to the GUI class when they change something (rare). These 2 types of events can just trigger the re-creation of that segment of any opened GUIs as will be rare chance and only odd player have it open at any time (if ever).
         - If player left clicks on a portal part that isn't part of a complete portal then the GUI should still load. It can state this isn't a complete portal or part of a tunnel. It can state the current max train length the segments in the portal currently support as every time a part is added to a portal we already update the "trainWaitingAreaTilesLength" attribute and a portal part being removed re-generates the whole portal object anyways.
         - GUI should list how many portals there are and if they are connected as a tunnel. They should be labelled as relative to each other in terms of portal entry to rail networks. As simple positions currently on only straight tunnels they will be north-south or east west portal.
         - GUI should show max supported train length for each portal and the tunnel overall if there is one.
