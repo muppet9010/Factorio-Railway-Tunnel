@@ -12,6 +12,7 @@ local Commands = require("utility.commands")
 local PlayerAlerts = require("utility.player-alerts")
 local TunnelShared = require("scripts.tunnel-shared")
 local TrainCachedData = require("scripts.train-cached-data")
+local PortalTunnelGui = require("scripts.portal-tunnel-gui")
 
 local function CreateGlobals()
     global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it does some additional state checks so makes code run slower.
@@ -24,6 +25,7 @@ local function CreateGlobals()
     Tunnel.CreateGlobals()
     Portal.CreateGlobals()
     Underground.CreateGlobals()
+    PortalTunnelGui.CreateGlobals()
 
     TestManager.CreateGlobals()
 end
@@ -90,6 +92,7 @@ local function OnLoad()
     Portal.OnLoad()
     Underground.OnLoad()
     PlayerContainer.OnLoad()
+    PortalTunnelGui.OnLoad()
 
     -- Start the test manager last.
     TestManager.OnLoad()

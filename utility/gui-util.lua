@@ -1,4 +1,7 @@
--- Library to support making, storing and accessing GUI elements.
+--- Library to support making, storing and accessing GUI elements.
+--- Requires the utility "constants" file to be populated within the root of the mod.
+
+-- TODO: EmmyLua this file
 
 local GuiUtil = {}
 local Utils = require("utility.utils")

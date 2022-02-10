@@ -1,4 +1,5 @@
--- Library functions to help manage adding and handling Factorio commands.
+--- Library functions to help manage adding and handling Factorio commands.
+--- Requires the utility "constants" file to be populated within the root of the mod.
 
 local Commands = {}
 local Utils = require("utility.utils")

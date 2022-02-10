@@ -1,4 +1,5 @@
--- Logging functions.
+--- Logging functions.
+--- Requires the utility "constants" file to be populated within the root of the mod.
 
 local Logging = {}
 local Constants = require("constants")

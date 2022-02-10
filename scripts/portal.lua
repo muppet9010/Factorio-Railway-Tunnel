@@ -1,9 +1,7 @@
---local Events = require("utility.events")
 local Utils = require("utility.utils")
 local TunnelShared = require("scripts.tunnel-shared")
 local Common = require("scripts.common")
 local TunnelSignalDirection, TunnelUsageParts = Common.TunnelSignalDirection, Common.TunnelUsageParts
---local PortalEndAndSegmentEntityNames = Common.PortalEndAndSegmentEntityNames
 local Portal = {}
 local EventScheduler = require("utility.event-scheduler")
 
