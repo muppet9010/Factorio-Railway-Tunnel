@@ -51,3 +51,5 @@ require("prototypes.placement-highlights")
 require("prototypes.train-blocker")
 require("prototypes.temporary-fuel")
 require("prototypes.virtual-signals")
+
+require("utility.style-data").GeneratePrototypes()

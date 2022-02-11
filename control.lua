@@ -13,6 +13,7 @@ local PlayerAlerts = require("utility.player-alerts")
 local TunnelShared = require("scripts.tunnel-shared")
 local TrainCachedData = require("scripts.train-cached-data")
 local PortalTunnelGui = require("scripts.portal-tunnel-gui")
+local GuiActionsClick = require("utility.gui-actions-click")
 
 local function CreateGlobals()
     global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it does some additional state checks so makes code run slower.
@@ -120,6 +121,7 @@ script.on_configuration_changed(OnStartup)
 script.on_load(OnLoad)
 EventScheduler.RegisterScheduler()
 PlayerAlerts.RegisterPlayerAlerts()
+GuiActionsClick.MonitorGuiClickActions()
 
 -- Mod wide function interface table creation. Means EmmyLua can support it and saves on UPS cost of old Interface function middelayer.
 ---@class InternalInterfaces

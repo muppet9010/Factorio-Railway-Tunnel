@@ -9,6 +9,7 @@ end
 
 PortalTunnelGui.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-open_gui", "PortalTunnelGui.OnOpenGuiInput", PortalTunnelGui.OnOpenGuiInput)
+    GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.OnCloseButtonClicked", PortalTunnelGui.OnCloseButtonClicked)
 end
 
 --- Called when ever a player left clicks on an entity. We want to check if they have clicked on a portal part entity and if so call to load the GUI for it.
@@ -32,8 +33,92 @@ PortalTunnelGui.OnOpenGuiInput = function(event)
         error("no registered portal part object for clicked portal part entity")
     end
 
+    -- Mark the portalPart as GuiOpened.
+    -- TODO: theres no logic to check for opened GUI's when the various part-portal-tunnel are made/deconstructed/mined.
+    MOD.Interfaces.Portal.GuiOpenedOnPortalPart(portalPart, event.player_index)
+
     -- Load GUI to player.
-    --TODO
+    PortalTunnelGui.MakeGui(portalPart, player, event.player_index)
+end
+
+--- Called to make the GUI.
+---@param portalPart PortalPart
+---@param player LuaPlayer
+---@param playerIndex Id
+PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
+    GuiUtil.AddElement(
+        {
+            parent = player.gui.screen,
+            descriptiveName = "portalTunnelGui_main",
+            type = "frame",
+            direction = "vertical",
+            style = "muppet_frame_main_shadowRisen_paddingBR",
+            storeName = "portalTunnelGui",
+            attributes = {auto_center = true},
+            children = {
+                {
+                    type = "flow",
+                    direction = "horizontal",
+                    style = "muppet_flow_horizontal_marginTL",
+                    styling = {horizontal_align = "left", right_padding = 4},
+                    children = {
+                        {
+                            descriptiveName = "portalTunnelGui_title",
+                            type = "label",
+                            style = "muppet_label_heading_large_bold_paddingSides",
+                            caption = "self"
+                        },
+                        {
+                            descriptiveName = "portalTunnelGui_dragBar",
+                            type = "empty-widget",
+                            style = "draggable_space",
+                            styling = {horizontally_stretchable = true, height = 20, top_margin = 4, minimal_width = 80},
+                            attributes = {
+                                drag_target = function()
+                                    return GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui", "portalTunnelGui_main", "frame")
+                                end
+                            }
+                        },
+                        {
+                            type = "flow",
+                            direction = "horizontal",
+                            style = "muppet_flow_horizontal_spaced",
+                            styling = {horizontal_align = "right", top_margin = 4},
+                            children = {
+                                --[[{
+                                    descriptiveName = "portalTunnelGui_openHelp",
+                                    type = "button",
+                                    style = "muppet_button_text_small_bold_frame_paddingNone",
+                                    styling = {},
+                                    caption = "self",
+                                    registerClick = {actionName = "ShopGui.OpenHelpAction"},
+                                    enabled = true
+                                },]]
+                                {
+                                    descriptiveName = "portalTunnelGui_closeButton",
+                                    type = "sprite-button",
+                                    tooltip = "self",
+                                    sprite = "utility/close_white",
+                                    style = "muppet_sprite_button_frameCloseButtonClickable",
+                                    registerClick = {actionName = "PortalTunnelGui.OnCloseButtonClicked", data = {portalPart = portalPart}}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+end
+
+--- When the player clicks the close button on their GUI.
+---@param event UtilityGuiActionsClick_ActionData
+PortalTunnelGui.OnCloseButtonClicked = function(event)
+    -- Tell the protal part which will propigate up to the tunnel.
+    MOD.Interfaces.Portal.GuiClosedOnPortalPart(event.data.portalPart, event.playerIndex)
+
+    -- Close and destroy all the Gui Element's for this overall GUI on screen.
+    GuiUtil.DestroyPlayersReferenceStorage(event.playerIndex, "portalTunnelGui")
 end
 
 return PortalTunnelGui

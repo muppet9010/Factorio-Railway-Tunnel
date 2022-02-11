@@ -16,6 +16,7 @@ local Utils = require("utility.utils")
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 ---@field maxTrainLengthTiles uint @ the max train length in tiles this tunnel supports.
+---@field guiOpenedByPlayers table<Id, True> @ A table of player Id's as keys who have a GUI opened on this portal part.
 
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
@@ -94,7 +95,8 @@ Tunnel.CompleteTunnel = function(portals, underground)
         force = refPortal.force,
         underground = underground,
         tunnelRailEntities = {},
-        portalRailEntities = {}
+        portalRailEntities = {},
+        guiOpenedByPlayers = {}
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1

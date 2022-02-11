@@ -13,6 +13,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field trainWaitingAreaTilesLength uint @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
+---@field guiOpenedByParts table<Id, True> @ A table of portal part Id's that have a GUI opened on this portal for one or more players.
 ---
 ---@field portalTunneExternalConnectionSurfacePositionStrings? table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject>|null @ the 2 external positions the portal should look for underground segments at. Only established on a complete portal.
 ---
@@ -53,6 +54,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field nonConnectedInternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
+---@field guiOpenedByPlayers table<Id, True> @ A table of player Id's as keys who have a GUI opened on this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 ---
@@ -203,6 +205,9 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition = Portal.CanAPortalConnectAtItsInternalPosition
     MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
+    MOD.Interfaces.Portal.GuiOpenedOnPortalPart = Portal.GuiOpenedOnPortalPart
+    MOD.Interfaces.Portal.GuiClosedOnPortalPart = Portal.GuiClosedOnPortalPart
+
     -- Merged event handler interfaces.
     MOD.Interfaces.Portal.OnBuiltEntity = Portal.OnBuiltEntity
     MOD.Interfaces.Portal.OnBuiltEntityGhost = Portal.OnBuiltEntityGhost
@@ -261,7 +266,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
         surface_index = surface_index,
         force = builtEntity.force,
         typeData = portalTypeData,
-        graphicRenderIds = {}
+        graphicRenderIds = {},
+        guiOpenedByPlayers = {}
     }
 
     -- Handle the caching of specific portal part type information and to their globals.
@@ -393,7 +399,8 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
                 portalSegments = {},
                 trainWaitingAreaTilesLength = 0,
                 force = portalPartObject.force,
-                surface = portalPartObject.surface
+                surface = portalPartObject.surface,
+                guiOpenedByParts = {}
             }
             global.portals.portals[portalId] = portal
             Portal.AddPartToPortal(portal, portalPartObject)
@@ -1472,6 +1479,35 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
             portal.transitionUsageDetectorEntity.destroy()
         end
         portal.transitionUsageDetectorEntity = nil
+    end
+end
+
+--- Mark this portal part as having a GUI opened on it.
+---@param portalPart PortalPart
+---@param playerIndex Id
+Portal.GuiOpenedOnPortalPart = function(portalPart, playerIndex)
+    portalPart.guiOpenedByPlayers[playerIndex] = true
+    if portalPart.portal ~= nil then
+        portalPart.portal.guiOpenedByParts[portalPart.id] = true
+        if portalPart.portal.tunnel ~= nil then
+            portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = true
+        end
+    end
+end
+
+--- Mark this portal part as having a GUI closed on it.
+---@param portalPart PortalPart
+---@param playerIndex Id
+Portal.GuiClosedOnPortalPart = function(portalPart, playerIndex)
+    portalPart.guiOpenedByPlayers[playerIndex] = nil
+    if next(portalPart.guiOpenedByPlayers) == nil then
+        -- No other players have this part open so inform the portal
+        if portalPart.portal ~= nil then
+            portalPart.portal.guiOpenedByParts[portalPart.id] = nil
+            if portalPart.portal.tunnel ~= nil then
+                portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = nil
+            end
+        end
     end
 end
 
