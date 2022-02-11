@@ -11,27 +11,67 @@ local StyleDataStyleVersion = require("utility.style-data").styleVersion
 ---@alias UtilityGuiUtil_StoreName string @ A named container that GUI elements have their references saved within under the GUI elements name and type. Used to provide logical seperation of GUI elements stored. Typically used for different GUis or major sections of a GUI, as the destroy GUI element functions can handle whole StoreNames automatically.
 ---@alias UtilityGuiUtil_GuiElementName string @ A generally unique string made by combining an elements name and type with mod name. However if storing references to the created elements within the libraries player element reference storage we need never obtian the GUI element by name and thus it doesn't have to be unique. Does need to be unique within the StoreName however.
 
--- TODO: EmmyLua this function and class
----@class UtilityGuiUtil_ElementDetails
----@field name string @ The name of the element. When automatically merged with the element's type and the mod name makes a semi unique reference name of type UtilityGuiUtil_GuiElementName.
---[[
-    - elementDetails takes everything that GuiElement.add() accepts in Factorio API. Plus compulsory "parent" argument of who to create the GUI element under if it isn't a child element.
-    - The "name" argument will be merged with the mod name and type to try and ensure a unique name is given to the GUI element in Factorio API.
-    - The "style" argument will be checked for starting with "muppet_" and if so merged with the style-data version to handle the style prototype version control.
-    - The optional "children" argument is an array of other elements detail's arrays, to recursively add in this hierachy. Parent argument isn't required and is ignored for children, as it is worked out during recursive loop.
-    - Passing the string "self" as the caption/tooltip value or localised string name will be auto replaced to its unique mod auto generated name under gui-caption/gui-tooltip. This avoids having to duplicate name when defining the element's arguments.
-    - The optional "styling" argument of a table of style attributes to be applied post element creation. Saves having to capture local reference to do this with at element declaration point.
-    - The optional "registerClick" passes the supplied "actionName" string, the optional "data" table and the optional disabled boolean to GuiActionsClick.RegisterGuiForClick().
-    - The optional "returnElement" if true will return the element in a table of elements. Key will be the elements name..type and the value a reference to the element.
-    - The optional "exclude" if true will mean the GUI Element is ignored. To allow more natural templating.
-    - The optional "attributes" is a table of k v pairs that is applied to the element via the API post element creation. V can be a return function wrapped around another function if you want it to be executed post element creation. i.e. function() return MyMainFunction("bob") end. Intended for the occasioanl adhock attributes you want to set which can't be done in the add() API function. i.e. drag_target or auto_center.
-]]
+--- Takes generally everything that GuiElement.add() accepts in Factorio API with the below key differences:
+--- - Compulsory "parent" argument of who to create the GUI element under if it isn't a child element itself.
+--- - Doesn't support the "name" attribute, but offers "descriptiveName" instead. See the attributes details.
+---@class UtilityGuiUtil_ElementDetails : UtilityGuiUtil_ElementDetails_LuaGuiElement.add_param
+--- The GUI element this newly created element will be a child of. Not needed (ignored) if this ElementDetails is specificed as a child within another ElementDetails specification.
+---@field parent LuaGuiElement|null
+--- A descriptive name of the element. Will be automatically merged with the element's type and the mod name to make a semi unique reference name of type UtilityGuiUtil_GuiElementName that the GUI element will have as its "name" attribute.
+---@field descriptiveName string
+--- Style of the child element.
+---
+--- Value will be checked for starting with "muppet_" and if so automatically merged with the style-data version included in this mod to create the correct full style name. So it automatically handles the fact that muppet styling prototypes are version controlled.
+---
+--- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field style? string|null
+--- A table of LuaStyle attribute names and values (key/value) to be applied post element creation. Saves having to capture the added element and then set style attributes one at a time in calling code.
+---
+--- [Styling documentation](https://lua-api.factorio.com/latest/LuaStyle.html)
+---@field styling? table<string, StringOrNumber|boolean|null>|null
+--- Text displayed on the child element. For frames, this is their title. For other elements, like buttons or labels, this is the content. Whilst this attribute may be used on all elements, it doesn't make sense for tables and flows as they won't display it.
+---
+--- Passing the string "self" as the value or localised string name will be auto replaced to its unique mod auto generated name under gui-caption/gui-tooltip. This avoids having to duplicate name when defining the element's arguments.
+---
+--- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field caption LocalisedString|null
+--- Tooltip of the child element.
+---
+--- Passing the string "self" as the value or localised string name will be auto replaced to its unique mod auto generated name under gui-caption/gui-tooltip. This avoids having to duplicate name when defining the element's arguments.
+---
+--- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field tooltip LocalisedString|null
+--- An array of other Element Details to recursively add in this hierachy. Parent argument isn't required for children and is ignored if provided for them as it's worked out during recursive loop of creating the children.
+---@field children? UtilityGuiUtil_ElementDetails[]|null
+--- The optional "registerClick" passes the supplied "actionName" string, the optional "data" table and the optional disabled boolean to GuiActionsClick.RegisterGuiForClick().
+---@field registerClick? UtilityGuiUtil_ElementDetails_RegisterClickOption|null
+--- If TRUE will return the Gui elements created in a table of elements. Key will be the elements UtilityGuiUtil_GuiElementName and the value a reference to the element.
+---
+--- Defaults to FALSE if not provided.
+---@field returnElement? boolean|null
+--- If TRUE will mean the GUI Element is ignored and not added. To allow more natural templating as the value can be pre-calculated and then applied to a standard template being passed in to this function to not include certain elements.
+---
+--- Defaults to FALSE if not provided.
+---@field exclude? boolean|null
+--- A table of key/value pairs that is applied to the element via the API post element creation. Intended for the occasioanl adhock attributes you want to set which can't be done in the add() API function. i.e. drag_target or auto_center.
+---
+--- The value can be a function if you want it to be executed post element creation. Attribute example:
+--- `{ drag_target = function() return GuiUtil.GetElementFromPlayersReferenceStorage(player.index, "ShopGui", "shopGuiMain", "frame") end }`
+---@field attributes? table<string, any>|null
+
+---@class UtilityGuiUtil_ElementDetails_RegisterClickOption @ Option of UtilityGuiUtil_ElementDetails for calling GuiActionsClick.RegisterGuiForClick() as part of the Gui element creation.
+---@field actionName string @ The actionName of the registered function to be called when the GUI element is clicked.
+---@field data table @ Any provided data will be passed through to the actionName's registered function upon the GUI element being clicked.
+---@field disabled boolean If TRUE then click not registered (for use with GUI templating). Otherwise FALSE or nil will registered normally.
+
+--- Add Gui Elements in a manner supporting short-hand features, nested GUI structures and templating features. See the param type for detailed information on its features and usage.
+---@param elementDetails UtilityGuiUtil_ElementDetails
+---@return table<string, LuaGuiElement> returnElements @ Provided if returnElement option is TRUE. Table of UtilityGuiUtil_GuiElementName keys to LuaGuiElement values.
 GuiUtil.AddElement = function(elementDetails)
     if elementDetails.exclude == true then
         return
     end
-    local rawName = elementDetails.name
-    elementDetails.name = GuiUtil._GenerateGuiElementName(elementDetails.name, elementDetails.type)
+    elementDetails.name = GuiUtil._GenerateGuiElementName(elementDetails.descriptiveName, elementDetails.type)
     elementDetails.caption = GuiUtil._ReplaceLocaleNameSelfWithGeneratedName(elementDetails, "caption")
     elementDetails.tooltip = GuiUtil._ReplaceLocaleNameSelfWithGeneratedName(elementDetails, "tooltip")
     if elementDetails.style ~= nil and string.sub(elementDetails.style, 1, 7) == "muppet_" then
@@ -43,14 +83,14 @@ GuiUtil.AddElement = function(elementDetails)
     local element = elementDetails.parent.add(elementDetails)
     if returnElement then
         if elementDetails.name == nil then
-            error("GuiUtil.AddElement returnElement attribute requires element name to be supplied.")
+            error("GuiUtil.AddElement returnElement attribute requires element descriptiveName to be supplied.")
         else
             returnElements[elementDetails.name] = element
         end
     end
     if storeName ~= nil then
         if elementDetails.name == nil then
-            error("GuiUtil.AddElement storeName attribute requires element name to be supplied.")
+            error("GuiUtil.AddElement storeName attribute requires element descriptiveName to be supplied.")
         else
             GuiUtil.AddElementToPlayersReferenceStorage(element.player_index, storeName, elementDetails.name, element)
         end
@@ -60,9 +100,9 @@ GuiUtil.AddElement = function(elementDetails)
     end
     if registerClick ~= nil then
         if elementDetails.name == nil then
-            error("GuiUtil.AddElement registerClick attribute requires element name to be supplied.")
+            error("GuiUtil.AddElement registerClick attribute requires element descriptiveName to be supplied.")
         else
-            GuiActionsClick.RegisterGuiForClick(rawName, elementDetails.type, registerClick.actionName, registerClick.data, registerClick.disabled)
+            GuiActionsClick.RegisterGuiForClick(elementDetails.descriptiveName, elementDetails.type, registerClick.actionName, registerClick.data, registerClick.disabled)
         end
     end
     if attributes ~= nil then
@@ -247,16 +287,15 @@ end
 ---@return string
 GuiUtil._ReplaceLocaleNameSelfWithGeneratedName = function(elementDetails, attributeName)
     local attributeNamesValue = elementDetails[attributeName]
-    local elementName = elementDetails.name
-    if elementName == nil then
+    if elementDetails.descriptiveName == nil then
         error("GuiUtil._ReplaceLocaleNameSelfWithGeneratedName called for an element with no name attribute.")
     end
     if attributeNamesValue == nil then
         attributeNamesValue = nil
     elseif attributeNamesValue == "self" then
-        attributeNamesValue = {"gui-" .. attributeName .. "." .. elementName}
+        attributeNamesValue = {"gui-" .. attributeName .. "." .. elementDetails.descriptiveName}
     elseif type(attributeNamesValue) == "table" and attributeNamesValue[1] ~= nil and attributeNamesValue[1] == "self" then
-        attributeNamesValue[1] = "gui-" .. attributeName .. "." .. elementName
+        attributeNamesValue[1] = "gui-" .. attributeName .. "." .. elementDetails.descriptiveName
     end
     return arg
 end
@@ -273,5 +312,351 @@ GuiUtil._GenerateGuiElementName = function(elementName, elementType)
         return Constants.ModName .. "-" .. elementName .. "-" .. elementType
     end
 end
+
+--- A copy of the the bsae game's LuaGuiElement.add_param, but without the following attributes as thye are included in my parent class; name, style, caption, tooltip.
+---@class UtilityGuiUtil_ElementDetails_LuaGuiElement.add_param
+---The kind of element to add. Has to be one of the GUI element types listed at the top of this page.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field type string
+---Whether the child element is enabled. Defaults to `true`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field enabled boolean|nil
+---Whether the child element is visible. Defaults to `true`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field visible boolean|nil
+---Whether the child element is ignored by interaction. Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field ignored_by_interaction boolean|nil
+---[Tags](https://lua-api.factorio.com/latest/Concepts.html#Tags) associated with the child element.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field tags Tags|nil
+---Location in its parent that the child element should slot into. By default, the child will be appended onto the end.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field index uint|nil
+---Where to position the child element when in the `relative` element.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field anchor GuiAnchor|nil
+---Applies to **"button"**: (optional)
+---Which mouse buttons the button responds to. Defaults to `"left-and-right"`.
+---
+---Applies to **"sprite-button"**: (optional)
+---The mouse buttons that the button responds to. Defaults to `"left-and-right"`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field mouse_button_filter MouseButtonFlags|nil
+---Applies to **"flow"**: (optional)
+---The initial direction of the flow's layout. See [LuaGuiElement::direction](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.direction). Defaults to `"horizontal"`.
+---
+---Applies to **"frame"**: (optional)
+---The initial direction of the frame's layout. See [LuaGuiElement::direction](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.direction). Defaults to `"horizontal"`.
+---
+---Applies to **"line"**: (optional)
+---The initial direction of the line. Defaults to `"horizontal"`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field direction string|nil
+---Applies to **"table"**: (required)
+---Number of columns. This can't be changed after the table is created.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field column_count uint
+---Applies to **"table"**: (optional)
+---Whether the table should draw vertical grid lines. Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field draw_vertical_lines boolean|nil
+---Applies to **"table"**: (optional)
+---Whether the table should draw horizontal grid lines. Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field draw_horizontal_lines boolean|nil
+---Applies to **"table"**: (optional)
+---Whether the table should draw a single horizontal grid line after the headers. Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field draw_horizontal_line_after_headers boolean|nil
+---Applies to **"table"**: (optional)
+---Whether the content of the table should be vertically centered. Defaults to `true`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field vertical_centering boolean|nil
+---Applies to **"textfield"**: (optional)
+---The initial text contained in the textfield.
+---
+---Applies to **"text-box"**: (optional)
+---The initial text contained in the text-box.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field text string|nil
+---Applies to **"textfield"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field numeric boolean|nil
+---Applies to **"textfield"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field allow_decimal boolean|nil
+---Applies to **"textfield"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field allow_negative boolean|nil
+---Applies to **"textfield"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field is_password boolean|nil
+---Applies to **"textfield"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field lose_focus_on_confirm boolean|nil
+---Applies to **"textfield"**: (optional)
+---Defaults to `false`.
+---
+---Applies to **"text-box"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field clear_and_focus_on_right_click boolean|nil
+---Applies to **"progressbar"**: (optional)
+---The initial value of the progressbar, in the range [0, 1]. Defaults to `0`.
+---
+---Applies to **"slider"**: (optional)
+---The initial value for the slider. Defaults to `minimum_value`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field value double|nil
+---Applies to **"checkbox"**: (required)
+---The initial checked-state of the checkbox.
+---
+---Applies to **"radiobutton"**: (required)
+---The initial checked-state of the radiobutton.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field state boolean
+---Applies to **"sprite-button"**: (optional)
+---Path to the image to display on the button.
+---
+---Applies to **"sprite"**: (optional)
+---Path to the image to display.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field sprite SpritePath|nil
+---Applies to **"sprite-button"**: (optional)
+---Path to the image to display on the button when it is hovered.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field hovered_sprite SpritePath|nil
+---Applies to **"sprite-button"**: (optional)
+---Path to the image to display on the button when it is clicked.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field clicked_sprite SpritePath|nil
+---Applies to **"sprite-button"**: (optional)
+---The number shown on the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field number double|nil
+---Applies to **"sprite-button"**: (optional)
+---Formats small numbers as percentages. Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field show_percent_for_small_numbers boolean|nil
+---Applies to **"sprite"**: (optional)
+---Whether the widget should resize according to the sprite in it. Defaults to `true`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field resize_to_sprite boolean|nil
+---Applies to **"scroll-pane"**: (optional)
+---Policy of the horizontal scroll bar. Possible values are `"auto"`, `"never"`, `"always"`, `"auto-and-reserve-space"`, `"dont-show-but-allow-scrolling"`. Defaults to `"auto"`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field horizontal_scroll_policy string|nil
+---Applies to **"scroll-pane"**: (optional)
+---Policy of the vertical scroll bar. Possible values are `"auto"`, `"never"`, `"always"`, `"auto-and-reserve-space"`, `"dont-show-but-allow-scrolling"`. Defaults to `"auto"`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field vertical_scroll_policy string|nil
+---Applies to **"drop-down"**: (optional)
+---The initial items in the dropdown.
+---
+---Applies to **"list-box"**: (optional)
+---The initial items in the listbox.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field items LocalisedString[]|nil
+---Applies to **"drop-down"**: (optional)
+---The index of the initially selected item. Defaults to 0.
+---
+---Applies to **"list-box"**: (optional)
+---The index of the initially selected item. Defaults to 0.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field selected_index uint|nil
+---Applies to **"camera"**: (required)
+---The position the camera centers on.
+---
+---Applies to **"minimap"**: (optional)
+---The position the minimap centers on. Defaults to the player's current position.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field position Position<int,int>
+---Applies to **"camera"**: (optional)
+---The surface that the camera will render. Defaults to the player's current surface.
+---
+---Applies to **"minimap"**: (optional)
+---The surface the camera will render. Defaults to the player's current surface.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field surface_index uint|nil
+---Applies to **"camera"**: (optional)
+---The initial camera zoom. Defaults to `0.75`.
+---
+---Applies to **"minimap"**: (optional)
+---The initial camera zoom. Defaults to `0.75`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field zoom double|nil
+---Applies to **"choose-elem-button"**: (required)
+---The type of the button - one of the following values.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field elem_type string
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"item"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field item string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"tile"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field tile string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"entity"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field entity string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"signal"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field signal SignalID|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"fluid"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field fluid string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"recipe"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field recipe string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"decorative"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field decorative string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"item-group"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field item-group string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"achievement"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field achievement string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"equipment"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field equipment string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---If type is `"technology"` - the default value for the button.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field technology string|nil
+---Applies to **"choose-elem-button"**: (optional)
+---Filters describing what to show in the selection window. See [LuaGuiElement::elem_filters](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.elem_filters).
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field elem_filters PrototypeFilter[]|nil
+---Applies to **"slider"**: (optional)
+---The minimum value for the slider. Defaults to `0`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field minimum_value double|nil
+---Applies to **"slider"**: (optional)
+---The maximum value for the slider. Defaults to `30`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field maximum_value double|nil
+---Applies to **"slider"**: (optional)
+---The minimum value the slider can move. Defaults to `1`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field value_step double|nil
+---Applies to **"slider"**: (optional)
+---Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field discrete_slider boolean|nil
+---Applies to **"slider"**: (optional)
+---Defaults to `true`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field discrete_values boolean|nil
+---Applies to **"minimap"**: (optional)
+---The player index the map should use. Defaults to the current player.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field chart_player_index uint|nil
+---Applies to **"minimap"**: (optional)
+---The force this minimap should use. Defaults to the player's current force.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field force string|nil
+---Applies to **"tab"**: (optional)
+---The text to display after the normal tab text (designed to work with numbers).
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field badge_text LocalisedString|nil
+---Applies to **"switch"**: (optional)
+---Possible values are `"left"`, `"right"`, or `"none"`. If set to "none", `allow_none_state` must be `true`. Defaults to `"left"`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field switch_state string|nil
+---Applies to **"switch"**: (optional)
+---Whether the switch can be set to a middle state. Defaults to `false`.
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field allow_none_state boolean|nil
+---Applies to **"switch"**: (optional)
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field left_label_caption LocalisedString|nil
+---Applies to **"switch"**: (optional)
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field left_label_tooltip LocalisedString|nil
+---Applies to **"switch"**: (optional)
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field right_label_caption LocalisedString|nil
+---Applies to **"switch"**: (optional)
+---
+---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
+---@field right_label_tooltip LocalisedString|nil
 
 return GuiUtil
