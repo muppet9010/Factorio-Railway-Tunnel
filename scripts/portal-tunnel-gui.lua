@@ -49,7 +49,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
     GuiUtil.AddElement(
         {
             parent = player.gui.screen,
-            descriptiveName = "portalTunnelGui_main",
+            descriptiveName = "pt_main",
             type = "frame",
             direction = "vertical",
             style = "muppet_frame_main_shadowRisen_paddingBR",
@@ -63,19 +63,19 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                     styling = {horizontal_align = "left", right_padding = 4},
                     children = {
                         {
-                            descriptiveName = "portalTunnelGui_title",
+                            descriptiveName = "pt_title",
                             type = "label",
                             style = "muppet_label_heading_large_bold_paddingSides",
                             caption = "self"
                         },
                         {
-                            descriptiveName = "portalTunnelGui_dragBar",
+                            descriptiveName = "pt_dragBar",
                             type = "empty-widget",
                             style = "draggable_space",
                             styling = {horizontally_stretchable = true, height = 20, top_margin = 4, minimal_width = 80},
                             attributes = {
                                 drag_target = function()
-                                    return GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui", "portalTunnelGui_main", "frame")
+                                    return GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui", "pt_main", "frame")
                                 end
                             }
                         },
@@ -86,7 +86,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                             styling = {horizontal_align = "right", top_margin = 4},
                             children = {
                                 --[[{
-                                    descriptiveName = "portalTunnelGui_openHelp",
+                                    descriptiveName = "pt_openHelp",
                                     type = "button",
                                     style = "muppet_button_text_small_bold_frame_paddingNone",
                                     styling = {},
@@ -95,7 +95,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                     enabled = true
                                 },]]
                                 {
-                                    descriptiveName = "portalTunnelGui_closeButton",
+                                    descriptiveName = "pt_closeButton",
                                     type = "sprite-button",
                                     tooltip = "self",
                                     sprite = "utility/close_white",
@@ -119,6 +119,18 @@ PortalTunnelGui.OnCloseButtonClicked = function(event)
 
     -- Close and destroy all the Gui Element's for this overall GUI on screen.
     GuiUtil.DestroyPlayersReferenceStorage(event.playerIndex, "portalTunnelGui")
+end
+
+--- Called by the Portal class when a change has occured to the portal part of one of its parents that the GUI needs to react to.
+--- Currently we just recreate the GUI as its the easiest and this will be a very rare event.
+---@param portalPart PortalPart
+---@param playerIndex Id
+PortalTunnelGui.PortalPartChanged = function(portalPart, playerIndex)
+end
+
+--- Called when the usage state of the tunnel changes by the TrainManager class.
+---@param playerIndex Id
+PortalTunnelGui.TunnelUsageChanged = function(playerIndex)
 end
 
 return PortalTunnelGui
