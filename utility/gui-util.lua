@@ -28,11 +28,9 @@ local StyleDataStyleVersion = require("utility.style-data").styleVersion
 --- An array of other Element Details to recursively add in this hierachy. Parent argument isn't required for children and is ignored if provided for them as it's worked out during recursive loop of creating the children.
 ---@field children? UtilityGuiUtil_ElementDetails_Add[]|null
 ---@field registerClick? UtilityGuiUtil_ElementDetails_registerClick
---- If TRUE will return the Gui elements created in a table of elements. Key will be the elements UtilityGuiUtil_GuiElementName and the value a reference to the element.
+--- If TRUE will return this Gui element when created in a table of elements with returnElement enabled. Key will be the elements UtilityGuiUtil_GuiElementName and the value a reference to the element.
 ---
 --- Defaults to FALSE if not provided.
----
---- If being used make sure to review Gui-Actions-Click.lua and its GuiActionsClick.MonitorGuiClickActions() function as its a prereq for the features usage. Also need to register the click actionName to a callback function with GuiActionsClick.LinkGuiClickActionNameToFunction().
 ---@field returnElement? boolean|null
 --- If TRUE will mean the GUI Element is ignored and not added. To allow more natural templating as the value can be pre-calculated and then applied to a standard template being passed in to this function to not include certain elements.
 ---
@@ -115,7 +113,7 @@ GuiUtil.AddElement = function(elementDetails)
     if children ~= nil then
         for _, child in pairs(children) do
             if type(child) ~= "table" then
-                error("GuiUtil.AddElement children not supplied as an array of child details in their own table.")
+                error("GuiUtil.AddElement called with 'children' not a table of children, but instead a single child.")
             else
                 child.parent = element
                 local childReturnElements = GuiUtil.AddElement(child)
@@ -362,6 +360,8 @@ end
 ---@alias UtilityGuiUtil_ElementDetails_tooltip LocalisedString|null
 
 --- If populated registers a function to be triggered when a user clicks on the GUI element. Passes the supplied table of arguments to GuiActionsClick.RegisterGuiForClick(). See that library and function for full usage details.
+---
+--- If being used make sure to review Gui-Actions-Click.lua and its GuiActionsClick.MonitorGuiClickActions() function as its a prereq for the features usage. Also need to register the click actionName to a callback function with GuiActionsClick.LinkGuiClickActionNameToFunction().
 ---@alias UtilityGuiUtil_ElementDetails_registerClick UtilityGuiUtil_ElementDetails_RegisterClickOption|null
 
 --- A table of key/value pairs that is applied to the element via the API post element creation. Intended for the occasioanl adhock attributes you want to update or can't set during the add() API function. i.e. drag_target or auto_center.

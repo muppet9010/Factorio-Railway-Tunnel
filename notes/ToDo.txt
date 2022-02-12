@@ -1,16 +1,11 @@
 Now
 ---
     - Portal/Tunnel GUI:
-        - Clickable on portal area's will raise a GUI showing this portal and the other end portal if part of a valid tunnel. Should be available at all times.
-        - Track if a player opened a GUI on a portal part and then escalte that up to the portal and tunnel as arrays of player GUIs. When a train changes state it can check if the tunnel has any GUIs and if so call functions to the GUI class for the changes. Portal part, portal and tunnel changes can just call in to the GUI class when they change something (rare). These 2 types of events can just trigger the re-creation of that segment of any opened GUIs as will be rare chance and only odd player have it open at any time (if ever).
-        - If player left clicks on a portal part that isn't part of a complete portal then the GUI should still load. It can state this isn't a complete portal or part of a tunnel. It can state the current max train length the segments in the portal currently support as every time a part is added to a portal we already update the "trainWaitingAreaTilesLength" attribute and a portal part being removed re-generates the whole portal object anyways.
         - GUI should list how many portals there are and if they are connected as a tunnel. They should be labelled as relative to each other in terms of portal entry to rail networks. As simple positions currently on only straight tunnels they will be north-south or east west portal.
         - GUI should show max supported train length for each portal and the tunnel overall if there is one.
-        - Gui should show if theres a train using the tunnel, its status and its expected ETA to leave.
+        - Gui should show if theres a train using the tunnel, its status. If it shows ETA it will have to be for current expected ETA and needs note stating it may be slowed if the leaving tracks are busy.
         - A way to add fuel to any train stuck in the portal. This can presently still occur if the train is releaed at a very slow speed. Probably an option on the portal/tunnel GUI that lets you transfer fuel to a special inventory that then distributes it across the forward facing locomotives.
         - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
-        - Reload the GUI if the viewed portal is expanded or completed.
-        - Reload the GUI if the portal is destroyed by a part being removed. As we'll still have the referenced entity and so can check this wasn't the entity removed.
 
 
 Bugs
@@ -45,6 +40,7 @@ Features to add/change
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
     - Make better graphics and use tunnel shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
     - Add a tips & tricks section to cover tunnel and portal construction.
+    - Make Portal Tunnel GUI nicer, only very rough one at present.
 
 
 UPS / code plans

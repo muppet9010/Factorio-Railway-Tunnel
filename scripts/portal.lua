@@ -13,7 +13,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field trainWaitingAreaTilesLength uint @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
----@field guiOpenedByParts table<Id, True> @ A table of portal part Id's that have a GUI opened on this portal for one or more players.
+---@field guiOpenedByParts table<Id, PortalPart> @ A table of portal part Id's to PortalParts that have a GUI opened on this portal for one or more players.
 ---
 ---@field portalTunneExternalConnectionSurfacePositionStrings? table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject>|null @ the 2 external positions the portal should look for underground segments at. Only established on a complete portal.
 ---
@@ -54,7 +54,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field nonConnectedInternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
----@field guiOpenedByPlayers table<Id, True> @ A table of player Id's as keys who have a GUI opened on this portal part.
+---@field guiOpenedByPlayers table<Id, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 ---
@@ -319,8 +319,10 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
     -- Register the part's entity for reverse lookup.
     global.portals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
 
+    -- Join this portal part to a portal if approperiate. This will check and update the Portal.isComplete attribute used below.
     Portal.UpdatePortalsForNewPortalPart(portalPartObject)
 
+    -- If the portal is complete then check if we've just connected to underground parts.
     if portalPartObject.portal ~= nil and portalPartObject.portal.isComplete then
         Portal.CheckAndHandleTunnelCompleteFromPortal(portalPartObject.portal)
     end
@@ -451,12 +453,18 @@ Portal.AddPartToPortal = function(portal, portalPart)
     else
         error("invalid portal type: " .. portalPart.typeData.partType)
     end
+
+    -- Check for any already open GUIs on the portalPart and if so update portal to know of the part.
+    if next(portalPart.guiOpenedByPlayers) ~= nil then
+        portal.guiOpenedByParts[portalPart.id] = portalPart
+    end
 end
 
 --- Moves the old partal parts to the new portal and removes the old portal object.
 ---@param oldPortal Portal
 ---@param newPortal Portal
 Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
+    -- Move over all portal parts to the new portal's lists.
     for id, part in pairs(oldPortal.portalEnds) do
         newPortal.portalEnds[id] = part
         part.portal = newPortal
@@ -465,8 +473,17 @@ Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
         newPortal.portalSegments[id] = part
         part.portal = newPortal
     end
+
+    -- Update the train waiting area length to be the sum of the 2 portals as this is updated as each part is added to a portal.
     newPortal.trainWaitingAreaTilesLength = newPortal.trainWaitingAreaTilesLength + oldPortal.trainWaitingAreaTilesLength
+
+    -- Forget the old portal from globals as nothing should reference it now.
     global.portals.portals[oldPortal.id] = nil
+
+    -- Move across any open GUIs.
+    for portalPartId, portalPart in pairs(oldPortal.guiOpenedByParts) do
+        newPortal.guiOpenedByParts[portalPartId] = portalPart
+    end
 end
 
 --- A complete portal is 2 ends with some segments between. If a portal end part has segments both sides it must have the excess trimmed as the PortalComplete() logic requires portal end's with 1 used and 1 free connection.
@@ -654,6 +671,7 @@ Portal.CheckAndHandleTunnelCompleteFromPortal = function(portal)
             if foundPortal ~= nil then
                 Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
                 MOD.Interfaces.Tunnel.CompleteTunnel({portal, foundPortal}, underground)
+                return -- Only need to find a valid tunnel once, no point checking after this.
             end
         end
     end
@@ -1026,6 +1044,8 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal
     if portal ~= nil then
+        -- No need to update the GUI opened lists for anything other than the removedPart as the tunnel and portal object will be destroyed and re-created as approperiate. This process will trigger their GUIs to update.
+
         -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to its 2 portals and handles/removes portal fields requiring a tunnel.
         if portal.tunnel ~= nil then
             MOD.Interfaces.Tunnel.RemoveTunnel(portal.tunnel, killForce, killerCauseEntity)
@@ -1058,8 +1078,13 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
 
         -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
         ---@type table<Id, PortalPart>
-        endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments}) -- Regenerate as we removed a part from the list sicne last done.
+        endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments}) -- Regenerate as we removed a part from the list since last done.
         Portal.RecalculatePortalPartsParentPortal(endsAndSegments)
+    end
+
+    -- If this part had an open GUI then alert the GUI class that there's been a change.
+    for playerIndex in pairs(removedPortalPart.guiOpenedByPlayers) do
+        MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(removedPortalPart, playerIndex, true)
     end
 end
 
@@ -1160,6 +1185,13 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         portal.dummyLocomotivePosition = nil
         portal.entryDirection = nil
         portal.leavingDirection = nil
+
+        -- If any part of this portal had an open GUI then alert the GUI class that there's been a change.
+        for _, portalPart in pairs(portal.guiOpenedByParts) do
+            for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex)
+            end
+        end
     end
 end
 
@@ -1485,12 +1517,13 @@ end
 --- Mark this portal part as having a GUI opened on it.
 ---@param portalPart PortalPart
 ---@param playerIndex Id
-Portal.GuiOpenedOnPortalPart = function(portalPart, playerIndex)
-    portalPart.guiOpenedByPlayers[playerIndex] = true
+---@param player LuaPlayer
+Portal.GuiOpenedOnPortalPart = function(portalPart, playerIndex, player)
+    portalPart.guiOpenedByPlayers[playerIndex] = player
     if portalPart.portal ~= nil then
-        portalPart.portal.guiOpenedByParts[portalPart.id] = true
+        portalPart.portal.guiOpenedByParts[portalPart.id] = portalPart
         if portalPart.portal.tunnel ~= nil then
-            portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = true
+            portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = player
         end
     end
 end

@@ -132,6 +132,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(approachingTrain, a
     else
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching)
     end
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 --- Used when a train is on a portal's track and thus the tunnel.
@@ -156,6 +157,7 @@ TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, m
     managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 --- Every tick loop over each train and process it as required.
@@ -251,6 +253,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
             managedTrain.approachingTrainReachedFullSpeed = nil
 
             TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack, TunnelUsageChangeReason.abortedApproach)
+            MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
         end
         return
     end
@@ -342,6 +345,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     -- Complete the state transition.
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 
     -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
     if not managedTrain.undergroundTrainHasPlayersRiding then
@@ -630,6 +634,7 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
     managedTrain.tunnelUsageState = TunnelUsageState.leaving
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 --- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left.
@@ -824,6 +829,7 @@ TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReaso
         MOD.Interfaces.Tunnel.TrainReleasedTunnel(managedTrain)
     end
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.terminated, tunnelUsageChangeReason)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 ---@param managedTrain ManagedTrain
