@@ -3,6 +3,7 @@ local PortalTunnelGui = {}
 local Common = require("scripts.common")
 local GuiUtil = require("utility.gui-util")
 local GuiActionsClick = require("utility.gui-actions-click")
+local Utils = require("utility.utils")
 
 PortalTunnelGui.CreateGlobals = function()
     global.portalTunnelGui = global.portalTunnelGui or {}
@@ -150,20 +151,26 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             thisPortalTrainLengthCarriages = ""
         end
 
-        -- Add the elements
+        -- Add the elements.
         GuiUtil.AddElement(
             {
                 parent = mainGuiElement,
                 type = "frame",
                 direction = "vertical",
-                style = "muppet_frame_content_shadowSunken_paddingBR",
-                styling = {horizontal_align = "left", right_padding = 4},
+                style = "muppet_frame_content_shadowSunken_marginTL_paddingBR",
+                styling = {horizontally_stretchable = true},
                 children = {
                     {
                         type = "flow",
                         direction = "vertical",
                         style = "muppet_flow_vertical_marginTL_spaced",
                         children = {
+                            {
+                                descriptiveName = "pt_portal_title",
+                                type = "label",
+                                style = "muppet_label_heading_medium_bold",
+                                caption = "self"
+                            },
                             {
                                 descriptiveName = "pt_portal_state",
                                 type = "label",
@@ -189,24 +196,62 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
 
     -- The GUI part for a tunnel being shown with 2 portals.
     if tunnel ~= nil then
+        -- Work out portal A and B details. A is left of GUI, B is right.
+        ---@typelist Portal, Portal, string, string, string, string
+        local portalA, portalB, portalAOrientationText, portalBOrientationText, portalASelectedText, portalBSelectedText
+        local portal1, portal2 = thisPortal.tunnel.portals[1], thisPortal.tunnel.portals[2]
+        if portal1.leavingDirection == defines.direction.north or portal1.leavingDirection == defines.direction.west then
+            portalA = portal1
+            portalAOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal1.leavingDirection] .. "-capital"}
+            portalB = portal2
+            portalBOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal2.leavingDirection] .. "-capital"}
+        else
+            portalA = portal2
+            portalAOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal2.leavingDirection] .. "-capital"}
+            portalB = portal1
+            portalBOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal1.leavingDirection] .. "-capital"}
+        end
+        if thisPortal.id == portalA.id then
+            portalASelectedText = {"gui-caption.railway_tunnel-selected-capital-brackets"}
+            portalBSelectedText = ""
+        else
+            portalASelectedText = ""
+            portalBSelectedText = {"gui-caption.railway_tunnel-selected-capital-brackets"}
+        end
+
+        local tunnelUsageStateText
+        local managedTrain = tunnel.managedTrain
+        if managedTrain == nil or managedTrain.tunnelUsageState == Common.TunnelUsageState.finished then
+            tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-none"}
+        elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.approaching or managedTrain.tunnelUsageState == Common.TunnelUsageState.portalTrack then
+            tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-entering"}
+        elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.underground then
+            tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-underground"}
+        elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.leaving then
+            tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-leaving"}
+        else
+            error("PortalTunnelGui.MakeGui() recieved unrecognised ManagedTrain.tunnelUsageState: " .. tostring(managedTrain.tunnelUsageState))
+        end
+
+        -- Tunnel and inner Portals.
         GuiUtil.AddElement(
             {
                 parent = mainGuiElement,
                 type = "frame",
                 direction = "vertical",
-                style = "muppet_frame_content_shadowSunken_paddingBR",
-                styling = {horizontal_align = "left", right_padding = 4},
+                style = "muppet_frame_content_shadowSunken_marginTL_paddingBR",
+                styling = {horizontally_stretchable = true},
                 children = {
                     {
-                        enabled = tunnel ~= nil,
+                        -- Tunnel Details
                         type = "flow",
                         direction = "vertical",
                         style = "muppet_flow_vertical_marginTL_spaced",
                         children = {
                             {
-                                descriptiveName = "pt_tunnel_complete",
+                                descriptiveName = "pt_tunnel_title",
                                 type = "label",
-                                style = "muppet_label_text_medium",
+                                style = "muppet_label_heading_medium_bold",
                                 caption = "self"
                             },
                             {
@@ -215,6 +260,99 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                 style = "muppet_label_text_medium",
                                 caption = {"self", PortalTunnelGui.GetMaxTrainLengthInCarriages(tunnel.maxTrainLengthTiles), tunnel.maxTrainLengthTiles},
                                 tooltip = "self"
+                            }
+                        }
+                    },
+                    {
+                        -- Portal container.
+                        type = "flow",
+                        direction = "horizontal",
+                        style = "muppet_flow_horizontal_marginTL_spaced",
+                        children = {
+                            {
+                                -- Portal 1.
+                                type = "frame",
+                                direction = "vertical",
+                                style = "muppet_frame_contentInnerDark_shadowSunken_paddingBR",
+                                children = {
+                                    {
+                                        type = "flow",
+                                        direction = "vertical",
+                                        style = "muppet_flow_vertical_marginTL_spaced",
+                                        children = {
+                                            {
+                                                descriptiveName = "pt_portal_direction",
+                                                type = "label",
+                                                style = "muppet_label_heading_medium",
+                                                caption = {"self", portalAOrientationText, portalASelectedText}
+                                            },
+                                            {
+                                                descriptiveName = "pt_train_length",
+                                                type = "label",
+                                                style = "muppet_label_text_medium",
+                                                caption = {"self", PortalTunnelGui.GetMaxTrainLengthInCarriages(portalA.trainWaitingAreaTilesLength), portalA.trainWaitingAreaTilesLength},
+                                                tooltip = "self"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                -- Portal 2.
+                                type = "frame",
+                                direction = "vertical",
+                                style = "muppet_frame_contentInnerDark_shadowSunken_paddingBR",
+                                children = {
+                                    {
+                                        type = "flow",
+                                        direction = "vertical",
+                                        style = "muppet_flow_vertical_marginTL_spaced",
+                                        children = {
+                                            {
+                                                descriptiveName = "pt_portal_direction",
+                                                type = "label",
+                                                style = "muppet_label_heading_medium",
+                                                caption = {"self", portalBOrientationText, portalBSelectedText}
+                                            },
+                                            {
+                                                descriptiveName = "pt_train_length",
+                                                type = "label",
+                                                style = "muppet_label_text_medium",
+                                                caption = {"self", PortalTunnelGui.GetMaxTrainLengthInCarriages(portalB.trainWaitingAreaTilesLength), portalB.trainWaitingAreaTilesLength},
+                                                tooltip = "self"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        -- Tunnel usage and train manipulation.
+                        parent = mainGuiElement,
+                        type = "frame",
+                        direction = "vertical",
+                        style = "muppet_frame_contentInnerDark_shadowSunken_marginTL_paddingBR",
+                        styling = {horizontally_stretchable = true},
+                        children = {
+                            {
+                                type = "flow",
+                                direction = "vertical",
+                                style = "muppet_flow_vertical_marginTL_spaced",
+                                children = {
+                                    {
+                                        descriptiveName = "pt_train_usage_title",
+                                        type = "label",
+                                        style = "muppet_label_heading_medium",
+                                        caption = "self"
+                                    },
+                                    {
+                                        descriptiveName = "pt_train_usage_state",
+                                        type = "label",
+                                        style = "muppet_label_text_medium",
+                                        caption = {"self", tunnelUsageStateText}
+                                    }
+                                }
                             }
                         }
                     }
@@ -250,8 +388,9 @@ end
 --- Currently we just recreate the GUI as its the easiest and this will be a very rare event.
 ---@param portalPart PortalPart
 ---@param playerIndex Id
+---@param player LuaPlayer
 ---@param partRemoved boolean @ If the part has been removed and thus the GUI should be closed.
-PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, partRemoved)
+PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, player, partRemoved)
     -- TODO: not  tested through all usage cases.
     -- TODO: this didn't work right when I had a second portal GUI open and mined a first portal's part. As the second portal's GUI closed.
     if partRemoved then
@@ -281,7 +420,7 @@ end
 PortalTunnelGui.GetMaxTrainLengthInCarriages = function(tiles)
     local fullCarriages = math.floor(tiles / 7)
     -- If theres 6 tiles left then the last carraige can fit in that as it doens't need a connection onwards.
-    if tiles - (fullCarriages * 6) == 6 then
+    if tiles - (fullCarriages * 7) >= 6 then
         fullCarriages = fullCarriages + 1
     end
     return fullCarriages

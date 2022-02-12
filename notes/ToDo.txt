@@ -1,12 +1,10 @@
 Now
 ---
     - Portal/Tunnel GUI:
-        - GUI should list how many portals there are and if they are connected as a tunnel. They should be labelled as relative to each other in terms of portal entry to rail networks. As simple positions currently on only straight tunnels they will be north-south or east west portal.
-        - GUI should show max supported train length for each portal and the tunnel overall if there is one.
-        - Gui should show if theres a train using the tunnel, its status. If it shows ETA it will have to be for current expected ETA and needs note stating it may be slowed if the leaving tracks are busy.
+        - Gui should show if theres a train using the tunnel (the tunnel's usage status). If it shows ETA it will have to be for current expected ETA and needs note stating it may be slowed if the leaving tracks are busy.
         - A way to add fuel to any train stuck in the portal. This can presently still occur if the train is releaed at a very slow speed. Probably an option on the portal/tunnel GUI that lets you transfer fuel to a special inventory that then distributes it across the forward facing locomotives.
         - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
-
+        - A button to select the train when its entering or leaving. Grey button out when its underground or no train. Add tooltip explaining state.
 
 Bugs
 ----

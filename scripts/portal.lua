@@ -1083,8 +1083,8 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     end
 
     -- If this part had an open GUI then alert the GUI class that there's been a change.
-    for playerIndex in pairs(removedPortalPart.guiOpenedByPlayers) do
-        MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(removedPortalPart, playerIndex, true)
+    for playerIndex, player in pairs(removedPortalPart.guiOpenedByPlayers) do
+        MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(removedPortalPart, playerIndex, player, true)
     end
 end
 
@@ -1188,8 +1188,8 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
 
         -- If any part of this portal had an open GUI then alert the GUI class that there's been a change.
         for _, portalPart in pairs(portal.guiOpenedByParts) do
-            for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
-                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex)
+            for playerIndex, player in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, player, false)
             end
         end
     end

@@ -62,22 +62,30 @@ GuiUtil.AddElement = function(elementDetails)
     ---@type table
     local elementDetailsNoClass = elementDetails
 
+    -- Catch any mistakes.
     if elementDetailsNoClass.name ~= nil then
         error("GuiUtil.AddElement() doesn't support the 'name' attribute being provided, use 'descriptiveName' instead.")
     end
+    if elementDetails[1] ~= nil then
+        error("GuiUtil.AddElement() recieved a non-key'd value. This is a syntax mistake in the ElementDetails as something is outside of a list.")
+    end
+
     if elementDetails.exclude == true then
         return
     end
+
     elementDetailsNoClass.name = GuiUtil._GenerateGuiElementName(elementDetails.descriptiveName, elementDetails.type)
     elementDetails.caption = GuiUtil._ReplaceLocaleNameSelfWithGeneratedName(elementDetails, "caption")
     elementDetails.tooltip = GuiUtil._ReplaceLocaleNameSelfWithGeneratedName(elementDetails, "tooltip")
     if elementDetails.style ~= nil and string.sub(elementDetails.style, 1, 7) == "muppet_" then
         elementDetails.style = elementDetails.style .. StyleDataStyleVersion
     end
-    local returnElements = {}
     local attributes, returnElement, storeName, styling, registerClick, children = elementDetails.attributes, elementDetails.returnElement, elementDetails.storeName, elementDetails.styling, elementDetails.registerClick, elementDetails.children
     elementDetails.attributes, elementDetails.returnElement, elementDetails.storeName, elementDetails.styling, elementDetails.registerClick, elementDetails.children = nil, nil, nil, nil, nil, nil
+
     local element = elementDetails.parent.add(elementDetails)
+
+    local returnElements = {}
     if returnElement then
         if elementDetailsNoClass.name == nil then
             error("GuiUtil.AddElement returnElement attribute requires element descriptiveName to be supplied.")
