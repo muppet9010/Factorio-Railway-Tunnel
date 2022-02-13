@@ -4,6 +4,7 @@ local Common = require("scripts.common")
 local GuiUtil = require("utility.gui-util")
 local GuiActionsClick = require("utility.gui-actions-click")
 local Utils = require("utility.utils")
+local MuppetStyles = require("utility.style-data").MuppetStyles
 
 PortalTunnelGui.CreateGlobals = function()
     global.portalTunnelGui = global.portalTunnelGui or {}
@@ -86,7 +87,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             descriptiveName = "pt_main",
             type = "frame",
             direction = "vertical",
-            style = "muppet_frame_main_shadowRisen_paddingBR",
+            style = MuppetStyles.frame.main_shadowRisen.paddingBR,
             storeName = "portalTunnelGui",
             returnElement = true,
             attributes = {auto_center = true},
@@ -95,13 +96,13 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                     -- Header bar of the GUI.
                     type = "flow",
                     direction = "horizontal",
-                    style = "muppet_flow_horizontal_marginTL",
+                    style = MuppetStyles.flow.horizontal.marginTL,
                     styling = {horizontal_align = "left", right_padding = 4},
                     children = {
                         {
                             descriptiveName = "pt_title",
                             type = "label",
-                            style = "muppet_label_heading_large_bold_paddingSides",
+                            style = MuppetStyles.label.heading.large.bold_paddingSides,
                             caption = "self"
                         },
                         {
@@ -118,7 +119,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                         {
                             type = "flow",
                             direction = "horizontal",
-                            style = "muppet_flow_horizontal_spaced",
+                            style = MuppetStyles.flow.horizontal.spaced,
                             styling = {horizontal_align = "right", top_margin = 4},
                             children = {
                                 {
@@ -126,7 +127,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                     type = "sprite-button",
                                     tooltip = "self",
                                     sprite = "utility/close_white",
-                                    style = "muppet_sprite_button_frameCloseButtonClickable",
+                                    style = MuppetStyles.spriteButton.frameCloseButtonClickable,
                                     registerClick = {actionName = "PortalTunnelGui.On_CloseButtonClicked", data = {portalPart = portalPart}}
                                 }
                             }
@@ -157,24 +158,24 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                 parent = mainGuiElement,
                 type = "frame",
                 direction = "vertical",
-                style = "muppet_frame_content_shadowSunken_marginTL_paddingBR",
+                style = MuppetStyles.frame.content_shadowSunken.marginTL_paddingBR,
                 styling = {horizontally_stretchable = true},
                 children = {
                     {
                         type = "flow",
                         direction = "vertical",
-                        style = "muppet_flow_vertical_marginTL_spaced",
+                        style = MuppetStyles.flow.vertical.marginTL_spaced,
                         children = {
                             {
                                 descriptiveName = "pt_portal_title",
                                 type = "label",
-                                style = "muppet_label_heading_medium_bold",
+                                style = MuppetStyles.label.heading.medium.bold,
                                 caption = "self"
                             },
                             {
                                 descriptiveName = "pt_portal_state",
                                 type = "label",
-                                style = "muppet_label_text_medium",
+                                style = MuppetStyles.label.text.medium.plain,
                                 caption = {"self", portalState}
                             },
                             {
@@ -182,7 +183,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                 exclude = thisPortal == nil,
                                 descriptiveName = "pt_train_length",
                                 type = "label",
-                                style = "muppet_label_text_medium",
+                                style = MuppetStyles.label.text.medium.plain,
                                 caption = {"self", thisPortalTrainLengthCarriages, thisPortalTrainLengthTiles},
                                 tooltip = "self",
                                 attributes = {}
@@ -239,25 +240,25 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                 parent = mainGuiElement,
                 type = "frame",
                 direction = "vertical",
-                style = "muppet_frame_content_shadowSunken_marginTL_paddingBR",
+                style = MuppetStyles.frame.content_shadowSunken.marginTL_paddingBR,
                 styling = {horizontally_stretchable = true},
                 children = {
                     {
                         -- Tunnel Details
                         type = "flow",
                         direction = "vertical",
-                        style = "muppet_flow_vertical_marginTL_spaced",
+                        style = MuppetStyles.flow.vertical.marginTL_spaced,
                         children = {
                             {
                                 descriptiveName = "pt_tunnel_title",
                                 type = "label",
-                                style = "muppet_label_heading_medium_bold",
+                                style = MuppetStyles.label.heading.medium.bold,
                                 caption = "self"
                             },
                             {
                                 descriptiveName = "pt_train_length",
                                 type = "label",
-                                style = "muppet_label_text_medium",
+                                style = MuppetStyles.label.text.medium.plain,
                                 caption = {"self", PortalTunnelGui.GetMaxTrainLengthInCarriages(tunnel.maxTrainLengthTiles), tunnel.maxTrainLengthTiles},
                                 tooltip = "self"
                             }
@@ -267,29 +268,29 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                         -- Portal container.
                         type = "flow",
                         direction = "horizontal",
-                        style = "muppet_flow_horizontal_marginTL_spaced",
+                        style = MuppetStyles.flow.horizontal.marginTL_spaced,
                         children = {
                             {
                                 -- Portal 1.
                                 type = "frame",
                                 direction = "vertical",
-                                style = "muppet_frame_contentInnerDark_shadowSunken_paddingBR",
+                                style = MuppetStyles.frame.contentInnerDark_shadowSunken.paddingBR,
                                 children = {
                                     {
                                         type = "flow",
                                         direction = "vertical",
-                                        style = "muppet_flow_vertical_marginTL_spaced",
+                                        style = MuppetStyles.flow.vertical.marginTL_spaced,
                                         children = {
                                             {
                                                 descriptiveName = "pt_portal_direction",
                                                 type = "label",
-                                                style = "muppet_label_heading_medium",
+                                                style = MuppetStyles.label.heading.medium.plain,
                                                 caption = {"self", portalAOrientationText, portalASelectedText}
                                             },
                                             {
                                                 descriptiveName = "pt_train_length",
                                                 type = "label",
-                                                style = "muppet_label_text_medium",
+                                                style = MuppetStyles.label.text.medium.plain,
                                                 caption = {"self", PortalTunnelGui.GetMaxTrainLengthInCarriages(portalA.trainWaitingAreaTilesLength), portalA.trainWaitingAreaTilesLength},
                                                 tooltip = "self"
                                             }
@@ -301,23 +302,23 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                 -- Portal 2.
                                 type = "frame",
                                 direction = "vertical",
-                                style = "muppet_frame_contentInnerDark_shadowSunken_paddingBR",
+                                style = MuppetStyles.frame.contentInnerDark_shadowSunken.paddingBR,
                                 children = {
                                     {
                                         type = "flow",
                                         direction = "vertical",
-                                        style = "muppet_flow_vertical_marginTL_spaced",
+                                        style = MuppetStyles.flow.vertical.marginTL_spaced,
                                         children = {
                                             {
                                                 descriptiveName = "pt_portal_direction",
                                                 type = "label",
-                                                style = "muppet_label_heading_medium",
+                                                style = MuppetStyles.label.heading.medium.plain,
                                                 caption = {"self", portalBOrientationText, portalBSelectedText}
                                             },
                                             {
                                                 descriptiveName = "pt_train_length",
                                                 type = "label",
-                                                style = "muppet_label_text_medium",
+                                                style = MuppetStyles.label.text.medium.plain,
                                                 caption = {"self", PortalTunnelGui.GetMaxTrainLengthInCarriages(portalB.trainWaitingAreaTilesLength), portalB.trainWaitingAreaTilesLength},
                                                 tooltip = "self"
                                             }
@@ -332,24 +333,24 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                         parent = mainGuiElement,
                         type = "frame",
                         direction = "vertical",
-                        style = "muppet_frame_contentInnerDark_shadowSunken_marginTL_paddingBR",
+                        style = MuppetStyles.frame.contentInnerDark_shadowSunken.marginTL_paddingBR,
                         styling = {horizontally_stretchable = true},
                         children = {
                             {
                                 type = "flow",
                                 direction = "vertical",
-                                style = "muppet_flow_vertical_marginTL_spaced",
+                                style = MuppetStyles.flow.vertical.marginTL_spaced,
                                 children = {
                                     {
                                         descriptiveName = "pt_train_usage_title",
                                         type = "label",
-                                        style = "muppet_label_heading_medium",
+                                        style = MuppetStyles.label.heading.medium.plain,
                                         caption = "self"
                                     },
                                     {
                                         descriptiveName = "pt_train_usage_state",
                                         type = "label",
-                                        style = "muppet_label_text_medium",
+                                        style = MuppetStyles.label.text.medium.plain,
                                         caption = {"self", tunnelUsageStateText}
                                     }
                                 }
