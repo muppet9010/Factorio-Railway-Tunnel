@@ -367,7 +367,7 @@ end
 --- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
 ---@alias UtilityGuiUtil_ElementDetails_tooltip LocalisedString|null
 
---- If populated registers a function to be triggered when a user clicks on the GUI element. Passes the supplied table of arguments to GuiActionsClick.RegisterGuiForClick(). See that library and function for full usage details.
+--- If populated registers a function to be triggered when a user clicks on the GUI element. Does this by passing the supplied table of arguments to GuiActionsClick.RegisterGuiForClick() which configures and manages detection of the click and the functions calling. See that library and function for full usage details.
 ---
 --- If being used make sure to review Gui-Actions-Click.lua and its GuiActionsClick.MonitorGuiClickActions() function as its a prereq for the features usage. Also need to register the click actionName to a callback function with GuiActionsClick.LinkGuiClickActionNameToFunction().
 ---@alias UtilityGuiUtil_ElementDetails_registerClick UtilityGuiUtil_ElementDetails_RegisterClickOption|null

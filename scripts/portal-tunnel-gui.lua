@@ -14,6 +14,7 @@ end
 PortalTunnelGui.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-open_gui", "PortalTunnelGui.On_OpenGuiInput", PortalTunnelGui.On_OpenGuiInput)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_CloseButtonClicked", PortalTunnelGui.On_CloseButtonClicked)
+    GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenTrainGuiClicked", PortalTunnelGui.On_OpenTrainGuiClicked)
 
     MOD.Interfaces.PortalTunnelGui = MOD.Interfaces.PortalTunnelGui or {}
     MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged = PortalTunnelGui.On_PortalPartChanged
@@ -220,16 +221,25 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             portalBSelectedText = {"gui-caption.railway_tunnel-selected-capital-brackets"}
         end
 
-        local tunnelUsageStateText
+        -- Work out tunnel usage details.
+        local tunnelUsageStateText, trainGuiButton_clickEnabled, trainGuiButton_tooltip
         local managedTrain = tunnel.managedTrain
         if managedTrain == nil or managedTrain.tunnelUsageState == Common.TunnelUsageState.finished then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-none"}
+            trainGuiButton_clickEnabled = false
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-none"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.approaching or managedTrain.tunnelUsageState == Common.TunnelUsageState.portalTrack then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-entering"}
+            trainGuiButton_clickEnabled = true
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-enabled"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.underground then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-underground"}
+            trainGuiButton_clickEnabled = false
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-underground"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.leaving then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-leaving"}
+            trainGuiButton_clickEnabled = true
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-enabled"}
         else
             error("PortalTunnelGui.MakeGui() recieved unrecognised ManagedTrain.tunnelUsageState: " .. tostring(managedTrain.tunnelUsageState))
         end
@@ -348,10 +358,27 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                         caption = "self"
                                     },
                                     {
-                                        descriptiveName = "pt_train_usage_state",
-                                        type = "label",
-                                        style = MuppetStyles.label.text.medium.plain,
-                                        caption = {"self", tunnelUsageStateText}
+                                        type = "flow",
+                                        direction = "horizontal",
+                                        style = MuppetStyles.flow.horizontal.spaced,
+                                        children = {
+                                            {
+                                                descriptiveName = "pt_train_usage_state",
+                                                type = "label",
+                                                style = MuppetStyles.label.text.medium.plain,
+                                                caption = {"self", tunnelUsageStateText}
+                                            },
+                                            {
+                                                descriptiveName = "pt_open_train_gui_button",
+                                                type = "sprite-button",
+                                                style = MuppetStyles.spriteButton.smallText,
+                                                sprite = "entity.locomotive",
+                                                registerClick = {actionName = "PortalTunnelGui.On_OpenTrainGuiClicked", data = {player = player, managedTrain = managedTrain}},
+                                                enabled = trainGuiButton_clickEnabled,
+                                                tooltip = trainGuiButton_tooltip,
+                                                styling = {left_margin = 4, top_margin = -2}
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -425,6 +452,25 @@ PortalTunnelGui.GetMaxTrainLengthInCarriages = function(tiles)
         fullCarriages = fullCarriages + 1
     end
     return fullCarriages
+end
+
+--- Called when a player with the a tunnel GUI open clicks the train icon for a train using the tunnel.
+---@param event UtilityGuiActionsClick_ActionData
+PortalTunnelGui.On_OpenTrainGuiClicked = function(event)
+    local managedTrain = event.data.managedTrain ---@type ManagedTrain
+    local player = event.data.player ---@type LuaPlayer
+
+    local train  ---@type LuaTrain
+    if managedTrain.portalTrackTrain ~= nil then
+        train = managedTrain.portalTrackTrain
+    elseif managedTrain.approachingTrain ~= nil then
+        train = managedTrain.approachingTrain
+    elseif managedTrain.leavingTrain ~= nil then
+        train = managedTrain.leavingTrain
+    else
+        error("PortalTunnelGui.On_OpenTrainGuiClicked() called when train wasn't in suitable state for its GUI to be opened.")
+    end
+    player.opened = train.front_stock
 end
 
 return PortalTunnelGui
