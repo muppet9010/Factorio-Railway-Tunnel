@@ -425,12 +425,10 @@ end
 
 --- Called to close the GUI and update the open GUI tracking.
 ---@param playerIndex Id
----@param portalPart? PortalPart|null @ If provided then the PortalPart has its open GUIs updates and this bleeds through the portal/tunnel structure.
-PortalTunnelGui.CloseGui = function(playerIndex, portalPart)
-    if portalPart ~= nil then
-        -- Tell the portal part which will propigate up to the tunnel.
-        MOD.Interfaces.Portal.GuiClosedOnPortalPart(portalPart, playerIndex)
-    end
+---@param portalPart PortalPart @ The PortalPart that had its open GUI is updated and this bleeds through the portal/tunnel structure.
+PortalTunnelGui.CloseGuiAndUpdatePortalPart = function(playerIndex, portalPart)
+    -- Tell the portal part which will propigate up to the tunnel.
+    MOD.Interfaces.Portal.GuiClosedOnPortalPart(portalPart, playerIndex)
 
     -- Remove the backwards lookup from global.
     global.portalTunnelGui.portalPartOpenByPlayer[playerIndex] = nil
@@ -439,10 +437,27 @@ PortalTunnelGui.CloseGui = function(playerIndex, portalPart)
     GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui")
 end
 
+--- Called to destroy the GUI and forget it was open, but updating is done to the portal part.
+---@param playerIndex Id
+PortalTunnelGui.CloseGuiAndForetPortalPart = function(playerIndex)
+    -- Remove the backwards lookup from global.
+    global.portalTunnelGui.portalPartOpenByPlayer[playerIndex] = nil
+
+    -- Close and destroy all the Gui Element's for this overall GUI on screen.
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui")
+end
+
+--- Called to only destroy the GUI.
+---@param playerIndex Id
+PortalTunnelGui.CloseGuiOnly = function(playerIndex)
+    -- Close and destroy all the Gui Element's for this overall GUI on screen.
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui")
+end
+
 --- When the player clicks the close button on their GUI.
 ---@param event UtilityGuiActionsClick_ActionData
 PortalTunnelGui.On_CloseButtonClicked = function(event)
-    PortalTunnelGui.CloseGui(event.playerIndex, event.data.portalPart)
+    PortalTunnelGui.CloseGuiAndUpdatePortalPart(event.playerIndex, event.data.portalPart)
 end
 
 --- Called by the Portal class when a change has occured to the portal part of one of its parents that the GUI needs to react to.
@@ -456,22 +471,25 @@ PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, player,
     -- TODO: this didn't work right when I had a second portal GUI open and mined a first portal's part. As the second portal's GUI closed.
     if partRemoved then
         -- Part removed so just close the GUI. No need to update the PortalPart object as its gone.
-        PortalTunnelGui.CloseGui(playerIndex, nil)
+        PortalTunnelGui.CloseGuiAndForetPortalPart(playerIndex)
         return
     end
 
-    -- Redraw the GUI so it accounts for whatever change has occured.
-    -- Just close the open GUI, don;t update the PortalPart about it being watched as we will still be afterwards.
-    PortalTunnelGui.CloseGui(playerIndex, nil)
+    -- Re-draw the GUI so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
+    -- Just close the open GUI, don't update the PortalPart or the global cache of what the player is watching as we will just open the GUI straight back up afterwards.
+    PortalTunnelGui.CloseGuiOnly(playerIndex)
     PortalTunnelGui.MakeGui(portalPart, player, playerIndex)
 end
 
 --- Called when the usage state of the tunnel changes by the TrainManager class.
 ---@param managedTrain ManagedTrain
 PortalTunnelGui.On_TunnelUsageChanged = function(managedTrain)
-    -- TODO: not tested through all usage cases.
-    for playerIndex in pairs(managedTrain.tunnel.guiOpenedByPlayers) do
-        --TODO: remove the status section of the GUI and re-create it.
+    for playerIndex, player in pairs(managedTrain.tunnel.guiOpenedByPlayers) do
+        -- Re-draw the GUI so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
+        -- Just close the open GUI, don't update the PortalPart or the global cache of what the player is watching as we will just open the GUI straight back up afterwards.
+        local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[playerIndex]
+        PortalTunnelGui.CloseGuiOnly(playerIndex)
+        PortalTunnelGui.MakeGui(portalPart, player, playerIndex)
     end
 end
 
@@ -493,16 +511,7 @@ PortalTunnelGui.On_OpenTrainGuiClicked = function(event)
     local managedTrain = event.data.managedTrain ---@type ManagedTrain
     local player = event.data.player ---@type LuaPlayer
 
-    local train  ---@type LuaTrain
-    if managedTrain.portalTrackTrain ~= nil then
-        train = managedTrain.portalTrackTrain
-    elseif managedTrain.approachingTrain ~= nil then
-        train = managedTrain.approachingTrain
-    elseif managedTrain.leavingTrain ~= nil then
-        train = managedTrain.leavingTrain
-    else
-        error("PortalTunnelGui.On_OpenTrainGuiClicked() called when train wasn't in suitable state for its GUI to be opened.")
-    end
+    local train = MOD.Interfaces.TrainManager.GetCurrentTrain(managedTrain)
     player.opened = train.front_stock
 end
 
@@ -521,16 +530,16 @@ PortalTunnelGui.On_OpenAddFuelInventoryClicked = function(event)
     player.opened = fuelChest
 
     -- Schedule the check of the chest and player's open GUIs.
-    global.portalTunnelGui.nextFuelChestId = global.portalTunnelGui.nextFuelChestId + 1
-    EventScheduler.ScheduleEventOnce(event.eventData.tick + TrainFuelChestCheckTicks, "PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", global.portalTunnelGui.nextFuelChestId, {player = player, fuelChest = fuelChest, managedTrain = managedTrain})
+    global.portalTunnelGui.lastFuelChestId = global.portalTunnelGui.lastFuelChestId + 1
+    EventScheduler.ScheduleEventOnce(event.eventData.tick + TrainFuelChestCheckTicks, "PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", global.portalTunnelGui.lastFuelChestId, {player = player, fuelChest = fuelChest, managedTrain = managedTrain})
 end
 
---- Called frequently while the player has a train fuel chest open
+--- Called frequently while the player has a train fuel chest open. Checks states and moves any fuel across thats been put in the fuel chest.
 ---@param event UtilityScheduledEvent_CallbackObject
 PortalTunnelGui.Scheduled_TrackTrainFuelChestGui = function(event)
     local managedTrain = event.data.managedTrain ---@type ManagedTrain
     local player = event.data.player ---@type LuaPlayer
-    local fuelChest = event.data.fueldChest ---@type LuaEntity
+    local fuelChest = event.data.fuelChest ---@type LuaEntity
 
     -- If theres no managed train any more then close everything.
     if managedTrain.tunnelUsageState == Common.TunnelUsageState.finished then
@@ -538,16 +547,48 @@ PortalTunnelGui.Scheduled_TrackTrainFuelChestGui = function(event)
         return
     end
 
-    -- Move across any fuel in the chest to any forward locomotives.
-    local fuelChest_inventory = fuelChest.get_inventory(defines.inventory.chest)
-    for item, count in pairs(fuelChest_inventory.get_contents()) do
-        -- TODO: try and insert each item in to the train's forward locomotives currentlt burning and then burner inventory slots.
+    -- Move across any fuel in the chest across all locomotives.
+    local fuelChestInventory = fuelChest.get_inventory(defines.inventory.chest)
+    if not fuelChestInventory.is_empty() then
+        -- Start with all loco's.
+        local locoCountTakingFuel = managedTrain.trainCachedData.forwardFacingLocomotiveCount + managedTrain.trainCachedData.backwardFacingLocomotiveCount
+        local reminingLocoCountTakingFuel = locoCountTakingFuel
+
+        -- While there is still fuel to distribute keep on looping over the fuel we have between the locomotives taht are taking fuel.
+        -- If no locomotive takes any fuel then stop trying.
+        while not fuelChestInventory.is_empty() do
+            locoCountTakingFuel = 0
+            for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
+                if carriageData.prototypeType == "locomotive" then
+                    local thisLocoRatio = 1 / reminingLocoCountTakingFuel
+                    reminingLocoCountTakingFuel = reminingLocoCountTakingFuel - 1
+                    local burner = carriageData.entity.burner
+                    if burner ~= nil then
+                        local burnerInventory = burner.inventory
+                        if burnerInventory ~= nil then
+                            local _, someFuelTaken = Utils.TryMoveInventoriesLuaItemStacks(fuelChestInventory, burnerInventory, false, thisLocoRatio)
+                            if someFuelTaken then
+                                locoCountTakingFuel = locoCountTakingFuel + 1
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- If no locomotives took any fuel this pass then stop checking.
+            if locoCountTakingFuel == 0 then
+                break
+            end
+
+            -- Reset totoal loco count taking fuel for next cycle.
+            reminingLocoCountTakingFuel = locoCountTakingFuel
+        end
     end
 
     -- If the inventory is still open to the player then schedule the next check, otherwise close everything.
     if player.opened == fuelChest then
-        global.portalTunnelGui.nextFuelChestId = global.portalTunnelGui.nextFuelChestId + 1
-        EventScheduler.ScheduleEventOnce(event.tick + TrainFuelChestCheckTicks, "PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", global.portalTunnelGui.nextFuelChestId, data)
+        global.portalTunnelGui.lastFuelChestId = global.portalTunnelGui.lastFuelChestId + 1
+        EventScheduler.ScheduleEventOnce(event.tick + TrainFuelChestCheckTicks, "PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", global.portalTunnelGui.lastFuelChestId, event.data)
     else
         PortalTunnelGui.RemoveTrainFuelChest(fuelChest, player)
     end
@@ -560,13 +601,15 @@ PortalTunnelGui.RemoveTrainFuelChest = function(fuelChest, player)
     -- Move anything left in the fuel chest back to the player, just spilling the rest on the ground.
     local playerInventory = player.get_main_inventory()
     local fuelChest_inventory = fuelChest.get_inventory(defines.inventory.chest)
-    if playerInventory ~= nil then
-        Utils.TryMoveInventoriesLuaItemStacks(fuelChest_inventory, playerInventory, true, 1)
-    elseif fuelChest_inventory ~= nil and not fuelChest_inventory.is_empty() then
-        for index = 1, #fuelChest_inventory do
-            local itemStack = fuelChest_inventory[index]
-            if itemStack.valid_for_read then
-                player.surface.spill_item_stack(player.position, {name = itemStack.name, count = itemStack.count}, true, player.force, false)
+    if not fuelChest_inventory.is_empty() then
+        if playerInventory ~= nil then
+            Utils.TryMoveInventoriesLuaItemStacks(fuelChest_inventory, playerInventory, true, 1)
+        elseif fuelChest_inventory ~= nil then
+            for index = 1, #fuelChest_inventory do
+                local itemStack = fuelChest_inventory[index]
+                if itemStack.valid_for_read then
+                    player.surface.spill_item_stack(player.position, {name = itemStack.name, count = itemStack.count}, true, player.force, false)
+                end
             end
         end
     end

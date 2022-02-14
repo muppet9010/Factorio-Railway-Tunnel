@@ -5,10 +5,12 @@ Now
         - Make a GUI test.
         - Remember where a GUI was dragged when closing it if another one was opened over it - only if easy.
         - Catch the E & Escape key and close the GUI if its open.
+        - At present when we re-draw the GUI we fully destroy it and then re-make it, thus losing where it was dragged to. Probably need an outer flow for the frame that we have in different storeName and don't remove it when re-creating. Also as we re-create it from scrathc it opens on top of other windows when refreshing, i.e. train fuel chest.
 
 Bugs
 ----
     - Utils.GetRenderPlayersForcesFromActioner() check what this returns and comment it. As it looks like we return tables of only ever 1 thing :S
+    - Do I still need to track the train as approachingTrain, undergroundTrain, leavingTrain any more as theres only ever 1 of these states at a time now.
 
 
 Features to add/change

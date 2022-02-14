@@ -1512,60 +1512,85 @@ Utils.GetValueAndUnitFromString = function(text)
     return string_match(text, "%d+%.?%d*"), string_match(text, "%a+")
 end
 
---- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
+--- Moves the full Lua Item Stacks from the source to the target inventories if possible. So handles items with data and other complicated items. --- Updates the source inventory counts in inventory object.
 ---@param sourceInventory LuaInventory
 ---@param targetInventory LuaInventory
----@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
----@param ratioToMove? double|null @ Float number from 0 to 1. If not provided it defaults to 1.
----@return boolean @ if all items were moved successfully or not.
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground (regardless of ratioToMove value). If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@param ratioToMove? double|null @ Ratio of the item count to try and move. Float number from 0 to 1. If not provided it defaults to 1. Number of items moved is rounded up.
+---@return boolean everythingMoved @ If all items were moved successfully in to the targetInventory. Ignores if things were dumped on the ground.
+---@return boolean anythingMoved @ If any items were moved successfully in to the targetInventory. Ignores if things were dumped on the ground.
 Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventory, dropUnmovedOnGround, ratioToMove)
-    local sourceOwner, itemAllMoved = nil, true
+    -- Set default values.
+    ---@typelist LuaEntity, boolean, boolean
+    local sourceOwner, itemAllMoved, anythingMoved = nil, true, false
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
     end
     if ratioToMove == nil then
         ratioToMove = 1
     end
+
+    -- Clamp ratio to between 0 and 1.
+    ratioToMove = math_min(math_max(ratioToMove, 0), 1)
+
+    -- Handle simple returns that don't require item moving.
     if sourceInventory == nil or sourceInventory.is_empty() then
-        return itemAllMoved
+        return true, false
     end
+    if ratioToMove == 0 then
+        return false, false
+    end
+
+    --Do the actual item moving.
     for index = 1, #sourceInventory do
-        local itemStack = sourceInventory[index]
+        local itemStack = sourceInventory[index] ---@type LuaItemStack
         if itemStack.valid_for_read then
-            local toMoveCount = math_ceil(itemStack.count * ratioToMove)
-            local itemStackToMove = Utils.DeepCopy(itemStack)
-            itemStackToMove.count = toMoveCount
-            local movedCount = targetInventory.insert(itemStackToMove)
-            local remaining = itemStack.count - movedCount
+            -- Work out how many to try and move.
+            local itemStack_origionalCount = itemStack.count
+            local maxToMoveCount = math_ceil(itemStack_origionalCount * ratioToMove)
+
+            -- Have to set the source count to be the max amount to move, try the insert, and then set the source count back to the required final result. As this is a game object and so I can't just clone it to try the insert with without losing its associated data.
+            itemStack.count = maxToMoveCount
+            local movedCount = targetInventory.insert(itemStack)
+            itemStack.count = itemStack_origionalCount - movedCount
+
+            -- Check what was moved and any next steps.
             if movedCount > 0 then
-                itemStack.count = remaining
+                anythingMoved = true
             end
-            if remaining > 0 then
+            if movedCount < maxToMoveCount then
                 itemAllMoved = false
                 if dropUnmovedOnGround then
                     sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
-                    sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = itemStack.name, count = remaining}, true, sourceOwner.force, false)
+                    sourceOwner.surface.spill_item_stack(sourceOwner.position, itemStack, true, sourceOwner.force, false)
+                    itemStack.count = 0
                 end
             end
         end
     end
 
-    return itemAllMoved
+    return itemAllMoved, anythingMoved
 end
 
---- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
+--- Try and move all equipment from a grid to an inventory.
+--- Can only move the item name and count via API, Factorio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
 ---@param sourceGrid LuaEquipmentGrid
 ---@param targetInventory LuaInventory
----@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
----@return boolean @ if all items were moved successfully or not.
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground. If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@return boolean everythingMoved @ If all items were moved successfully or not.
 Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGround)
-    if sourceGrid == nil then
-        return
-    end
+    -- Set default values.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
     end
+
+    -- Handle simple returns that don't require item moving.
+    if sourceGrid == nil then
+        return
+    end
+
+    --Do the actual item moving.
     for _, equipment in pairs(sourceGrid.equipment) do
         local moved = targetInventory.insert({name = equipment.name, count = 1})
         if moved > 0 then
@@ -1576,6 +1601,7 @@ Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGro
             if dropUnmovedOnGround then
                 sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
                 sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = equipment.name, count = 1}, true, sourceOwner.force, false)
+                sourceGrid.take({equipment = equipment})
             end
         end
     end
@@ -1585,13 +1611,11 @@ end
 --- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
 ---@param contents table<string, uint> @ A table of item names to counts, as returned by LuaInventory.get_contents().
 ---@param targetInventory LuaInventory
----@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
----@param ratioToMove? double|null @ Float number from 0 to 1. If not provided it defaults to 1.
----@return boolean @ if all items were moved successfully or not.
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground. If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@param ratioToMove? double|null @ Ratio of the item count to try and move. Float number from 0 to 1. If not provided it defaults to 1. Number of items moved is rounded up.
+---@return boolean  everythingMoved @ If all items were moved successfully or not.
 Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
-    if Utils.IsTableEmpty(contents) then
-        return
-    end
+    -- Set default values.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
@@ -1599,6 +1623,19 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
     if ratioToMove == nil then
         ratioToMove = 1
     end
+
+    -- Clamp ratio to between 0 and 1.
+    ratioToMove = math_min(math_max(ratioToMove, 0), 1)
+
+    -- Handle simple returns that don't require item moving.
+    if Utils.IsTableEmpty(contents) then
+        return
+    end
+    if ratioToMove == 0 then
+        return false, false
+    end
+
+    --Do the actual item moving.
     for name, count in pairs(contents) do
         local toMove = math_ceil(count * ratioToMove)
         local moved = targetInventory.insert({name = name, count = toMove})
@@ -1611,6 +1648,7 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
             if dropUnmovedOnGround then
                 sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
                 sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = name, count = remaining}, true, sourceOwner.force, false)
+                contents[name] = 0
             end
         end
     end
@@ -1620,13 +1658,11 @@ end
 --- Takes an array of SimpleItemStack and inserts them in to an inventory. Updates each SimpleItemStack passed in with the new count.
 ---@param simpleItemStacks SimpleItemStack[]
 ---@param targetInventory LuaInventory
----@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
----@param ratioToMove? double|null @ Float number from 0 to 1. If not provided it defaults to 1.
----@return boolean @ if all items were moved successfully or not.
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground. If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@param ratioToMove? double|null @ Ratio of the item count to try and move. Float number from 0 to 1. If not provided it defaults to 1. Number of items moved is rounded up.
+---@return boolean everythingMoved @ If all items were moved successfully or not.
 Utils.TryInsertSimpleItems = function(simpleItemStacks, targetInventory, dropUnmovedOnGround, ratioToMove)
-    if simpleItemStacks == nil or #simpleItemStacks == 0 then
-        return
-    end
+    -- Set default values.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
@@ -1634,6 +1670,19 @@ Utils.TryInsertSimpleItems = function(simpleItemStacks, targetInventory, dropUnm
     if ratioToMove == nil then
         ratioToMove = 1
     end
+
+    -- Clamp ratio to between 0 and 1.
+    ratioToMove = math_min(math_max(ratioToMove, 0), 1)
+
+    -- Handle simple returns that don't require item moving.
+    if simpleItemStacks == nil or #simpleItemStacks == 0 then
+        return
+    end
+    if ratioToMove == 0 then
+        return false, false
+    end
+
+    --Do the actual item moving.
     for index, simpleItemStack in pairs(simpleItemStacks) do
         local toMove = math_ceil(simpleItemStack.count * ratioToMove)
         local moved = targetInventory.insert({name = simpleItemStack.name, count = toMove, health = simpleItemStack.health, ammo = simpleItemStack.ammo})
@@ -1646,6 +1695,7 @@ Utils.TryInsertSimpleItems = function(simpleItemStacks, targetInventory, dropUnm
             if dropUnmovedOnGround then
                 sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
                 sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = simpleItemStack.name, count = remaining}, true, sourceOwner.force, false)
+                simpleItemStacks[index].count = 0
             end
         end
     end
@@ -2009,10 +2059,12 @@ end
 
 ---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
 ---@field entity LuaEntity
+---@field prototypeType? string|null
 ---@field prototypeName? string|null
 ---@field faceingFrontOfTrain? boolean|null @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
 
 --- Get the data other Utils functions need for calculating and estimating; a trains future speed, time to cover distance, etc.
+--- If trainCarriagesDataArray is being used it populates the attributes: entity, prototypeType, prototypeName, faceingFrontOfTrain.
 --- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.
 --- Assumes all forward facing locomotives have the same fuel as the first one found. If no fuel is found in any locomotive then a default value of 1 is used and the return "noFuelFound" will indicate this,
 --- Either train_carriages or trainCarriagesDataArray needs to be provided.
@@ -2055,15 +2107,19 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
     end
 
     local firstCarriage = true
-    local carriageEntity  ---@type LuaEntity
-    local carriageCachedData  ---@type Utils_TrainCarriageData|null
-    local carriage_name  ---@type string
-    local carriage_faceingFrontOfTrain  ---@type boolean
+    ---@typelist LuaEntity, Utils_TrainCarriageData|null, string, string, boolean
+    local carriageEntity, carriageCachedData, carriage_type, carriage_name, carriage_faceingFrontOfTrain
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         if trainCarriagesDataArray ~= nil then
             ---@type Utils_TrainCarriageData
             carriageCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
+            carriage_type = carriageCachedData.prototypeType
             carriage_name = carriageCachedData.prototypeName
+            if carriage_type == nil then
+                -- Data not known so obtain and cache.
+                carriage_type = carriageCachedData.entity.type
+                carriageCachedData.prototypeType = carriage_type
+            end
             if carriage_name == nil then
                 -- Data not known so obtain and cache.
                 carriage_name = carriageCachedData.entity.name
@@ -2071,6 +2127,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
             end
         else
             carriageEntity = train_carriages[currentSourceTrainCarriageIndex]
+            carriage_type = carriageEntity.type
             carriage_name = carriageEntity.name
         end
 
@@ -2088,7 +2145,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
             end
         end
 
-        if carriage_name == "locomotive" then
+        if carriage_type == "locomotive" then
             if trainCarriagesDataArray ~= nil then
                 carriage_faceingFrontOfTrain = carriageCachedData.faceingFrontOfTrain
                 if carriage_faceingFrontOfTrain == nil then

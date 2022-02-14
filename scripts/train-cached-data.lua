@@ -224,13 +224,13 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
     for _, carriageCachedData in pairs(trainCachedData.carriagesCachedData) do
         -- Note: this is a partial clone from Utils.GetTrainSpeedCalculationData().
         -- Only process locomotives that are powering the trains movement.
-        if carriageCachedData.prototypeName == "locomotive" and trainForwardsCacheData == carriageCachedData.faceingFrontOfTrain then
+        if carriageCachedData.prototypeType == "locomotive" and trainForwardsCacheData == carriageCachedData.faceingFrontOfTrain then
             local carriage = carriageCachedData.entity
             local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
             if currentFuelPrototype ~= nil then
                 -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
                 fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
-                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
+                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.0a
                 break
             end
         end
