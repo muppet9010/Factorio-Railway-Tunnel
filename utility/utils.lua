@@ -1512,7 +1512,11 @@ Utils.GetValueAndUnitFromString = function(text)
     return string_match(text, "%d+%.?%d*"), string_match(text, "%a+")
 end
 
--- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
+--- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
+---@param sourceInventory LuaInventory
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
+---@param ratioToMove? double|null @ Float number from 0 to 1. If not provided it defaults to 1.
 ---@return boolean @ if all items were moved successfully or not.
 Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventory, dropUnmovedOnGround, ratioToMove)
     local sourceOwner, itemAllMoved = nil, true
@@ -1549,7 +1553,10 @@ Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventor
     return itemAllMoved
 end
 
--- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
+--- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
+---@param sourceGrid LuaEquipmentGrid
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
 ---@return boolean @ if all items were moved successfully or not.
 Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGround)
     if sourceGrid == nil then
@@ -1575,7 +1582,11 @@ Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGro
     return itemAllMoved
 end
 
--- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
+--- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
+---@param contents table<string, uint> @ A table of item names to counts, as returned by LuaInventory.get_contents().
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
+---@param ratioToMove? double|null @ Float number from 0 to 1. If not provided it defaults to 1.
 ---@return boolean @ if all items were moved successfully or not.
 Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
     if Utils.IsTableEmpty(contents) then
@@ -1606,10 +1617,14 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
     return itemAllMoved
 end
 
--- Takes a table of SimpleItemStack and inserts them in to an inventory. Updates the passed in contents object.
+--- Takes an array of SimpleItemStack and inserts them in to an inventory. Updates each SimpleItemStack passed in with the new count.
+---@param simpleItemStacks SimpleItemStack[]
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If not provided then defaults to FALSE. If unmoved items aren't dropped on the ground they are left in the source inventory.
+---@param ratioToMove? double|null @ Float number from 0 to 1. If not provided it defaults to 1.
 ---@return boolean @ if all items were moved successfully or not.
-Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
-    if contents == nil or #contents == 0 then
+Utils.TryInsertSimpleItems = function(simpleItemStacks, targetInventory, dropUnmovedOnGround, ratioToMove)
+    if simpleItemStacks == nil or #simpleItemStacks == 0 then
         return
     end
     local sourceOwner, itemAllMoved = nil, true
@@ -1619,12 +1634,12 @@ Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGr
     if ratioToMove == nil then
         ratioToMove = 1
     end
-    for index, simpleItemStack in pairs(contents) do
+    for index, simpleItemStack in pairs(simpleItemStacks) do
         local toMove = math_ceil(simpleItemStack.count * ratioToMove)
-        local moved = targetInventory.insert({name = simpleItemStack.name, count = toMove, health = simpleItemStack.health, durability = simpleItemStack.durablilty, ammo = simpleItemStack.ammo})
+        local moved = targetInventory.insert({name = simpleItemStack.name, count = toMove, health = simpleItemStack.health, ammo = simpleItemStack.ammo})
         local remaining = simpleItemStack.count - moved
         if moved > 0 then
-            contents[index].count = remaining
+            simpleItemStacks[index].count = remaining
         end
         if remaining > 0 then
             itemAllMoved = false
@@ -1637,6 +1652,7 @@ Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGr
     return itemAllMoved
 end
 
+--- Get the inventory of the builder (player, bot, or god controller).
 ---@param builder EntityActioner
 Utils.GetBuilderInventory = function(builder)
     if builder.is_player() then

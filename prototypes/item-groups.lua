@@ -36,7 +36,7 @@ data:extend(
         },
         {
             type = "item-subgroup",
-            name = "railway_tunnel-hidden_cars",
+            name = "railway_tunnel-hidden_player_container",
             group = "railway_tunnel-hidden",
             order = "d"
         },
@@ -51,6 +51,12 @@ data:extend(
             name = "railway_tunnel-train_blockers",
             group = "railway_tunnel-hidden",
             order = "f"
+        },
+        {
+            type = "item-subgroup",
+            name = "railway_tunnel-tunnel_bits",
+            group = "railway_tunnel-hidden",
+            order = "g"
         },
         {
             type = "item-subgroup",

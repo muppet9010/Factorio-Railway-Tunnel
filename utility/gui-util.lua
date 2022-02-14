@@ -69,6 +69,9 @@ GuiUtil.AddElement = function(elementDetails)
     if elementDetails[1] ~= nil then
         error("GuiUtil.AddElement() recieved a non-key'd value. This is a syntax mistake in the ElementDetails as something is outside of a list.")
     end
+    if elementDetails.style ~= nil and type(elementDetails.style) ~= "string" then
+        error("GuiUtil.AddElement() had a style attribute set other than a string, likely a table by mistake.")
+    end
 
     if elementDetails.exclude == true then
         return
@@ -348,7 +351,7 @@ end
 -- Custom Objects for use in mutliple public classes
 --------------------------------------------------------------------------
 
---- A table of LuaStyle attribute names and values (key/value) to be applied post element creation. Saves having to capture the added element and then set style attributes one at a time in calling code.
+--- A table of LuaStyle attribute names and values (key/value) to be applied post element creation (after style). Saves having to capture the added element and then set style attributes one at a time in calling code.
 ---
 --- [Styling documentation](https://lua-api.factorio.com/latest/LuaStyle.html)
 ---@alias UtilityGuiUtil_ElementDetails_styling table<string, StringOrNumber|boolean|null>|null

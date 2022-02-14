@@ -5,16 +5,22 @@ local GuiUtil = require("utility.gui-util")
 local GuiActionsClick = require("utility.gui-actions-click")
 local Utils = require("utility.utils")
 local MuppetStyles = require("utility.style-data").MuppetStyles
+local EventScheduler = require("utility.event-scheduler")
+
+local TrainFuelChestCheckTicks = 15
 
 PortalTunnelGui.CreateGlobals = function()
     global.portalTunnelGui = global.portalTunnelGui or {}
     global.portalTunnelGui.portalPartOpenByPlayer = global.portalTunnelGui.portalPartOpenByPlayer or {} ---@type table<Id, PortalPart> @ A list of each palyer with a portal GUI open and which PortalPart it is. For reverse lookup of PortalPart by player.
+    global.portalTunnelGui.lastFuelChestId = global.portalTunnelGui.lastFuelChestId or 0 ---@type uint
 end
 
 PortalTunnelGui.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-open_gui", "PortalTunnelGui.On_OpenGuiInput", PortalTunnelGui.On_OpenGuiInput)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_CloseButtonClicked", PortalTunnelGui.On_CloseButtonClicked)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenTrainGuiClicked", PortalTunnelGui.On_OpenTrainGuiClicked)
+    GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenAddFuelInventoryClicked", PortalTunnelGui.On_OpenAddFuelInventoryClicked)
+    EventScheduler.RegisterScheduledEventType("PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", PortalTunnelGui.Scheduled_TrackTrainFuelChestGui)
 
     MOD.Interfaces.PortalTunnelGui = MOD.Interfaces.PortalTunnelGui or {}
     MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged = PortalTunnelGui.On_PortalPartChanged
@@ -89,6 +95,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             type = "frame",
             direction = "vertical",
             style = MuppetStyles.frame.main_shadowRisen.paddingBR,
+            styling = {natural_width = 650}, -- Width to have some padding on the tunnel's 2 portal train lengths.
             storeName = "portalTunnelGui",
             returnElement = true,
             attributes = {auto_center = true},
@@ -222,24 +229,32 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
         end
 
         -- Work out tunnel usage details.
-        local tunnelUsageStateText, trainGuiButton_clickEnabled, trainGuiButton_tooltip
+        local tunnelUsageStateText, trainGuiButton_clickEnabled, trainGuiButton_tooltip, trainFuel_tooltip, trainFuel_clickEnabled
         local managedTrain = tunnel.managedTrain
         if managedTrain == nil or managedTrain.tunnelUsageState == Common.TunnelUsageState.finished then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-none"}
             trainGuiButton_clickEnabled = false
-            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-none"}
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui-none"}
+            trainFuel_clickEnabled = false
+            trainFuel_tooltip = {"gui-tooltip.railway_tunnel-pt_open_add_fuel_inventory-none"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.approaching or managedTrain.tunnelUsageState == Common.TunnelUsageState.portalTrack then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-entering"}
             trainGuiButton_clickEnabled = true
-            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-enabled"}
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui-enabled"}
+            trainFuel_clickEnabled = true
+            trainFuel_tooltip = {"gui-tooltip.railway_tunnel-pt_open_add_fuel_inventory-enabled"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.underground then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-underground"}
             trainGuiButton_clickEnabled = false
-            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-underground"}
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui-underground"}
+            trainFuel_clickEnabled = true
+            trainFuel_tooltip = {"gui-tooltip.railway_tunnel-pt_open_add_fuel_inventory-enabled"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.leaving then
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-leaving"}
             trainGuiButton_clickEnabled = true
-            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui_button-enabled"}
+            trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui-enabled"}
+            trainFuel_clickEnabled = true
+            trainFuel_tooltip = {"gui-tooltip.railway_tunnel-pt_open_add_fuel_inventory-enabled"}
         else
             error("PortalTunnelGui.MakeGui() recieved unrecognised ManagedTrain.tunnelUsageState: " .. tostring(managedTrain.tunnelUsageState))
         end
@@ -285,6 +300,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                 type = "frame",
                                 direction = "vertical",
                                 style = MuppetStyles.frame.contentInnerDark_shadowSunken.paddingBR,
+                                styling = {horizontally_stretchable = true},
                                 children = {
                                     {
                                         type = "flow",
@@ -313,6 +329,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                 type = "frame",
                                 direction = "vertical",
                                 style = MuppetStyles.frame.contentInnerDark_shadowSunken.paddingBR,
+                                styling = {horizontally_stretchable = true},
                                 children = {
                                     {
                                         type = "flow",
@@ -369,7 +386,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                                 caption = {"self", tunnelUsageStateText}
                                             },
                                             {
-                                                descriptiveName = "pt_open_train_gui_button",
+                                                descriptiveName = "pt_open_train_gui",
                                                 type = "sprite-button",
                                                 style = MuppetStyles.spriteButton.smallText,
                                                 sprite = "entity.locomotive",
@@ -377,6 +394,22 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                                 enabled = trainGuiButton_clickEnabled,
                                                 tooltip = trainGuiButton_tooltip,
                                                 styling = {left_margin = 4, top_margin = -2}
+                                            }
+                                        }
+                                    },
+                                    {
+                                        type = "flow",
+                                        direction = "horizontal",
+                                        style = MuppetStyles.flow.horizontal.spaced,
+                                        children = {
+                                            {
+                                                descriptiveName = "pt_open_add_fuel_inventory",
+                                                type = "button",
+                                                style = MuppetStyles.button.text.medium.paddingSides,
+                                                caption = "self",
+                                                tooltip = trainFuel_tooltip,
+                                                registerClick = {actionName = "PortalTunnelGui.On_OpenAddFuelInventoryClicked", data = {player = player, managedTrain = managedTrain}},
+                                                enabled = trainFuel_clickEnabled
                                             }
                                         }
                                     }
@@ -419,7 +452,7 @@ end
 ---@param player LuaPlayer
 ---@param partRemoved boolean @ If the part has been removed and thus the GUI should be closed.
 PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, player, partRemoved)
-    -- TODO: not  tested through all usage cases.
+    -- TODO: not tested through all usage cases.
     -- TODO: this didn't work right when I had a second portal GUI open and mined a first portal's part. As the second portal's GUI closed.
     if partRemoved then
         -- Part removed so just close the GUI. No need to update the PortalPart object as its gone.
@@ -471,6 +504,75 @@ PortalTunnelGui.On_OpenTrainGuiClicked = function(event)
         error("PortalTunnelGui.On_OpenTrainGuiClicked() called when train wasn't in suitable state for its GUI to be opened.")
     end
     player.opened = train.front_stock
+end
+
+--- Called when a player with the a tunnel GUI open clicks the button to add fuel to the train using the tunnel.
+---@param event UtilityGuiActionsClick_ActionData
+PortalTunnelGui.On_OpenAddFuelInventoryClicked = function(event)
+    local managedTrain = event.data.managedTrain ---@type ManagedTrain
+    local player = event.data.player ---@type LuaPlayer
+
+    -- Create a chest for the fuel to go in to. Its hidden graphics layer so fine.
+    local blockedPortalEnd = managedTrain.entrancePortal.blockedPortalEnd
+    local fuelChest = blockedPortalEnd.surface.create_entity {name = "railway_tunnel-tunnel_fuel_chest", force = global.force.tunnelForce, position = blockedPortalEnd.entity_position}
+    fuelChest.destructible = false
+
+    -- Open the chest to the player
+    player.opened = fuelChest
+
+    -- Schedule the check of the chest and player's open GUIs.
+    global.portalTunnelGui.nextFuelChestId = global.portalTunnelGui.nextFuelChestId + 1
+    EventScheduler.ScheduleEventOnce(event.eventData.tick + TrainFuelChestCheckTicks, "PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", global.portalTunnelGui.nextFuelChestId, {player = player, fuelChest = fuelChest, managedTrain = managedTrain})
+end
+
+--- Called frequently while the player has a train fuel chest open
+---@param event UtilityScheduledEvent_CallbackObject
+PortalTunnelGui.Scheduled_TrackTrainFuelChestGui = function(event)
+    local managedTrain = event.data.managedTrain ---@type ManagedTrain
+    local player = event.data.player ---@type LuaPlayer
+    local fuelChest = event.data.fueldChest ---@type LuaEntity
+
+    -- If theres no managed train any more then close everything.
+    if managedTrain.tunnelUsageState == Common.TunnelUsageState.finished then
+        PortalTunnelGui.RemoveTrainFuelChest(fuelChest, player)
+        return
+    end
+
+    -- Move across any fuel in the chest to any forward locomotives.
+    local fuelChest_inventory = fuelChest.get_inventory(defines.inventory.chest)
+    for item, count in pairs(fuelChest_inventory.get_contents()) do
+        -- TODO: try and insert each item in to the train's forward locomotives currentlt burning and then burner inventory slots.
+    end
+
+    -- If the inventory is still open to the player then schedule the next check, otherwise close everything.
+    if player.opened == fuelChest then
+        global.portalTunnelGui.nextFuelChestId = global.portalTunnelGui.nextFuelChestId + 1
+        EventScheduler.ScheduleEventOnce(event.tick + TrainFuelChestCheckTicks, "PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", global.portalTunnelGui.nextFuelChestId, data)
+    else
+        PortalTunnelGui.RemoveTrainFuelChest(fuelChest, player)
+    end
+end
+
+--- Called when a trian fuel chest should be removed. Returns any items in it back to the player.
+---@param fuelChest LuaEntity
+---@param player LuaPlayer
+PortalTunnelGui.RemoveTrainFuelChest = function(fuelChest, player)
+    -- Move anything left in the fuel chest back to the player, just spilling the rest on the ground.
+    local playerInventory = player.get_main_inventory()
+    local fuelChest_inventory = fuelChest.get_inventory(defines.inventory.chest)
+    if playerInventory ~= nil then
+        Utils.TryMoveInventoriesLuaItemStacks(fuelChest_inventory, playerInventory, true, 1)
+    elseif fuelChest_inventory ~= nil and not fuelChest_inventory.is_empty() then
+        for index = 1, #fuelChest_inventory do
+            local itemStack = fuelChest_inventory[index]
+            if itemStack.valid_for_read then
+                player.surface.spill_item_stack(player.position, {name = itemStack.name, count = itemStack.count}, true, player.force, false)
+            end
+        end
+    end
+
+    -- Destroy the fuelChest, which will close the player GUI if still open and will be empty of items at this point.
+    fuelChest.destroy {raise_destroy = false}
 end
 
 return PortalTunnelGui
