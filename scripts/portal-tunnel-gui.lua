@@ -48,10 +48,10 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
         error("no registered portal part object for clicked portal part entity")
     end
 
-    -- If theres already a GUI open close it down fully before opening the new one. Assumes player has clicked on a new Part while an exisitng Part GUI was open.
+    -- If theres already a GUI open close it down fully before opening the new one. Assumes player has clicked on a new Part while an existing Part GUI was open.
     local openGuiForPortalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.player_index]
     if openGuiForPortalPart then
-        PortalTunnelGui.CloseGui(event.player_index, portalPart)
+        PortalTunnelGui.CloseGuiAndUpdatePortalPart(event.player_index, openGuiForPortalPart)
     end
 
     -- Record to global lookups this player has this PortalPart open.
@@ -61,34 +61,17 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
     MOD.Interfaces.Portal.GuiOpenedOnPortalPart(portalPart, event.player_index, player)
 
     -- Load GUI to player.
-    PortalTunnelGui.MakeGui(portalPart, player, event.player_index)
+    PortalTunnelGui.MakeGuiFrame(portalPart, player, event.player_index)
+    PortalTunnelGui.PopulateMainGuiContents(portalPart, player, event.player_index)
 end
 
---- Called to make the GUI.
+--- Called to make the GUI's outer frame and will populate it.
 ---@param portalPart PortalPart
 ---@param player LuaPlayer
 ---@param playerIndex Id
-PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
-    -- Get the protal and tunnel variable values.
-    local thisPortal = portalPart.portal
-    local tunnel  ---@type Tunnel
-    local portalState  ---@type string
-    if thisPortal ~= nil and thisPortal.tunnel ~= nil then
-        tunnel = thisPortal.tunnel
-    else
-        -- Work out the portal state descriptions needed for when not in a complete portal.
-        if thisPortal == nil then
-            portalState = "not part of a portal"
-        elseif not thisPortal.isComplete then
-            portalState = "portal incomplete"
-        else
-            portalState = "portal complete, but not part of a tunnel"
-        end
-    end
-
+PortalTunnelGui.MakeGuiFrame = function(portalPart, player, playerIndex)
     -- Add the GUI Elements.
-    local createdElements =
-        GuiUtil.AddElement(
+    GuiUtil.AddElement(
         {
             parent = player.gui.screen,
             descriptiveName = "pt_main",
@@ -96,8 +79,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             direction = "vertical",
             style = MuppetStyles.frame.main_shadowRisen.paddingBR,
             styling = {natural_width = 650}, -- Width to have some padding on the tunnel's 2 portal train lengths.
-            storeName = "portalTunnelGui",
-            returnElement = true,
+            storeName = "portalTunnelGui_frame",
             attributes = {auto_center = true},
             children = {
                 {
@@ -120,7 +102,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                             styling = {horizontally_stretchable = true, height = 20, top_margin = 4, minimal_width = 80},
                             attributes = {
                                 drag_target = function()
-                                    return GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui", "pt_main", "frame")
+                                    return GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
                                 end
                             }
                         },
@@ -136,7 +118,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                     tooltip = "self",
                                     sprite = "utility/close_white",
                                     style = MuppetStyles.spriteButton.frameCloseButtonClickable,
-                                    registerClick = {actionName = "PortalTunnelGui.On_CloseButtonClicked", data = {portalPart = portalPart}}
+                                    registerClick = {actionName = "PortalTunnelGui.On_CloseButtonClicked"}
                                 }
                             }
                         }
@@ -145,9 +127,24 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             }
         }
     )
-    local mainGuiElement = createdElements["railway_tunnel-pt_main-frame"]
+end
 
-    -- The GUI part for a single portal being shown for incomplete tunnel or smaller.
+--- Populates the main GUI's contents for a given portalPart and its current state.
+---@param portalPart PortalPart
+---@param player LuaPlayer
+---@param playerIndex Id
+PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerIndex)
+    -- Add the intial container thatn
+    local mainFrame = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
+
+    -- Get the portal and tunnel variable values.
+    local thisPortal = portalPart.portal
+    local tunnel  ---@type Tunnel
+    if thisPortal ~= nil and thisPortal.tunnel ~= nil then
+        tunnel = thisPortal.tunnel
+    end
+
+    -- Single portal GUI being shown for incomplete tunnel or smaller.
     if tunnel == nil then
         -- Have to calculate these carefully as functions in template are always called even if not enabled. So pass strings in for these.
         local thisPortalTrainLengthCarriages, thisPortalTrainLengthTiles
@@ -160,11 +157,23 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
             thisPortalTrainLengthCarriages = ""
         end
 
+        -- Work out the portal state descriptions needed for when not in a complete portal.
+        local portalState  ---@type string
+        if thisPortal == nil then
+            portalState = "not part of a portal"
+        elseif not thisPortal.isComplete then
+            portalState = "portal incomplete"
+        else
+            portalState = "portal complete, but not part of a tunnel"
+        end
+
         -- Add the elements.
         GuiUtil.AddElement(
             {
-                parent = mainGuiElement,
+                parent = mainFrame,
+                descriptiveName = "pt_contents",
                 type = "frame",
+                storeName = "portalTunnelGui_contents",
                 direction = "vertical",
                 style = MuppetStyles.frame.content_shadowSunken.marginTL_paddingBR,
                 styling = {horizontally_stretchable = true},
@@ -203,7 +212,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
         )
     end
 
-    -- The GUI part for a tunnel being shown with 2 portals.
+    -- Tunnel GUI being shown with 2 portals.
     if tunnel ~= nil then
         -- Work out portal A and B details. A is left of GUI, B is right.
         ---@typelist Portal, Portal, string, string, string, string
@@ -262,8 +271,10 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
         -- Tunnel and inner Portals.
         GuiUtil.AddElement(
             {
-                parent = mainGuiElement,
+                parent = mainFrame,
+                descriptiveName = "pt_contents",
                 type = "frame",
+                storeName = "portalTunnelGui_contents",
                 direction = "vertical",
                 style = MuppetStyles.frame.content_shadowSunken.marginTL_paddingBR,
                 styling = {horizontally_stretchable = true},
@@ -357,7 +368,6 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                     },
                     {
                         -- Tunnel usage and train manipulation.
-                        parent = mainGuiElement,
                         type = "frame",
                         direction = "vertical",
                         style = MuppetStyles.frame.contentInnerDark_shadowSunken.marginTL_paddingBR,
@@ -380,20 +390,20 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                         style = MuppetStyles.flow.horizontal.spaced,
                                         children = {
                                             {
-                                                descriptiveName = "pt_train_usage_state",
-                                                type = "label",
-                                                style = MuppetStyles.label.text.medium.plain,
-                                                caption = {"self", tunnelUsageStateText}
-                                            },
-                                            {
                                                 descriptiveName = "pt_open_train_gui",
                                                 type = "sprite-button",
                                                 style = MuppetStyles.spriteButton.smallText,
                                                 sprite = "entity.locomotive",
-                                                registerClick = {actionName = "PortalTunnelGui.On_OpenTrainGuiClicked", data = {player = player, managedTrain = managedTrain}},
+                                                registerClick = {actionName = "PortalTunnelGui.On_OpenTrainGuiClicked"},
                                                 enabled = trainGuiButton_clickEnabled,
                                                 tooltip = trainGuiButton_tooltip,
-                                                styling = {left_margin = 4, top_margin = -2}
+                                                styling = {top_margin = -2}
+                                            },
+                                            {
+                                                descriptiveName = "pt_train_usage_state",
+                                                type = "label",
+                                                style = MuppetStyles.label.text.medium.plain,
+                                                caption = {"self", tunnelUsageStateText}
                                             }
                                         }
                                     },
@@ -401,6 +411,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                         type = "flow",
                                         direction = "horizontal",
                                         style = MuppetStyles.flow.horizontal.spaced,
+                                        styling = {top_margin = 4},
                                         children = {
                                             {
                                                 descriptiveName = "pt_open_add_fuel_inventory",
@@ -408,7 +419,7 @@ PortalTunnelGui.MakeGui = function(portalPart, player, playerIndex)
                                                 style = MuppetStyles.button.text.medium.paddingSides,
                                                 caption = "self",
                                                 tooltip = trainFuel_tooltip,
-                                                registerClick = {actionName = "PortalTunnelGui.On_OpenAddFuelInventoryClicked", data = {player = player, managedTrain = managedTrain}},
+                                                registerClick = {actionName = "PortalTunnelGui.On_OpenAddFuelInventoryClicked"},
                                                 enabled = trainFuel_clickEnabled
                                             }
                                         }
@@ -434,62 +445,51 @@ PortalTunnelGui.CloseGuiAndUpdatePortalPart = function(playerIndex, portalPart)
     global.portalTunnelGui.portalPartOpenByPlayer[playerIndex] = nil
 
     -- Close and destroy all the Gui Element's for this overall GUI on screen.
-    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui")
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_contents")
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame")
 end
 
---- Called to destroy the GUI and forget it was open, but updating is done to the portal part.
+--- Called to clear the GUI's contents.
 ---@param playerIndex Id
-PortalTunnelGui.CloseGuiAndForetPortalPart = function(playerIndex)
-    -- Remove the backwards lookup from global.
-    global.portalTunnelGui.portalPartOpenByPlayer[playerIndex] = nil
-
+PortalTunnelGui.ClearGuiContents = function(playerIndex)
     -- Close and destroy all the Gui Element's for this overall GUI on screen.
-    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui")
-end
-
---- Called to only destroy the GUI.
----@param playerIndex Id
-PortalTunnelGui.CloseGuiOnly = function(playerIndex)
-    -- Close and destroy all the Gui Element's for this overall GUI on screen.
-    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui")
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_contents")
 end
 
 --- When the player clicks the close button on their GUI.
 ---@param event UtilityGuiActionsClick_ActionData
 PortalTunnelGui.On_CloseButtonClicked = function(event)
-    PortalTunnelGui.CloseGuiAndUpdatePortalPart(event.playerIndex, event.data.portalPart)
+    local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.playerIndex]
+    PortalTunnelGui.CloseGuiAndUpdatePortalPart(event.playerIndex, portalPart)
 end
 
 --- Called by the Portal class when a change has occured to the portal part of one of its parents that the GUI needs to react to.
 --- Currently we just recreate the GUI as its the easiest and this will be a very rare event.
+--- This event may be called multiple times for portal changes as we call it on each cange of significance and sometimes these are done in a cycle over a list of portal parts. Is wasteful UPS wise, but simpliest code and infrequent calling in reality.
 ---@param portalPart PortalPart
 ---@param playerIndex Id
 ---@param player LuaPlayer
 ---@param partRemoved boolean @ If the part has been removed and thus the GUI should be closed.
 PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, player, partRemoved)
-    -- TODO: not tested through all usage cases.
-    -- TODO: this didn't work right when I had a second portal GUI open and mined a first portal's part. As the second portal's GUI closed.
     if partRemoved then
-        -- Part removed so just close the GUI. No need to update the PortalPart object as its gone.
-        PortalTunnelGui.CloseGuiAndForetPortalPart(playerIndex)
+        -- Part removed soclose everything.
+        PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, portalPart)
         return
     end
 
-    -- Re-draw the GUI so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
-    -- Just close the open GUI, don't update the PortalPart or the global cache of what the player is watching as we will just open the GUI straight back up afterwards.
-    PortalTunnelGui.CloseGuiOnly(playerIndex)
-    PortalTunnelGui.MakeGui(portalPart, player, playerIndex)
+    -- Re-draw the entire GUI contents so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
+    PortalTunnelGui.ClearGuiContents(playerIndex)
+    PortalTunnelGui.PopulateMainGuiContents(portalPart, player, playerIndex)
 end
 
 --- Called when the usage state of the tunnel changes by the TrainManager class.
 ---@param managedTrain ManagedTrain
 PortalTunnelGui.On_TunnelUsageChanged = function(managedTrain)
     for playerIndex, player in pairs(managedTrain.tunnel.guiOpenedByPlayers) do
-        -- Re-draw the GUI so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
-        -- Just close the open GUI, don't update the PortalPart or the global cache of what the player is watching as we will just open the GUI straight back up afterwards.
+        -- Re-draw the entire GUI contents so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
         local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[playerIndex]
-        PortalTunnelGui.CloseGuiOnly(playerIndex)
-        PortalTunnelGui.MakeGui(portalPart, player, playerIndex)
+        PortalTunnelGui.ClearGuiContents(playerIndex)
+        PortalTunnelGui.PopulateMainGuiContents(portalPart, player, playerIndex)
     end
 end
 
@@ -508,8 +508,9 @@ end
 --- Called when a player with the a tunnel GUI open clicks the train icon for a train using the tunnel.
 ---@param event UtilityGuiActionsClick_ActionData
 PortalTunnelGui.On_OpenTrainGuiClicked = function(event)
-    local managedTrain = event.data.managedTrain ---@type ManagedTrain
-    local player = event.data.player ---@type LuaPlayer
+    local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.playerIndex]
+    local managedTrain = portalPart.portal.tunnel.managedTrain
+    local player = game.get_player(event.playerIndex)
 
     local train = MOD.Interfaces.TrainManager.GetCurrentTrain(managedTrain)
     player.opened = train.front_stock
@@ -518,8 +519,9 @@ end
 --- Called when a player with the a tunnel GUI open clicks the button to add fuel to the train using the tunnel.
 ---@param event UtilityGuiActionsClick_ActionData
 PortalTunnelGui.On_OpenAddFuelInventoryClicked = function(event)
-    local managedTrain = event.data.managedTrain ---@type ManagedTrain
-    local player = event.data.player ---@type LuaPlayer
+    local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.playerIndex]
+    local managedTrain = portalPart.portal.tunnel.managedTrain
+    local player = game.get_player(event.playerIndex)
 
     -- Create a chest for the fuel to go in to. Its hidden graphics layer so fine.
     local blockedPortalEnd = managedTrain.entrancePortal.blockedPortalEnd

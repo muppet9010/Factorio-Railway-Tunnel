@@ -10,7 +10,7 @@ MOD.guiClickActions = MOD.guiClickActions or {}
 ---@class UtilityGuiActionsClick_ActionData @ The response object passed to the callback function when the GUI element is clicked. Registered with GuiActionsClick.RegisterGuiForClick().
 ---@field actionName string @ The action name registered to this GUI element beign clicked.
 ---@field playerIndex Id @ The player_index of the player who clicked the GUI.
----@field data any @ The data argument passed in when registering this function action name to the GUI element.
+---@field data any @ The data argument passed in when registering this function action name.
 ---@field eventData on_gui_click @ The raw Factorio event data for the on_gui_click event.
 
 --- Must be called once within the mod to activate the library for reacting to gui clicks. On other direct registering to the "on_gui_click" event is allowed within the mod.
@@ -30,8 +30,8 @@ GuiActionsClick.LinkGuiClickActionNameToFunction = function(actionName, actionFu
     MOD.guiClickActions[actionName] = actionFunction
 end
 
---- Generally called from the GuiUtil library now, but can be called manually.
---- Called after creating a button or other GuiElement is created to register a specific GUI click action name to it.
+--- Generally called from the GuiUtil library now, but can be called manually from OnLoad().
+--- Called to register a button's or other GuiElement's name and type to a specific GUI click action name and optional standard data (global to all players). Only needs to be run once per mod.
 ---@param elementName string @ The name of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param elementType string @ The type of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param actionName string @ The actionName of the registered function to be called when the GUI element is clicked.
@@ -51,7 +51,7 @@ GuiActionsClick.RegisterGuiForClick = function(elementName, elementType, actionN
 end
 
 --- Called when desired to remove a specific button or other GuiElement from triggering its action.
---- Should be called to remove links for buttons when their elements are removed to stop global data lingering.
+--- Should be called to remove links for buttons when their elements are removed to stop global data lingering. But newly registered functions will overwrite them so not critical to remove.
 ---@param elementName string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
 ---@param elementType string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
 GuiActionsClick.RemoveGuiForClick = function(elementName, elementType)

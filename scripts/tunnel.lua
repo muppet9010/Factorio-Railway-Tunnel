@@ -117,6 +117,7 @@ Tunnel.CompleteTunnel = function(portals, underground)
         for _, portalPart in pairs(portal.guiOpenedByParts) do
             for playerIndex, player in pairs(portalPart.guiOpenedByPlayers) do
                 tunnel.guiOpenedByPlayers[playerIndex] = player
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, player)
             end
         end
     end

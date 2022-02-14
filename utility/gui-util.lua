@@ -372,6 +372,8 @@ end
 
 --- If populated registers a function to be triggered when a user clicks on the GUI element. Does this by passing the supplied table of arguments to GuiActionsClick.RegisterGuiForClick() which configures and manages detection of the click and the functions calling. See that library and function for full usage details.
 ---
+--- Note: this is registered each time its run, but as its a single registration globally within the mod under the given name the entries can safely overwrite each other. The data attribute isn't per player, but instead is a global context for all players who trigger this click. Data is intended for uses like passing element name/type details to generic response functions.
+---
 --- If being used make sure to review Gui-Actions-Click.lua and its GuiActionsClick.MonitorGuiClickActions() function as its a prereq for the features usage. Also need to register the click actionName to a callback function with GuiActionsClick.LinkGuiClickActionNameToFunction().
 ---@alias UtilityGuiUtil_ElementDetails_registerClick UtilityGuiUtil_ElementDetails_RegisterClickOption|null
 

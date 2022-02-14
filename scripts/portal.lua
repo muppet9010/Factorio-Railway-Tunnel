@@ -8,6 +8,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@class Portal
 ---@field id uint @ unique id of the portal object.
 ---@field isComplete boolean @ if the portal has 2 connected portal end objects or not.
+---@field portalParts table<UnitNumber, PortalPart> @ The portal end and portal segment objects. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalEnds table<UnitNumber, PortalEnd> @ the portal end objects of this portal. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalSegments table<UnitNumber, PortalSegment> @ the portal segment objects of this portal. Key'd by the portal segment entity unit_number (id).
 ---@field trainWaitingAreaTilesLength uint @ how many tiles this portal has for trains to wait in it when using the tunnel.
@@ -397,6 +398,7 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
             local portal = {
                 id = portalId,
                 isComplete = false,
+                portalParts = {},
                 portalEnds = {},
                 portalSegments = {},
                 trainWaitingAreaTilesLength = 0,
@@ -428,6 +430,19 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
             -- If a situation should be ignored add it explicitly.
             error("unexpected scenario")
         end
+
+        -- Something was done to this portal so update any open GUIs on any parts it has.
+        -- This will lead to an open GUI being refreshed multiple times for re-created portals as each part is added to the portal. But we need the last value and is pretty edge case.
+        for _, portalPart in pairs(portalPartObject.portal.portalParts) do
+            for playerIndex, player in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, player, false)
+            end
+        end
+    else
+        -- If this part was open in a GUI already then update it as its likely been part of a portal and is now orphaned.
+        for playerIndex, player in pairs(portalPartObject.guiOpenedByPlayers) do
+            MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPartObject, playerIndex, player, false)
+        end
     end
 
     -- Check if portal is complete for the first time. Can be triggered multiple times for the same portal when a neighbouring invalid portal part to a valid portal is removed and so all members of the old portal (now valid) are triggered to review their state.
@@ -453,6 +468,7 @@ Portal.AddPartToPortal = function(portal, portalPart)
     else
         error("invalid portal type: " .. portalPart.typeData.partType)
     end
+    portal.portalParts[portalPart.id] = portalPart
 
     -- Check for any already open GUIs on the portalPart and if so update portal to know of the part.
     if next(portalPart.guiOpenedByPlayers) ~= nil then
@@ -472,6 +488,9 @@ Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
     for id, part in pairs(oldPortal.portalSegments) do
         newPortal.portalSegments[id] = part
         part.portal = newPortal
+    end
+    for id, part in pairs(oldPortal.portalParts) do
+        newPortal.portalParts[id] = part
     end
 
     -- Update the train waiting area length to be the sum of the 2 portals as this is updated as each part is added to a portal.
@@ -657,6 +676,13 @@ Portal.PortalComplete = function(portal)
             )
         else
             error("unsupported segment shape: " .. segmentPortalTypeData.segmentShape)
+        end
+    end
+
+    -- Update any open GUIs on this portal as its state has now changed.
+    for _, portalPart in pairs(portal.portalParts) do
+        for playerIndex, player in pairs(portalPart.guiOpenedByPlayers) do
+            MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, player, false)
         end
     end
 end
@@ -1054,9 +1080,7 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Handle the portal object.
 
         -- Remove the portal's graphic parts. When the portal parts are remade in to a portal they will gain their graphics back if approperiate.
-        ---@type table<UnitNumber, PortalPart>
-        local endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments})
-        for _, portalPart in pairs(endsAndSegments) do
+        for _, portalPart in pairs(portal.portalParts) do
             for _, graphicRenderId in pairs(portalPart.graphicRenderIds) do
                 rendering.destroy(graphicRenderId)
             end
@@ -1075,11 +1099,10 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Remove this portal part from the portals fields before we re-process the other portals parts.
         portal.portalEnds[removedPortalPart.id] = nil
         portal.portalSegments[removedPortalPart.id] = nil
+        portal.portalParts[removedPortalPart.id] = nil
 
         -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
-        ---@type table<Id, PortalPart>
-        endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments}) -- Regenerate as we removed a part from the list since last done.
-        Portal.RecalculatePortalPartsParentPortal(endsAndSegments)
+        Portal.RecalculatePortalPartsParentPortal(portal.portalParts)
     end
 
     -- If this part had an open GUI then alert the GUI class that there's been a change.
