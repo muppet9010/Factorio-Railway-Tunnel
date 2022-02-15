@@ -41,7 +41,8 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
     end
 
     -- Is one of our portal parts so get the portal its part of and open the GUI for it.
-    local player = game.get_player(event.player_index)
+    local playerIndex = event.player_index
+    local player = game.get_player(playerIndex)
     local portalPartId = player.selected.unit_number
     local portalPart = global.portals.portalPartEntityIdToPortalPart[portalPartId]
     if portalPart == nil then
@@ -49,27 +50,38 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
     end
 
     -- If theres already a GUI open close it down fully before opening the new one. Assumes player has clicked on a new Part while an existing Part GUI was open.
-    local openGuiForPortalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.player_index]
+    -- We get te position of the old GUI first so that we can set the new GUI to the same location.
+    local openGuiForPortalPart = global.portalTunnelGui.portalPartOpenByPlayer[playerIndex]
+    local existingLocation
     if openGuiForPortalPart then
-        PortalTunnelGui.CloseGuiAndUpdatePortalPart(event.player_index, openGuiForPortalPart)
+        local existingGuiFrame = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
+        existingLocation = existingGuiFrame.location
+        PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, openGuiForPortalPart)
     end
 
     -- Record to global lookups this player has this PortalPart open.
-    global.portalTunnelGui.portalPartOpenByPlayer[event.player_index] = portalPart
+    global.portalTunnelGui.portalPartOpenByPlayer[playerIndex] = portalPart
 
     -- Mark the portalPart as GuiOpened.
-    MOD.Interfaces.Portal.GuiOpenedOnPortalPart(portalPart, event.player_index, player)
+    MOD.Interfaces.Portal.GuiOpenedOnPortalPart(portalPart, playerIndex, player)
 
     -- Load GUI to player.
-    PortalTunnelGui.MakeGuiFrame(portalPart, player, event.player_index)
-    PortalTunnelGui.PopulateMainGuiContents(portalPart, player, event.player_index)
+    PortalTunnelGui.MakeGuiFrame(player, playerIndex, existingLocation)
+    PortalTunnelGui.PopulateMainGuiContents(portalPart, player, playerIndex)
 end
 
 --- Called to make the GUI's outer frame and will populate it.
----@param portalPart PortalPart
 ---@param player LuaPlayer
 ---@param playerIndex Id
-PortalTunnelGui.MakeGuiFrame = function(portalPart, player, playerIndex)
+---@param frameLocation? GuiLocation|null @ If provided the GUI will be positioned here, otherwise it will auto center on the screen.
+PortalTunnelGui.MakeGuiFrame = function(player, playerIndex, frameLocation)
+    local autoCenterValue
+    if frameLocation == nil then
+        autoCenterValue = true
+    else
+        autoCenterValue = false
+    end
+
     -- Add the GUI Elements.
     GuiUtil.AddElement(
         {
@@ -80,7 +92,10 @@ PortalTunnelGui.MakeGuiFrame = function(portalPart, player, playerIndex)
             style = MuppetStyles.frame.main_shadowRisen.paddingBR,
             styling = {natural_width = 650}, -- Width to have some padding on the tunnel's 2 portal train lengths.
             storeName = "portalTunnelGui_frame",
-            attributes = {auto_center = true},
+            attributes = {
+                auto_center = autoCenterValue,
+                location = frameLocation
+            },
             children = {
                 {
                     -- Header bar of the GUI.

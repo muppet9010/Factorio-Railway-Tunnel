@@ -3,8 +3,7 @@ Now
     - Portal/Tunnel GUI:
         - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
         - Make a GUI test.
-        - Remember where a GUI was dragged when closing it if another one was opened over it - only if easy.
-        - Catch the E & Escape key and close the GUI if its open.
+        - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui"
 
 Bugs
 ----
@@ -43,7 +42,6 @@ Features to add/change
     - Make Portal Tunnel GUI nicer, only very rough one at present.
     - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new TRain GUI for that player. If they close the placeholder GUI then don't open the new GUI.
     - Portal/Tunnel GUI Improvements:
-        - Per player mod setting for where the tunnel GUI opens. Defaults to screen center.
         - Review layout and current information presentation.
         - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
 

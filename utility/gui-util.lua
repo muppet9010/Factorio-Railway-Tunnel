@@ -28,7 +28,7 @@ local StyleDataStyleVersion = require("utility.style-data").styleVersion
 --- An array of other Element Details to recursively add in this hierachy. Parent argument isn't required for children and is ignored if provided for them as it's worked out during recursive loop of creating the children.
 ---@field children? UtilityGuiUtil_ElementDetails_Add[]|null
 ---@field registerClick? UtilityGuiUtil_ElementDetails_registerClick
---- If TRUE will return this Gui element when created in a table of elements with returnElement enabled. Key will be the elements UtilityGuiUtil_GuiElementName and the value a reference to the element.
+--- If TRUE will return this Gui element when created in a table of elements with returnElement enabled. Key will be the elements UtilityGuiUtil_GuiElementName and the value a reference to the element. The UtilityGuiUtil_GuiElementName can be worked out by the calling function using GuiUtil.GenerateGuiElementName().
 ---
 --- Defaults to FALSE if not provided.
 ---@field returnElement? boolean|null
@@ -77,7 +77,7 @@ GuiUtil.AddElement = function(elementDetails)
         return
     end
 
-    elementDetailsNoClass.name = GuiUtil._GenerateGuiElementName(elementDetails.descriptiveName, elementDetails.type)
+    elementDetailsNoClass.name = GuiUtil.GenerateGuiElementName(elementDetails.descriptiveName, elementDetails.type)
     elementDetails.caption = GuiUtil._ReplaceLocaleNameSelfWithGeneratedName(elementDetails, "caption")
     elementDetails.tooltip = GuiUtil._ReplaceLocaleNameSelfWithGeneratedName(elementDetails, "tooltip")
     if elementDetails.style ~= nil and string.sub(elementDetails.style, 1, 7) == "muppet_" then
@@ -158,7 +158,7 @@ end
 ---@param elementType string
 GuiUtil.GetElementFromPlayersReferenceStorage = function(playerIndex, storeName, elementName, elementType)
     GuiUtil._CreatePlayersElementReferenceStorage(playerIndex, storeName)
-    return global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][GuiUtil._GenerateGuiElementName(elementName, elementType)]
+    return global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][GuiUtil.GenerateGuiElementName(elementName, elementType)]
 end
 
 --- Apply updated attributes to an existing GuiElement found in the player's reference storage. Supports changing approperiate ElementDetail attributes and some Factorio attributes as per UtilityGuiUtil_ElementDetails_Update.
@@ -201,7 +201,7 @@ GuiUtil.UpdateElementFromPlayersReferenceStorage = function(playerIndex, storeNa
     end
 
     -- Process the supported attributes that can be changed.
-    local generatedName = GuiUtil._GenerateGuiElementName(elementName, elementType)
+    local generatedName = GuiUtil.GenerateGuiElementName(elementName, elementType)
     if changes.style ~= nil and string.sub(changes.style, 1, 7) == "muppet_" then
         changes.style = changes.style .. StyleDataStyleVersion
     end
@@ -239,7 +239,7 @@ end
 ---@param elementName string
 ---@param elementType string
 GuiUtil.DestroyElementInPlayersReferenceStorage = function(playerIndex, storeName, elementName, elementType)
-    local elementName = GuiUtil._GenerateGuiElementName(elementName, elementType)
+    local elementName = GuiUtil.GenerateGuiElementName(elementName, elementType)
     if global.GUIUtilPlayerElementReferenceStorage ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName] ~= nil then
         if global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].valid then
             global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].destroy()
@@ -274,6 +274,19 @@ GuiUtil.DestroyPlayersReferenceStorage = function(playerIndex, storeName)
             end
         end
         global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName] = nil
+    end
+end
+
+--- Calculates a UtilityGuiUtil_GuiElementName by combining the element's name and type.
+---@param elementName string
+---@param elementType string
+---@return string UtilityGuiUtil_GuiElementName
+GuiUtil.GenerateGuiElementName = function(elementName, elementType)
+    --- Just happens to be the same as in GuiActionsClick, but not a requirement.
+    if elementName == nil or elementType == nil then
+        return nil
+    else
+        return Constants.ModName .. "-" .. elementName .. "-" .. elementType
     end
 end
 
@@ -332,19 +345,6 @@ GuiUtil._ReplaceLocaleNameSelfWithGeneratedName = function(elementDetails, attri
         attributeNamesValue[1] = "gui-" .. attributeName .. "." .. elementDetails["name"]
     end
     return attributeNamesValue
-end
-
---- Makes a UtilityGuiUtil_GuiElementName by combining the element's name and type.
---- Just happens to be the same as in GuiActionsClick, but not a requirement.
----@param elementName string
----@param elementType string
----@return string UtilityGuiUtil_GuiElementName
-GuiUtil._GenerateGuiElementName = function(elementName, elementType)
-    if elementName == nil or elementType == nil then
-        return nil
-    else
-        return Constants.ModName .. "-" .. elementName .. "-" .. elementType
-    end
 end
 
 --------------------------------------------------------------------------
