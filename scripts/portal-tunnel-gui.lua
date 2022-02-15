@@ -1,11 +1,12 @@
 local Events = require("utility.events")
-local PortalTunnelGui = {}
-local Common = require("scripts.common")
+local EventScheduler = require("utility.event-scheduler")
+local Utils = require("utility.utils")
 local GuiUtil = require("utility.gui-util")
 local GuiActionsClick = require("utility.gui-actions-click")
-local Utils = require("utility.utils")
+local GuiActionsChecked = require("utility.gui-actions-checked")
 local MuppetStyles = require("utility.style-data").MuppetStyles
-local EventScheduler = require("utility.event-scheduler")
+local Common = require("scripts.common")
+local PortalTunnelGui = {}
 
 local TrainFuelChestCheckTicks = 15
 
@@ -21,7 +22,6 @@ PortalTunnelGui.OnLoad = function()
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenTrainGuiClicked", PortalTunnelGui.On_OpenTrainGuiClicked)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenAddFuelInventoryClicked", PortalTunnelGui.On_OpenAddFuelInventoryClicked)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked", PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked)
-    --TODO: make the library
     GuiActionsChecked.LinkGuiCheckedActionNameToFunction("PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked", PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_MineTunnelTrainsClicked", PortalTunnelGui.On_MineTunnelTrainsClicked)
     EventScheduler.RegisterScheduledEventType("PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", PortalTunnelGui.Scheduled_TrackTrainFuelChestGui)
@@ -657,7 +657,6 @@ PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked = function(event)
     if GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_mineTrain", "pt_mine_tunnel_train", "frame") == nil then
         -- GUI not open, so create it and update the toggle buttons text.
         local mainFrame = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
-        local player = game.get_player(event.playerIndex)
 
         GuiUtil.AddElement(
             {
@@ -698,7 +697,7 @@ PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked = function(event)
                                 type = "flow",
                                 direction = "horizontal",
                                 style = MuppetStyles.flow.horizontal.marginTL_paddingBR_spaced,
-                                styling = {vertical_align = "center", horizontal_align = "middle"},
+                                styling = {vertical_align = "center", horizontal_align = "center"},
                                 children = {
                                     {
                                         descriptiveName = "pt_mine_tunnel_train_confirmation",
@@ -711,7 +710,7 @@ PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked = function(event)
                                         type = "checkbox",
                                         storeName = "portalTunnelGui_mineTrain",
                                         state = false,
-                                        registerChecked = {actionName = "PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked"}
+                                        registerCheckedStateChange = {actionName = "PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked"}
                                     },
                                     {
                                         descriptiveName = "pt_mine_tunnel_train_button",
@@ -743,16 +742,46 @@ end
 --- Called when the player changes the confirmation checkbox for mining all trains in this tunnel.
 ---@param event UtilityGuiActionsChecked_ActionData
 PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked = function(event)
-    --TODO - check the new state and enable/disable the button plus sets its tooltip.
+    local checkbox = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_mineTrain", "pt_mine_tunnel_train_confirmation", "checkbox")
+    local mineButton = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_mineTrain", "pt_mine_tunnel_train_button", "button")
+    if checkbox.state then
+        mineButton.enabled = true
+        mineButton.tooltip = {"gui-tooltip.railway_tunnel-pt_mine_tunnel_train_button-enabled"}
+    else
+        mineButton.enabled = false
+        mineButton.tooltip = {"gui-tooltip.railway_tunnel-pt_mine_tunnel_train_button-disabled"}
+    end
 end
 
 --- Called when the player has clicked to actually mine all trains in this tunnel and its portals.
+--- Note: if there was ever trains with more than the 65,000 item stacks then some would get lost. If this is an issue can add multiple corpses and track how full they get I guess.
 ---@param event UtilityGuiActionsClick_ActionData
 PortalTunnelGui.On_MineTunnelTrainsClicked = function(event)
     local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.playerIndex]
-    local managedTrain = portalPart.portal.tunnel.managedTrain
-    local player = game.get_player(event.playerIndex)
-    --TODO
+    local thisPortal = portalPart.portal
+
+    -- Create the corpse to have all the trains stuffed in to.
+    local minedTrainContainer =
+        thisPortal.surface.create_entity {
+        name = "railway_tunnel-mined_train_container",
+        position = thisPortal.enteringTrainUsageDetectorPosition,
+        force = thisPortal.force,
+        create_build_effect_smoke = false
+    }
+    local minedTrainContainer_inventory = minedTrainContainer.get_main_inventory()
+
+    -- Mine all of the carriages that are on each portal in to the container.
+    for _, portal in pairs(thisPortal.tunnel.portals) do
+        for _, railEntity in pairs(portal.portalRailEntities) do
+            Utils.MineCarriagesOnRailEntity(railEntity, portal.surface, false, minedTrainContainer_inventory)
+        end
+    end
+
+    -- Kill the container to make it the corpse we want.
+    minedTrainContainer.die()
+
+    -- Close the Mine Tunnel Train option GUI. As theres no "data" for either the mine trians or toggle GUI buttons we can just send this event to the next button.
+    PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked(event)
 end
 
 return PortalTunnelGui

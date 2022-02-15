@@ -38,6 +38,7 @@ require("prototypes.portal-graphics")
 require("prototypes.tunnel-portal-blocking-locomotive")
 require("prototypes.tunnel-exit-dummy-locomotive")
 require("prototypes.tunnel-fuel-chest")
+require("prototypes.mined-train-container")
 
 require("prototypes.underground-segment")
 require("prototypes.underground-segment-rail-crossing")

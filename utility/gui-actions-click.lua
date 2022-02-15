@@ -1,4 +1,4 @@
--- Library to register and handle GUI button clicks, allows registering and handling functions in a modular way.
+-- Library to register and handle GUI element buttons being clicked, allows registering and handling functions in a modular way.
 -- Must call the MonitorGuiClickActions() function once in root of control.lua for this library to be activated.
 -- Requires the utility "constants" file to be populated within the root of the mod.
 
@@ -31,7 +31,7 @@ GuiActionsClick.LinkGuiClickActionNameToFunction = function(actionName, actionFu
 end
 
 --- Generally called from the GuiUtil library now, but can be called manually from OnLoad().
---- Called to register a button's or other GuiElement's name and type to a specific GUI click action name and optional standard data (global to all players). Only needs to be run once per mod.
+--- Called to register a button or sprite-button GuiElement's name and type to a specific GUI click action name and optional standard data (global to all players). Only needs to be run once per mod.
 ---@param elementName string @ The name of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param elementType string @ The type of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param actionName string @ The actionName of the registered function to be called when the GUI element is clicked.
@@ -50,7 +50,7 @@ GuiActionsClick.RegisterGuiForClick = function(elementName, elementType, actionN
     end
 end
 
---- Called when desired to remove a specific button or other GuiElement from triggering its action.
+--- Called when desired to remove a specific button GuiElement from triggering its action.
 --- Should be called to remove links for buttons when their elements are removed to stop global data lingering. But newly registered functions will overwrite them so not critical to remove.
 ---@param elementName string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
 ---@param elementType string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().

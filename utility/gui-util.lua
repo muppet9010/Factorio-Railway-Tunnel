@@ -5,6 +5,7 @@
 local GuiUtil = {}
 local Utils = require("utility.utils")
 local GuiActionsClick = require("utility.gui-actions-click")
+local GuiActionsChecked = require("utility.gui-actions-checked")
 local Logging = require("utility.logging")
 local Constants = require("constants")
 local StyleDataStyleVersion = require("utility.style-data").styleVersion
@@ -21,13 +22,14 @@ local StyleDataStyleVersion = require("utility.style-data").styleVersion
 --- A descriptive name of the element. If provided will be automatically merged with the element's type and the mod name to make a semi unique reference name of type UtilityGuiUtil_GuiElementName that the GUI element will have as its "name" attribute.
 ---@field descriptiveName? string|null
 ---@field storeName? UtilityGuiUtil_StoreName|null
----@field style? UtilityGuiUtil_ElementDetails_style
----@field styling? UtilityGuiUtil_ElementDetails_styling
----@field caption? UtilityGuiUtil_ElementDetails_caption
----@field tooltip? UtilityGuiUtil_ElementDetails_caption
+---@field style? UtilityGuiUtil_ElementDetails_style|null
+---@field styling? UtilityGuiUtil_ElementDetails_styling|null
+---@field caption? UtilityGuiUtil_ElementDetails_caption|null
+---@field tooltip? UtilityGuiUtil_ElementDetails_caption|null
 --- An array of other Element Details to recursively add in this hierachy. Parent argument isn't required for children and is ignored if provided for them as it's worked out during recursive loop of creating the children.
 ---@field children? UtilityGuiUtil_ElementDetails_Add[]|null
----@field registerClick? UtilityGuiUtil_ElementDetails_registerClick
+---@field registerClick? UtilityGuiUtil_ElementDetails_registerClick|null
+---@field registerCheckedStateChange? UtilityGuiUtil_ElementDetails_registerCheckedStateChange|null
 --- If TRUE will return this Gui element when created in a table of elements with returnElement enabled. Key will be the elements UtilityGuiUtil_GuiElementName and the value a reference to the element. The UtilityGuiUtil_GuiElementName can be worked out by the calling function using GuiUtil.GenerateGuiElementName().
 ---
 --- Defaults to FALSE if not provided.
@@ -36,23 +38,29 @@ local StyleDataStyleVersion = require("utility.style-data").styleVersion
 ---
 --- Defaults to FALSE if not provided.
 ---@field exclude? boolean|null
----@field attributes? UtilityGuiUtil_ElementDetails_attributes
+---@field attributes? UtilityGuiUtil_ElementDetails_attributes|null
 
 ---@class UtilityGuiUtil_ElementDetails_RegisterClickOption @ Option of ElementDetails for calling GuiActionsClick.RegisterGuiForClick() as part of the Gui element creation.
 ---@field actionName string @ The actionName of the registered function to be called when the GUI element is clicked.
 ---@field data table @ Any provided data will be passed through to the actionName's registered function upon the GUI element being clicked.
----@field disabled boolean If TRUE then click not registered (for use with GUI templating). Otherwise FALSE or nil will registered normally.
+---@field disabled boolean If TRUE then click not registered (for use with GUI templating). Otherwise FALSE or nil will register normally.
+
+---@class UtilityGuiUtil_ElementDetails_RegisterCheckedOption @ Option of ElementDetails for calling GuiActionsChecked.RegisterGuiForCheckedStateChange() as part of the Gui element creation.
+---@field actionName string @ The actionName of the registered function to be called when the GUI element is checked/unchecked.
+---@field data table @ Any provided data will be passed through to the actionName's registered function upon the GUI element being checked/unchecked.
+---@field disabled boolean If TRUE then checked state change not registered (for use with GUI templating). Otherwise FALSE or nil will register normally.
 
 --- Limited subset of UtilityGuiUtil_ElementDetails_Add options that can be updated on an existing Gui Element, plus the writable LuaGuiElement attributes.
 ---
 --- Review the LuaGuiElement documentation for which attributes can be directly set on an existing element (https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement).
 ---@class UtilityGuiUtil_ElementDetails_Update : UtilityGuiUtil_ElementDetails_LuaGuiElement.updatable
----@field style? UtilityGuiUtil_ElementDetails_style
----@field styling? UtilityGuiUtil_ElementDetails_styling
----@field caption? UtilityGuiUtil_ElementDetails_caption
----@field tooltip? UtilityGuiUtil_ElementDetails_caption
----@field registerClick? UtilityGuiUtil_ElementDetails_registerClick
----@field attributes? UtilityGuiUtil_ElementDetails_attributes
+---@field style? UtilityGuiUtil_ElementDetails_style|null
+---@field styling? UtilityGuiUtil_ElementDetails_styling|null
+---@field caption? UtilityGuiUtil_ElementDetails_caption|null
+---@field tooltip? UtilityGuiUtil_ElementDetails_caption|null
+---@field registerClick? UtilityGuiUtil_ElementDetails_registerClick|null
+---@field registerCheckedStateChange? UtilityGuiUtil_ElementDetails_registerCheckedStateChange|null
+---@field attributes? UtilityGuiUtil_ElementDetails_attributes|null
 
 --- Add Gui Elements in a manner supporting short-hand features, nested GUI structures and templating features. See the param type for detailed information on its features and usage.
 ---@param elementDetails UtilityGuiUtil_ElementDetails_Add
@@ -87,21 +95,21 @@ GuiUtil.AddElement = function(elementDetails)
     if elementDetails.style ~= nil and string.sub(elementDetails.style, 1, 7) == "muppet_" then
         elementDetails.style = elementDetails.style .. StyleDataStyleVersion
     end
-    local attributes, returnElement, storeName, styling, registerClick, children = elementDetails.attributes, elementDetails.returnElement, elementDetails.storeName, elementDetails.styling, elementDetails.registerClick, elementDetails.children
-    elementDetails.attributes, elementDetails.returnElement, elementDetails.storeName, elementDetails.styling, elementDetails.registerClick, elementDetails.children = nil, nil, nil, nil, nil, nil
+    local attributes, returnElement, storeName, styling, registerClick, registerCheckedStateChange, children = elementDetails.attributes, elementDetails.returnElement, elementDetails.storeName, elementDetails.styling, elementDetails.registerClick, elementDetails.registerCheckedStateChange, elementDetails.children
+    elementDetails.attributes, elementDetails.returnElement, elementDetails.storeName, elementDetails.styling, elementDetails.registerClick, elementDetails.registerCheckedStateChange, elementDetails.children = nil, nil, nil, nil, nil, nil, nil
 
     local element = elementDetails.parent.add(elementDetails)
 
     local returnElements = {}
     if returnElement then
-        if elementDetailsNoClass.name == nil then
+        if elementDetailsNoClass.descriptiveName == nil then
             error("GuiUtil.AddElement returnElement attribute requires element descriptiveName to be supplied.")
         else
             returnElements[elementDetailsNoClass.name] = element
         end
     end
     if storeName ~= nil then
-        if elementDetailsNoClass.name == nil then
+        if elementDetailsNoClass.descriptiveName == nil then
             error("GuiUtil.AddElement storeName attribute requires element descriptiveName to be supplied.")
         else
             GuiUtil.AddElementToPlayersReferenceStorage(element.player_index, storeName, elementDetailsNoClass.name, element)
@@ -111,10 +119,17 @@ GuiUtil.AddElement = function(elementDetails)
         GuiUtil._ApplyStylingArgumentsToElement(element, styling)
     end
     if registerClick ~= nil then
-        if elementDetailsNoClass.name == nil then
+        if elementDetailsNoClass.descriptiveName == nil then
             error("GuiUtil.AddElement registerClick attribute requires element descriptiveName to be supplied.")
         else
-            GuiActionsClick.RegisterGuiForClick(elementDetails.descriptiveName, elementDetails.type, registerClick.actionName, registerClick.data, registerClick.disabled)
+            GuiActionsClick.RegisterGuiForClick(elementDetailsNoClass.descriptiveName, elementDetails.type, registerClick.actionName, registerClick.data, registerClick.disabled)
+        end
+    end
+    if registerCheckedStateChange ~= nil then
+        if elementDetailsNoClass.descriptiveName == nil then
+            error("GuiUtil.AddElement registerCheckedStateChange attribute requires element descriptiveName to be supplied.")
+        else
+            GuiActionsChecked.RegisterGuiForCheckedStateChange(elementDetailsNoClass.descriptiveName, elementDetails.type, registerCheckedStateChange.actionName, registerCheckedStateChange.data, registerCheckedStateChange.disabled)
         end
     end
     if attributes ~= nil then
@@ -358,28 +373,35 @@ end
 --- A table of LuaStyle attribute names and values (key/value) to be applied post element creation (after style). Saves having to capture the added element and then set style attributes one at a time in calling code.
 ---
 --- [Styling documentation](https://lua-api.factorio.com/latest/LuaStyle.html)
----@alias UtilityGuiUtil_ElementDetails_styling table<string, StringOrNumber|boolean|null>|null
+---@alias UtilityGuiUtil_ElementDetails_styling table<string, StringOrNumber|boolean|null>
 
 --- Text displayed on the child element. For frames, this is their title. For other elements, like buttons or labels, this is the content. Whilst this attribute may be used on all elements, it doesn't make sense for tables and flows as they won't display it.
 ---
 --- Passing the string "self" as the value or localised string name will be auto replaced to its unique mod auto generated name under gui-caption. This avoids having to duplicate name when defining the element's attributes. The auto generated string is in the form: "gui-" + TYPE + "." + MOD NAME from constants + "-" + NAME attribute value. i.e. "gui-caption.my_mod-firstLabel". So it matches if a standard locale naming scheme is in use.
 ---
 --- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
----@alias UtilityGuiUtil_ElementDetails_caption LocalisedString|null
+---@alias UtilityGuiUtil_ElementDetails_caption LocalisedString
 
 --- Tooltip of the child element.
 ---
 --- Passing the string "self" as the value or localised string name will be auto replaced to its unique mod auto generated name under gui-tooltip. This avoids having to duplicate name when defining the element's attributes. The auto generated string is in the form: "gui-" + TYPE + "." + MOD NAME from constants + "-" + NAME attribute value. i.e. "gui-tooltip.my_mod-firstLabel". So it matches if a standard locale naming scheme is in use.
 ---
 --- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
----@alias UtilityGuiUtil_ElementDetails_tooltip LocalisedString|null
+---@alias UtilityGuiUtil_ElementDetails_tooltip LocalisedString
 
 --- If populated registers a function to be triggered when a user clicks on the GUI element. Does this by passing the supplied table of arguments to GuiActionsClick.RegisterGuiForClick() which configures and manages detection of the click and the functions calling. See that library and function for full usage details.
 ---
 --- Note: this is registered each time its run, but as its a single registration globally within the mod under the given name the entries can safely overwrite each other. The data attribute isn't per player, but instead is a global context for all players who trigger this click. Data is intended for uses like passing element name/type details to generic response functions.
 ---
 --- If being used make sure to review Gui-Actions-Click.lua and its GuiActionsClick.MonitorGuiClickActions() function as its a prereq for the features usage. Also need to register the click actionName to a callback function with GuiActionsClick.LinkGuiClickActionNameToFunction().
----@alias UtilityGuiUtil_ElementDetails_registerClick UtilityGuiUtil_ElementDetails_RegisterClickOption|null
+---@alias UtilityGuiUtil_ElementDetails_registerClick UtilityGuiUtil_ElementDetails_RegisterClickOption
+
+--- If populated registers a function to be triggered when a user checks/un-checks the GUI element. Does this by passing the supplied table of arguments to GuiActionsChecked.RegisterGuiForCheckedStateChange() which configures and manages detection of the checked state change and the functions calling. See that library and function for full usage details.
+---
+--- Note: this is registered each time its run, but as its a single registration globally within the mod under the given name the entries can safely overwrite each other. The data attribute isn't per player, but instead is a global context for all players who trigger this click. Data is intended for uses like passing element name/type details to generic response functions.
+---
+--- If being used make sure to review Gui-Actions-Checked.lua and its GuiActionsChecked.MonitorGuiCheckedActions() function as its a prereq for the features usage. Also need to register the checked actionName to a callback function with GuiActionsChecked.LinkGuiCheckedActionNameToFunction().
+---@alias UtilityGuiUtil_ElementDetails_registerCheckedStateChange UtilityGuiUtil_ElementDetails_RegisterCheckedOption
 
 --- A table of key/value pairs that is applied to the element via the API post element creation. Intended for the occasioanl adhock attributes you want to update or can't set during the add() API function. i.e. drag_target or auto_center.
 ---
@@ -387,14 +409,14 @@ end
 ---
 --- The value can be a function if you want it to be executed post element creation. Attribute example:
 --- `{ drag_target = function() return GuiUtil.GetElementFromPlayersReferenceStorage(player.index, "ShopGui", "shopGuiMain", "frame") end }`
----@alias UtilityGuiUtil_ElementDetails_attributes table<string, any>|null
+---@alias UtilityGuiUtil_ElementDetails_attributes table<string, any>
 
 --- Style of the child element.
 ---
 --- Value will be checked for starting with "muppet_" and if so automatically merged with the style-data version included in this mod to create the correct full style name. So it automatically handles the fact that muppet styling prototypes are version controlled.
 ---
 --- [View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
----@alias UtilityGuiUtil_ElementDetails_style string|null
+---@alias UtilityGuiUtil_ElementDetails_style string
 
 --------------------------------------------------------------------------
 -- A copy of the the base game's LuaGuiElement.add_param, but without the following attributes as thye are included in my parent class; name, style, caption, tooltip.

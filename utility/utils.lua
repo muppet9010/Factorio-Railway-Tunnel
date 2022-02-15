@@ -203,6 +203,31 @@ Utils.DestroyCarriagesOnRailEntity = function(railEntity, killForce, killerCause
     end
 end
 
+--- Mines any carriages that would prevent the rail from being removed.
+---@param railEntity LuaEntity
+---@param surface LuaSurface
+---@param ignoreMinableEntityFlag boolean @ If TRUE an entities "minable" attribute will be ignored and the entity mined. If FALSE then the entities "minable" attribute will be honoured.
+---@param destinationInventory LuaInventory
+Utils.MineCarriagesOnRailEntity = function(railEntity, surface, ignoreMinableEntityFlag, destinationInventory)
+    -- Check if any carriage prevents the rail from being removed before just killing all carriages within the rails collision boxes as this is more like vanilla behaviour.
+    if not railEntity.can_be_destroyed() then
+        local railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "collision_box")
+        local positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
+        local carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+        for _, carriage in pairs(carriagesFound) do
+            carriage.mine {inventory = destinationInventory, ignore_minable = ignoreMinableEntityFlag, raise_destroyed = true}
+        end
+        if railEntity.type == "curved-rail" then
+            railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "secondary_collision_box")
+            positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
+            carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+            for _, carriage in pairs(carriagesFound) do
+                carriage.mine {inventory = destinationInventory, ignore_minable = ignoreMinableEntityFlag, raise_destroyed = true}
+            end
+        end
+    end
+end
+
 ---@param thing table
 ---@return boolean
 Utils.IsTableValidPosition = function(thing)
@@ -1982,7 +2007,8 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     end
 end
 
-Utils.MaxTrainStopLimit = 4294967295 ---@type uint
+---@class Utils.MaxCorpseTimeToLive @ Max TTL allowed that doesn't have the corpse instant vanish. Basically infinite.
+Utils.MaxCorpseTimeToLive = 4200000000 ---@type uint
 
 --- Returns a luaObject if its valid, else nil. Convientent for inline usage when rarely called.
 --- Should be done locally if called frequently.
