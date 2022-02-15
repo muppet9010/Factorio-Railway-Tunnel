@@ -1,9 +1,7 @@
 Now
 ---
     - Portal/Tunnel GUI:
-        - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort.
         - Make a GUI test.
-        - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui"
 
 Bugs
 ----

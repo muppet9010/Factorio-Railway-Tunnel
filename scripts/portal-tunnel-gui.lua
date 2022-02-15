@@ -20,6 +20,10 @@ PortalTunnelGui.OnLoad = function()
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_CloseButtonClicked", PortalTunnelGui.On_CloseButtonClicked)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenTrainGuiClicked", PortalTunnelGui.On_OpenTrainGuiClicked)
     GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_OpenAddFuelInventoryClicked", PortalTunnelGui.On_OpenAddFuelInventoryClicked)
+    GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked", PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked)
+    --TODO: make the library
+    GuiActionsChecked.LinkGuiCheckedActionNameToFunction("PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked", PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked)
+    GuiActionsClick.LinkGuiClickActionNameToFunction("PortalTunnelGui.On_MineTunnelTrainsClicked", PortalTunnelGui.On_MineTunnelTrainsClicked)
     EventScheduler.RegisterScheduledEventType("PortalTunnelGui.Scheduled_TrackTrainFuelChestGui", PortalTunnelGui.Scheduled_TrackTrainFuelChestGui)
 
     MOD.Interfaces.PortalTunnelGui = MOD.Interfaces.PortalTunnelGui or {}
@@ -90,7 +94,7 @@ PortalTunnelGui.MakeGuiFrame = function(player, playerIndex, frameLocation)
             type = "frame",
             direction = "vertical",
             style = MuppetStyles.frame.main_shadowRisen.paddingBR,
-            styling = {natural_width = 650}, -- Width to have some padding on the tunnel's 2 portal train lengths.
+            styling = {width = 650}, -- Width to have some padding on the tunnel's 2 portal train lengths, but stop it growing to max as theres some long text labels.
             storeName = "portalTunnelGui_frame",
             attributes = {
                 auto_center = autoCenterValue,
@@ -149,7 +153,6 @@ end
 ---@param player LuaPlayer
 ---@param playerIndex Id
 PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerIndex)
-    -- Add the intial container thatn
     local mainFrame = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
 
     -- Get the portal and tunnel variable values.
@@ -217,8 +220,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerInd
                                 type = "label",
                                 style = MuppetStyles.label.text.medium.plain,
                                 caption = {"self", thisPortalTrainLengthCarriages, thisPortalTrainLengthTiles},
-                                tooltip = "self",
-                                attributes = {}
+                                tooltip = "self"
                             }
                         }
                     }
@@ -403,6 +405,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerInd
                                         type = "flow",
                                         direction = "horizontal",
                                         style = MuppetStyles.flow.horizontal.spaced,
+                                        styling = {vertical_align = "center"},
                                         children = {
                                             {
                                                 descriptiveName = "pt_open_train_gui",
@@ -411,8 +414,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerInd
                                                 sprite = "entity.locomotive",
                                                 registerClick = {actionName = "PortalTunnelGui.On_OpenTrainGuiClicked"},
                                                 enabled = trainGuiButton_clickEnabled,
-                                                tooltip = trainGuiButton_tooltip,
-                                                styling = {top_margin = -2}
+                                                tooltip = trainGuiButton_tooltip
                                             },
                                             {
                                                 descriptiveName = "pt_train_usage_state",
@@ -436,6 +438,15 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerInd
                                                 tooltip = trainFuel_tooltip,
                                                 registerClick = {actionName = "PortalTunnelGui.On_OpenAddFuelInventoryClicked"},
                                                 enabled = trainFuel_clickEnabled
+                                            },
+                                            {
+                                                descriptiveName = "pt_toggle_mine_tunnel_train_gui",
+                                                type = "button",
+                                                storeName = "portalTunnelGui_contents",
+                                                style = MuppetStyles.button.text.medium.paddingSides,
+                                                caption = {"gui-caption.railway_tunnel-pt_toggle_mine_tunnel_train_gui-show"},
+                                                tooltip = "self",
+                                                registerClick = {actionName = "PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked"}
                                             }
                                         }
                                     }
@@ -460,6 +471,7 @@ PortalTunnelGui.CloseGuiAndUpdatePortalPart = function(playerIndex, portalPart)
     global.portalTunnelGui.portalPartOpenByPlayer[playerIndex] = nil
 
     -- Close and destroy all the Gui Element's for this overall GUI on screen.
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_mineTrain")
     GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_contents")
     GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame")
 end
@@ -468,6 +480,7 @@ end
 ---@param playerIndex Id
 PortalTunnelGui.ClearGuiContents = function(playerIndex)
     -- Close and destroy all the Gui Element's for this overall GUI on screen.
+    GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_mineTrain")
     GuiUtil.DestroyPlayersReferenceStorage(playerIndex, "portalTunnelGui_contents")
 end
 
@@ -611,7 +624,7 @@ PortalTunnelGui.Scheduled_TrackTrainFuelChestGui = function(event)
     end
 end
 
---- Called when a trian fuel chest should be removed. Returns any items in it back to the player.
+--- Called when a train fuel chest should be removed. Returns any items in it back to the player.
 ---@param fuelChest LuaEntity
 ---@param player LuaPlayer
 PortalTunnelGui.RemoveTrainFuelChest = function(fuelChest, player)
@@ -633,6 +646,113 @@ PortalTunnelGui.RemoveTrainFuelChest = function(fuelChest, player)
 
     -- Destroy the fuelChest, which will close the player GUI if still open and will be empty of items at this point.
     fuelChest.destroy {raise_destroy = false}
+end
+
+--- Called when a player clicks to toggle the GUI to mine all trains in tunnel and portals. Opens/closes a confirmation GUI with details of what exactly this does.
+---@param event UtilityGuiActionsClick_ActionData
+PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked = function(event)
+    local toggleButton = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_contents", "pt_toggle_mine_tunnel_train_gui", "button")
+
+    -- Check if the GUI is already open and toggle its state approperiately.
+    if GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_mineTrain", "pt_mine_tunnel_train", "frame") == nil then
+        -- GUI not open, so create it and update the toggle buttons text.
+        local mainFrame = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
+        local player = game.get_player(event.playerIndex)
+
+        GuiUtil.AddElement(
+            {
+                parent = mainFrame,
+                descriptiveName = "pt_mine_tunnel_train",
+                type = "frame",
+                storeName = "portalTunnelGui_mineTrain",
+                direction = "vertical",
+                style = MuppetStyles.frame.content_shadowSunken.marginTL_paddingBR,
+                styling = {horizontally_stretchable = true},
+                children = {
+                    {
+                        type = "flow",
+                        direction = "vertical",
+                        style = MuppetStyles.flow.vertical.marginTL_paddingBR_spaced,
+                        children = {
+                            {
+                                descriptiveName = "pt_mine_tunnel_title",
+                                type = "label",
+                                style = MuppetStyles.label.heading.medium.bold,
+                                caption = "self"
+                            },
+                            {
+                                descriptiveName = "pt_mine_tunnel_description",
+                                type = "label",
+                                style = MuppetStyles.label.text.medium.plain,
+                                caption = "self"
+                            }
+                        }
+                    },
+                    {
+                        type = "frame",
+                        direction = "horizontal",
+                        style = MuppetStyles.frame.contentInnerDark_shadowSunken.marginTL_paddingBR,
+                        styling = {horizontally_stretchable = true},
+                        children = {
+                            {
+                                type = "flow",
+                                direction = "horizontal",
+                                style = MuppetStyles.flow.horizontal.marginTL_paddingBR_spaced,
+                                styling = {vertical_align = "center", horizontal_align = "middle"},
+                                children = {
+                                    {
+                                        descriptiveName = "pt_mine_tunnel_train_confirmation",
+                                        type = "label",
+                                        style = MuppetStyles.label.text.medium.plain,
+                                        caption = "self"
+                                    },
+                                    {
+                                        descriptiveName = "pt_mine_tunnel_train_confirmation",
+                                        type = "checkbox",
+                                        storeName = "portalTunnelGui_mineTrain",
+                                        state = false,
+                                        registerChecked = {actionName = "PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked"}
+                                    },
+                                    {
+                                        descriptiveName = "pt_mine_tunnel_train_button",
+                                        type = "button",
+                                        storeName = "portalTunnelGui_mineTrain",
+                                        style = MuppetStyles.button.text.medium.plain,
+                                        styling = {left_margin = 30},
+                                        caption = "self",
+                                        tooltip = {"gui-tooltip.railway_tunnel-pt_mine_tunnel_train_button-disabled"},
+                                        registerClick = {actionName = "PortalTunnelGui.On_MineTunnelTrainsClicked"},
+                                        enabled = false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+
+        toggleButton.caption = {"gui-caption.railway_tunnel-pt_toggle_mine_tunnel_train_gui-hide"}
+    else
+        -- GUI exists so close it and update the toggle button's text.
+        GuiUtil.DestroyPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_mineTrain")
+        toggleButton.caption = {"gui-caption.railway_tunnel-pt_toggle_mine_tunnel_train_gui-show"}
+    end
+end
+
+--- Called when the player changes the confirmation checkbox for mining all trains in this tunnel.
+---@param event UtilityGuiActionsChecked_ActionData
+PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked = function(event)
+    --TODO - check the new state and enable/disable the button plus sets its tooltip.
+end
+
+--- Called when the player has clicked to actually mine all trains in this tunnel and its portals.
+---@param event UtilityGuiActionsClick_ActionData
+PortalTunnelGui.On_MineTunnelTrainsClicked = function(event)
+    local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[event.playerIndex]
+    local managedTrain = portalPart.portal.tunnel.managedTrain
+    local player = game.get_player(event.playerIndex)
+    --TODO
 end
 
 return PortalTunnelGui

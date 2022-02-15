@@ -72,7 +72,11 @@ GuiUtil.AddElement = function(elementDetails)
     if elementDetails.style ~= nil and type(elementDetails.style) ~= "string" then
         error("GuiUtil.AddElement() had a style attribute set other than a string, likely a table by mistake.")
     end
+    if elementDetails["styleing"] ~= nil then
+        error("GuiUtil.AddElement() had a 'styleing' attribute, this is a typo for 'styling'.")
+    end
 
+    -- If its being intentionally excluded from beign created due to the templating.
     if elementDetails.exclude == true then
         return
     end
