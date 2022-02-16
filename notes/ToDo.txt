@@ -1,10 +1,10 @@
 Now
 ---
+    - Review ManagedTrain tracking of ...Forwards as we seem to duplicate fields between states, but like the train and trainId only 1 appears to ever be valid.
 
 
 Bugs
 ----
-    - Do I still need to track the train as approachingTrain, undergroundTrain, leavingTrain any more as theres only ever 1 of these states at a time now.
 
 
 Features to add/change

@@ -1,7 +1,7 @@
 local Utils = require("utility.utils")
 local TunnelShared = require("scripts.tunnel-shared")
 local Common = require("scripts.common")
-local TunnelSignalDirection, TunnelUsageParts = Common.TunnelSignalDirection, Common.TunnelUsageParts
+local TunnelSignalDirection, TunnelUsageState = Common.TunnelSignalDirection, Common.TunnelUsageState
 local Portal = {}
 local EventScheduler = require("utility.event-scheduler")
 
@@ -224,14 +224,6 @@ end
 ---@param createdEntity LuaEntity
 ---@param createdEntity_name string
 Portal.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
-        return
-    end
-    local createdEntity_name = createdEntity.name
-    if PortalEndAndSegmentEntityNames[createdEntity_name] == nil then
-        return
-    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -973,10 +965,6 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
 Portal.OnBuiltEntityGhost = function(event, createdEntity)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
-        return
-    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -992,11 +980,6 @@ end
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
 Portal.OnPreMinedEntity = function(event, minedEntity)
-    -- Check its one of the entities this function wants to inspect.
-    --[[local minedEntity = event.entity
-    if not minedEntity.valid or PortalEndAndSegmentEntityNames[minedEntity.name] == nil then
-        return
-    end]]
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedPortalPart = global.portals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
     if minedPortalPart == nil then
@@ -1222,11 +1205,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Portal.OnDiedEntity = function(event, diedEntity)
-    -- Check its one of the entities this function wants to inspect.
-    --[[local diedEntity = event.entity
-    if not diedEntity.valid or PortalEndAndSegmentEntityNames[diedEntity.name] == nil then
-        return
-    end]]
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local diedPortalPart = global.portals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
     if diedPortalPart == nil then
@@ -1240,10 +1218,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
-    --[[if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
-        -- Needed due to how died event handlers are all bundled togeather.
-        return
-    end]]
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1278,17 +1252,16 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
-        if trainIdToManagedTrain ~= nil then
+        local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train_id)
+        if managedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
-            local managedTrain = trainIdToManagedTrain.managedTrain
             if managedTrain.tunnel.id == portal.tunnel.id then
                 -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
+                if managedTrain.tunnelUsageState == TunnelUsageState.approaching then
                     -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entry portal track. This is healthy activity.
                     MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, managedTrain)
                     return
-                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
+                elseif managedTrain.tunnelUsageState == TunnelUsageState.leaving then
                     -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
                     return
                 else
@@ -1406,10 +1379,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
-    --[[if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_transition_train_detector_1x1" then
-        -- Needed due to how died event handlers are all bundled togeather.
-        return
-    end]]
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1443,18 +1412,17 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
-        if trainIdToManagedTrain ~= nil then
+        local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train_id)
+        if managedTrain ~= nil then
             -- This train has reserved a tunnel somewhere.
-            local managedTrain = trainIdToManagedTrain.managedTrain
             if managedTrain.tunnel.id == portal.tunnel.id then
                 -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
+                if managedTrain.tunnelUsageState == TunnelUsageState.approaching then
                     -- Train had reserved the tunnel via signals at distance and is now ready to fully enter the tunnel.
                     MOD.Interfaces.TrainManager.TrainEnterTunnel(managedTrain, event.tick)
                     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                     return
-                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
+                elseif managedTrain.tunnelUsageState == TunnelUsageState.leaving then
                     error("Train has been using the tunnel and is now trying to pass backwards through the tunnel. This may be supported in future, but error for now.")
                     return
                 else

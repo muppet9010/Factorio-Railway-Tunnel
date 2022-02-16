@@ -139,14 +139,6 @@ end
 ---@param createdEntity LuaEntity
 ---@param createdEntity_name string
 Underground.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
-        return
-    end
-    local createdEntity_name = createdEntity.name
-    if UndergroundSegmentEntityNames[createdEntity_name] == nil then
-        return
-    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -570,10 +562,6 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
 Underground.OnBuiltEntityGhost = function(event, createdEntity)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or UndergroundSegmentEntityNames[createdEntity.ghost_name] == nil then
-        return
-    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -615,11 +603,6 @@ end
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
 Underground.OnPreMinedEntity = function(event, minedEntity)
-    -- Check its one of the entities this function wants to inspect.
-    --[[local minedEntity = event.entity
-    if not minedEntity.valid or UndergroundSegmentEntityNames[minedEntity.name] == nil then
-        return
-    end]]
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedSegment = global.undergrounds.segments[minedEntity.unit_number]
     if minedSegment == nil then
@@ -780,11 +763,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Underground.OnDiedEntity = function(event, diedEntity)
-    -- Check its one of the entities this function wants to inspect.
-    --[[local diedEntity = event.entity
-    if not diedEntity.valid or UndergroundSegmentEntityNames[diedEntity.name] == nil then
-        return
-    end]]
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local segment = global.undergrounds.segments[diedEntity.unit_number]
     if segment == nil then

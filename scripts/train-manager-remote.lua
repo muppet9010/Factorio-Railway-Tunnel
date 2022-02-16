@@ -75,11 +75,10 @@ end
 ---@param trainId Id
 ---@return RemoteTunnelUsageEntry
 TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
-    local trackedTrainIdObject = global.trainManager.trainIdToManagedTrain[trainId]
-    if trackedTrainIdObject == nil then
+    local managedTrain = global.trainManager.trainIdToManagedTrain[trainId]
+    if managedTrain == nil then
         return nil
     end
-    local managedTrain = trackedTrainIdObject.managedTrain
     if managedTrain ~= nil then
         local tunnelUsageEntry = {}
         TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrain.id)

@@ -60,15 +60,15 @@ TrainCachedData.OnTrainCreated = function(event)
     end
 
     -- Check if there is a managed train that needs stopping for either/both. Both could be using a tunnel if both leaving portals and are coupled togeather.
-    local trainIdToManagedTrain1 = global.trainManager.trainIdToManagedTrain[event.old_train_id_1] --TrainManager.GetTrainIdsManagedTrainDetails()
-    if trainIdToManagedTrain1 ~= nil then
+    local managedTrain1 = global.trainManager.trainIdToManagedTrain[event.old_train_id_1] --TrainManager.GetTrainIdsManagedTrain()
+    if managedTrain1 ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
-        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain1.managedTrain)
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain1)
     end
-    local trainIdToManagedTrain2 = global.trainManager.trainIdToManagedTrain[event.old_train_id_2] --TrainManager.GetTrainIdsManagedTrainDetails()
-    if trainIdToManagedTrain2 ~= nil then
+    local managedTrain2 = global.trainManager.trainIdToManagedTrain[event.old_train_id_2] --TrainManager.GetTrainIdsManagedTrain()
+    if managedTrain2 ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
-        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain2.managedTrain)
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain2)
     end
 end
 
@@ -76,11 +76,6 @@ end
 ---@param event on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
-    --[[local diedEntity = event.entity
-    -- Handle any other registrations of this event across the mod.
-    if Common.RollingStockTypes[diedEntity.type] == nil then
-        return
-    end]]
     -- This function can be called either by local event registration or from tunnel-shared event handlder function.
     if diedEntity == nil then
         diedEntity = event.entity
@@ -98,10 +93,10 @@ TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
     end
 
     -- Check if there is a managed train that needs stopping.
-    local trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain[trainId] --TrainManager.GetTrainIdsManagedTrainDetails()
-    if trainIdToManagedTrain ~= nil then
+    local managedTrain = global.trainManager.trainIdToManagedTrain[trainId] --TrainManager.GetTrainIdsManagedTrain()
+    if managedTrain ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
-        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain.managedTrain)
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
     end
 end
 

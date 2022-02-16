@@ -75,15 +75,7 @@ Common.TunnelUsageState = {
     finished = "finished"
 }
 
--- A specific LuaTrain's role within its parent managed train object.
----@class TunnelUsageParts
-Common.TunnelUsageParts = {
-    approachingTrain = "approachingTrain",
-    leavingTrain = "leavingTrain",
-    portalTrackTrain = "portalTrackTrain"
-}
-
--- The train's state - Used by the train manager remote for state notifications to remote interface calls.
+-- The train's action to new state - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageAction
 Common.TunnelUsageAction = {
     startApproaching = "startApproaching",

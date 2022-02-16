@@ -69,7 +69,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     -- In certain edge cases 2 trains can reserve the the tunnel's 2 transition signals simultaneously and the portal entry signal circuitry doesn't have time to react to prevent it.
     -- A train that doesn't leave the portal before turning around will also need to have its request allowed through to the TrainManager.
     local tunnel, train_id = transitionSignal.portal.tunnel, train.id
-    if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id and tunnel.managedTrain.leavingTrainId ~= train_id then
+    if tunnel.managedTrain ~= nil and tunnel.managedTrain.trainId ~= train_id then
         -- Tunnel already reserved so this reservation is bad.
         TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
         return
@@ -275,19 +275,11 @@ end
 -- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
-        return
-    end
-    local createdEntity_type = createdEntity.type
-    if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
-        return
-    end]]
     if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
 
-        if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train.id) then
+        if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train.id) ~= nil then
             -- Carriage was built as part of a managed train, so just ignore it for these purposes.
             return
         end
