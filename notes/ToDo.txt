@@ -1,6 +1,5 @@
 Now
 ---
-    - Review ManagedTrain tracking of ...Forwards as we seem to duplicate fields between states, but like the train and trainId only 1 appears to ever be valid.
 
 
 Bugs
