@@ -208,13 +208,21 @@ end
 ---@param surface LuaSurface
 ---@param ignoreMinableEntityFlag boolean @ If TRUE an entities "minable" attribute will be ignored and the entity mined. If FALSE then the entities "minable" attribute will be honoured.
 ---@param destinationInventory LuaInventory
-Utils.MineCarriagesOnRailEntity = function(railEntity, surface, ignoreMinableEntityFlag, destinationInventory)
+---@param stopTrain boolean @ If TRUE stops the train that it will try and mine.
+Utils.MineCarriagesOnRailEntity = function(railEntity, surface, ignoreMinableEntityFlag, destinationInventory, stopTrain)
     -- Check if any carriage prevents the rail from being removed before just killing all carriages within the rails collision boxes as this is more like vanilla behaviour.
     if not railEntity.can_be_destroyed() then
         local railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "collision_box")
         local positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
         local carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
         for _, carriage in pairs(carriagesFound) do
+            -- If stopTrain is enabled and the carriage is currently moving stop its train.
+            if stopTrain then
+                if carriage.speed ~= 0 then
+                    carriage.train.speed = 0
+                    carriage.train.manual_mode = true
+                end
+            end
             carriage.mine {inventory = destinationInventory, ignore_minable = ignoreMinableEntityFlag, raise_destroyed = true}
         end
         if railEntity.type == "curved-rail" then
@@ -222,6 +230,13 @@ Utils.MineCarriagesOnRailEntity = function(railEntity, surface, ignoreMinableEnt
             positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
             carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
             for _, carriage in pairs(carriagesFound) do
+                -- If stopTrain is enabled and the carriage is currently moving stop its train.
+                if stopTrain then
+                    if carriage.speed ~= 0 then
+                        carriage.train.speed = 0
+                        carriage.train.manual_mode = true
+                    end
+                end
                 carriage.mine {inventory = destinationInventory, ignore_minable = ignoreMinableEntityFlag, raise_destroyed = true}
             end
         end

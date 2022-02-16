@@ -1,7 +1,6 @@
 Now
 ---
-    - Portal/Tunnel GUI:
-        - Make a GUI test.
+
 
 Bugs
 ----
@@ -43,6 +42,7 @@ Features to add/change
     - Portal/Tunnel GUI Improvements:
         - Review layout and current information presentation.
         - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
+        - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
 
 
 UPS / code plans

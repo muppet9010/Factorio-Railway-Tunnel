@@ -24,6 +24,7 @@ Mod Features
 - A train must fully fit within the tunnel's entrance and exit portal to be able to use the tunnel. If the train is too long it will be prevented access and a GUI alert raised to the player. Unfortunately I can't stop the train trying to path through the tunnel so some consideration by the player when building their rail network is required. The max length train a tunnel can accept is the minimum length of either portal's segments (non end parts). A train's length for vanilla Factorio carriages is 6 tiles, plus 1 tile per carriage connection. This will match the length of a train on a regular track. i.e. 1 carriage is 6 tiles, 2 carriages are 13 tiles (6+1+6).
 - The mod has been designed and optimised to be UPS efficient.
 - Tunnels can be used in both directions, however, the mod is designed on the basis that most tunnels will be either used in a single direction as part of dual tracks or bi-directional on a very low usage rail track. There is a documented limitation around a rare issue with high frequency bi-diretional tunnel usage later in this readme.
+- Tunnel/Portal GUI shown when a portal part is clicked on. Shows key information about it including the size of train it supports and the current usage state. It has features to help the player handle any odd situations, with options to distribute fuel to the train using the tunnel, and an option to mine all train carriages on the tunnel portal's tracks.
 
 
 Usage Notes

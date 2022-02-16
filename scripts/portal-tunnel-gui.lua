@@ -71,7 +71,7 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
 
     -- Load GUI to player.
     PortalTunnelGui.MakeGuiFrame(player, playerIndex, existingLocation)
-    PortalTunnelGui.PopulateMainGuiContents(portalPart, player, playerIndex)
+    PortalTunnelGui.PopulateMainGuiContents(portalPart, playerIndex)
 end
 
 --- Called to make the GUI's outer frame and will populate it.
@@ -142,6 +142,32 @@ PortalTunnelGui.MakeGuiFrame = function(player, playerIndex, frameLocation)
                             }
                         }
                     }
+                },
+                {
+                    -- Contents container, for where the state specific contents go within. This element is never removed.
+                    descriptiveName = "pt_main_contents_container",
+                    type = "flow",
+                    storeName = "portalTunnelGui_frame",
+                    direction = "vertical",
+                    style = MuppetStyles.flow.vertical.plain
+                },
+                {
+                    -- Footer bar of the GUI.
+                    type = "flow",
+                    direction = "horizontal",
+                    style = MuppetStyles.flow.horizontal.marginTL_paddingBR_spaced,
+                    styling = {
+                        horizontally_stretchable = true,
+                        horizontal_align = "center"
+                    },
+                    children = {
+                        {
+                            descriptiveName = "pt_main_footer_beta",
+                            type = "label",
+                            style = MuppetStyles.label.text.medium.plain,
+                            caption = "self"
+                        }
+                    }
                 }
             }
         }
@@ -150,10 +176,9 @@ end
 
 --- Populates the main GUI's contents for a given portalPart and its current state.
 ---@param portalPart PortalPart
----@param player LuaPlayer
 ---@param playerIndex Id
-PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerIndex)
-    local mainFrame = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
+PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
+    local mainFrameContentsContainer = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main_contents_container", "flow")
 
     -- Get the portal and tunnel variable values.
     local thisPortal = portalPart.portal
@@ -188,7 +213,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerInd
         -- Add the elements.
         GuiUtil.AddElement(
             {
-                parent = mainFrame,
+                parent = mainFrameContentsContainer,
                 descriptiveName = "pt_contents",
                 type = "frame",
                 storeName = "portalTunnelGui_contents",
@@ -288,7 +313,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, player, playerInd
         -- Tunnel and inner Portals.
         GuiUtil.AddElement(
             {
-                parent = mainFrame,
+                parent = mainFrameContentsContainer,
                 descriptiveName = "pt_contents",
                 type = "frame",
                 storeName = "portalTunnelGui_contents",
@@ -496,9 +521,8 @@ end
 --- This event may be called multiple times for portal changes as we call it on each cange of significance and sometimes these are done in a cycle over a list of portal parts. Is wasteful UPS wise, but simpliest code and infrequent calling in reality.
 ---@param portalPart PortalPart
 ---@param playerIndex Id
----@param player LuaPlayer
 ---@param partRemoved boolean @ If the part has been removed and thus the GUI should be closed.
-PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, player, partRemoved)
+PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, partRemoved)
     if partRemoved then
         -- Part removed soclose everything.
         PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, portalPart)
@@ -507,17 +531,17 @@ PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, player,
 
     -- Re-draw the entire GUI contents so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
     PortalTunnelGui.ClearGuiContents(playerIndex)
-    PortalTunnelGui.PopulateMainGuiContents(portalPart, player, playerIndex)
+    PortalTunnelGui.PopulateMainGuiContents(portalPart, playerIndex)
 end
 
 --- Called when the usage state of the tunnel changes by the TrainManager class.
 ---@param managedTrain ManagedTrain
 PortalTunnelGui.On_TunnelUsageChanged = function(managedTrain)
-    for playerIndex, player in pairs(managedTrain.tunnel.guiOpenedByPlayers) do
+    for playerIndex in pairs(managedTrain.tunnel.guiOpenedByPlayers) do
         -- Re-draw the entire GUI contents so it accounts for whatever change has occured. Lazy approach, but low freqency and concurrency.
         local portalPart = global.portalTunnelGui.portalPartOpenByPlayer[playerIndex]
         PortalTunnelGui.ClearGuiContents(playerIndex)
-        PortalTunnelGui.PopulateMainGuiContents(portalPart, player, playerIndex)
+        PortalTunnelGui.PopulateMainGuiContents(portalPart, playerIndex)
     end
 end
 
@@ -656,11 +680,11 @@ PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked = function(event)
     -- Check if the GUI is already open and toggle its state approperiately.
     if GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_mineTrain", "pt_mine_tunnel_train", "frame") == nil then
         -- GUI not open, so create it and update the toggle buttons text.
-        local mainFrame = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
+        local mainFrameContentsContainer = GuiUtil.GetElementFromPlayersReferenceStorage(event.playerIndex, "portalTunnelGui_frame", "pt_main_contents_container", "flow")
 
         GuiUtil.AddElement(
             {
-                parent = mainFrame,
+                parent = mainFrameContentsContainer,
                 descriptiveName = "pt_mine_tunnel_train",
                 type = "frame",
                 storeName = "portalTunnelGui_mineTrain",
@@ -773,7 +797,7 @@ PortalTunnelGui.On_MineTunnelTrainsClicked = function(event)
     -- Mine all of the carriages that are on each portal in to the container.
     for _, portal in pairs(thisPortal.tunnel.portals) do
         for _, railEntity in pairs(portal.portalRailEntities) do
-            Utils.MineCarriagesOnRailEntity(railEntity, portal.surface, false, minedTrainContainer_inventory)
+            Utils.MineCarriagesOnRailEntity(railEntity, portal.surface, false, minedTrainContainer_inventory, true)
         end
     end
 
