@@ -1754,19 +1754,21 @@ Utils.GetBuilderInventory = function(builder)
     end
 end
 
+--- Returns either tha player or force for robots from the EntityActioner. If script then returns neither.
+--- Useful for passing in to rendering player/force filters or for returning items to them.
 ---@param actioner EntityActioner
----@return LuaPlayer[] @ Table of players or nil.
----@return LuaForce[] @ Table of forces or nil.
-Utils.GetRenderPlayersForcesFromActioner = function(actioner)
+---@return LuaPlayer|null
+---@return LuaForce|null
+Utils.GetPlayerForceFromActioner = function(actioner)
     if actioner == nil then
         -- Is a script.
         return nil, nil
     elseif actioner.is_player() then
         -- Is a player.
-        return {actioner}, nil
+        return actioner, nil
     else
         -- Is construction bot.
-        return nil, {actioner.force}
+        return nil, actioner.force
     end
 end
 

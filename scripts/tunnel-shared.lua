@@ -145,7 +145,7 @@ end
 ---@param ghostName string
 ---@param direction defines.direction @ Direction of the entity trying to be placed.
 TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
-    local highlightAudiencePlayers, highlightAudienceForces = Utils.GetRenderPlayersForcesFromActioner(placer)
+    local highlightAudiencePlayer, highlightAudienceForce = Utils.GetPlayerForceFromActioner(placer)
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
     local minX, maxX, minY, maxY
     if position.x % 2 == 1 then
@@ -176,7 +176,7 @@ TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, posit
             else
                 thisHighlightSprite = invalidHighlightSprite
             end
-            rendering.draw_sprite {sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = highlightAudiencePlayers, forces = highlightAudienceForces}
+            rendering.draw_sprite {sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = {highlightAudiencePlayer}, forces = {highlightAudienceForce}}
         end
     end
 end
@@ -187,8 +187,8 @@ end
 ---@param surface LuaSurface
 ---@param position Position
 TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
-    local textAudiencePlayers, textAudienceForces = Utils.GetRenderPlayersForcesFromActioner(entityDoingInteraction)
-    rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = textAudiencePlayers, forces = textAudienceForces, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
+    local textAudiencePlayer, textAudienceForce = Utils.GetPlayerForceFromActioner(entityDoingInteraction)
+    rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = {textAudiencePlayer}, forces = {textAudienceForce}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}
 end
 
 --- Correctly stops a train when it collides with an entity. As the Factorio game engine will return a manual train upon collision the following tick. So we have to stop it this tick and set it to be manual again next tick.
