@@ -4,14 +4,13 @@ Now
 
 Bugs
 ----
+    - Utils.GetRenderPlayersForcesFromActioner() check what this returns and comment it. As it looks like we return tables of only ever 1 thing :S
+    - Do I still need to track the train as approachingTrain, undergroundTrain, leavingTrain any more as theres only ever 1 of these states at a time now.
+    - The red light for a west portal entry signal isn't offset from 0 like the green and yellow are.
 
 
 Features to add/change
 ----------------------
-    - Portal/Tunnel GUI:
-        - Clickable on portal area's will raise a dialogue showing max supported train length for this end and if there's a tunnel the other end as well. Should be created when the portal is complete and not require a tunnel. Make the clickable entities be of type market as neatest base entity type that is left clickable with a GUI we can trigger off.
-        - A way to add fuel to any train stuck in the portal. This can presently still occur if the train is releaed at a very slow speed. Probably an option on the portal/tunnel GUI that lets you transfer fuel to a special inventory that then distributes it across the forward facing locomotives.
-        - A way to have the tunnel train mined to a chest in the tunnel itself should some weird issue arise where the trian can't be gotten out. This is like a manual last resort. Should be included as part of the portal/tunnel GUI.
     - The current player container concept needs updating to calculate the player containers current position in the tunnel. As part of this move the player riding tests to their own test(s) and remove them from other tests. Cover:
         - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
         - Tunnel destroyed while player underground.
@@ -38,6 +37,12 @@ Features to add/change
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
     - Make better graphics and use tunnel shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
     - Add a tips & tricks section to cover tunnel and portal construction.
+    - Make Portal Tunnel GUI nicer, only very rough one at present.
+    - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new TRain GUI for that player. If they close the placeholder GUI then don't open the new GUI.
+    - Portal/Tunnel GUI Improvements:
+        - Review layout and current information presentation.
+        - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
+        - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
 
 
 UPS / code plans

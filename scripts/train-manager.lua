@@ -24,7 +24,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal. -- OVERHAUL - not used by anything any more other than in its populating function. Remove in any final tidyup if still not used.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field force LuaForce @ The force of the train carriages using the tunnel.
----@field trainCachedData TrainCachedData @ Ref to the cached train data. Its popualted as we need them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes. This isn't directional and so if the lead carriage is needed it needs to be iterated the right way.
+---@field trainCachedData TrainCachedData @ Ref to the cached train data. Its populated as we need them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes. This isn't directional and so if the lead carriage is needed it needs to be iterated the right way. Is in effect the currenTrain of the tunnel.
 ---@field trainFacingForwardsToCacheData? boolean|null @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
 ---@field directionalTrainSpeedCalculationData Utils_TrainSpeedCalculationData @ The TrainSpeedCalculationData from the trainCachedData for the moving direction of this train right now. As the global trainCachedData has it for both facings. Updated during leaving when speed indicates direction change.
 ---@field forwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData forwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
@@ -86,6 +86,7 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.On_TunnelRemoved = TrainManager.On_TunnelRemoved
     MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails = TrainManager.GetTrainIdsManagedTrainDetails
     MOD.Interfaces.TrainManager.InvalidTrainFound = TrainManager.InvalidTrainFound
+    MOD.Interfaces.TrainManager.GetCurrentTrain = TrainManager.GetCurrentTrain
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
@@ -132,6 +133,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(approachingTrain, a
     else
         TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.startApproaching)
     end
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 --- Used when a train is on a portal's track and thus the tunnel.
@@ -156,6 +158,7 @@ TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, m
     managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 --- Every tick loop over each train and process it as required.
@@ -251,6 +254,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
             managedTrain.approachingTrainReachedFullSpeed = nil
 
             TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.onPortalTrack, TunnelUsageChangeReason.abortedApproach)
+            MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
         end
         return
     end
@@ -342,6 +346,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     -- Complete the state transition.
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 
     -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
     if not managedTrain.undergroundTrainHasPlayersRiding then
@@ -630,6 +635,7 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
     managedTrain.tunnelUsageState = TunnelUsageState.leaving
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 --- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left.
@@ -824,6 +830,7 @@ TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReaso
         MOD.Interfaces.Tunnel.TrainReleasedTunnel(managedTrain)
     end
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.terminated, tunnelUsageChangeReason)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 end
 
 ---@param managedTrain ManagedTrain
@@ -1303,6 +1310,22 @@ TrainManager.InvalidTrainFound = function(managedTrain)
 
     -- Techncially this isn't ideal as a train remenant that ends up on the portal tracks should be known about. Although the tunnel signals would all be closed at this point anyways. There may be 2 seperate new trains on the portal tracks and the tracking doesn't handle this currently so leave until it actually causes an issue.
     TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.invalidTrain)
+end
+
+--- Get the current train based on whats populated.
+---@param managedTrain ManagedTrain
+---@return LuaTrain
+TrainManager.GetCurrentTrain = function(managedTrain)
+    local train  ---@type LuaTrain
+    if managedTrain.portalTrackTrain ~= nil then
+        return managedTrain.portalTrackTrain
+    elseif managedTrain.approachingTrain ~= nil then
+        return managedTrain.approachingTrain
+    elseif managedTrain.leavingTrain ~= nil then
+        return managedTrain.leavingTrain
+    else
+        error("TrainManager.GetCurrentTrain() called when no train.")
+    end
 end
 
 return TrainManager

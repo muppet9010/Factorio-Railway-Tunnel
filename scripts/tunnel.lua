@@ -16,6 +16,7 @@ local Utils = require("utility.utils")
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 ---@field maxTrainLengthTiles uint @ the max train length in tiles this tunnel supports.
+---@field guiOpenedByPlayers table<Id, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this tunnel.
 
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
@@ -94,7 +95,8 @@ Tunnel.CompleteTunnel = function(portals, underground)
         force = refPortal.force,
         underground = underground,
         tunnelRailEntities = {},
-        portalRailEntities = {}
+        portalRailEntities = {},
+        guiOpenedByPlayers = {}
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
@@ -109,6 +111,14 @@ Tunnel.CompleteTunnel = function(portals, underground)
             tunnel.maxTrainLengthTiles = portal.trainWaitingAreaTilesLength
         else
             tunnel.maxTrainLengthTiles = math.min(tunnel.maxTrainLengthTiles, portal.trainWaitingAreaTilesLength)
+        end
+
+        -- Handle any open GUIs on the portals.
+        for _, portalPart in pairs(portal.guiOpenedByParts) do
+            for playerIndex, player in pairs(portalPart.guiOpenedByPlayers) do
+                tunnel.guiOpenedByPlayers[playerIndex] = player
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+            end
         end
     end
     underground.tunnel = tunnel

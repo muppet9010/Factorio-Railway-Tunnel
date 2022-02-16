@@ -1,20 +1,20 @@
---local Events = require("utility.events")
 local Utils = require("utility.utils")
 local TunnelShared = require("scripts.tunnel-shared")
 local Common = require("scripts.common")
 local TunnelSignalDirection, TunnelUsageParts = Common.TunnelSignalDirection, Common.TunnelUsageParts
---local PortalEndAndSegmentEntityNames = Common.PortalEndAndSegmentEntityNames
 local Portal = {}
 local EventScheduler = require("utility.event-scheduler")
 
 ---@class Portal
 ---@field id uint @ unique id of the portal object.
 ---@field isComplete boolean @ if the portal has 2 connected portal end objects or not.
+---@field portalParts table<UnitNumber, PortalPart> @ The portal end and portal segment objects. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalEnds table<UnitNumber, PortalEnd> @ the portal end objects of this portal. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalSegments table<UnitNumber, PortalSegment> @ the portal segment objects of this portal. Key'd by the portal segment entity unit_number (id).
 ---@field trainWaitingAreaTilesLength uint @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
+---@field guiOpenedByParts table<Id, PortalPart> @ A table of portal part Id's to PortalParts that have a GUI opened on this portal for one or more players.
 ---
 ---@field portalTunneExternalConnectionSurfacePositionStrings? table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject>|null @ the 2 external positions the portal should look for underground segments at. Only established on a complete portal.
 ---
@@ -55,6 +55,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field nonConnectedInternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
+---@field guiOpenedByPlayers table<Id, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 ---
@@ -205,6 +206,9 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition = Portal.CanAPortalConnectAtItsInternalPosition
     MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
+    MOD.Interfaces.Portal.GuiOpenedOnPortalPart = Portal.GuiOpenedOnPortalPart
+    MOD.Interfaces.Portal.GuiClosedOnPortalPart = Portal.GuiClosedOnPortalPart
+
     -- Merged event handler interfaces.
     MOD.Interfaces.Portal.OnBuiltEntity = Portal.OnBuiltEntity
     MOD.Interfaces.Portal.OnBuiltEntityGhost = Portal.OnBuiltEntityGhost
@@ -263,7 +267,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
         surface_index = surface_index,
         force = builtEntity.force,
         typeData = portalTypeData,
-        graphicRenderIds = {}
+        graphicRenderIds = {},
+        guiOpenedByPlayers = {}
     }
 
     -- Handle the caching of specific portal part type information and to their globals.
@@ -315,8 +320,10 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
     -- Register the part's entity for reverse lookup.
     global.portals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
 
+    -- Join this portal part to a portal if approperiate. This will check and update the Portal.isComplete attribute used below.
     Portal.UpdatePortalsForNewPortalPart(portalPartObject)
 
+    -- If the portal is complete then check if we've just connected to underground parts.
     if portalPartObject.portal ~= nil and portalPartObject.portal.isComplete then
         Portal.CheckAndHandleTunnelCompleteFromPortal(portalPartObject.portal)
     end
@@ -391,11 +398,13 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
             local portal = {
                 id = portalId,
                 isComplete = false,
+                portalParts = {},
                 portalEnds = {},
                 portalSegments = {},
                 trainWaitingAreaTilesLength = 0,
                 force = portalPartObject.force,
-                surface = portalPartObject.surface
+                surface = portalPartObject.surface,
+                guiOpenedByParts = {}
             }
             global.portals.portals[portalId] = portal
             Portal.AddPartToPortal(portal, portalPartObject)
@@ -420,6 +429,19 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
         else
             -- If a situation should be ignored add it explicitly.
             error("unexpected scenario")
+        end
+
+        -- Something was done to this portal so update any open GUIs on any parts it has.
+        -- This will lead to an open GUI being refreshed multiple times for re-created portals as each part is added to the portal. But we need the last value and is pretty edge case.
+        for _, portalPart in pairs(portalPartObject.portal.portalParts) do
+            for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+            end
+        end
+    else
+        -- If this part was open in a GUI already then update it as its likely been part of a portal and is now orphaned.
+        for playerIndex in pairs(portalPartObject.guiOpenedByPlayers) do
+            MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPartObject, playerIndex, false)
         end
     end
 
@@ -446,12 +468,19 @@ Portal.AddPartToPortal = function(portal, portalPart)
     else
         error("invalid portal type: " .. portalPart.typeData.partType)
     end
+    portal.portalParts[portalPart.id] = portalPart
+
+    -- Check for any already open GUIs on the portalPart and if so update portal to know of the part.
+    if next(portalPart.guiOpenedByPlayers) ~= nil then
+        portal.guiOpenedByParts[portalPart.id] = portalPart
+    end
 end
 
 --- Moves the old partal parts to the new portal and removes the old portal object.
 ---@param oldPortal Portal
 ---@param newPortal Portal
 Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
+    -- Move over all portal parts to the new portal's lists.
     for id, part in pairs(oldPortal.portalEnds) do
         newPortal.portalEnds[id] = part
         part.portal = newPortal
@@ -460,8 +489,20 @@ Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
         newPortal.portalSegments[id] = part
         part.portal = newPortal
     end
+    for id, part in pairs(oldPortal.portalParts) do
+        newPortal.portalParts[id] = part
+    end
+
+    -- Update the train waiting area length to be the sum of the 2 portals as this is updated as each part is added to a portal.
     newPortal.trainWaitingAreaTilesLength = newPortal.trainWaitingAreaTilesLength + oldPortal.trainWaitingAreaTilesLength
+
+    -- Forget the old portal from globals as nothing should reference it now.
     global.portals.portals[oldPortal.id] = nil
+
+    -- Move across any open GUIs.
+    for portalPartId, portalPart in pairs(oldPortal.guiOpenedByParts) do
+        newPortal.guiOpenedByParts[portalPartId] = portalPart
+    end
 end
 
 --- A complete portal is 2 ends with some segments between. If a portal end part has segments both sides it must have the excess trimmed as the PortalComplete() logic requires portal end's with 1 used and 1 free connection.
@@ -619,6 +660,7 @@ Portal.PortalComplete = function(portal)
             }
         )
     end
+
     -- Add the portal segment's graphics.
     for _, portalSegment in pairs(portal.portalSegments) do
         local segmentPortalTypeData = portalSegment.typeData ---@type SegmentPortalTypeData
@@ -636,6 +678,13 @@ Portal.PortalComplete = function(portal)
             error("unsupported segment shape: " .. segmentPortalTypeData.segmentShape)
         end
     end
+
+    -- Update any open GUIs on this portal as its state has now changed.
+    for _, portalPart in pairs(portal.portalParts) do
+        for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+            MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+        end
+    end
 end
 
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
@@ -648,6 +697,7 @@ Portal.CheckAndHandleTunnelCompleteFromPortal = function(portal)
             if foundPortal ~= nil then
                 Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
                 MOD.Interfaces.Tunnel.CompleteTunnel({portal, foundPortal}, underground)
+                return -- Only need to find a valid tunnel once, no point checking after this.
             end
         end
     end
@@ -1020,6 +1070,8 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal
     if portal ~= nil then
+        -- No need to update the GUI opened lists for anything other than the removedPart as the tunnel and portal object will be destroyed and re-created as approperiate. This process will trigger their GUIs to update.
+
         -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to its 2 portals and handles/removes portal fields requiring a tunnel.
         if portal.tunnel ~= nil then
             MOD.Interfaces.Tunnel.RemoveTunnel(portal.tunnel, killForce, killerCauseEntity)
@@ -1028,9 +1080,7 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Handle the portal object.
 
         -- Remove the portal's graphic parts. When the portal parts are remade in to a portal they will gain their graphics back if approperiate.
-        ---@type table<UnitNumber, PortalPart>
-        local endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments})
-        for _, portalPart in pairs(endsAndSegments) do
+        for _, portalPart in pairs(portal.portalParts) do
             for _, graphicRenderId in pairs(portalPart.graphicRenderIds) do
                 rendering.destroy(graphicRenderId)
             end
@@ -1049,11 +1099,15 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Remove this portal part from the portals fields before we re-process the other portals parts.
         portal.portalEnds[removedPortalPart.id] = nil
         portal.portalSegments[removedPortalPart.id] = nil
+        portal.portalParts[removedPortalPart.id] = nil
 
         -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
-        ---@type table<Id, PortalPart>
-        endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments}) -- Regenerate as we removed a part from the list sicne last done.
-        Portal.RecalculatePortalPartsParentPortal(endsAndSegments)
+        Portal.RecalculatePortalPartsParentPortal(portal.portalParts)
+    end
+
+    -- If this part had an open GUI then alert the GUI class that there's been a change.
+    for playerIndex in pairs(removedPortalPart.guiOpenedByPlayers) do
+        MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(removedPortalPart, playerIndex, true)
     end
 end
 
@@ -1154,6 +1208,13 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         portal.dummyLocomotivePosition = nil
         portal.entryDirection = nil
         portal.leavingDirection = nil
+
+        -- If any part of this portal had an open GUI then alert the GUI class that there's been a change.
+        for _, portalPart in pairs(portal.guiOpenedByParts) do
+            for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+            end
+        end
     end
 end
 
@@ -1473,6 +1534,36 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
             portal.transitionUsageDetectorEntity.destroy()
         end
         portal.transitionUsageDetectorEntity = nil
+    end
+end
+
+--- Mark this portal part as having a GUI opened on it.
+---@param portalPart PortalPart
+---@param playerIndex Id
+---@param player LuaPlayer
+Portal.GuiOpenedOnPortalPart = function(portalPart, playerIndex, player)
+    portalPart.guiOpenedByPlayers[playerIndex] = player
+    if portalPart.portal ~= nil then
+        portalPart.portal.guiOpenedByParts[portalPart.id] = portalPart
+        if portalPart.portal.tunnel ~= nil then
+            portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = player
+        end
+    end
+end
+
+--- Mark this portal part as having a GUI closed on it.
+---@param portalPart PortalPart
+---@param playerIndex Id
+Portal.GuiClosedOnPortalPart = function(portalPart, playerIndex)
+    portalPart.guiOpenedByPlayers[playerIndex] = nil
+    if next(portalPart.guiOpenedByPlayers) == nil then
+        -- No other players have this part open so inform the portal
+        if portalPart.portal ~= nil then
+            portalPart.portal.guiOpenedByParts[portalPart.id] = nil
+            if portalPart.portal.tunnel ~= nil then
+                portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = nil
+            end
+        end
     end
 end
 

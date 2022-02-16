@@ -42,13 +42,7 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
     -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
     tableToPopulate.tunnelUsageId = managedTrainId
     tableToPopulate.primaryState = managedTrain.tunnelUsageState
-    if managedTrain.portalTrackTrain ~= nil then
-        tableToPopulate.train = managedTrain.portalTrackTrain
-    elseif managedTrain.approachingTrain ~= nil then
-        tableToPopulate.train = managedTrain.approachingTrain
-    elseif managedTrain.leavingTrain ~= nil then
-        tableToPopulate.train = managedTrain.leavingTrain
-    end
+    tableToPopulate.train = MOD.Interfaces.TrainManager.GetCurrentTrain(managedTrain)
     tableToPopulate.tunnelId = managedTrain.tunnel.id
 end
 

@@ -38,7 +38,8 @@
 ---
 ---@class StringOrNumber string|int|double
 ---
----@class null @ Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.
+---@diagnostic disable-line Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.
+---@class null
 ---
 ---@class SurfacePositionString @ the entities surface and position as a string: "surfaceId_x,y"
 ---
