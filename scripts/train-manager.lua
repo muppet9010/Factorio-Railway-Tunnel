@@ -46,7 +46,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field traversalInitialSpeedAbsolute? double|null @ The absolute speed the train was going at when it started its traversal.
 ---@field dummyTrainCarriage? LuaEntity|null @ The dummy train carriage used to keep the train stop reservation alive while the main train is traversing the tunel.
 ---@field targetTrainStop? LuaEntity|null @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
----@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train.
+---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train at this moment. Can be updated from TRUE to FALSE if all players get out while its underground. In this case the per tick handling of the train will continue.
 ---
 ---@field surface LuaSurface @ The main world surface that this managed train is on.
 ---@field entrancePortal Portal @ The portal global object of the entrance portal for this tunnel usage instance.
@@ -77,7 +77,7 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.GetCurrentTrain = TrainManager.GetCurrentTrain
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
-    EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundCompleted_Scheduled", TrainManager.TrainUndergroundCompleted_Scheduled)
+    EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundOngoing_Scheduled", TrainManager.TrainUndergroundOngoing_Scheduled)
 end
 
 -------------------------------------------------------------------------------
@@ -168,13 +168,8 @@ TrainManager.ProcessManagedTrains = function(event)
                 -- Keep on running until either the train triggers the Transition signal or the train leaves the portal tracks.
                 TrainManager.TrainOnPortalTrackOngoing(managedTrain)
             elseif managedTrain.tunnelUsageState == TunnelUsageState.underground then
-                if managedTrain.undergroundTrainHasPlayersRiding then
-                    -- Only reason we have to update per tick while travelling underground currently.
-                    TrainManager.TrainUndergroundOngoing(managedTrain, event.tick)
-                else
-                    -- Nothing to do, the arrival is scheduled. Should never really be reached due to the "skipTickCheck" ManagedTrain field.
-                    return
-                end
+                -- Only reason we have to update per tick while travelling underground is if there were players riding it when it started its underground traversal.
+                TrainManager.TrainUndergroundOngoing(managedTrain, event.tick)
             end
         end
     end
@@ -324,39 +319,40 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
     MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 
-    -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the tick check will pick this up and deal with it.
+    -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the per tick train processing check will pick this up and deal with it from the next tick.
     if not managedTrain.undergroundTrainHasPlayersRiding then
-        EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain})
+        EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundOngoing_Scheduled", managedTrain.id, {managedTrain = managedTrain})
         managedTrain.skipTickCheck = true -- We can ignore this managed train until its arrival tick event fires.
     end
 end
 
---- Runs each tick for when we need to track a train while underground in detail.
----
---- Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
+--- Runs each tick for when we need to track a train while underground in detail. Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
 ---@param managedTrain ManagedTrain
 ---@param currentTick Tick
 TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
-    -- OVERHAUL: use of managedTrain.traversalArrivalTick doesn't handle if the train is delayed. Will mean the player goes at full speed through the tunnel and then sits still for the delayed arrival from the train having to brake. Will also need to store the movement per tick so we can move te player container by that much.
-    if currentTick < managedTrain.traversalArrivalTick then
-        -- Train still waiting on its arrival time.
-        if managedTrain.undergroundTrainHasPlayersRiding then
-            MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainer(managedTrain)
-        end
-    else
-        -- Train arrival time has come.
-
+    -- If train arrival time has come then start the train leaving.
+    if currentTick >= managedTrain.traversalArrivalTick then
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
         local train = managedTrain.train
         TrainManager.SetLeavingTrainSpeedInCorrectDirection(train, managedTrain.trainLeavingSpeedAbsolute, managedTrain, managedTrain.targetTrainStop)
 
         TrainManager.TrainUndergroundCompleted(managedTrain)
+        return
+    end
+
+    -- Train still waiting on its arrival time so check and update the arrival time and speed. Then move the player containers.
+    --TODO: this function needs to check leaving track state and brake/accelerate approperiately.
+    local speed = (managedTrain.trainLeavingSpeedAbsolute + managedTrain.traversalInitialSpeedAbsolute) / 2 --TODO: temp hard coded as average from starting to leaving speeds for container movement testing.
+
+    -- If there are still players in the train then update their positions.
+    if managedTrain.undergroundTrainHasPlayersRiding then
+        MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainers(managedTrain, speed)
     end
 end
 
 --- Run when the train is scheduled to arrive at the end of the tunnel.
 ---@param event UtilityScheduledEvent_CallbackObject
-TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
+TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
     local managedTrain = event.data.managedTrain ---@type ManagedTrain
     local previousBrakingTargetEntityId = event.data.brakingTargetEntityId ---@type UnitNumber
     if managedTrain == nil or managedTrain.tunnelUsageState ~= TunnelUsageState.underground then
@@ -559,7 +555,7 @@ TrainManager.TrainUndergroundCompleted_Scheduled = function(event)
         if delayTicks > 0 then
             -- Schedule the next attempt at releasing the train.
             managedTrain.traversalArrivalTick = managedTrain.traversalArrivalTick + delayTicks
-            EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundCompleted_Scheduled", managedTrain.id, {managedTrain = managedTrain, brakingTargetEntityId = brakingTargetEntityId})
+            EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundOngoing_Scheduled", managedTrain.id, {managedTrain = managedTrain, brakingTargetEntityId = brakingTargetEntityId})
 
             -- Reset the leaving trains speed and state as we don't want it to do anything yet.
             train.speed = 0
@@ -591,11 +587,6 @@ end
 --- Train has arrived and needs tidying up.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainUndergroundCompleted = function(managedTrain)
-    -- Handle any players riding in the train.
-    if managedTrain.undergroundTrainHasPlayersRiding then
-        MOD.Interfaces.PlayerContainer.TransferPlayerFromContainerToLeavingCarriage(nil, nil)
-    end
-
     -- Return the leaving train carriages to their origional force and let them take damage again.
     local carriage
     for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
@@ -603,6 +594,12 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
         carriage.force = managedTrain.force
         carriage.destructible = true
     end
+
+    -- Handle any players riding in the train. Have to do after setting the carriage's forces back.
+    if managedTrain.undergroundTrainHasPlayersRiding then
+        MOD.Interfaces.PlayerContainer.TransferPlayersFromContainersToLeavingCarriages(managedTrain)
+    end
+    managedTrain.undergroundTrainHasPlayersRiding = false
 
     -- Set the per tick event back to running. In some UndergroundOngoing states this was set to skip each tick as not needed due to scheduled events.
     managedTrain.skipTickCheck = false
@@ -774,9 +771,6 @@ end
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
 ---@param dontReleaseTunnel? boolean|null @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, dontReleaseTunnel)
-    if managedTrain.undergroundTrainHasPlayersRiding then
-        MOD.Interfaces.PlayerContainer.On_TerminateTunnelTrip(managedTrain)
-    end
     TrainManager.RemoveManagedTrainEntry(managedTrain)
 
     if not dontReleaseTunnel then
@@ -874,6 +868,16 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
         lastPlacedCarriage = TrainManager.CopyCarriage(targetSurface, refCarriageData.entity, nextCarriagePosition, nil, carriageOrientation)
         lastPlacedCarriage_name = refCarriageData.prototypeName
 
+        -- If the train has any players in it then check each carriage for a player and handle them.
+        -- Have to check before we update the carriage data cache entity to the new leaving carriage.
+        if playersInTrain then
+            driver = refCarriageData.entity.get_driver()
+            if driver ~= nil then
+                managedTrain.undergroundTrainHasPlayersRiding = true
+                MOD.Interfaces.PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
+            end
+        end
+
         -- Update data cache.
         refCarriageData.entity = lastPlacedCarriage
 
@@ -882,17 +886,8 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
             newLeadCarriageUnitNumber = lastPlacedCarriage.unit_number
         end
 
-        -- Make the cloned carriage invunerable so that it can't be killed while "underground".
+        -- Make the cloned carriage invunerable so that it can't be killed while "underground". It had its force changed when it was copied.
         lastPlacedCarriage.destructible = false
-
-        -- If the train has any players in it then check each carriage for a player and handle them.
-        if playersInTrain then
-            driver = lastPlacedCarriage.get_driver()
-            if driver ~= nil then
-                managedTrain.undergroundTrainHasPlayersRiding = true
-                MOD.Interfaces.PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
-            end
-        end
     end
 
     local leavingTrain = lastPlacedCarriage.train
