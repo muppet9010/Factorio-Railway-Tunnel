@@ -39,7 +39,8 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field trainReachedPortalTracks boolean @ If the train had reached the portal tracks or not.
 ---@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet. Cleared when the train enters the tunnel.
 ---
----@field traversalTravelDistance double|null @ The length of tunnel the train is travelling through on this traversal. This is the distance for the lead carriage from the entering position to the leaving position.
+---@field traversalTravelDistance? double|null @ The length of tunnel the train is travelling through on this traversal. This is the distance for the lead carriage from the entering position to the leaving position.
+---@field traversalDistanceTravelledSoFar? double|null How far through the tunnel the train has covered so far. Only used when we move the train every tick, rather than pre-calculating its arrival time and scheduling the event.
 ---@field traversalInitialDuration? Tick|null @ The number of tick's the train takes to traverse the tunnel.
 ---@field traversalArrivalTick? Tick|null @ The tick the train reaches the far end of the tunnel and is restarted.
 ---@field trainLeavingSpeedAbsolute? double|null @ The absolute speed the train will be set too at the moment it starts leaving the tunnel.
@@ -169,7 +170,7 @@ TrainManager.ProcessManagedTrains = function(event)
                 TrainManager.TrainOnPortalTrackOngoing(managedTrain)
             elseif managedTrain.tunnelUsageState == TunnelUsageState.underground then
                 -- Only reason we have to update per tick while travelling underground is if there were players riding it when it started its underground traversal.
-                TrainManager.TrainUndergroundOngoing(managedTrain, event.tick)
+                TrainManager.TrainUndergroundOngoing(managedTrain)
             end
         end
     end
@@ -295,17 +296,6 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     managedTrain.approachingTrainReachedFullSpeed = nil
     managedTrain.portalTrackTrainBySignal = nil
 
-    -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
-    -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
-    local traversalTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
-    -- Estimate how long it will take to complete the distance and then final speed.
-    local estimatedTicks = Utils.EstimateAcceleratingTrainTicksToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, traversalTravelDistance)
-    local estimatedSpeedAbsolute, _ = Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, estimatedTicks)
-    managedTrain.traversalTravelDistance = traversalTravelDistance
-    managedTrain.traversalInitialDuration = estimatedTicks
-    managedTrain.traversalArrivalTick = tick + estimatedTicks
-    managedTrain.trainLeavingSpeedAbsolute = estimatedSpeedAbsolute
-
     -- Remove the entering train's carriage entities. Have to use this reference and not the cached data as it was updated earlier in this function.
     for i, carriage in pairs(enteringTrain.carriages) do
         carriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
@@ -319,8 +309,24 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
     MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 
-    -- If theres no player in the train we can just forward schedule the arrival. If there is a player then the per tick train processing check will pick this up and deal with it from the next tick.
-    if not managedTrain.undergroundTrainHasPlayersRiding then
+    -- Its the underground distance, portal train waiting length and 17 tiles (3 tiles in to the entry protal part, the 2 blocked portals, 2 tiles to get to the first blocked portal).
+    managedTrain.traversalTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + 17
+
+    -- Handle the next step of processing differently based on if there are players in the train or not.
+    if managedTrain.undergroundTrainHasPlayersRiding then
+        -- There is a player or more in the train so will use per tick train processing that will check the distance remaining and deal with it from the next tick.
+
+        managedTrain.traversalDistanceTravelledSoFar = 0
+    else
+        -- Theres no player in the train so we can calculate its best arrival time schedule for this time.
+
+        -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
+        -- Estimate how long it will take to complete the distance and then final speed.
+        local estimatedTicks = Utils.EstimateAcceleratingTrainTicksToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, managedTrain.traversalTravelDistance)
+        managedTrain.trainLeavingSpeedAbsolute, _ = Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, estimatedTicks)
+        managedTrain.traversalInitialDuration = estimatedTicks
+        managedTrain.traversalArrivalTick = tick + estimatedTicks
+
         EventScheduler.ScheduleEventOnce(managedTrain.traversalArrivalTick, "TrainManager.TrainUndergroundOngoing_Scheduled", managedTrain.id, {managedTrain = managedTrain})
         managedTrain.skipTickCheck = true -- We can ignore this managed train until its arrival tick event fires.
     end
@@ -328,10 +334,16 @@ end
 
 --- Runs each tick for when we need to track a train while underground in detail. Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
 ---@param managedTrain ManagedTrain
----@param currentTick Tick
-TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
-    -- If train arrival time has come then start the train leaving.
-    if currentTick >= managedTrain.traversalArrivalTick then
+TrainManager.TrainUndergroundOngoing = function(managedTrain)
+    --TODO: this function needs to check leaving track state and brake/accelerate approperiately.
+    local newSpeed = managedTrain.traversalInitialSpeedAbsolute --TODO: temp hard coded as average from starting to leaving speeds for container movement testing.
+
+    -- Update the final leaving speed and distance travelled so far.
+    managedTrain.trainLeavingSpeedAbsolute = newSpeed
+    managedTrain.traversalDistanceTravelledSoFar = managedTrain.traversalDistanceTravelledSoFar + newSpeed
+
+    -- If train will cover the required distance by next tick then it has arrived. If we wait for it to have passed the players view jumps backwards.
+    if managedTrain.traversalDistanceTravelledSoFar >= (managedTrain.traversalTravelDistance - newSpeed) then
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
         local train = managedTrain.train
         TrainManager.SetLeavingTrainSpeedInCorrectDirection(train, managedTrain.trainLeavingSpeedAbsolute, managedTrain, managedTrain.targetTrainStop)
@@ -340,17 +352,13 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
         return
     end
 
-    -- Train still waiting on its arrival time so check and update the arrival time and speed. Then move the player containers.
-    --TODO: this function needs to check leaving track state and brake/accelerate approperiately.
-    local speed = (managedTrain.trainLeavingSpeedAbsolute + managedTrain.traversalInitialSpeedAbsolute) / 2 --TODO: temp hard coded as average from starting to leaving speeds for container movement testing.
-
     -- If there are still players in the train then update their positions.
     if managedTrain.undergroundTrainHasPlayersRiding then
-        MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainers(managedTrain, speed)
+        MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainers(managedTrain, newSpeed)
     end
 end
 
---- Run when the train is scheduled to arrive at the end of the tunnel.
+--- Run when the train is scheduled to arrive at the end of the tunnel. So there's no players in the train when it enters underground.
 ---@param event UtilityScheduledEvent_CallbackObject
 TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
     local managedTrain = event.data.managedTrain ---@type ManagedTrain
