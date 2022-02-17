@@ -25,7 +25,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field tunnel? Tunnel|null @ ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
 ---@field portalRailEntities? table<UnitNumber, LuaEntity>|null @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
 ---@field portalOtherEntities? table<UnitNumber, LuaEntity>|null @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
----@field portalEntryPointPosition? Position|null @ the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
+---@field portalEntryPointPosition? Position|null @ the position of the entry point to the portal. Is the middle of the rail track where they meet the portal edge. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorEntity? LuaEntity|null @ hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorPosition? Position|null @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorEntity? LuaEntity|null @ hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
@@ -170,7 +170,7 @@ local PortalTypeData = {
 
 -- Distances are from entry end portal position in the Portal.entryDirection direction.
 local EntryEndPortalSetup = {
-    trackEntryPointFromCenter = 3, -- The border of the portal on the entry side. -- OVERHAUL: likely not needed in the end and can then be removed.
+    trackEntryPointFromCenter = 3, -- The border of the portal on the entry side.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
     enteringTrainUsageDetectorEntityDistance = 1.95 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carriages and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
 }
@@ -785,6 +785,9 @@ Portal.On_PreTunnelCompleted = function(portals)
             }
         }
 
+        -- Cache the portalEntryPosition.
+        portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = -math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, entryPortalEnd.entity_position)
+
         -- Cache the objects details for later use.
         portal.leavingTrainFrontPosition = Utils.RotateOffsetAroundPosition(reverseEntryOrientation, {x = -1.5, y = 2}, entrySignalOutEntityPosition)
         portal.dummyLocomotivePosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}, blockedPortalEnd.entity_position)
@@ -872,8 +875,6 @@ Portal.On_PreTunnelCompleted = function(portals)
             [blockedInvisibleSignalOutEntity.unit_number] = blockedInvisibleSignalOutEntity,
             [transitionSignalBlockingLocomotiveEntity.unit_number] = transitionSignalBlockingLocomotiveEntity
         }
-
-        --portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(builtEntity.orientation, {x = 0, y = -math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, portalEntity_position) -- only used by player containers and likely not suitable any more. fix when doing player containers.
 
         -- Remove the entry end's old closed graphics and add new open ones.
         for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do

@@ -11,7 +11,6 @@ local Utils = require("utility.utils")
 local Events = require("utility.events")
 local Logging = require("utility.logging")
 local EventScheduler = require("utility.event-scheduler")
-local PlayerContainer = require("scripts.player-container")
 local Common = require("scripts.common")
 local TrainManagerRemote = require("scripts.train-manager-remote")
 local TunnelShared = require("scripts.tunnel-shared")
@@ -342,7 +341,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, currentTick)
     if currentTick < managedTrain.traversalArrivalTick then
         -- Train still waiting on its arrival time.
         if managedTrain.undergroundTrainHasPlayersRiding then
-            PlayerContainer.MoveATrainsPlayerContainer(managedTrain)
+            MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainer(managedTrain)
         end
     else
         -- Train arrival time has come.
@@ -594,7 +593,7 @@ end
 TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Handle any players riding in the train.
     if managedTrain.undergroundTrainHasPlayersRiding then
-        PlayerContainer.TransferPlayerFromContainerForClonedUndergroundCarriage(nil, nil)
+        MOD.Interfaces.PlayerContainer.TransferPlayerFromContainerToLeavingCarriage(nil, nil)
     end
 
     -- Return the leaving train carriages to their origional force and let them take damage again.
@@ -669,7 +668,7 @@ TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEn
             end
 
             if managedTrain.undergroundTrainHasPlayersRiding then
-                PlayerContainer.On_TunnelRemoved(managedTrain, killForce, killerCauseEntity)
+                MOD.Interfaces.PlayerContainer.On_TunnelRemoved(managedTrain, killForce, killerCauseEntity)
             end
 
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.tunnelRemoved)
@@ -776,7 +775,7 @@ end
 ---@param dontReleaseTunnel? boolean|null @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, dontReleaseTunnel)
     if managedTrain.undergroundTrainHasPlayersRiding then
-        PlayerContainer.On_TerminateTunnelTrip(managedTrain)
+        MOD.Interfaces.PlayerContainer.On_TerminateTunnelTrip(managedTrain)
     end
     TrainManager.RemoveManagedTrainEntry(managedTrain)
 
@@ -891,7 +890,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
             driver = lastPlacedCarriage.get_driver()
             if driver ~= nil then
                 managedTrain.undergroundTrainHasPlayersRiding = true
-                PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
+                MOD.Interfaces.PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
             end
         end
     end

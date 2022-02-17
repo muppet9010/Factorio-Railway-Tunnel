@@ -1,11 +1,9 @@
--- Sends a short train from the south to the north. First loop player watches, second loop player rides the train.
--- Note the player being in the train after the tunnel traversal isn't checked by the test.
+-- Sends a short train from the south to the north.
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
 
 Test.RunTime = 1800
-Test.RunLoopsMax = 2
 
 ---@param testName string
 Test.OnLoad = function(testName)
@@ -30,17 +28,6 @@ Test.Start = function(testName)
 
     local train = placedEntitiesByGroup["locomotive"][1].train
 
-    -- Put the player in a carriage on the 2nd loop.
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
-    if testManagerEntry.runLoopsCount == 2 then
-        local player = game.connected_players[1]
-        if player ~= nil then
-            train.carriages[2].set_driver(player)
-        else
-            game.print("No player found to set as driver, test continuing regardless")
-        end
-    end
-
     local testData = TestFunctions.GetTestDataObject(testName)
     ---@class Tests_STSTNTSWPR_TestScenarioBespokeData
     local testDataBespoke = {
@@ -60,8 +47,6 @@ end
 Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
-
--- OVERHAUL: the directions for train snapshots are guesses and not tested at the time as tests commented out.
 
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
