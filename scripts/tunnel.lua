@@ -16,7 +16,7 @@ local Utils = require("utility.utils")
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 ---@field maxTrainLengthTiles uint @ the max train length in tiles this tunnel supports.
----@field guiOpenedByPlayers table<Id, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this tunnel.
+---@field guiOpenedByPlayers table<PlayerIndex, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this tunnel.
 
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.

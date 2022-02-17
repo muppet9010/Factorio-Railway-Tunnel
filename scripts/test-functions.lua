@@ -81,6 +81,7 @@ TestFunctions.TestFailed = function(testName, errorText)
     end
 end
 --- Goes in to the test log file after the equals sign on the current row. For rare cases a test wants to inject log data in for doign full test runs to file.
+---
 --- Can be called in all cases and will only write if "justLogAllTests" is enabled.
 ---@param text string
 TestFunctions.LogTestDataToTestRow = function(text)
@@ -97,6 +98,7 @@ TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, te
 end
 
 --- Schedule an event named function once at a given tick. To be called from Start().
+---
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param tick Tick
 ---@param testName TestManager_TestName
@@ -112,6 +114,7 @@ TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, insta
 end
 
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
+---
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
@@ -187,9 +190,13 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
 end
 
 --- Registers for tunnel usage change notifications to be recorded in the Test Data object's tunnelUsageChanges field. To be called from Start().
+---
 --- Used when a test will check tunnel usage events once per tick.
+---
 --- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
+---
 --- If multiple actions occur in the same tick only the last one is visible in the "lastAction" and "lastChangeReason" fields which shouldn't be an issue for normal tests. All the events are in the "actions" field.
+---
 --- If a test needs to react to each train state change in turn then the TestFunctions.RegisterTunnelUsageChangesToTestFunction() function should be used instead.
 ---@param testName string
 TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
@@ -197,6 +204,7 @@ TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
 end
 
 --- Registers for tunnel usage change notifications to be passed to a test function for processing sequentially. To be called from Start().
+---
 --- Used when a tests needs to react to each event in turn. In most use cases tests only need to check the lastest tunnel usage event per tick and the TestFunctions.RegisterRecordTunnelUsageChanges() function is more approperiate.
 ---@param testName string
 ---@param testCallbackFunction function @ When called recieves a single argument "event" of type TestFunctions_RemoteTunnelUsageChangedEvent.
@@ -213,7 +221,11 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract view of a train purely for the purpose of being compared before and after using a tunnel. Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
+--- Returns an abstract view of a train purely for the purpose of being compared before and after using a tunnel.
+---
+--- Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken.
+---
+--- Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
 ---@param forwardsOrientation RealOrientation @ The forwards orientation of this train. If provided the function can be used for a 0 speed train.
 ---@return TestFunctions_TrainSnapshot
@@ -274,7 +286,9 @@ TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
     return trainSnapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel. Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
+--- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel.
+---
+--- Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
 ---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
@@ -327,11 +341,11 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
 end
 
 --- Used to specify a train carriage type as a human readable text string. The orientation of "Forwards" is defined at the building stage.
----    carriageSymbols:
----    <   forwards loco
----    >   rear loco
----    -   forwards cargo wagon
----    =   rear cargo wagon
+--- carriageSymbols:
+--- - < forwards loco
+--- - \> rear loco
+--- - \- forwards cargo wagon
+--- - = rear cargo wagon
 ---@alias TestFunctions_CarriageTextualRepresentation "<"|">"|"-"|"="
 
 ---@class TestFunctions_TrainSpecifiction @ used to specify a trains details in short-hand. Is parsed for usage in to full table by TestFunctions.GetTrainCompositionFromTextualRepresentation().
@@ -556,6 +570,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
+---
 --- Only needs calling if trains are being built manually/scripted, as TestFunctions.BuildBlueprintFromString() includes it.
 ---@param locomotives? LuaEntity[]|null
 ---@param cargoWagons? LuaEntity[]|null

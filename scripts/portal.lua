@@ -55,7 +55,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field nonConnectedInternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
----@field guiOpenedByPlayers table<Id, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this portal part.
+---@field guiOpenedByPlayers table<PlayerIndex, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 ---
@@ -1095,6 +1095,7 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
 end
 
 --- Make a list of portal parts forget their portal and connections. Then recalculate the portal and connections again.
+---
 --- Useful for when breaking a portal up or removing parts from a portal.
 ---@param portalParts table<UnitNumber, PortalPart>
 Portal.RecalculatePortalPartsParentPortal = function(portalParts)
@@ -1310,7 +1311,9 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
     }
 end
 
---- Will try and place the entering train detection entity now and if not possible will keep on trying each tick until either successful or a tunnel state setting stops the attempts. Is safe to call if the entity already exists as will just abort (initally or when in per tick loop).
+--- Will try and place the entering train detection entity now and if not possible will keep on trying each tick until either successful or a tunnel state setting stops the attempts.
+---
+--- Is safe to call if the entity already exists as will just abort (initally or when in per tick loop).
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@param justplaceIt boolean @ If true the detector is built without a check first. Some weird edge cases whre the train has rammed the detector and stopped right next to it will blocks its build check, but it will work fine once just placed.

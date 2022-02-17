@@ -109,6 +109,7 @@ Events.RemoveHandler = function(eventName, handlerName)
 end
 
 --- Called when needed, but not before tick 0 as they are ignored. Can either raise a custom registered event registered by Events.RegisterCustomEventName(), or one of the limited events defined in the API: https://lua-api.factorio.com/latest/LuaBootstrap.html#LuaBootstrap.raise_event.
+---
 --- Older Factorio versions allowed for raising any base Factorio event yourself, so review on upgrade.
 ---@param eventData UtilityEvents_EventData
 Events.RaiseEvent = function(eventData)
@@ -125,6 +126,7 @@ Events.RaiseEvent = function(eventData)
 end
 
 --- Called from anywhere, including OnStartup in tick 0. This won't be passed out to other mods however, only run within this mod.
+---
 --- This calls this mod's event handler bypassing the Factorio event system.
 ---@param eventData UtilityEvents_EventData
 Events.RaiseInternalEvent = function(eventData)

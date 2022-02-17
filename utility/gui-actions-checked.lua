@@ -14,12 +14,14 @@ MOD.guiCheckedActions = MOD.guiCheckedActions or {}
 ---@field eventData on_gui_checked_state_changed @ The raw Factorio event data for the on_gui_checked_state_changed event.
 
 --- Must be called once within the mod to activate the library for reacting to gui checkeds. On other direct registering to the "on_gui_checked_state_changed" event is allowed within the mod.
+---
 --- Called from the root of Control.lua or from OnLoad.
 GuiActionsChecked.MonitorGuiCheckedActions = function()
     script.on_event(defines.events.on_gui_checked_state_changed, GuiActionsChecked._HandleGuiCheckedAction)
 end
 
 --- Called from OnLoad() from each script file.
+---
 --- When actionFunction is triggered a single argument is passed to the actionFunction of type UtilityGuiActionsChecked_ActionData.
 ---@param actionName string @ A unique name for this function to be registered with.
 ---@param actionFunction function @ The callback function for when the actionName linked GUI element is checked.
@@ -31,6 +33,7 @@ GuiActionsChecked.LinkGuiCheckedActionNameToFunction = function(actionName, acti
 end
 
 --- Generally called from the GuiUtil library now, but can be called manually from OnLoad().
+---
 --- Called to register a checkbox's name and type to a specific GUI checked action name and optional standard data (global to all players). Only needs to be run once per mod.
 ---@param elementName string @ The name of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param elementType string @ The type of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
@@ -51,6 +54,7 @@ GuiActionsChecked.RegisterGuiForCheckedStateChange = function(elementName, eleme
 end
 
 --- Called when desired to remove a specific checkbox from triggering its action.
+---
 --- Should be called to remove links for checkboxs when their elements are removed to stop global data lingering. But newly registered functions will overwrite them so not critical to remove.
 ---@param elementName string @ Corrisponds to the same argument name on GuiActionsChecked.RegisterGuiForCheckedStateChange().
 ---@param elementType string @ Corrisponds to the same argument name on GuiActionsChecked.RegisterGuiForCheckedStateChange().
@@ -92,6 +96,7 @@ GuiActionsChecked._HandleGuiCheckedAction = function(rawFactorioEventData)
 end
 
 --- Makes a UtilityGuiActionsChecked_GuiElementName by combining the element's name and type.
+---
 --- Just happens to be the same as in GuiUtil, but not a requirement.
 ---@param elementName string
 ---@param elementType string

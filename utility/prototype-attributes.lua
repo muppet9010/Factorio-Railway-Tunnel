@@ -5,6 +5,7 @@ MOD = MOD or {}
 MOD.UTILITYPrototypeAttributes = MOD.UTILITYPrototypeAttributes or {} ---@type UtilityPrototypeAttributes_CachedTypes
 
 --- Returns the request attribute of a prototype.
+---
 --- Obtains from the Lua global variable caches if present, otherwise obtains the result and caches it before returning it.
 ---@param prototypeType UtilityPrototypeAttributes_PrototypeTypes
 ---@param prototypeName string

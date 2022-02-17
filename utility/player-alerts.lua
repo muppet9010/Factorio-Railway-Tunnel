@@ -25,6 +25,7 @@ local Events = require("utility.events")
 --------------------------------------------------------------------------------------------
 
 --- Called from the root of Control.lua
+---
 --- Only needs to be called once by the mod.
 PlayerAlerts.RegisterPlayerAlerts = function()
     Events.RegisterHandlerEvent(defines.events.on_player_joined_game, "PlayerAlerts._OnPlayerJoinedGame", PlayerAlerts._OnPlayerJoinedGame)

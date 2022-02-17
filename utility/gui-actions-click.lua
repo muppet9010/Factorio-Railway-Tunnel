@@ -14,12 +14,14 @@ MOD.guiClickActions = MOD.guiClickActions or {}
 ---@field eventData on_gui_click @ The raw Factorio event data for the on_gui_click event.
 
 --- Must be called once within the mod to activate the library for reacting to gui clicks. On other direct registering to the "on_gui_click" event is allowed within the mod.
+---
 --- Called from the root of Control.lua or from OnLoad.
 GuiActionsClick.MonitorGuiClickActions = function()
     script.on_event(defines.events.on_gui_click, GuiActionsClick._HandleGuiClickAction)
 end
 
 --- Called from OnLoad() from each script file.
+---
 --- When actionFunction is triggered a single argument is passed to the actionFunction of type UtilityGuiActionsClick_ActionData.
 ---@param actionName string @ A unique name for this function to be registered with.
 ---@param actionFunction function @ The callback function for when the actionName linked GUI element is clicked.
@@ -31,6 +33,7 @@ GuiActionsClick.LinkGuiClickActionNameToFunction = function(actionName, actionFu
 end
 
 --- Generally called from the GuiUtil library now, but can be called manually from OnLoad().
+---
 --- Called to register a button or sprite-button GuiElement's name and type to a specific GUI click action name and optional standard data (global to all players). Only needs to be run once per mod.
 ---@param elementName string @ The name of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param elementType string @ The type of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
@@ -51,6 +54,7 @@ GuiActionsClick.RegisterGuiForClick = function(elementName, elementType, actionN
 end
 
 --- Called when desired to remove a specific button GuiElement from triggering its action.
+---
 --- Should be called to remove links for buttons when their elements are removed to stop global data lingering. But newly registered functions will overwrite them so not critical to remove.
 ---@param elementName string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
 ---@param elementType string @ Corrisponds to the same argument name on GuiActionsClick.RegisterGuiForClick().
@@ -92,6 +96,7 @@ GuiActionsClick._HandleGuiClickAction = function(rawFactorioEventData)
 end
 
 --- Makes a UtilityGuiActionsClick_GuiElementName by combining the element's name and type.
+---
 --- Just happens to be the same as in GuiUtil, but not a requirement.
 ---@param elementName string
 ---@param elementType string

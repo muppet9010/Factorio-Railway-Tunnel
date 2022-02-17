@@ -12,7 +12,7 @@ local TrainFuelChestCheckTicks = 15
 
 PortalTunnelGui.CreateGlobals = function()
     global.portalTunnelGui = global.portalTunnelGui or {}
-    global.portalTunnelGui.portalPartOpenByPlayer = global.portalTunnelGui.portalPartOpenByPlayer or {} ---@type table<Id, PortalPart> @ A list of each palyer with a portal GUI open and which PortalPart it is. For reverse lookup of PortalPart by player.
+    global.portalTunnelGui.portalPartOpenByPlayer = global.portalTunnelGui.portalPartOpenByPlayer or {} ---@type table<PlayerIndex, PortalPart> @ A list of each player with a portal GUI open and which PortalPart it is. For reverse lookup of PortalPart by player.
     global.portalTunnelGui.lastFuelChestId = global.portalTunnelGui.lastFuelChestId or 0 ---@type uint
 end
 
@@ -517,7 +517,9 @@ PortalTunnelGui.On_CloseButtonClicked = function(event)
 end
 
 --- Called by the Portal class when a change has occured to the portal part of one of its parents that the GUI needs to react to.
+---
 --- Currently we just recreate the GUI as its the easiest and this will be a very rare event.
+---
 --- This event may be called multiple times for portal changes as we call it on each cange of significance and sometimes these are done in a cycle over a list of portal parts. Is wasteful UPS wise, but simpliest code and infrequent calling in reality.
 ---@param portalPart PortalPart
 ---@param playerIndex Id
@@ -778,6 +780,7 @@ PortalTunnelGui.On_MineTunnelTrainsConfirmationChecked = function(event)
 end
 
 --- Called when the player has clicked to actually mine all trains in this tunnel and its portals.
+---
 --- Note: if there was ever trains with more than the 65,000 item stacks then some would get lost. If this is an issue can add multiple corpses and track how full they get I guess.
 ---@param event UtilityGuiActionsClick_ActionData
 PortalTunnelGui.On_MineTunnelTrainsClicked = function(event)

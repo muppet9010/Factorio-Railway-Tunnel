@@ -28,6 +28,7 @@ Common.RollingStockTypes = {
 }
 
 --- The distance from the center of the carriage to the end of it for when placing carriages. This is half the combined connection and joint distance of the carriage.
+---
 --- Hardcoded values as can't get the connection and joint distance via API.
 ---@class CarriagePlacementDistances
 Common.CarriagePlacementDistances = {
@@ -38,6 +39,7 @@ Common.CarriagePlacementDistances = {
 }
 
 --- Gets the combined connection and joint distance of the carriage.
+---
 --- Hardcoded values as can't get the connection and joint distance via API.
 ---@class CarriageConnectedLengths
 Common.CarriageConnectedLengths = {
@@ -48,8 +50,11 @@ Common.CarriageConnectedLengths = {
 }
 
 --- Gets the gap that the carriage has at one end of its entity when it connects to another carriage.
+---
 --- Hardcoded values as can't get the connection and joint distance via API.
+---
 --- This is the: (carriages connected length - double connection distance) / 2 as only 1 end of the entities total gap.
+---
 --- vanilla wagons: ( (3+4) - (3*2) ) / 2
 ---@class CarriageInterConnectionGaps
 Common.CarriagesOwnOffsetFromOtherConnectedCarriage = {
@@ -65,7 +70,7 @@ Common.TunnelSignalDirection = {
     outSignal = "outSignal"
 }
 
--- The managed train's state. Finished is for when the tunnel trip is completed.
+--- The managed train's state. Finished is for when the tunnel trip is completed.
 ---@class TunnelUsageState
 Common.TunnelUsageState = {
     portalTrack = "portalTrack",
@@ -75,7 +80,7 @@ Common.TunnelUsageState = {
     finished = "finished"
 }
 
--- The train's action to new state - Used by the train manager remote for state notifications to remote interface calls.
+--- The train's action to new state - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageAction
 Common.TunnelUsageAction = {
     startApproaching = "startApproaching",
@@ -85,7 +90,7 @@ Common.TunnelUsageAction = {
     terminated = "terminated"
 }
 
--- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
+--- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageChangeReason
 Common.TunnelUsageChangeReason = {
     reversedAfterLeft = "reversedAfterLeft",

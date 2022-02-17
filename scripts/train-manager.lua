@@ -126,7 +126,9 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, en
 end
 
 --- Used when a train is on a portal's track and thus the tunnel.
+---
 --- if its pathed to the tranisition signal already and claimed the tunnel we just need to record that it has entered the portal tracks in case it aborts its use of the tunnel (downgrades).
+---
 --- If its not pathed to the transition signal then we need to reserve the tunnel now for it. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their breaking distance is the stopping signal or when driven manually. They will claim the signal at a later point (upgrade) and thne that logic will superseed this.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
@@ -331,6 +333,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 end
 
 --- Runs each tick for when we need to track a train while underground in detail.
+---
 --- Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
 ---@param managedTrain ManagedTrain
 ---@param currentTick Tick
@@ -807,7 +810,9 @@ TrainManager.GetTrainIdsManagedTrain = function(trainId)
 end
 
 --- Clone the entering train to the front of the exit portal. This will minimise any tracking of the train when leaving.
+---
 --- This happens to duplicate the train schedule as a by product of using the entity clone feature.
+---
 --- This updates managedTrain.trainCachedData.carriagesCachedData with references to the new entities so the cached data becomes for the leaving train.
 ---@param managedTrain ManagedTrain
 ---@return LuaTrain @ Leaving train
@@ -1069,7 +1074,9 @@ TrainManager.SetTrainToAuto = function(train, targetTrainStop)
 end
 
 --- Sets a leaving trains speed correctly when we are unsure of the trains facing direction or the direction of its target. Sets managedTrain.trainMovingForwards for future usage.
+---
 ---OVERHAUL: DOESN'T ANY MORE: Also updates the managed train's directionalTrainSpeedCalculationData for a direction change.
+---
 --- In some cases where this is called the train does a reversal, i.e. when starting to leave a tunnel and finding the forwards path is blocked, but reversing through the tunnel is valid.
 ---@param train LuaTrain
 ---@param absoluteSpeed double

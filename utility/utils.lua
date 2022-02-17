@@ -442,6 +442,7 @@ Utils.RotateOffsetAroundPosition = function(orientation, offset, position)
 end
 
 --- Rotates the directionToRotate by a direction difference from the referenceDirection to the appliedDirection. Useful for rotating entities direction in proportion to a parent's direction change from known direction.
+---
 --- Should be done locally if called frequently.
 ---@param directionToRotate defines.direction
 ---@param referenceDirection defines.direction
@@ -573,6 +574,7 @@ Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
 end
 
 --- Checks if the provided number is a NaN value.
+---
 --- Should be done locally if called frequently.
 ---@param value number
 ---@return boolean valueIsANan
@@ -615,6 +617,7 @@ Utils.LoopFloatValueWithinRange = function(value, min, max)
 end
 
 --- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. But maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
+---
 --- Should be done locally if called frequently.
 ---@param value number
 ---@param minInclusive number
@@ -640,6 +643,7 @@ Utils.ClampNumber = function(value, min, max)
 end
 
 --- Takes a orientation (0-1) and returns a direction (int 0-7).
+---
 --- Should be done locally if called frequently.
 ---@param orientation RealOrientation @ Will be rounded to the nearest cardinal or intercardinal direction.
 ---@return defines.direction
@@ -656,6 +660,7 @@ Utils.OrientationToDirection = function(orientation)
 end
 
 --- Takes a direction (int 0-7) and returns an orientation (0-1).
+---
 --- Should be done locally if called frequently.
 ---@param directionValue defines.direction
 ---@return RealOrientation
@@ -690,6 +695,7 @@ Utils.LoopDirectionValue = function(directionValue)
 end
 
 --- Takes an orientation input value and if it's greater/less than the allowed orientation range it loops it back within the range.
+---
 --- Should be done locally if called frequently.
 ---@param orientationValue RealOrientation
 ---@return RealOrientation
@@ -967,6 +973,7 @@ Utils.TableValueToCommaString = function(aTable)
 end
 
 --- Makes a numbered text string from a table's keys with the keys wrapped in single quotes.
+---
 --- i.e. 1: 'firstKey', 2: 'secondKey'
 ---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.t
 ---@return string
@@ -988,6 +995,7 @@ Utils.TableKeyToNumberedListString = function(aTable)
 end
 
 --- Makes a numbered text string from a table's values with the values wrapped in single quotes.
+---
 --- i.e. 1: 'firstValue', 2: 'secondValue'
 ---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.t
 ---@return string
@@ -1238,7 +1246,8 @@ Utils.WasCreativeModeInstantDeconstructionUsed = function(event)
 end
 
 --- Updates the 'chancePropertyName' named attribute of each entry in the referenced `dataSet` table to be proportional of a combined dataSet value of 1.
--- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
+---
+--- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
 ---@param dataSet table[] @ The dataSet to be reviewed and updated.
 ---@param chancePropertyName string @ The attribute name that has the chance value per dataSet entry.
 ---@param skipFillingEmptyChance boolean @ If TRUE then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
@@ -1613,6 +1622,7 @@ Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventor
 end
 
 --- Try and move all equipment from a grid to an inventory.
+---
 --- Can only move the item name and count via API, Factorio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
 ---@param sourceGrid LuaEquipmentGrid
 ---@param targetInventory LuaInventory
@@ -1755,6 +1765,7 @@ Utils.GetBuilderInventory = function(builder)
 end
 
 --- Returns either tha player or force for robots from the EntityActioner. If script then returns neither.
+---
 --- Useful for passing in to rendering player/force filters or for returning items to them.
 ---@param actioner EntityActioner
 ---@return LuaPlayer|null
@@ -2028,6 +2039,7 @@ end
 Utils.MaxCorpseTimeToLive = 4200000000 ---@type uint
 
 --- Returns a luaObject if its valid, else nil. Convientent for inline usage when rarely called.
+---
 --- Should be done locally if called frequently.
 ---@param luaObject LuaBaseClass
 ---@return LuaBaseClass|null
@@ -2040,6 +2052,7 @@ Utils.ReturnValidLuaObjectOrNil = function(luaObject)
 end
 
 --- Gets the carriage at the head (leading) the train in its current direction.
+---
 --- Should be done locally if called frequently.
 ---@param train LuaTrain
 ---@param isFrontStockLeading boolean @ If the trains speed is > 0 then pass in true, if speed < 0 then pass in false.
@@ -2107,9 +2120,13 @@ end
 ---@field faceingFrontOfTrain? boolean|null @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
 
 --- Get the data other Utils functions need for calculating and estimating; a trains future speed, time to cover distance, etc.
+---
 --- If trainCarriagesDataArray is being used it populates the attributes: entity, prototypeType, prototypeName, faceingFrontOfTrain.
+---
 --- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.
+---
 --- Assumes all forward facing locomotives have the same fuel as the first one found. If no fuel is found in any locomotive then a default value of 1 is used and the return "noFuelFound" will indicate this,
+---
 --- Either train_carriages or trainCarriagesDataArray needs to be provided.
 ---@param train LuaTrain
 ---@param train_speed double @ Must not be 0 (stationary train).
@@ -2241,6 +2258,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
 end
 
 --- Calculates the speed of a train for 1 tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive
+---
 -- Often this is copied in to code inline for repeated calling.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
@@ -2250,6 +2268,7 @@ Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initial
 end
 
 --- Estimates how long an accelerating train takes to cover a distance, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
+---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
@@ -2263,6 +2282,7 @@ Utils.EstimateAcceleratingTrainTicksToCoverDistance = function(trainData, initia
 end
 
 --- Estimates train speed and distance covered after set number of ticks. Approximately accounts for air resistence, but final value will be a little off.
+---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double

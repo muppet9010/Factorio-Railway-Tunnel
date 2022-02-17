@@ -34,13 +34,16 @@ MOD.scheduledEventNames =
 --------------------------------------------------------------------------------------------
 
 --- Register the scheduler as it requires exclusive access to the on_tick Factorio event.
+---
 --- Called from the root of Control.lua
+---
 --- Only needs to be called once by the mod.
 EventScheduler.RegisterScheduler = function()
     Events.RegisterHandlerEvent(defines.events.on_tick, "EventScheduler._OnSchedulerCycle", EventScheduler._OnSchedulerCycle)
 end
 
 --- Used to register an event name to an event function. The event name is scheduled seperately as desired.
+---
 --- Called from OnLoad() from each script file.
 ---@param eventName string
 ---@param eventFunctionCallback function @ The callback function that is called when the scheduled event triggers. The callback function recieves a single paramater of type UtilityScheduledEventCallbackObject with relevent information, including any custom data (eventData) populated during the scheduling.
@@ -56,7 +59,9 @@ end
 --------------------------------------------------------------------------------------------
 
 --- Schedules an event name to run once at a set tick.
+---
 --- Called from OnStartup() or from some other event or trigger to schedule an event.
+---
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param eventTick Tick| @ eventTick of nil will be next tick, current or past ticks will fail. eventTick of -1 is a special input for current tick when used by events that run before the Factorio on_tick event, i.e. a custom input (key pressed for action) handler.
 ---@param eventName string @ The event name used to lookup the function to call, as registered with EventScheduler.RegisterScheduledEventType().
@@ -87,6 +92,7 @@ EventScheduler.ScheduleEventOnce = function(eventTick, eventName, instanceId, ev
 end
 
 --- Checks if an event name is scheduled as per other arguments.
+---
 --- Called whenever required.
 ---@param targetEventName string @ The event name as registered with EventScheduler.RegisterScheduledEventType().
 ---@param targetInstanceId? StringOrNumber|null @ the instance Id of the scheduled event to check for. If not provided checks all instance Ids.
@@ -104,6 +110,7 @@ EventScheduler.IsEventScheduledOnce = function(targetEventName, targetInstanceId
 end
 
 --- Removes the specified scheduled event that matches all supplied filter arguments.
+---
 --- Called whenever required.
 ---@param targetEventName string @ The event name to removed as registered with EventScheduler.RegisterScheduledEventType().
 ---@param targetInstanceId? StringOrNumber|null @ The instance Id of the scheduled event to match against. If not provided then the default of empty string is used.
@@ -116,6 +123,7 @@ EventScheduler.RemoveScheduledOnceEvents = function(targetEventName, targetInsta
 end
 
 --- Returns an array of the scheduled events that match the filter arguments.
+---
 --- Called whenever required.
 ---@param targetEventName string @ The event name as registered with EventScheduler.RegisterScheduledEventType().
 ---@param targetInstanceId? StringOrNumber|null @ The instance Id of the scheduled event to match against. If not provided then the default of empty string is used.
@@ -134,8 +142,11 @@ end
 --------------------------------------------------------------------------------------------
 
 --- Schedules an event name to run each tick.
+---
 --- Called from OnStartup() or from some other event or trigger to schedule an event to fire every tick from now on until cancelled.
+---
 --- Good if you need to pass data back with each firing and the event is going to be stopped/started. If its going to run constantly then betetr to just register for the on_tick event handler via the Events utlity class.
+---
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param eventName string @ The event name used to lookup the function to call, as registered with EventScheduler.RegisterScheduledEventType().
 ---@param instanceId? StringOrNumber|null @ Defaults to empty string if none was provided.
@@ -155,6 +166,7 @@ EventScheduler.ScheduleEventEachTick = function(eventName, instanceId, eventData
 end
 
 --- Checks if an event name is scheduled each tick as per other arguments.
+---
 --- Called whenever required.
 ---@param targetEventName string @ The event name to removed as registered with EventScheduler.RegisterScheduledEventType().
 ---@param targetInstanceId? StringOrNumber|null @ The instance Id of the scheduled event to match against. If not provided then the default of empty string is used.
@@ -171,6 +183,7 @@ EventScheduler.IsEventScheduledEachTick = function(targetEventName, targetInstan
 end
 
 --- Removes the specified scheduled event each tick that matches all supplied filter arguments.
+---
 --- Called whenever required.
 ---@param targetEventName string @ The event name to removed as registered with EventScheduler.RegisterScheduledEventType().
 ---@param targetInstanceId? StringOrNumber|null @ The instance Id of the scheduled event to match against. If not provided then the default of empty string is used.
@@ -182,6 +195,7 @@ EventScheduler.RemoveScheduledEventFromEachTick = function(targetEventName, targ
 end
 
 --- Returns the scheduled event each tick that match the filter arguments.
+---
 --- Called whenever required.
 ---@param targetEventName string @ The event name as registered with EventScheduler.RegisterScheduledEventType().
 ---@param targetInstanceId? StringOrNumber|null @ The instance Id of the scheduled event to match against. If not provided then the default of empty string is used.
@@ -235,6 +249,7 @@ EventScheduler._OnSchedulerCycle = function(event)
 end
 
 --- Loops over the scheduled once events and runs the actionFunction against each entry with the filter arguments.
+---
 --- If an actionFunction returns a single "result" item thats not nil then the looping is stopped early. Single "result" values of nil and all "results" entries continue the loop.
 ---@param targetEventName string
 ---@param targetInstanceId StringOrNumber
@@ -333,6 +348,7 @@ EventScheduler._GetScheduledOnceEventsFromTickEntry = function(tickEvents, targe
 end
 
 --- Loops over the scheduled each tick events and runs the actionFunction against each entry with the filter arguments.
+---
 --- If an actionFunction returns a single "result" item thats not nil then the looping is stopped early. Single "result" values of nil and all "results" entries continue the loop.
 ---@param targetEventName string
 ---@param targetInstanceId StringOrNumber
