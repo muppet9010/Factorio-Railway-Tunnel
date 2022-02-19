@@ -35,7 +35,7 @@ PlayerContainer.OnLoad = function()
     MOD.Interfaces.PlayerContainer.On_TunnelRemoved = PlayerContainer.On_TunnelRemoved
 end
 
---- Called by the custom event before the game tries to change driving state. We don't block the default game behavor and only suppliment it if the player is in a tunnel player container and failed to get out at the time.
+--- Called by the custom event before the game tries to change driving state. We don't block the default game behavor and just schedule to check in 1 tick if the player got out ok or not.
 ---
 --- This special handling is needed as if the player is in a player container or in a railway carriage and they are on a portal/tunnel segment, they may be blocked from getting out of the vehicle by default Factorio due to the hitboxes and distance Factorio looks to eject the player within.
 ---@param event CustomInputEvent
@@ -60,73 +60,89 @@ PlayerContainer.OnToggleDrivingInput = function(event)
     end
 end
 
--- Called every time a player changes their driving state.
--- TOOD: not sure if we actually need this or can just do it on the Scheduled event...
+-- Called every time a player changes their driving state. So after PlayerContainer.OnToggleDrivingInput() if the player tried to changing their driving state.
 ---@param event on_player_driving_changed_state
 PlayerContainer.OnPlayerDrivingChangedState = function(event)
-    -- Check if the player was previously trying to get out of a potentially blocked vehicle or not. If there wasn't a recorded potentially blocked vehcile exit attempt just ignore the event.
+    -- Check if the player was previously trying to get out of a potentially blocked vehicle or not. If there wasn't a recorded potentially blocked vehicle exit attempt just ignore the event.
     local oldVehicle = global.playerContainers.playerTryLeaveVehicle[event.player_index]
     if oldVehicle == nil then
         return
     end
 
-    local player = game.get_player(event.player_index)
+    -- If the old vehicle was destroyed then cancel this.
+    if not oldVehicle.valid then
+        PlayerContainer.CancelScheduledPlayerTryLeaveTrain(event.player_index)
+        return
+    end
+
     if oldVehicle.name == "railway_tunnel-player_container" then
         -- In a player container so always handle the player as they will have jumped out of the tunnel mid length.
+        local player = game.get_player(event.player_index)
         PlayerContainer.PlayerLeaveTunnelVehicle(event.player_index, player, nil, oldVehicle)
     else
-        -- Driving state changed from a non player_container so is base game working correctly.
-        PlayerContainer.CancelPlayerTryLeaveTrain(event.player_index)
+        -- Driving state changed from a non player_container so is base game working correctly. We can can cancel the scheduled event.
+        PlayerContainer.CancelScheduledPlayerTryLeaveTrain(event.player_index)
     end
 end
 
---- Scheduled event to check if a player successfully got out of a potentially blocked vehicle type. If they didn't then do a modded eject from the vehicle if appropreiate.
+--- Scheduled event to check if a player successfully got out of a potentially blocked vehicle type. If they didn't then do a modded eject from the vehicle if approperiate.
+---
+-- Triggers after the OnPlayerDrivingChangedState() has run for this if it is going to.
 ---
 --- Note: When the player is in editor mode the game announces the player entering and leaving vehicles. This doesn't happen in freeplay mode.
 ---@param event UtilityScheduledEvent_CallbackObject
 PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled = function(event)
-    -- Triggers after the OnPlayerDrivingChangedState() has run for this if it is going to.
-
     -- Check if the player still needs to have their ejection checked, or if it just worked already.
-    --TODO: this is where I suspect the PlayerContainer.OnPlayerDrivingChangedState() contents should go and we can avoid the state changed event entirely.
+    -- As 1 tick has passed since the payer tried to eject the vehicle they were in may have changed.
     local playerIndex = event.data.playerIndex
     local oldVehicle = global.playerContainers.playerTryLeaveVehicle[playerIndex]
     if oldVehicle == nil then
+        error("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled() called with no oldVehicle for player. This state should of having the scheduled event, but there being no old vehicle should not be reachable.")
+    end
+
+    -- If the old vehicle was destroyed then cancel this. I don't believe this is a reachable state, but just to avoid any crash risk as reproduction would be a nightmare.
+    if not oldVehicle.valid then
+        global.playerContainers.playerTryLeaveVehicle[playerIndex] = nil
         return
     end
 
     local player = game.get_player(playerIndex)
     if oldVehicle.name == "railway_tunnel-player_container" then
-        -- In a player container so always handle the player.
+        -- Was in a player container so always handle the player.
         PlayerContainer.PlayerLeaveTunnelVehicle(playerIndex, player, nil, oldVehicle)
     else
         local player_vehicle = player.vehicle
         if player_vehicle ~= nil then
-            -- Was in a train carriage before trying to get out and still is, so check if the carriage is ontop of a portal entity (blocks player getting out).
-            -- Have to check within a small radius of the carriage as if the carriage is centered directly between 2 portal parts its position check would fail.
-            local portalEntitiesFound = player_vehicle.surface.find_entities_filtered {position = player_vehicle.position, radius = 0.5, name = Common.PortalEndAndSegmentEntityNames, limit = 1}
-            if #portalEntitiesFound == 1 then
-                -- Carriage is on top of a portal part.
-                PlayerContainer.PlayerLeaveTunnelVehicle(playerIndex, player, portalEntitiesFound[1], nil)
-            end
-        end
+            -- Was in a train carriage before trying to get out and still is in a vehicle of some type.
 
-        -- Make sure we always remove this flag in all cases of this function being called.
-        global.playerContainers.playerTryLeaveVehicle[playerIndex] = nil
+            -- Check if the carriage is ontop of a portal prt and thus on a portal that will block player getting out. Other modded scenarios like rail bridges could cause this same situation of player not able to get out of train carriage.
+            -- Have to check within a radius of half the max size of the largest portal part from the carriage. As if the carriage is centered directly between 2 portal parts we need a radius large enough to find the portal part.
+            local portalPartEntitiesFound = player_vehicle.surface.find_entities_filtered {position = player_vehicle.position, radius = 3, name = Common.PortalEndAndSegmentEntityNames, limit = 1}
+            if #portalPartEntitiesFound == 1 then
+                -- Carriage is on top of a portal part.
+                PlayerContainer.PlayerLeaveTunnelVehicle(playerIndex, player, portalPartEntitiesFound[1], player_vehicle)
+            else
+                -- Some other situation has occured thats blocked the player leaving the train carriage so just close our followup action off.
+                global.playerContainers.playerTryLeaveVehicle[playerIndex] = nil
+            end
+        else
+            error("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled() called for player who was in train carriage but isn't any more. Should never happen as PlayerContainer.OnPlayerDrivingChangedState() should have stopped the scheduled event upon the player leaving their vehicle.")
+        end
     end
 end
 
---- Eject the player from the vehcile and find them a place at the end of the nearest portal.
+--- Eject the player from the vehicle and find them a place at the end of the nearest portal.
 ---@param playerIndex PlayerIndex
 ---@param player LuaPlayer
----@param portalEntity LuaEntity
+---@param portalPartEntity LuaEntity
 ---@param vehicle LuaEntity
-PlayerContainer.PlayerLeaveTunnelVehicle = function(playerIndex, player, portalEntity, vehicle)
-    local portalObject
-    vehicle = vehicle or player.vehicle
+PlayerContainer.PlayerLeaveTunnelVehicle = function(playerIndex, player, portalPartEntity, vehicle)
+    local portalObject  ---@type Portal
     local playerContainer = global.playerContainers.playerIdToPlayerContainer[playerIndex]
 
-    if portalEntity == nil then
+    -- Get the Portal to eject the player from.
+    if playerContainer ~= nil then
+        -- Riding in a player container so can do lookup on tunnel its using.
         local managedTrain = playerContainer.managedTrain
         local player_position = player.position
         if Utils.GetDistance(managedTrain.entrancePortal.portalEntryPointPosition, player_position) < Utils.GetDistance(managedTrain.exitPortal.portalEntryPointPosition, player_position) then
@@ -135,19 +151,31 @@ PlayerContainer.PlayerLeaveTunnelVehicle = function(playerIndex, player, portalE
             portalObject = managedTrain.exitPortal
         end
     else
-        portalObject = global.portals.portalPartEntityIdToPortalPart[portalEntity.unit_number]
+        -- Riding in regular train so will have paseed in the portal part entity the carriage is over.
+        portalObject = global.portals.portalPartEntityIdToPortalPart[portalPartEntity.unit_number].portal
+
+        -- Check that the Portal object found is valid as it could have been a random portal part that the player was just near enough.
+        if portalObject == nil or portalObject.tunnel == nil then
+            PlayerContainer.CancelScheduledPlayerTryLeaveTrain(playerIndex)
+            return
+        end
     end
 
+    -- Find a valid position at the end of the portal and eject the player there.
     local playerPosition = player.surface.find_non_colliding_position("railway_tunnel-character_placement_leave_tunnel", portalObject.portalEntryPointPosition, 0, 0.2) -- Collides with rails and so we never get placed on the track.
-    PlayerContainer.CancelPlayerTryLeaveTrain(playerIndex)
+    PlayerContainer.CancelScheduledPlayerTryLeaveTrain(playerIndex)
     vehicle.set_driver(nil)
     player.teleport(playerPosition)
-    PlayerContainer.RemovePlayerContainer(global.playerContainers.playerIdToPlayerContainer[playerIndex])
+
+    -- If there was a player container then remove it.
+    if playerContainer ~= nil then
+        PlayerContainer.RemovePlayerContainer(playerContainer)
+    end
 end
 
 --- Cancels any future scheduled event to check if the player has left the vehicle and removes their cached state of trying to leave their vehicle.
 ---@param playerIndex PlayerIndex
-PlayerContainer.CancelPlayerTryLeaveTrain = function(playerIndex)
+PlayerContainer.CancelScheduledPlayerTryLeaveTrain = function(playerIndex)
     global.playerContainers.playerTryLeaveVehicle[playerIndex] = nil
     EventScheduler.RemoveScheduledOnceEvents("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled", playerIndex, game.tick)
 end

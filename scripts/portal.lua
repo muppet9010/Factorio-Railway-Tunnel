@@ -786,7 +786,7 @@ Portal.On_PreTunnelCompleted = function(portals)
         }
 
         -- Cache the portalEntryPosition.
-        portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = -math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, entryPortalEnd.entity_position)
+        portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, entryPortalEnd.entity_position)
 
         -- Cache the objects details for later use.
         portal.leavingTrainFrontPosition = Utils.RotateOffsetAroundPosition(reverseEntryOrientation, {x = -1.5, y = 2}, entrySignalOutEntityPosition)
