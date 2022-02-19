@@ -8,6 +8,7 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 --- How long the test runs for (ticks) before being failed as un-completed. Should be safely longer than the test should take to complete, but can otherwise be approx.
 Test.RunTime = 3600
@@ -67,7 +68,7 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_TSI_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    if tunnelUsageChanges.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+    if tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
         game.print("train has completed tunnel trip")
     end

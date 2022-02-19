@@ -28,9 +28,9 @@ local Delay = {
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificStateToRemoveOnFilter = {} -- Pass in an array of StateToRemoveOn keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificCarriageToRemoveFilter = {} -- Pass in an array of CarriageToRemove keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificDelayFilter = {} -- Pass in an array of Delay keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificStateToRemoveOnFilter = {} -- Pass in an array of StateToRemoveOn keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificCarriageToRemoveFilter = {} -- Pass in an array of CarriageToRemove keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificDelayFilter = {} -- Pass in an array of Delay keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 

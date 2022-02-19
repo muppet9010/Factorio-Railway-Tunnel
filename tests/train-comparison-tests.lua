@@ -45,10 +45,10 @@ local SecondTrainCarriageColors = {
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificFirstTrainFilter = {} -- Pass in an array of FirstTrain keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSecondTrainCarriageOrderFilter = {} -- Pass in an array of SecondTrainCarriageOrder keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSecondTrainCarriageFacingFilter = {} -- Pass in an array of SecondTrainCarriageFacing keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSecondTrainCarriageColorsFilter = {} -- Pass in an array of SecondTrainCarriageColors keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificFirstTrainFilter = {} -- Pass in an array of FirstTrain keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSecondTrainCarriageOrderFilter = {} -- Pass in an array of SecondTrainCarriageOrder keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSecondTrainCarriageFacingFilter = {} -- Pass in an array of SecondTrainCarriageFacing keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSecondTrainCarriageColorsFilter = {} -- Pass in an array of SecondTrainCarriageColors keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 

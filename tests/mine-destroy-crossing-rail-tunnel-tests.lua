@@ -26,9 +26,9 @@ local BlockingTrainTypes = {
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificActionTypesFilter = {} -- Pass in an array of ActionTypes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificBlockingTrainTypesFilter = {} -- Pass in an array of BlockingTrainTypes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSegmentsToRemoveFilter = {} -- Pass in an array of SegmentsToRemove keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificActionTypesFilter = {} -- Pass in an array of ActionTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificBlockingTrainTypesFilter = {} -- Pass in an array of BlockingTrainTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSegmentsToRemoveFilter = {} -- Pass in an array of SegmentsToRemove keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 

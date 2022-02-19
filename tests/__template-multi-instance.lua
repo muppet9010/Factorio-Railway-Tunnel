@@ -9,6 +9,7 @@
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 -- Internal test types.
 --- Class name includes the abbreviation of the test name to make it unique across the mod.
@@ -27,8 +28,8 @@ local TrainStartingSpeeds = {
 local DoMinimalTests = false -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificFirstLetterFilter = {FirstLetterTypes.a} -- Pass in an array of FirstLetterTypes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificTrainStartingSpeedFilter = {TrainStartingSpeeds.none} -- Pass in an array of TrainStartingSpeeds keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificFirstLetterFilter = {FirstLetterTypes.a} -- Pass in an array of FirstLetterTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTrainStartingSpeedFilter = {TrainStartingSpeeds.none} -- Pass in an array of TrainStartingSpeeds keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -111,7 +112,7 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_TMI_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    if tunnelUsageChanges.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+    if tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
         game.print("train has completed tunnel trip")
     end
