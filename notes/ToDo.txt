@@ -2,7 +2,6 @@ Now
 ---
     - The current player container concept needs updating to calculate the player containers current position in the tunnel.
     - Make the player riding tests their own tests. Cover:
-        - Tunnel journey in all orientations at high speed with 2 other trains at the same time, put player in middle train.
         - Tunnel destroyed while player underground.
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
 

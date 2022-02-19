@@ -74,7 +74,8 @@ local TestsToRun = {
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Player container tests:
-    PlayerRidingTrainEjectionTests = {enabled = false, testScript = require("tests/player_riding_train_ejection_tests")},
+    PlayerRidingTrainEjectionTests = {enabled = false, testScript = require("tests/player-riding-train-ejection-tests")},
+    PlayerRidingMultipleConcurrentTrains = {enabled = false, testScript = require("tests/player-riding-multiple-concurrent-trains")},
     -- Code Internal tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
     TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
