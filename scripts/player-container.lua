@@ -35,7 +35,7 @@ PlayerContainer.OnLoad = function()
     MOD.Interfaces.PlayerContainer.On_TunnelRemoved = PlayerContainer.On_TunnelRemoved
 end
 
---- Called by the custom event before the game tries to change driving state. We don't block the default game behavor and just schedule to check in 1 tick if the player got out ok or not.
+--- Called by the custom event before the game tries to change driving state. We don't block the default game behavor and just schedule to check later this tick during our mods on_tick event period if the player got out ok or not.
 ---
 --- This special handling is needed as if the player is in a player container or in a railway carriage and they are on a portal/tunnel segment, they may be blocked from getting out of the vehicle by default Factorio due to the hitboxes and distance Factorio looks to eject the player within.
 ---@param event CustomInputEvent
@@ -54,8 +54,14 @@ PlayerContainer.OnToggleDrivingInput = function(event)
         if playerVehicle.name == "railway_tunnel-player_container" or RollingStockTypes[playerVehicle.type] ~= nil then
             -- Vehicle is one we care about so schedule a check for next tick to see if the player got out of their vehicle ok. If they didn't then the mod will handle this then.
             global.playerContainers.playerTryLeaveVehicle[event.player_index] = playerVehicle
+
             -- Function is called before this tick's on_tick event runs and so we can safely schedule tick events for the same tick in this case.
             EventScheduler.ScheduleEventOnce(-1, "PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled", event.player_index, {playerIndex = event.player_index})
+
+            return
+        else
+            -- Vehicle is of a type we don't care about.
+            return
         end
     end
 end
@@ -93,7 +99,7 @@ end
 ---@param event UtilityScheduledEvent_CallbackObject
 PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled = function(event)
     -- Check if the player still needs to have their ejection checked, or if it just worked already.
-    -- As 1 tick has passed since the payer tried to eject the vehicle they were in may have changed.
+    -- As the mod's on_tick event has passed since the player tried to eject the vehicle they were in may have changed.
     local playerIndex = event.data.playerIndex
     local oldVehicle = global.playerContainers.playerTryLeaveVehicle[playerIndex]
     if oldVehicle == nil then

@@ -118,7 +118,7 @@ The train entry detector is intended to prevent *most* invalid tunnel uses while
 As it isn't guaranteed to block all bad train usage an undesirable state must be handled by the active elements of the tunnel's usage (transition detectors and traversing train cloning process).
 
 
-GUI Tests
----------
+Automatic tests not done
+------------------------
 
-At present there are no automatic GUI tests. This is due to the module being largely isolated from the rest of the mod and its train complexities. Once the version 2 GUI is done and its finalised then tests can be added. For manual testing the key risk area is the change of portalPart state and train state not triggering the GUIs to update. The fuel distribution and train mining features should be testable on their own at present, but low priority.
+- Gui Tests: At present there are no automatic GUI tests. This is due to the module being largely isolated from the rest of the mod and its train complexities. Once the version 2 GUI is done and its finalised then tests can be added. For manual testing the key risk area is the change of portalPart state and train state not triggering the GUIs to update. The fuel distribution and train mining features should be testable on their own at present, but low priority.

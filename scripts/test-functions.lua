@@ -166,17 +166,17 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData)
 end
 
---- Used to apply an optional filter list of keys against a full list of key/values. Includes error catching for passing in bad (empty) filter list.
+--- Used to apply an optional filter list of keys against a COPY of the full list of key/values. Includes error catching for passing in bad (empty) filter list.
 ---@param fullList table
 ---@param filterList? table|null
----@return table
+---@return table filteredCopyOfTable
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
     if Utils.IsTableEmpty(fullList) then
         error("empty/nil list provided to TestFunctions.ApplySpecificFilterToListByKeyName()")
     end
     local listToTest
     if Utils.IsTableEmpty(filterList) then
-        listToTest = fullList
+        listToTest = Utils.DeepCopy(fullList)
     else
         listToTest = {}
         for _, entry in pairs(filterList) do
@@ -440,7 +440,7 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
             if player ~= nil then
                 placedCarriage.set_driver(player)
             else
-                game.print("No player found to set as driver, test continuing regardless")
+                error("No player 1 found to set as driver")
             end
         end
     end

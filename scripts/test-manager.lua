@@ -73,6 +73,8 @@ local TestsToRun = {
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
+    -- Player container tests:
+    PlayerRidingTrainEjectionTests = {enabled = false, testScript = require("tests/player_riding_train_ejection_tests")},
     -- Code Internal tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
     TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
@@ -297,7 +299,7 @@ TestManager.ClearMap_Scheduled = function()
         PlayerAlerts.RemoveAllCustomAlertsFromForce(player.force)
     end
 
-    -- Wait 1 tick so any end of tick mod events from the mpa clearing are raised and ignored, before we start the next test.
+    -- Wait 1 tick so any end of tick mod events from the map clearing are raised and ignored, before we start the next test.
     EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests_Scheduled")
 end
 
