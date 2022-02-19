@@ -36,14 +36,14 @@ local blueprintString = "0eNqtnd1OG0kQhd9lriHqrv7nfp9iFSEHLGLJ2Mg22UUR777VMw44i3
 
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.noFuelPoint
 end
 
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 30, y = 0}, testName)

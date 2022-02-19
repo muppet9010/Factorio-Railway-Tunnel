@@ -27,7 +27,7 @@ end
 --- Gets the test manager's test object reference. Persists across tests.
 ---@param testName TestManager_TestName
 ---@return TestManager_Test
-TestFunctions.GetTestMangaerObject = function(testName)
+TestFunctions.GetTestManagerObject = function(testName)
     return global.testManager.testsToRun[testName]
 end
 

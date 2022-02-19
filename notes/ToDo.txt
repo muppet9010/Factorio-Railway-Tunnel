@@ -9,7 +9,6 @@ Now
 
 Bugs
 ----
-    - Is a typo in all tests: TestFunctions.GetTestMangaerObject()
 
 
 Features to add/change

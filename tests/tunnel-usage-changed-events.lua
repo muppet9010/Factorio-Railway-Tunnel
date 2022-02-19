@@ -42,7 +42,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.finalActionChangeReason
 end
@@ -50,7 +50,7 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local blueprint = "0eNq1mN1u2kAQhd9lr6Hamdlf7vsMvagQcmBLrBob2SYtinj37mIa0piokzXJDf7L+cY+c8bWPouH6hD2bVn3YvEsynVTd2Lx/Vl05bYuqnSsP+6DWIiyDzsxE3WxS3ttUVa/iuOqP9R1qOb7pu2LatWF7S7U/bzr4/ntYy9OM1HWm/BbLOA0yxQN9eaVDp6WMxEZZV+GodLzznFVH3YPoY2gF7lURB1rafYRsW+6+C9NneBRZq7sTBzjb6xLbMo2rIeTZia6vhi2xbfQpVsYIZBR8ZiIcCaOgU9FW16QcINGH33oYzTYPLS6A1rnofUd0JSHNndAZ3ptp6P9LTL+l+ymk20e2U8n6zwyyKwgQyYN3qMd4mhrt20Tf0d3O0/XrtZt03VlvR1XQ5nFYE4xY3zuk6f74DNbDtRnWJGZPNA5XZg73GD6dMt9m8D06QY+Ez19vOW+vmH6fMPMkKOcjs4MOMJ0dGa4EaejM9sMKSfKlBllvE6xf0bU+1+7b5/lLVHNF9VsUcMXJbao5YsCW9SxRcmzRT1flG0USb4o2ygCvijbKEK+KNsoIrYoso0ifqKQbxQ/Ucg3ip2oD3QUO1D81id2nvgZJXac+MNEsdPEn3qKHSb+eFbXLFXNutk1ffkUbnyWXx9m05ZR4/IakV9sLH/dVE2brmzTEfAI2jhj4oYDa5z1zsWt1IzbdIEyaJUGKVF766RzZJ2XJp1/OEta1MpLIjAqXYCWFCVOkc5KSQPAaU/GaYPGOzIKtU2MtLLTh113LqdZ/wz9/MchVPEWTrdun516xW5RxQ69ZreoYmde81vU8Kx371mPI+s1nf8MgIquKkSno1MvxqNXEBsi+kYyWicV+Gils3+Nx8FaC2TJk9egwMiLwCd4zx5Pmh9R9njS/Iiyx5Nm96hmjyfD7lHNWym9CNLoM/y6Tvq1SOuky3ho/Rg2h+qyMHvt0rQfJ5cyr64ZVpnfrLUuk8p5UXjxamE6fgmHthu4DpT1aGOfAhl5Ov0Bd/6Uow=="

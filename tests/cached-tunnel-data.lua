@@ -63,7 +63,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trackShape .. "    -    " .. testScenario.trainComposition.composition
 end
@@ -71,7 +71,7 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local blueprint = "0eNq1WsGO2jAU/Befg4Tt2E5y7zf0UK1QFixqCRyUhLYI8e9NCupuG9rOe3ZPu8Ay42Q88yYrX8Xr4exPfYijaK4ibLs4iObTVQxhH9vD/N54OXnRiDD6oyhEbI/zq74Nh6/tZTOeY/SH1anrx/awGfz+6OO4Gsbp8/3nUdwKEeLOfxONvBVMUB9373DU7aUQE0cYg7+v9MeLyyaej6++n4h+ws2LiNNautNEceqG6StdnMknmFWtC3ERTeUm6F3o/fb+oS3EMLb338VHP8yXsKBQwIqXjObBWC8Yv7R9eHDKJ3SaeteX3GXN5C4zcDsmt8nAbZjcNgM3V2+XgVs+5Vb/5K7SuXXN5K4zcDsmt1xnIOduNikzkHN3m1QZyCWXPEO2KW62yQzhptgbLkO6KcMlzxBvSnPJHWt8Sm6syD9m2nmqFP2+76afiytezX+72fbdMIS4f7Ye9s2vOet5tgKuAmqdawXcMaPkf9GEu0UUs9Exg0dlSD1u4qr00GNTp0ced8ip9MDj2l2l1znujFHpbY7tqPQyJ7n7TKd3Ocl+VkuvcpIbKzq9yUnus5pOjzT2gNfpkaa4g0ynZxq7SOn0UFPsvcYqceyqrt+S7Jcy8Jd/7Px+O5+h1jiqhFHLNYxa1TiqxFEdjqpwVIOjahwVV6sscVSCWgZGdQS1LI5KUMvhqAS1cG85glq4txyulsG9ZXG1DO4ti6tlcG9ZXC2De8viahncW5agFu4tQ1AL95YhqAV7SxNuK2wtTdgBsLM0fvkWNpbGlbKwr0p8U1nYViUulIVdVeJCWdhUJUEo2FMlQSjYUoYgFOwoQxAKdpQhCAU7ihAoDnYUIfsc7ChCTDvYUYSJ4mBHEYafgx1FmNMOdhShUjjYUYT242BHEYqagx1F6JQOdhSh/lawowhNvcLOCzwQa7l4SH87LvChnY8LvBT3Uw3Nu5MV0/Ot74f7NypZulo5I43Udn27fQeXPVbb"

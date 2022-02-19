@@ -60,7 +60,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      PlayerController: " .. testScenario.playerController .. "    -    TunnelState: " .. testScenario.tunnelState .. "    - TickOffset: " .. testScenario.tickOffset
 end
@@ -229,7 +229,7 @@ end
 ---@param testName string
 ---@return TestManager_Test_PRTET
 Test.GetThisTestManagerObject = function(testName)
-    return TestFunctions.GetTestMangaerObject(testName)
+    return TestFunctions.GetTestManagerObject(testName)
 end
 
 --- Generate the combinations of different tests required.
