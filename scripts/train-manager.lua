@@ -16,7 +16,7 @@ local TrainManagerRemote = require("scripts.train-manager-remote")
 local TunnelShared = require("scripts.tunnel-shared")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageState, Common.TunnelUsageAction
 
-local PlayerRidingTrainUpdateTicks = 30 ---@type Tick @ How often a train with a player riding has its breaking requirements updated.
+local PlayerRidingTrainUpdateTicks = 15 ---@type Tick @ How often a train with a player riding has its breaking requirements updated.
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
@@ -47,15 +47,17 @@ local PlayerRidingTrainUpdateTicks = 30 ---@type Tick @ How often a train with a
 ---@field traversalInitialSpeedAbsolute? double|null @ The absolute speed the train was going at when it started its traversal.
 ---@field dummyTrainCarriage? LuaEntity|null @ The dummy train carriage used to keep the train stop reservation alive while the main train is traversing the tunel.
 ---@field targetTrainStop? LuaEntity|null @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
+---@field forcesBrakingBonus double @ The train carriage's braking force bonus at the time the train enters the tunnel.
 ---
 ---@field nonPlayerTrain_traversalInitialDuration? Tick|null @ The number of tick's the train takes to traverse the tunnel.
 ---@field nonPlayerTrain_traversalArrivalTick? Tick|null @ The tick the train reaches the far end of the tunnel and is restarted.
 ---
----@field playerTrain_traversalDistanceTravelledSoFar? double|null @ How far through the tunnel the train has covered so far. Only used when we move the train every tick, rather than pre-calculating its arrival time and scheduling the event.
+---@field playerTrain_traversalDistanceRemaining? double|null @ How much of the tunnel distance the train has left to cover until it emerges.
 ---@field playerTrain_breakingPointCheckTick? Tick|null @ When the next check of the trains breaking point is.
 ---@field playerTrain_currentSpeedAbsolute? double|null @ The current speed this tick of the underground train and player containers.
 ---@field playerTrain_breakingEntityId? UnitNumber|null @ The unit_number of the entity the train is having to break for.
 ---@field playerTrain_stoppingDistance? double|null @ How far before the train needs to have stopped. Based on the cached breaking point.
+---@field playerTrain_brakingOutsideOfTunnel? boolean|null @ If the underground train had ever started braking outside of the tunnel. As once it starts brakig outside of the tunnel it can not return to blindly accelerating within the tunnel. Is to protect against flip flopping braking distance in/out of the tunnel.
 ---
 ---@field surface LuaSurface @ The main world surface that this managed train is on.
 ---@field entrancePortal Portal @ The portal global object of the entrance portal for this tunnel usage instance.
@@ -289,8 +291,11 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     managedTrain.train = leavingTrain
     managedTrain.trainId = leavingTrainId
     managedTrain.trainMovingForwards = nil -- Blank it as it will have to be worked out again when starting to leave based on the new trains orientation and destination direction at the time.
+
+    -- Record the required generic data.
     local currentAbsSpeed = math.abs(managedTrain.approachingTrainExpectedSpeed)
     managedTrain.traversalInitialSpeedAbsolute = currentAbsSpeed
+    managedTrain.forcesBrakingBonus = managedTrain.force.train_braking_force_bonus
 
     -- Set up DummyTrain to maintain station requests.
     managedTrain.tunnelUsageState = TunnelUsageState.underground
@@ -324,9 +329,11 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     if managedTrain.undergroundTrainHasPlayersRiding then
         -- There is a player or more in the train so will use per tick train processing that will check the distance remaining and deal with it from the next tick.
 
-        managedTrain.playerTrain_traversalDistanceTravelledSoFar = 0
+        managedTrain.playerTrain_traversalDistanceRemaining = managedTrain.traversalTravelDistance
         managedTrain.playerTrain_breakingPointCheckTick = tick + PlayerRidingTrainUpdateTicks
         managedTrain.playerTrain_currentSpeedAbsolute = currentAbsSpeed
+        managedTrain.playerTrain_stoppingDistance = nil
+        managedTrain.playerTrain_brakingOutsideOfTunnel = false
     else
         -- Theres no player in the train so we can calculate its best arrival time schedule for this time.
 
@@ -342,65 +349,83 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     end
 end
 
---- Runs each tick for when we need to track a train while underground in detail. Only need to track an ongoing underground train if there's a player riding in the train and we need to update their position each tick.
----
---- This function is far more detailed train speed handling for the players than the trains without players that use the scheduled route. As we want a smoother movement of the player. This does mean the tunnel travel time will be different.
+--- Runs each tick for when we need to track a train while underground in detail. Only need to track an ongoing underground train if there is/was a player riding in the train and we need to calculate a smoot train progress and update their position each tick.
 ---@param managedTrain ManagedTrain
 ---@param tick Tick
 TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
-    local train = managedTrain.train
+    local leavingTrain = managedTrain.train
 
-    -- Every time period (PlayerRidingTrainUpdateTicks) we will check the breaking endpoint and update the cache.
-    if managedTrain.playerTrain_breakingPointCheckTick then
-        managedTrain.playerTrain_breakingPointCheckTick = tick + PlayerRidingTrainUpdateTicks
+    -- Get the braking distance of the underground train at current speed.
+    local _, currentUndergroundTrainBrakingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute, 0, managedTrain.forcesBrakingBonus)
 
-        -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
-        TrainManager.SetLeavingTrainSpeedInCorrectDirection(train, managedTrain.playerTrain_currentSpeedAbsolute, managedTrain, managedTrain.targetTrainStop)
+    -- Work out if the train needs to brake or not. Uses the logic if the underground train can stop within the tunnel to save un-needed rail network checks.
+    if not managedTrain.playerTrain_brakingOutsideOfTunnel and currentUndergroundTrainBrakingDistance <= managedTrain.playerTrain_traversalDistanceRemaining then
+        -- Carry on accelerating this tick as we can brake within the tunnel still this tick. We may accelerate this tick and be outside of the tunnel next tick, but the logic will pick this up and its only a slightly overly aggressive braking required to resolve.
+        managedTrain.playerTrain_stoppingDistance = nil
+    else
+        -- Need to consider exterior rail networks state.
 
-        -- Check if the train can just leave at its current speed and if so release it here.
-        local train_state = train.state
-        if train_state == defines.train_state.on_the_path then
-            -- Train can leave at full speed.
-            -- TODO: in this case we need to estimate our speed in the update period and check if we would still be not stopping. If we are still not stoppign then can full speed ahead; If we would be stopping then just maintain the current speed, as otherwise we would be flip flopping between accelerating and breaking every check time.
-            managedTrain.playerTrain_stoppingDistance = nil
-            managedTrain.playerTrain_breakingEntityId = nil
-        elseif train_state == defines.train_state.path_lost or train_state == defines.train_state.no_schedule or train_state == defines.train_state.no_path or train_state == defines.train_state.destination_full then
-            -- Train has no where to go, so will need to pull up to the end of the station.
-            -- TODO
-            error("not coded yet")
-        elseif train_state == defines.train_state.arrive_station then
-            -- Train needs to be breaking for this station/rail target.
-            local train_pathEndStop, train_pathEndRail = train.path_end_stop, train.path_end_rail
-            local breakingEntity = train_pathEndStop or train_pathEndRail
-            local breakingEntity_unitNumber = breakingEntity.unit_number
+        -- Once we've started braking outside of the tunnel we never return to avoid flip flopping in/out of tunnel stopping location.
+        managedTrain.playerTrain_brakingOutsideOfTunnel = true
 
-            -- If its the same entity Id as before we don't need to update the stopping distance.
-            if managedTrain.playerTrain_breakingEntityId ~= breakingEntity_unitNumber then
-                -- Is a new breaking entity so record its Id and get the distance we need to stop in.
-                managedTrain.playerTrain_breakingEntityId = breakingEntity_unitNumber
+        -- Once the cached breaking point time period has expired we will check the breaking endpoint and update the cache. This is cached for short periods to just save having to get repath checks every tick, when its unlikly to change that frequently and if it does a few ticks delay on our reaction won't matter.
+        if tick >= managedTrain.playerTrain_breakingPointCheckTick then
+            managedTrain.playerTrain_breakingPointCheckTick = tick + PlayerRidingTrainUpdateTicks
 
-                -- Get the distance to the target train stop.
-                local train_path = train.path
-                local train_path_rails = train_path.rails
-                managedTrain.playerTrain_stoppingDistance = train_path.total_distance
-                managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(train_path_rails[#train_path_rails].type) -- Remove the last rail's length as we want to stop before this.
-                managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
+            -- Work out the test speed to find the maximum braking distance for the next update tick cycle beyond the tunnel. This assumes no acceleration and is just a rough approximation.
+            local maximumBrakingDistance = (managedTrain.playerTrain_currentSpeedAbsolute * PlayerRidingTrainUpdateTicks) + currentUndergroundTrainBrakingDistance
+            local maximumBrakingSpeed = Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance(managedTrain.directionalTrainSpeedCalculationData, maximumBrakingDistance, managedTrain.forcesBrakingBonus)
+
+            -- Set the leaving trains speed to this test speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
+            TrainManager.SetLeavingTrainSpeedInCorrectDirection(leavingTrain, maximumBrakingSpeed, managedTrain, managedTrain.targetTrainStop)
+
+            -- Check what the train has to brake at for this test speed.
+            local leavingTrain_state = leavingTrain.state
+            if leavingTrain_state == defines.train_state.on_the_path then
+                -- Train can leave at full speed during next update cycle.
+                managedTrain.playerTrain_stoppingDistance = nil
+                managedTrain.playerTrain_breakingEntityId = nil
+            elseif leavingTrain_state == defines.train_state.path_lost or leavingTrain_state == defines.train_state.no_schedule or leavingTrain_state == defines.train_state.no_path or leavingTrain_state == defines.train_state.destination_full then
+                -- Train has no where to go, so will need to pull up to the end of the station.
+                -- TODO
+                error("not coded yet")
+            elseif leavingTrain_state == defines.train_state.arrive_station then
+                -- Train has to brake for station/rail target within next update cycle.
+                local breakingEntity = leavingTrain.path_end_stop or leavingTrain.path_end_rail
+                local breakingEntity_unitNumber = breakingEntity.unit_number
+
+                -- If its the same entity Id as before we don't need to update the stopping distance.
+                if managedTrain.playerTrain_breakingEntityId ~= breakingEntity_unitNumber then
+                    -- Is a new breaking entity so record its Id and get the distance we need to stop in.
+                    managedTrain.playerTrain_breakingEntityId = breakingEntity_unitNumber
+
+                    -- Get the distance to the target train stop.
+                    local leavingTrain_path = leavingTrain.path
+                    local leavingTrain_path_rails = leavingTrain_path.rails
+                    managedTrain.playerTrain_stoppingDistance = leavingTrain_path.total_distance + managedTrain.playerTrain_traversalDistanceRemaining
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(leavingTrain_path_rails[#leavingTrain_path_rails].type) -- Remove the last rail's length as we want to stop before this.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
+                end
+            elseif leavingTrain_state == defines.train_state.arrive_signal then
+                -- Train needs to be breaking for this signal.
+                local leavingTrain_signal = leavingTrain.signal
+                local leavingTrain_signal_unitNumber = leavingTrain_signal.unit_number
+
+                -- If its the same signal as before we don't need to update the stopping distance.
+                if managedTrain.playerTrain_breakingEntityId ~= leavingTrain_signal_unitNumber then
+                    -- Is a new breaking entity so record its Id and get the distance we need to stop in.
+                    managedTrain.playerTrain_breakingEntityId = leavingTrain_signal_unitNumber
+
+                    local signalRail = leavingTrain_signal.get_connected_rails()[1]
+                    managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain, managedTrain.targetTrainStop) + managedTrain.playerTrain_traversalDistanceRemaining
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
+                end
             end
-        elseif train_state == defines.train_state.arrive_signal then
-            -- Train needs to be breaking for this signal.
-            local train_signal = train.signal
-            local train_signal_unitNumber = train_signal.unit_number
 
-            -- If its the same signal as before we don't need to update the stopping distance.
-            if managedTrain.playerTrain_breakingEntityId ~= train_signal_unitNumber then
-                -- Is a new breaking entity so record its Id and get the distance we need to stop in.
-                managedTrain.playerTrain_breakingEntityId = train_signal_unitNumber
-
-                local signalRail = train_signal.get_connected_rails()[1]
-                managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train, managedTrain.targetTrainStop)
-                managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
-                managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
-            end
+            -- Return the train to be idle.
+            leavingTrain.speed = 0
+            leavingTrain.manual_mode = true
         end
     end
 
@@ -408,24 +433,26 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
     if managedTrain.playerTrain_stoppingDistance == nil then
         -- Train can accelerate
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
+    elseif currentUndergroundTrainBrakingDistance < managedTrain.playerTrain_stoppingDistance then
+        -- Train can't accelerate as will have to start stopping soon, so just maintain speed.
+        managedTrain.playerTrain_currentSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
     else
         -- Train needs to break based on breaking target distance.
-        managedTrain.playerTrain_currentSpeedAbsolute = managedTrain.traversalInitialSpeedAbsolute -- TODO: temp hard coded.
+        managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
     end
 
     -- Update the distance travelled so far and distance to current breaking spot.
-    managedTrain.playerTrain_traversalDistanceTravelledSoFar = managedTrain.playerTrain_traversalDistanceTravelledSoFar + managedTrain.playerTrain_currentSpeedAbsolute
+    managedTrain.playerTrain_traversalDistanceRemaining = managedTrain.playerTrain_traversalDistanceRemaining - managedTrain.playerTrain_currentSpeedAbsolute
     if managedTrain.playerTrain_stoppingDistance ~= nil then
         managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - managedTrain.playerTrain_currentSpeedAbsolute
     end
 
-    -- If train will cover the required distance by next tick then it has arrived. If we wait for it to have passed the players view jumps backwards.
-    if managedTrain.playerTrain_traversalDistanceTravelledSoFar >= (managedTrain.traversalTravelDistance - managedTrain.playerTrain_currentSpeedAbsolute) then
+    -- If train will haved covered the required distance by next tick then it has arrived. Do this as if we wait for it to have passed target distance then the players view jumps backwards on switch to leaving train.
+    if managedTrain.playerTrain_traversalDistanceRemaining - managedTrain.playerTrain_currentSpeedAbsolute <= 0 then
         managedTrain.trainLeavingSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
 
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
-        local train = managedTrain.train
-        TrainManager.SetLeavingTrainSpeedInCorrectDirection(train, managedTrain.trainLeavingSpeedAbsolute, managedTrain, managedTrain.targetTrainStop)
+        TrainManager.SetLeavingTrainSpeedInCorrectDirection(leavingTrain, managedTrain.trainLeavingSpeedAbsolute, managedTrain, managedTrain.targetTrainStop)
 
         TrainManager.TrainUndergroundCompleted(managedTrain)
         return
@@ -561,6 +588,9 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 stoppingPointDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train, managedTrain.targetTrainStop)
                 stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
 
+                -- Restore the train to its origional state from the path distance function.
+                TrainManager.SetTrainToAuto(managedTrain.train, managedTrain.targetTrainStop)
+
                 scheduleFutureArrival = true
             end
         end
@@ -572,7 +602,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
     if scheduleFutureArrival then
         -- Calculate the delayed arrival time and delay the schedule to this. This will account for the full speed change and will account for if the train entered the tunnel overly fast, making the total duration and leaving speed correct.
 
-        local currentForcesBrakingBonus = managedTrain.force.train_braking_force_bonus
+        local currentForcesBrakingBonus = managedTrain.forcesBrakingBonus
         stoppingPointDistance = stoppingPointDistance - 6 -- Remove the 3 straight rails at the end of the portal that are listed in train's path. The train is already on these and so they can't be braked over.
 
         if stoppingPointDistance <= 0 then
@@ -595,7 +625,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd)
         else
             -- Need to brake within tunnel up to required speed.
-            ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.CalculateBrakingTrainDistanceAndTimeFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd, currentForcesBrakingBonus)
+            ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd, currentForcesBrakingBonus)
         end
         local remainingTunnelDistanceToCover = managedTrain.traversalTravelDistance - distanceSpentMatchingSpeed
 
@@ -1295,11 +1325,15 @@ TrainManager.GetCurrentTrain = function(managedTrain)
 end
 
 --- Get the distance the train will travel between its current position and the target rail.
+---
+--- Train must have its state returned to the desired as this test will mess with it.
 ---@param rail LuaEntity
 ---@param train LuaTrain
 ---@param targetTrainStop LuaEntity
 ---@return double distanceFromTrainToRail
 TrainManager.GetTrainPathDistanceToRail = function(rail, train, targetTrainStop)
+    -- Get the trains running state
+
     -- Create a temporary schedule to the signals rail, get the distance and then remove the schedule entry.
     local schedule = train.schedule
 
@@ -1327,9 +1361,6 @@ TrainManager.GetTrainPathDistanceToRail = function(rail, train, targetTrainStop)
     -- Setting a new current schedule record triggers an update of path.
     table.remove(schedule.records, schedule.current)
     train.schedule = schedule
-
-    -- Restore the train to its origional state.
-    TrainManager.SetTrainToAuto(train, targetTrainStop)
 
     return distanceFromTrainToRail
 end
