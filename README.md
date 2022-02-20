@@ -30,14 +30,15 @@ Mod Features
 Usage Notes
 ===========
 
-- The tunnel parts can only be validly placed on the rail grid, however it isn't possible to snap these like a regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted, a green square for buildable locations and a red square for blocked locations, based on ghost type placement.
+- The tunnel parts can only be validly placed on the rail grid, however, it isn't possible to snap these like a regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted, a green square for buildable locations and a red square for blocked locations, based on ghost type placement.
 - The tunnel is a single block of rail and so only 1 train can use a tunnel at a time. Trains do slightly prefer empty normal tracks over tunnels, but will use a tunnel over congested track.
 - Trains using a tunnel have their speed and traversal time estimated. This means a train using a tunnel won't be exactly the same speed as a train on a regular track, but they are approximately equivalent in their total journey time.
 - If a train is using a tunnel and its forward path is removed due to rail network or station changes, once it has left the underground section it can look for a reverse path back through the tunnel. If it can't find a route it will pull to the front of the tunnel's exit portal ready for a path becoming available in the future.
 - Manually driven trains can not use a tunnel. They will be stopped at the tunnel portal entrance track or from entering the underground part of the tunnel.
 - Trains that aren't following an automatic schedule will be prevented from entering the tunnel portal's tracks or going underground. Tunnels are reserved for intentional train traffic and not free wheeling trains.
 - Destroyed tunnels will lose the train and players within.
-- If 2 trains try to use a tunnel at once one will be rejected and a GUI alert raised.
+- If 2 trains try to enter a tunnel at once one will be rejected and a GUI alert raised.
+- Trains with players riding in them use a more detailed tunnel traversal logic than non-player trains to give the player a smoother riding experience. This will mean that they take a different amout of time to use a tunnel as its speed is more actively managed. This is only done for trains with players riding in them as its less UPS effecient and is approximately the same final result.
 
 
 Known Limitations

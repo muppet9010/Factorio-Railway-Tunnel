@@ -48,6 +48,7 @@ UPS / code plans
     - Look at the speed distance test and see if what still causes the slowness on long tunnel/rail test instances. Maybe cloning long distances of track/tunnel parts would help. Or does it flag slowless with large tunnel constructions and this will also affect large BP's being built?
     - Upgrade ManagedTrain rather than calling CreateManagedTrainObject() to recreate it. Theres an OVERHAUL note against it.
     - From adhoc tests around which force see's a train it looks like if we set the first carriage in the train to the rail force the player's train list doesn't include the train. If so we can set the rest of the carriages to the player's force when initially cloning the train and save having to update them all from tunnel to player force upon it starting to leave the tunnel. In worst case may have to set first and last carriage only to tunnel force just to avoid any oddness in new trains lead carriage flipping.
+    - Check that finding the distance to a rail signal via changing a trains path rather than walking the rail path list has a lower overall game UPS. As I don't know think that the re-pathing UPS costs and some train UPS costs are fully accounted for in the API call costs. And I only checked API costs origionally. Raised as in the mass trains leaving tunnel UPS test the traina nd pathfinder UPS costs are very high even though the mod is low. Used in both underground train functions.
 
 
 Concept change ideas
