@@ -64,7 +64,7 @@ local LeavingTrackCondition = {
 }
 
 -- Test configuration.
-local MaxTimeVariationPercentage = 80 -- The maximum approved time variation as a percentage of the journey time between the train using the tunnel the train on regualr tracks. Time variation applies in both directions, so either is allowed to be faster than the other. Time variations greater than this will cause the test to fail. 80% passes at present for all variations, but the current larger variations do indicate future improvement areas (logged in "Long term UPS/code plans").
+local MaxTimeVariationPercentage = 85 -- The maximum approved time variation as a percentage of the journey time between the train using the tunnel the train on regualr tracks. Time variation applies in both directions, so either is allowed to be faster than the other. Time variations greater than this will cause the test to fail. 85% passes at present for all variations, but the current larger variations do indicate future improvement areas (logged in "Long term UPS/code plans").
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.

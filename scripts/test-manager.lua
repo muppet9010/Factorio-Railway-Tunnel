@@ -76,6 +76,7 @@ local TestsToRun = {
     -- Player container tests:
     PlayerRidingTrainEjectionTests = {enabled = false, testScript = require("tests/player-riding-train-ejection-tests")},
     PlayerRidingMultipleConcurrentTrains = {enabled = false, testScript = require("tests/player-riding-multiple-concurrent-trains")},
+    PlayerRidingDestroyTunnelTests = {enabled = false, testScript = require("tests/player-riding-destroy-tunnel-tests")},
     -- Code Internal tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
     TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},

@@ -1,7 +1,6 @@
 Now
 ---
     - Make the player riding tests their own tests. Cover:
-        - Tunnel destroyed while player underground.
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
 
 
@@ -20,8 +19,10 @@ Features to add/change
         - Options:
             - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate. Would require identifying if the train has either roboports or artillary wagons in it and then shuffling just that train. Would have a high UPS cost for when robot mods are active on the save..
             - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this in the neatest and most UPS effecient manner.
-            - Could remove the ammo/robots from the carriages on entry and add them back on leaving. Would require identifying if the train has either roboports or artillary wagons in it and then checking each carriage and caching the removed counts. Sounds fine for artillery wagons as they are simple prototype type check, but roboports would be lots of checking carriage inventories every time when a mod that adds logistic robots to trains is present (bobs mod).
+            - Could remove the ammo from artillery carriage types on entry and add them back on leaving. The robots would be harder as would need toc heck each carriage for an equipment grid and if found then removing their robots for the tunnel traversal. Sounds fine for artillery wagons as they are simple prototype type check, but roboports would be lots of checking carriage inventories every time when a mod that adds logistic robots to trains is present (bobs mod).
     - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
+        - Some very high values are from tests that shouldn't have a variation measured, i.e: "<", "none", "full", "noPath".
+        - The change to tunnel distance to cover calculations for when players ride trains may ahve thrown the no player maths off slightly as the fianl length isn't quite what it was before.
         - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on breaking time.
         - Will probably need to account for excessive speeds entering the tunnel.
         - Check the train traversing final speed and if it ends up at max then its likely our estimate went over max at some point. So do a backwards calculation to correct it somehow if needed? Check if this is an issue and cause of speed wrongness as just a passing thought noted down, not specifically observed.
@@ -31,7 +32,7 @@ Features to add/change
             - 2 trains follow each other through the same portal very closely. The first train traverses the tunnel and the second is rejected at the transition point. The second train is asusmed to just sit there un-fixed by the player and it will have been set to manual so it won't auto correct. 2 follow on cases can cause issues:
                 A: The first train leaves the portal and the tunnel is released. The entry signals would still show red entry, but the mod would believe the tunnel is free. This would allow a new manual/coasting/etc train (third) to enter the portal against the red signal and successfully reserve the tunnel as the second train is invisible to the mod. When this third train traverses it would try and be cloned on top of the second train.
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
-    - Make better graphics and use tunnel shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
+    - Make graphics a little smoother, review potral structure and make ground be stone with soft edge. Use portal shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
     - Add a tips & tricks section to cover tunnel and portal construction.
     - Make Portal Tunnel GUI nicer, only very rough one at present.
     - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new TRain GUI for that player. If they close the placeholder GUI then don't open the new GUI.

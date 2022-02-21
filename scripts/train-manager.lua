@@ -319,7 +319,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 
     -- Work out the distance the leading train fornt is short of the train detector. Distance minus the length of the lead carriage. This is how far short of the train detector the train entered the tunnel.
     local enteringTrainDistanceShort = Utils.GetDistance(enteringTrainLeadCarriage_entity.position, managedTrain.entrancePortal.transitionUsageDetectorPosition) - Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name]
-    -- The travel distance is the underground distance, portal train waiting length, distance from lead carriage's front to train detector, and 16 tiles (2 tiles in to the entry portal part from the train detector, the 2 blocked portals, 2 tiles to get to the first blocked portal).
+    -- The travel distance is the underground distance, portal train waiting length, distance from lead carriage's front to train detector, and 16 tiles (2 tiles in to the entry portal part from the train detector, the 2 blocked portals, 2 tiles to get to the first blocked portal). These exact values may be affected if the portal train detector entities and front of train placement positins are moved; if changed will need careful review.
     managedTrain.traversalTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + enteringTrainDistanceShort + 16
 
     -- Remove the entering train's carriage entities. Have to use this reference and not the cached data as it was updated earlier in this function.
