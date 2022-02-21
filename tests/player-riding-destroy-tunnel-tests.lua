@@ -1,7 +1,6 @@
 --[[
     A series of tests that destroys the tunnel parts during various states of use by a train with a player riding in it.
     If the player is underground then they are killed, otherwise they are ejected from the carriage on to the surface.
-    Does have a down side that the player dies and I haven't found a way to avoid the respawn screen. Tried creating a character post death and changing the controller type.
 ]]
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
@@ -28,8 +27,8 @@ local PlayerInEndOfTrain = {
 
 local DoMinimalTests = true -- If TRUE does minimal tests just to check the general mining and destroying behavior. Intended for regular use as part of all tests. If FALSE does the whole test suite and follows DoSpecificTests.
 
-local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificDestroyOnTunnelActionFilter = {"underground"} -- Pass in array of DestroyOnTunnelAction keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificDestroyOnTunnelActionFilter = {} -- Pass in array of DestroyOnTunnelAction keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 local SpecificPlayerControllerFilter = {} -- Pass in array of PlayerController keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 local SpecificPlayerInEndOfTrainFilter = {} -- Pass in array of PlayerInEndOfTrain keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
@@ -176,8 +175,8 @@ Test.EveryTick = function(event)
                 playerState = FinalPlayerState.aliveOutOfVehicle
             else
                 playerState = FinalPlayerState.dead
-                --Make respawn instant. Can't stop the respawn screen so have to click through it as the player.
-                player.ticks_to_respawn = nil
+                --Make the game continue and not show the respawn screen.
+                game.set_game_state {game_finished = false}
             end
 
             if testScenario.expectedPlayerState == playerState then

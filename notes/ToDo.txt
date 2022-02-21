@@ -1,7 +1,5 @@
 Now
 ---
-    - Make the player riding tests their own tests. Cover:
-        - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
 
 
 Bugs
@@ -40,6 +38,8 @@ Features to add/change
         - Review layout and current information presentation.
         - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
         - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
+        - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
+            - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
 
 
 UPS / code plans
@@ -68,6 +68,7 @@ Concept change ideas
             - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
         Cons:
             - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
+    - Players riding trains when the tunnel is destroyed have their corpse left wherever the player happened to be in the tunnel at the time. Should the corpse be dumped at the nearest portal entry end like if a player ejects from the train while underground. If the player is on the portal tracks (above ground) and the tunnel is destroyed killing the train, currently the player is ejected at the portal entrance; maybe the player should be killed in this scenario as well.
 
 
 Long term feature plans

@@ -1,0 +1,320 @@
+-- Have a player riding in a train and monitor the players position to ensure its smooth. Test various train entering and leaving speeds.
+
+local Test = {}
+local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
+local Utils = require("utility.utils")
+
+---@class Tests_PRSMT_LeavingTrackCondition
+local LeavingTrackCondition = {
+    clear = "clear", -- Train station far away so more than breaking distance.
+    nearStation = "nearStation", -- A train station near to the portal so the train has to brake very aggressively leaving the portal.
+    farStation = "farStation", -- A train station far to the portal so the train has to brake gently leaving the portal.
+    portalSignal = "portalSignal", -- The portla exit signal will be closed so the train has to crawl out of the portal.
+    nearSignal = "nearSignal", -- A signal near to the portal will be closed so the train has to brake very aggressively leaving the portal.
+    farSignal = "farSignal", -- A signal far to the portal will be closed so the train has to brake gently leaving the portal.
+    noPath = "noPath" -- The path from the portal is removed once the train has entered the tunnel.
+}
+---@class Tests_PRSMT_TrainStartingSpeed
+local TrainStartingSpeed = {
+    none = "none",
+    half = "half", --0.7
+    full = "full" -- 1.4 Vanailla locomotives max speed.
+}
+
+-- Test configuration.
+local DoMinimalTests = true -- The minimal test to prove the concept.
+
+--TODO
+local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTrainStartingSpeedFilter = {} -- Pass in an array of TrainStartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+
+local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
+
+Test.RunTime = 3600
+Test.RunLoopsMax = 0
+---@type Tests_PRSMT_TestScenario[]
+Test.TestScenarios = {}
+
+--- Any scheduled event types for the test must be Registered here.
+---@param testName string
+Test.OnLoad = function(testName)
+    TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick) -- Register for enabling during Start().
+    Test.GenerateTestScenarios(testName)
+    TestFunctions.RegisterRecordTunnelUsageChanges(testName) -- Have tunnel usage changes being added to the test's TestData object.
+end
+
+--- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
+---@param testName string
+Test.GetTestDisplayName = function(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
+    local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.leavingTrackCondition .. "    -    Speed: " .. testScenario.trainStartingSpeed
+end
+
+--- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
+---@param testName string
+Test.Start = function(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
+    local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
+
+    local trackYPosition = 1
+
+    -- Just the tunnel in the blueprint.
+    local blueprint = "0eNq1lmFvgyAQhv/LfcbEA63Fv7I0hrbEkSgawG2m8b8P65dm7bLu2D6ZE3LPy8G9uQscu0mPztgA9QXMabAe6pcLeNNa1a3/wjxqqMEE3QMDq/o1csp072puwmSt7rJxcEF1jddtr23IfIjr7WuAhYGxZ/0BNS6MmFTb800evhwYRIYJRm9Kr8Hc2Kk/ahdBT6RjMA4+ZhjsqiVmzUoGM9RSRtDZOH3a1nYM3pQzaouuR/hC47+tyD0aiWiRjKaSi2SyIJLLZDL1onfJ5Oohmf9IrpLJkkjep78wJKIlpYuxJNIw/w43RddxrRvi9+642bq3ObnBe2PbB3KodUekyLkXwKnVR/5HAgRVgPiPC+Hk91FQniOXRK/BdJsTVIfFdKMTVI/FdKsTFZWdbnaC3O8ymV1QW53n6Wxql3NMZ5MHN05p6eK5lo4j6nWyrW+m67hFO79VZo9FJXlVYolily/LJwAvAFY="
+    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = trackYPosition}, testName)
+
+    local surface, testForce = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+
+    -- Get the end portals.
+    ---@typelist LuaEntity, double, LuaEntity, double
+    local entrancePortalPart, entrancePortalPartX, exitPortalPart, exitPortalPartX = nil, -999999, nil, 999999
+    for _, portalEnd in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
+        if portalEnd.position.x > entrancePortalPartX then
+            entrancePortalPart = portalEnd
+            entrancePortalPartX = portalEnd.position.x
+        end
+        if portalEnd.position.x < exitPortalPartX then
+            exitPortalPart = portalEnd
+            exitPortalPartX = portalEnd.position.x
+        end
+    end
+
+    -- Work out how much rail to build at the start of the tunnel before the train and its track.
+    local railCountEntranceEndOfPortal
+    if testScenario.trainStartingSpeed == TrainStartingSpeed.full then
+        -- Start the train far enough away from the portal so its starting abstract high speed doesn't trigger the tunnel and then instantly release it when Factorio clamps to train max speed in first tick. The train isn't going to go any faster so greater starting distances don't really matter.
+        railCountEntranceEndOfPortal = 100
+    elseif testScenario.trainStartingSpeed == TrainStartingSpeed.half then
+        -- Start the train far enough away from the portal so its starting abstract high speed doesn't trigger the tunnel and then instantly release it when Factorio clamps to train max speed in first tick. The train isn't going to go any faster so greater starting distances don't really matter.
+        railCountEntranceEndOfPortal = 30
+    else
+        -- Start the train very close to the portal so its speed hasn't climbed much from the starting speed.
+        railCountEntranceEndOfPortal = 10
+    end
+
+    -- Build the pre tunnel rail, includes 7 rails for the train to be placed on.
+    local currentRailBuildPosition = {x = entrancePortalPartX + 3, y = trackYPosition}
+    for i = 0, railCountEntranceEndOfPortal + 7 do
+        currentRailBuildPosition.x = currentRailBuildPosition.x + 1
+        surface.create_entity {name = "straight-rail", position = currentRailBuildPosition, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        currentRailBuildPosition.x = currentRailBuildPosition.x + 1
+    end
+
+    -- Build the train, have to use a fake constant speed to generate acceleration data.
+    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - 14, y = trackYPosition}, {{prototypeName = "locomotive", facingForwards = true}, {prototypeName = "locomotive", facingForwards = false}}, defines.direction.west, 1, 0.1, {name = "rocket-fuel", count = 10})
+
+    -- Add the post tunnel parts.
+    local nearPositionDistance, farPositionDistance = 20, 100
+    local nearPositionX, farPositionX = exitPortalPartX - nearPositionDistance, exitPortalPartX - farPositionDistance
+
+    -- Work out how much track is needed.
+    local railCountLeavingEndOfPortal
+    if testScenario.leavingTrackCondition == LeavingTrackCondition.clear then
+        -- Its a clear exit test then work out the railCountLeavingEndOfPortal length from the built train after building the entrance side of the portal.
+        local trainData = Utils.GetTrainSpeedCalculationData(train, train.speed, train.carriages)
+        local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
+        railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10 -- This is excessive still as many trains won't be going at max speed when leaving, but I don't know how to simply work out leaving speed from test starting data only.
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.noPath or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
+        -- Build the shorter rail length plus 10 tiles for a blocking loco if needed.
+        railCountLeavingEndOfPortal = (nearPositionDistance + 10) / 2
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.farStation then
+        -- Build the far rail length plus 10 tiles for a blocking loco if needed.
+        railCountLeavingEndOfPortal = (farPositionDistance + 10) / 2
+    end
+
+    -- Build the post tunnel rail.
+    currentRailBuildPosition.x = exitPortalPartX - 3
+    for i = 0, railCountLeavingEndOfPortal do
+        currentRailBuildPosition.x = currentRailBuildPosition.x - 1
+        surface.create_entity {name = "straight-rail", position = currentRailBuildPosition, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        currentRailBuildPosition.x = currentRailBuildPosition.x - 1
+    end
+
+    -- Add the station.
+    local railStopPosition
+    if testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation then
+        railStopPosition = {x = nearPositionX + 1, y = trackYPosition - 2}
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farStation then
+        railStopPosition = {x = farPositionX + 1, y = trackYPosition - 2}
+    else
+        -- All other cases just add the station to the end of exit track built.
+        railStopPosition = {x = currentRailBuildPosition.x + 1, y = trackYPosition - 2}
+    end
+    endStation = surface.create_entity {name = "train-stop", position = railStopPosition, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    endStation.backer_name = "End"
+
+    -- Set up the LeavingTrackConditions that need adhock stuff adding.
+    if testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
+        -- Put a loco just after the portal to close the portal's exit signal.
+        surface.create_entity {name = "locomotive", position = {x = nearPositionX, y = trackYPosition}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal then
+        -- Put a signal at the near position and a loco to close it just after.
+        surface.create_entity {name = "rail-signal", position = {x = nearPositionX - 0.5, y = trackYPosition - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        surface.create_entity {name = "locomotive", position = {x = nearPositionX - 7, y = trackYPosition}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farSignal then
+        -- Put a signal at the far position and a loco to close it just after.
+        surface.create_entity {name = "rail-signal", position = {x = farPositionX - 0.5, y = trackYPosition - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        surface.create_entity {name = "locomotive", position = {x = farPositionX - 7, y = trackYPosition}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    end
+
+    -- Set the trains starting speed based on the test scenario.
+    if testScenario.trainStartingSpeed == TrainStartingSpeed.full then
+        train.speed = 1.4
+    elseif testScenario.trainStartingSpeed == TrainStartingSpeed.half then
+        train.speed = 0.7
+    else
+        train.speed = 0
+    end
+
+    -- Give the train its orders
+    train.schedule = {current = 1, records = {{station = "End"}}}
+    train.manual_mode = false
+
+    -- Add test data for use in the EveryTick().
+    local testData = TestFunctions.GetTestDataObject(testName)
+    testData.testScenario = testScenario
+    ---@class Tests_PRSMT_TestScenarioBespokeData
+    local testDataBespoke = {
+        testStartedTick = game.tick, ---@type Tick
+        endStation = endStation, ---@type LuaEntity
+        lastPlayerXPos = nil, ---@type double
+        lastPlayerXMovement = nil, ---@type double
+        leavingTrain = nil, ---@type LuaTrain
+        leavingTrainTick = nil ---@type Tick
+    }
+    testData.bespoke = testDataBespoke
+
+    -- Schedule the EveryTick() to run each game tick.
+    TestFunctions.ScheduleTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+--- Any scheduled events for the test must be Removed here so they stop running. Most tests have an event every tick to check the test progress.
+---@param testName string
+Test.Stop = function(testName)
+    TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
+end
+
+--- Scheduled event function to check test state each tick.
+---@param event UtilityScheduledEvent_CallbackObject
+Test.EveryTick = function(event)
+    -- Get testData object and testName from the event data.
+    local testName = event.instanceId
+    local testData = TestFunctions.GetTestDataObject(testName)
+    local testScenario = testData.testScenario ---@type Tests_PRSMT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_PRSMT_TestScenarioBespokeData
+    local tunnelUsageChanges = testData.tunnelUsageChanges
+
+    -- Special stuff on first tick.
+    if event.tick == testDataBespoke.testStartedTick then
+        -- Check that no starting speed variations has caused the tunnel to be reserved/released on the first tick.
+        if tunnelUsageChanges.lastAction ~= nil then
+            TestFunctions.TestFailed(testName, "train triggered tunnel in first tick and is therefore bad test setup")
+        end
+
+        -- Just end on first tick as thigns can be a little odd.
+        return
+    end
+
+    -- Only check the trains acceleration once it has entered, as the entry jump will be odd due to the mod having to fight the trains speed just before the entry. So its per tick variation looks large.
+    if tunnelUsageChanges.actions[Common.TunnelUsageAction.entered] == nil then
+        return
+    end
+
+    -- Store the leavingTrain is approperiate
+    if testDataBespoke.leavingTrain == nil and tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving then
+        testDataBespoke.leavingTrain = tunnelUsageChanges.train
+        testDataBespoke.leavingTrainTick = event.tick
+    end
+
+    -- Get players position.
+    local player = game.get_player(1)
+    if testDataBespoke.lastPlayerXPos == nil then
+        testDataBespoke.lastPlayerXPos = player.position.x
+        return
+    end
+
+    -- Get players position movement.
+    local newPlayerXMovement = testDataBespoke.lastPlayerXPos - player.position.x
+    testDataBespoke.lastPlayerXPos = player.position.x
+    -- Handle initial missing values.
+    if testDataBespoke.lastPlayerXMovement == nil then
+        -- It can take a tick or so for the player position to start moving.
+        if newPlayerXMovement ~= 0 then
+            testDataBespoke.lastPlayerXMovement = newPlayerXMovement
+        end
+        return
+    end
+
+    -- Check real movement is within range.
+    if newPlayerXMovement < 0 then
+        TestFunctions.TestFailed(testName, "player movement less than 0, so going backwards.")
+        return
+    end
+    local playerMovementDif = newPlayerXMovement / testDataBespoke.lastPlayerXMovement
+
+    if playerMovementDif < 0.9 or playerMovementDif > 1.1 then
+        --TODO: fails on the leaving train tick.
+        if testDataBespoke.leavingTrainTick == nil then
+            TestFunctions.TestFailed(testName, "more than 10% movement change between ticks, pre leaving train.")
+        else
+            TestFunctions.TestFailed(testName, "more than 10% movement change between ticks, " .. (event.tick - testDataBespoke.leavingTrainTick) .. " ticks after leaving.")
+        end
+        return
+    end
+
+    -- Store the old movement value as we're done comparing.
+    testDataBespoke.lastPlayerXMovement = newPlayerXMovement
+
+    -- If the leaving train reaches 0 speed then its stopped and the test is over.
+    if testDataBespoke.leavingTrain ~= nil and testDataBespoke.leavingTrain.speed == 0 then
+        TestFunctions.TestCompleted(testName)
+        return
+    end
+end
+
+--- Generate the combinations of different tests required.
+---@param testName string
+Test.GenerateTestScenarios = function(testName)
+    -- Global test setting used for when wanting to do all variations of lots of test files.
+    if global.testManager.forceTestsFullSuite then
+        DoMinimalTests = false
+    end
+
+    -- Work out what specific instances of each type to do.
+    local leavingTrackConditionToTest  ---@type Tests_PRSMT_LeavingTrackCondition
+    local trainStartingSpeedToTest  ---@type Tests_PRSMT_TrainStartingSpeed[]
+    if DoSpecificTests then
+        -- Adhock testing option.
+        leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
+        trainStartingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStartingSpeed, SpecificTrainStartingSpeedFilter)
+    elseif DoMinimalTests then
+        leavingTrackConditionToTest = {LeavingTrackCondition}
+        trainStartingSpeedToTest = {TrainStartingSpeed.none, TrainStartingSpeed.full}
+    else
+        -- Do whole test suite.
+        leavingTrackConditionToTest = LeavingTrackCondition
+        trainStartingSpeedToTest = TrainStartingSpeed
+    end
+
+    -- Work out the combinations of the various types that we will do a test for.
+    for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
+        for _, trainStartingSpeed in pairs(trainStartingSpeedToTest) do
+            ---@class Tests_PRSMT_TestScenario
+            local scenario = {
+                leavingTrackCondition = leavingTrackCondition,
+                trainStartingSpeed = trainStartingSpeed
+            }
+            table.insert(Test.TestScenarios, scenario)
+            Test.RunLoopsMax = Test.RunLoopsMax + 1
+        end
+    end
+
+    -- Write out all tests to csv as debug if approperiate.
+    if DebugOutputTestScenarioDetails then
+        TestFunctions.WriteTestScenariosToFile(testName, Test.TestScenarios)
+    end
+end
+
+return Test

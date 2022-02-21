@@ -266,7 +266,7 @@ PlayerContainer.RemovePlayerContainer = function(playerContainer)
     end
 end
 
---- Called when the tunnel is removed and there's an active train using it with players underground. Kills the player whereveer they happened to be at the time.
+--- Called when the tunnel is removed and there's an active train using it with players underground. Kills the player wherever they happened to be at the time.
 ---@param managedTrain ManagedTrain
 ---@param killForce? LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 ---@param killerCauseEntity? LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.

@@ -60,7 +60,7 @@ local LeavingTrackCondition = {
     portalSignal = "portalSignal", -- The portla exit signal will be closed so the train has to crawl out of the portal.
     nearSignal = "nearSignal", -- A signal near to the portal will be closed so the train has to brake very aggressively leaving the portal.
     farSignal = "farSignal", -- A signal far to the portal will be closed so the train has to brake gently leaving the portal.
-    noPath = "noPath" -- The path from the portal doesn't exist any more.
+    noPath = "noPath" -- The path from the portal is removed once the train has entered the tunnel.
 }
 
 -- Test configuration.
@@ -306,7 +306,7 @@ Test.Start = function(testName)
     -- Set up the LeavingTrackConditions that need adhock stuff adding.
     local tunnelBlockingLocomotive, aboveBlockingLocomotive
     if testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
-        -- Put a loco just after the protal to close the portal's exit signal.
+        -- Put a loco just after the portal to close the portal's exit signal.
         tunnelBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
         aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
     elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal then
@@ -323,7 +323,7 @@ Test.Start = function(testName)
         aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = farPositionX - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
     end
 
-    -- Set the trains schedules and state last as we want the rail network all set before we getthe trains to try and find their real paths.
+    -- Set the trains schedules and state last as we want the rail network all set before we get the trains to try and find their real paths.
     -- A temporary speed was set at build time just to allow functions to run correctly, so set it to its real value.
     local speedDirectionMultiplier = 1
     if tunnelTrain.speed < 0 then
