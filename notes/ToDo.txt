@@ -1,6 +1,5 @@
 Now
 ---
-    - The current player container concept needs updating to calculate the player containers current position in the tunnel.
     - Make the player riding tests their own tests. Cover:
         - Tunnel destroyed while player underground.
         - The tests should check the player position every tick and make sure not moved far. Look to detect unexpected jumping between trains or for above and below mis-alignments. Get position before entering tunnel and exited, as should be smooth journey.
@@ -8,6 +7,7 @@ Now
 
 Bugs
 ----
+    - localise math.x() and string.x() functions when commonly called in classes or library functions.
 
 
 Features to add/change

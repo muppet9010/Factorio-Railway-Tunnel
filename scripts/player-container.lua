@@ -198,7 +198,12 @@ PlayerContainer.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, 
         -- Is a god/spectator player dirving (no character body).
         player = driver
     end
-    local playerContainerEntity = managedTrain.surface.create_entity {name = "railway_tunnel-player_container", position = driver.position, force = driver.force}
+
+    -- The player container needs to be created the trains speed ahead of the players current position. As otherwise the player container starts out of step with the underground trains progression through the tunnel.
+    local playerContainerPosition = Utils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = 0, y = -math.abs(managedTrain.approachingTrainExpectedSpeed)}, driver.position)
+
+    -- Create the player container.
+    local playerContainerEntity = managedTrain.surface.create_entity {name = "railway_tunnel-player_container", position = playerContainerPosition, force = driver.force}
     playerContainerEntity.operable = false -- Stops the container being opened by the player when riding in it from the toolbar area of the GUI.
     playerContainerEntity.destructible = false
     playerContainerEntity.set_driver(player)
@@ -210,7 +215,7 @@ PlayerContainer.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, 
         playerIndex = player.index,
         player = player,
         entity = playerContainerEntity,
-        entityPositionLastTick = playerContainerEntity.position,
+        entityPositionLastTick = playerContainerPosition,
         leavingCarriage = playersLeavingCarriage,
         managedTrain = managedTrain
     }

@@ -1,6 +1,6 @@
 -- A test that tries ejecting a player from a train as its using a tunnel throughouts its use. Tests as normal player and as God (editor mode).
 -- The first test run will always be to record timings of the tunnel's usage state changes.
--- Has a try a lot of ticks as we are looking for some edge cases that requires the ejection request to be made 1 tick prior to the tunnel usage state change. This means it uses custom logic to keep on extending the test count until its last test at the desired tick is completed.
+-- We test a few ticks both sides of the state change to make sure any edge cases are found.
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
