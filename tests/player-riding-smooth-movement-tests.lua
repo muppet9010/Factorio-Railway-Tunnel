@@ -10,6 +10,30 @@ local TestFunctions = require("scripts.test-functions")
 local Common = require("scripts.common")
 local Utils = require("utility.utils")
 
+---@class Tests_PRSMT_TrainComposition
+local TrainComposition = {
+    ["<"] = {
+        composition = "<"
+    },
+    ["<>"] = {
+        composition = "<>"
+    },
+    ["<---->"] = {
+        composition = "<---->"
+    },
+    ["<>>>>>>>>>"] = {
+        composition = "<>>>>>>>>>"
+    }
+}
+-- A non oversized tunnel is the portal length required by that train type and 4 underground segments. Oversized is the number multiplied by 4.
+---@class Tests_PRSMT_TunnelOversized
+local TunnelOversized = {
+    none = "none",
+    portalOnly = "portalOnly",
+    undergroundOnly = "undergroundOnly",
+    portalAndUnderground = "portalAndUnderground"
+}
+
 ---@class Tests_PRSMT_LeavingTrackCondition
 local LeavingTrackCondition = {
     clear = "clear", -- Train station far away so more than breaking distance.
@@ -30,13 +54,16 @@ local TrainStartingSpeed = {
 -- Test configuration.
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
-local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificTrainStartingSpeedFilter = {} -- Pass in an array of TrainStartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+--TODO: update beign final merge
+local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrainCompositionFilter = {"<"} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelOversizedFilter = {"none"} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificLeavingTrackConditionFilter = {"noPath"} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTrainStartingSpeedFilter = {"none"} -- Pass in an array of TrainStartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
-Test.RunTime = 3600
+Test.RunTime = 5000
 Test.RunLoopsMax = 0
 ---@type Tests_PRSMT_TestScenario[]
 Test.TestScenarios = {}
@@ -54,7 +81,7 @@ end
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
-    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.leavingTrackCondition .. "    -    Speed: " .. testScenario.trainStartingSpeed
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition.composition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   " .. testScenario.leavingTrackCondition .. "   -   StartingSpeed: " .. testScenario.trainStartingSpeed
 end
 
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
@@ -64,24 +91,57 @@ Test.Start = function(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local trackYPosition = 1
-
-    -- Just the tunnel in the blueprint.
-    local blueprint = "0eNq1lmFvgyAQhv/LfcbEA63Fv7I0hrbEkSgawG2m8b8P65dm7bLu2D6ZE3LPy8G9uQscu0mPztgA9QXMabAe6pcLeNNa1a3/wjxqqMEE3QMDq/o1csp072puwmSt7rJxcEF1jddtr23IfIjr7WuAhYGxZ/0BNS6MmFTb800evhwYRIYJRm9Kr8Hc2Kk/ahdBT6RjMA4+ZhjsqiVmzUoGM9RSRtDZOH3a1nYM3pQzaouuR/hC47+tyD0aiWiRjKaSi2SyIJLLZDL1onfJ5Oohmf9IrpLJkkjep78wJKIlpYuxJNIw/w43RddxrRvi9+642bq3ObnBe2PbB3KodUekyLkXwKnVR/5HAgRVgPiPC+Hk91FQniOXRK/BdJsTVIfFdKMTVI/FdKsTFZWdbnaC3O8ymV1QW53n6Wxql3NMZ5MHN05p6eK5lo4j6nWyrW+m67hFO79VZo9FJXlVYolily/LJwAvAFY="
-    local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = trackYPosition}, testName)
-
     local surface, testForce = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+    local currentRailBuildPosition
 
-    -- Get the end portals.
+    -- Work out how many tunnel parts are needed.
+    local tunnelSegmentsCount = 4
+    if testScenario.tunnelOversized == TunnelOversized.undergroundOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
+        tunnelSegmentsCount = tunnelSegmentsCount * 4
+    end
+    local portalSegmentsCount = math.ceil(#testScenario.trainCarriageDetails * 3.5)
+    if testScenario.tunnelOversized == TunnelOversized.portalOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
+        portalSegmentsCount = portalSegmentsCount * 4
+    end
+
+    -- Create the tunnel and portals. Build tunnel center east for the entrance and then tunnel center west for exit.
     ---@typelist LuaEntity, double, LuaEntity, double
-    local entrancePortalPart, entrancePortalPartX, exitPortalPart, exitPortalPartX = nil, -999999, nil, 999999
-    for _, portalEnd in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
-        if portalEnd.position.x > entrancePortalPartX then
-            entrancePortalPart = portalEnd
-            entrancePortalPartX = portalEnd.position.x
+    local entrancePortalPart, entrancePortalPartX, exitPortalPart, exitPortalPartX
+    for _, directionData in pairs({{direction = defines.direction.east, xPosModifier = 1}, {direction = defines.direction.west, xPosModifier = -1}}) do
+        -- Reset the building loction to the center of the tunnele each time.
+        currentRailBuildPosition = {x = 0, y = trackYPosition}
+
+        -- Build the tunnel sections.
+        for i = 1, tunnelSegmentsCount / 2 do
+            currentRailBuildPosition.x = currentRailBuildPosition.x + (1 * directionData.xPosModifier)
+            surface.create_entity {name = "railway_tunnel-underground_segment-straight", position = currentRailBuildPosition, direction = directionData.direction, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            currentRailBuildPosition.x = currentRailBuildPosition.x + (1 * directionData.xPosModifier)
         end
-        if portalEnd.position.x < exitPortalPartX then
-            exitPortalPart = portalEnd
-            exitPortalPartX = portalEnd.position.x
+
+        -- Build the blocked end of portal.
+        currentRailBuildPosition.x = currentRailBuildPosition.x + (3 * directionData.xPosModifier)
+        surface.create_entity {name = "railway_tunnel-portal_end", position = currentRailBuildPosition, direction = directionData.direction, force = testForce, raise_built = true, create_build_effect_smoke = false}
+        currentRailBuildPosition.x = currentRailBuildPosition.x + (3 * directionData.xPosModifier)
+
+        -- Build the portal sections.
+        for i = 1, portalSegmentsCount do
+            currentRailBuildPosition.x = currentRailBuildPosition.x + (1 * directionData.xPosModifier)
+            surface.create_entity {name = "railway_tunnel-portal_segment-straight", position = currentRailBuildPosition, direction = directionData.direction, force = testForce, raise_built = true, create_build_effect_smoke = false}
+            currentRailBuildPosition.x = currentRailBuildPosition.x + (1 * directionData.xPosModifier)
+        end
+
+        -- Build the entry end of portal.
+        currentRailBuildPosition.x = currentRailBuildPosition.x + (3 * directionData.xPosModifier)
+        local portalBuilt = surface.create_entity {name = "railway_tunnel-portal_end", position = currentRailBuildPosition, direction = directionData.direction, force = testForce, raise_built = true, create_build_effect_smoke = false}
+        currentRailBuildPosition.x = currentRailBuildPosition.x + (3 * directionData.xPosModifier)
+
+        -- Log the entry end of the portal for use later.
+        if directionData.direction == defines.direction.east then
+            entrancePortalPart = portalBuilt
+            entrancePortalPartX = portalBuilt.position.x
+        else
+            exitPortalPart = portalBuilt
+            exitPortalPartX = portalBuilt.position.x
         end
     end
 
@@ -98,16 +158,17 @@ Test.Start = function(testName)
         railCountEntranceEndOfPortal = 10
     end
 
-    -- Build the pre tunnel rail, includes 7 rails for the train to be placed on.
-    local currentRailBuildPosition = {x = entrancePortalPartX + 3, y = trackYPosition}
-    for i = 0, railCountEntranceEndOfPortal + 7 do
+    -- Build the pre tunnel rail, includes rails for the train to be placed on.
+    local trainRailsNeeded = math.ceil(#testScenario.trainCarriageDetails * 3.5)
+    currentRailBuildPosition.x = entrancePortalPartX + 3
+    for i = 1, railCountEntranceEndOfPortal + trainRailsNeeded do
         currentRailBuildPosition.x = currentRailBuildPosition.x + 1
         surface.create_entity {name = "straight-rail", position = currentRailBuildPosition, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
         currentRailBuildPosition.x = currentRailBuildPosition.x + 1
     end
 
     -- Build the train, have to use a fake constant speed to generate acceleration data.
-    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - 14, y = trackYPosition}, {{prototypeName = "locomotive", facingForwards = true}, {prototypeName = "locomotive", facingForwards = false}}, defines.direction.west, 1, 0.1, {name = "rocket-fuel", count = 10})
+    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - (#testScenario.trainCarriageDetails * 7), y = trackYPosition}, testScenario.trainCarriageDetails, defines.direction.west, 1, 0.1, {name = "rocket-fuel", count = 10})
 
     -- Add the post tunnel parts.
     local nearPositionDistance, farPositionDistance = 20, 100
@@ -130,7 +191,7 @@ Test.Start = function(testName)
 
     -- Build the post tunnel rail.
     currentRailBuildPosition.x = exitPortalPartX - 3
-    for i = 0, railCountLeavingEndOfPortal do
+    for i = 1, railCountLeavingEndOfPortal do
         currentRailBuildPosition.x = currentRailBuildPosition.x - 1
         surface.create_entity {name = "straight-rail", position = currentRailBuildPosition, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
         currentRailBuildPosition.x = currentRailBuildPosition.x - 1
@@ -226,6 +287,13 @@ Test.EveryTick = function(event)
         return
     end
 
+    -- If its a noPath test then on entry remove the endStation.
+    if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
+        if testDataBespoke.endStation.valid then
+            testDataBespoke.endStation.destroy()
+        end
+    end
+
     -- Store the leavingTrain is approperiate
     local trainLeftThisTick = false
     if testDataBespoke.leavingTrain == nil and tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving then
@@ -290,31 +358,46 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out what specific instances of each type to do.
+    local trainCompositionToTest  ---@type Tests_LTSDCT_TrainComposition
+    local tunnelOversizedToTest  ---@type Tests_LTSDCT_TunnelOversized
     local leavingTrackConditionToTest  ---@type Tests_PRSMT_LeavingTrackCondition
     local trainStartingSpeedToTest  ---@type Tests_PRSMT_TrainStartingSpeed[]
     if DoSpecificTests then
         -- Adhock testing option.
+        trainCompositionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainComposition, SpecificTrainCompositionFilter)
+        tunnelOversizedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelOversized, SpecificTunnelOversizedFilter)
         leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
         trainStartingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStartingSpeed, SpecificTrainStartingSpeedFilter)
     elseif DoMinimalTests then
+        trainCompositionToTest = {TrainComposition["<---->"]}
+        tunnelOversizedToTest = {TunnelOversized.none}
         leavingTrackConditionToTest = LeavingTrackCondition
         trainStartingSpeedToTest = {TrainStartingSpeed.none, TrainStartingSpeed.full}
     else
         -- Do whole test suite.
+        trainCompositionToTest = TrainComposition
+        tunnelOversizedToTest = TunnelOversized
         leavingTrackConditionToTest = LeavingTrackCondition
         trainStartingSpeedToTest = TrainStartingSpeed
     end
 
     -- Work out the combinations of the various types that we will do a test for.
-    for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
-        for _, trainStartingSpeed in pairs(trainStartingSpeedToTest) do
-            ---@class Tests_PRSMT_TestScenario
-            local scenario = {
-                leavingTrackCondition = leavingTrackCondition,
-                trainStartingSpeed = trainStartingSpeed
-            }
-            table.insert(Test.TestScenarios, scenario)
-            Test.RunLoopsMax = Test.RunLoopsMax + 1
+    for _, trainComposition in pairs(trainCompositionToTest) do
+        for _, tunnelOversized in pairs(tunnelOversizedToTest) do
+            for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
+                for _, trainStartingSpeed in pairs(trainStartingSpeedToTest) do
+                    ---@class Tests_PRSMT_TestScenario
+                    local scenario = {
+                        trainComposition = trainComposition,
+                        tunnelOversized = tunnelOversized,
+                        leavingTrackCondition = leavingTrackCondition,
+                        trainStartingSpeed = trainStartingSpeed,
+                        trainCarriageDetails = TestFunctions.GetTrainCompositionFromTextualRepresentation(trainComposition)
+                    }
+                    table.insert(Test.TestScenarios, scenario)
+                    Test.RunLoopsMax = Test.RunLoopsMax + 1
+                end
+            end
         end
     end
 

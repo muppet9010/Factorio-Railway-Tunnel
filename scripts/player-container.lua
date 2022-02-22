@@ -199,8 +199,8 @@ PlayerContainer.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, 
         player = driver
     end
 
-    -- The player container needs to be created the trains speed ahead of the players current position. As otherwise the player container starts out of step with the underground trains progression through the tunnel.
-    local playerContainerPosition = Utils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = 0, y = -math.abs(managedTrain.approachingTrainExpectedSpeed)}, driver.position)
+    -- The player container creation position should be where te player currently is as their position has already been moved for the current tick at this point by the train, but the train graphics haven't updated to new position yet on breakpoint as this happens at the end of a tick.
+    local playerContainerPosition = driver.position
 
     -- Create the player container.
     local playerContainerEntity = managedTrain.surface.create_entity {name = "railway_tunnel-player_container", position = playerContainerPosition, force = driver.force}
@@ -246,6 +246,32 @@ end
 PlayerContainer.TransferPlayersFromContainersToLeavingCarriages = function(managedTrain)
     local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
     for _, playerContainer in pairs(thisTrainsPlayerContainers) do
+        -- Check the player isn't being moved backwards for debug builds only. If they are moved backwards it would just be a jarring jump on the screen and not a crash or error.
+        if global.debugRelease then
+            local player_position, carriage_position = playerContainer.player.position, playerContainer.leavingCarriage.position
+            local viewJumpedBackwards = false
+            if managedTrain.trainTravelDirection == defines.direction.north then
+                if carriage_position.y > player_position.y then
+                    viewJumpedBackwards = true
+                end
+            elseif managedTrain.trainTravelDirection == defines.direction.east then
+                if carriage_position.x < player_position.x then
+                    viewJumpedBackwards = true
+                end
+            elseif managedTrain.trainTravelDirection == defines.direction.south then
+                if carriage_position.y < player_position.y then
+                    viewJumpedBackwards = true
+                end
+            elseif managedTrain.trainTravelDirection == defines.direction.west then
+                if carriage_position.x > player_position.x then
+                    viewJumpedBackwards = true
+                end
+            end
+            if viewJumpedBackwards then
+                error("Players view jumped backwards for train heading " .. Utils.DirectionValueToName[managedTrain.trainTravelDirection])
+            end
+        end
+
         playerContainer.leavingCarriage.set_driver(playerContainer.player)
         PlayerContainer.RemovePlayerContainer(playerContainer)
     end

@@ -7,13 +7,11 @@
 --]]
 --
 
--- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
 local Utils = require("utility.utils")
 local Common = require("scripts.common")
 
--- Internal test types.
 ---@type table<string, TestFunctions_TrainSpecifiction> @ The key is generally the train specification composition text string with the speed if set.
 ---@class Tests_LTSDCT_TrainComposition
 local TrainComposition = {
@@ -76,13 +74,8 @@ local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTra
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
---- How long the test instance runs for (ticks) before being failed as uncompleted. Should be safely longer than the maximum test instance should take to complete, but can otherwise be approx.
 Test.RunTime = 5000 -- The large slow train "<>>>>>>>>>" takes 4k.
-
---- Populated when generating test scenarios.
 Test.RunLoopsMax = 0
-
---- The test configurations are stored in this when populated by Test.GenerateTestScenarios().
 ---@type Tests_LTSDCT_TestScenario[]
 Test.TestScenarios = {}
 
@@ -370,7 +363,6 @@ Test.Stop = function(testName)
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
---- TrainComposition,TunnelOversized,StartingSpeed,LeavingTrackCondition   trainComposition,tunnelOversized,startingSpeed,leavingTrackCondition
 --- Scheduled event function to check test state each tick.
 ---@param event UtilityScheduledEvent_CallbackObject
 Test.EveryTick = function(event)
