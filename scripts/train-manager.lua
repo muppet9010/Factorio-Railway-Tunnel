@@ -473,8 +473,8 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
         MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainers(managedTrain, managedTrain.playerTrain_currentSpeedAbsolute)
     end
 
-    -- If train will haved covered the required distance by next tick then it has arrived. Do this as if we wait for it to have passed target distance then the players view jumps backwards on switch to leaving train.
-    if managedTrain.playerTrain_traversalDistanceRemaining - managedTrain.playerTrain_currentSpeedAbsolute <= 0 then
+    -- If train will have covered the required distance in the next 2 ticks then it has arrived. Do this as if we wait for it to have passed target distance or be within 1 tick then in some cases the players view jumps backwards on switching to the leaving train. Does lead to the last ticks movement being up to double length, but this isn't too noticable, and is much better than jumping backwards.
+    if managedTrain.playerTrain_traversalDistanceRemaining - (managedTrain.playerTrain_currentSpeedAbsolute * 2) <= 0 then
         managedTrain.trainLeavingSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
 
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
