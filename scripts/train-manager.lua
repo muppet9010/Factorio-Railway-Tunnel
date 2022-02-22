@@ -451,14 +451,18 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
     end
 
     -- Calculate the new speed based on the stopping distance.
+    local accelerationState  ---@type defines.riding.acceleration
     if managedTrain.playerTrain_stoppingDistance == nil then
         -- Train can accelerate
+        accelerationState = defines.riding.acceleration.accelerating
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
     elseif currentUndergroundTrainBrakingDistance < managedTrain.playerTrain_stoppingDistance then
         -- Train can't accelerate as will have to start stopping soon, so just maintain speed.
+        accelerationState = defines.riding.acceleration.nothing
         managedTrain.playerTrain_currentSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
     else
         -- Train needs to break based on breaking target distance.
+        accelerationState = defines.riding.acceleration.braking
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
     end
 
@@ -473,8 +477,20 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
         MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainers(managedTrain, managedTrain.playerTrain_currentSpeedAbsolute)
     end
 
-    -- If train will have covered the required distance in the next 2 ticks then it has arrived. Do this as if we wait for it to have passed target distance or be within 1 tick then in some cases the players view jumps backwards on switching to the leaving train. Does lead to the last ticks movement being up to double length, but this isn't too noticable, and is much better than jumping backwards.
-    if managedTrain.playerTrain_traversalDistanceRemaining - (managedTrain.playerTrain_currentSpeedAbsolute * 2) <= 0 then
+    -- Work out how early before the end of the tunnel to declare having arrived.
+    local travelDistancePadding
+    if accelerationState == defines.riding.acceleration.accelerating then
+        travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute
+    elseif accelerationState == defines.riding.acceleration.braking then
+        -- Needs the extra tick's distance to avoid jumping backwards in some cases. Not sure if 2 is actually fully required, but 1 isn't enough for tests. I want to avoid excessive test setups so 2 seems a safe number to avoid issues, while accepting a slight jump forwards while braking.
+        -- In testing a train speed of less than 0.3 needed double, whereas above this didn't. However this was with very limited testing and is likely some sort of slding scale. At present I don't want to go down this rabit hole.
+        travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute * 2
+    else
+        -- Just steady.
+        travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute
+    end
+    -- If train will have covered the required distance in the allotted extra ticks covered distance then it has arrived. Do this as if we wait for it to be too close then in some cases the players view jumps backwards on switching to the leaving train. Does lead to the last ticks movement being an odd length, but this isn't too noticable, and is much better than jumping backwards.
+    if managedTrain.playerTrain_traversalDistanceRemaining - travelDistancePadding <= 0 then
         managedTrain.trainLeavingSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
 
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.

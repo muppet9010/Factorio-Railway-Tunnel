@@ -1,6 +1,6 @@
 Now
 ---
-
+    - Typo's of brake and braking everywhere: break and breaking.
 
 Bugs
 ----

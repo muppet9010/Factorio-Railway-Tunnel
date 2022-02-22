@@ -1,5 +1,9 @@
--- Have a player riding in a train and monitor the players position to ensure its smooth. Test various train entering and leaving speeds.
--- Can only test the players view never moves backwards. Trying to track the forward movement between ticks triggered on un-avoidable irregular forwards variation when the unerground train changes to leaving.
+--[[
+    Have a player riding in a train and monitor the players position to ensure its smooth. Test various train entering and leaving speeds.
+    Can only test the players view never moves backwards. Trying to track the forward movement between ticks triggered on un-avoidable irregular forwards variation when the unerground train changes to leaving.
+    If the global test setting "JustLogAllTests" is enabled then the variance of each test is recorded to the generic test result output. A jump of 0% is ideal, with more/less than 100% indicating an excess tick. At present some braking situations can exceed 100% as I want to avoid overly complicated logic in the mod to try and smooth it out.
+--]]
+--
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
@@ -181,8 +185,8 @@ Test.Start = function(testName)
         endStation = endStation, ---@type LuaEntity
         lastPlayerXPos = nil, ---@type double
         lastPlayerXMovement = nil, ---@type double
-        leavingTrain = nil, ---@type LuaTrain
-        leavingTrainTick = nil ---@type Tick
+        lastPlayerXMovementPercentage = nil, ---@type double
+        leavingTrain = nil ---@type LuaTrain
     }
     testData.bespoke = testDataBespoke
 
@@ -223,9 +227,10 @@ Test.EveryTick = function(event)
     end
 
     -- Store the leavingTrain is approperiate
+    local trainLeftThisTick = false
     if testDataBespoke.leavingTrain == nil and tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving then
         testDataBespoke.leavingTrain = tunnelUsageChanges.train
-        testDataBespoke.leavingTrainTick = event.tick
+        trainLeftThisTick = true
     end
 
     -- Get players position.
@@ -237,7 +242,6 @@ Test.EveryTick = function(event)
 
     -- Get players position movement.
     local newPlayerXMovement = testDataBespoke.lastPlayerXPos - player.position.x
-    testDataBespoke.lastPlayerXPos = player.position.x
     -- Handle initial missing values.
     if testDataBespoke.lastPlayerXMovement == nil then
         -- It can take a tick or so for the player position to start moving.
@@ -246,6 +250,7 @@ Test.EveryTick = function(event)
         end
         return
     end
+    local newPlayerXMovementPercentage = Utils.RoundNumberToDecimalPlaces((newPlayerXMovement / testDataBespoke.lastPlayerXMovement) * 100, 0)
 
     -- Check movement is not backwards.
     if newPlayerXMovement < 0 then
@@ -253,22 +258,21 @@ Test.EveryTick = function(event)
         return
     end
 
-    -- Tried to track players movement difference to detect sudden jumps, but the transition from underground to leaving train will always be a little erratic as I can't line up 2 independent speeds and positions.
-    --[[
-        local playerMovementDif = newPlayerXMovement / testDataBespoke.lastPlayerXMovement
-        if playerMovementDif < 0.9 or playerMovementDif > 1.1 then
-            if testDataBespoke.leavingTrainTick == nil then
-                TestFunctions.TestFailed(testName, "more than 10% movement change between ticks, pre leaving train.")
-            else
-                TestFunctions.TestFailed(testName, "more than 10% movement change between ticks, " .. (event.tick - testDataBespoke.leavingTrainTick) .. " ticks after leaving.")
-            end
-            return
-        end
-    ]]
-    --
+    -- Log change in players movement difference for transition from underground to leaving train. Will always be a little erratic as I can't line up 2 independent speeds and positions, so this is just to provide reviewable data.
+    -- Can't have a strict test as theres a known good case that's above 100% at present due to simplicity in braking logic. Comments are in the train-manager code for this.
+    if trainLeftThisTick then
+        -- A diff between the old and new percentages of 0 is ideal. More or less than 100 indicates that a tick has been exceed.
+        local diffOfPlayerXMovementPercentage = Utils.RoundNumberToDecimalPlaces(((1 / (testDataBespoke.lastPlayerXMovementPercentage / newPlayerXMovementPercentage) - 1) * 100), 0)
+        game.print("leaving player difference: " .. tostring(newPlayerXMovementPercentage) .. "%")
+        game.print("underground player difference: " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "%")
+        game.print("jump in difference: " .. tostring(diffOfPlayerXMovementPercentage) .. "%")
+        TestFunctions.LogTestDataToTestRow("jump: " .. tostring(diffOfPlayerXMovementPercentage) .. "% from " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "% to " .. tostring(newPlayerXMovementPercentage) .. "%")
+    end
 
     -- Store the old movement value as we're done comparing.
+    testDataBespoke.lastPlayerXPos = player.position.x
     testDataBespoke.lastPlayerXMovement = newPlayerXMovement
+    testDataBespoke.lastPlayerXMovementPercentage = newPlayerXMovementPercentage
 
     -- If the leaving train reaches 0 speed then its stopped and the test is over.
     if testDataBespoke.leavingTrain ~= nil and testDataBespoke.leavingTrain.speed == 0 then
@@ -293,7 +297,7 @@ Test.GenerateTestScenarios = function(testName)
         leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
         trainStartingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStartingSpeed, SpecificTrainStartingSpeedFilter)
     elseif DoMinimalTests then
-        leavingTrackConditionToTest = {LeavingTrackCondition}
+        leavingTrackConditionToTest = LeavingTrackCondition
         trainStartingSpeedToTest = {TrainStartingSpeed.none, TrainStartingSpeed.full}
     else
         -- Do whole test suite.
