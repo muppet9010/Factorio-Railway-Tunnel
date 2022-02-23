@@ -2035,9 +2035,6 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     end
 end
 
----@class Utils.MaxCorpseTimeToLive @ Max TTL allowed that doesn't have the corpse instant vanish. Basically infinite.
-Utils.MaxCorpseTimeToLive = 4200000000 ---@type uint
-
 --- Returns a luaObject if its valid, else nil. Convientent for inline usage when rarely called.
 ---
 --- Should be done locally if called frequently.

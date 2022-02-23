@@ -32,8 +32,7 @@ data:extend(
                 filename = "__base__/graphics/icons/locomotive.png",
                 size = 64
             },
-            --
-            time_to_live = Utils.MaxCorpseTimeToLive,
+            time_to_live = 4294967295, -- Max value.
             minable = {mining_time = 2},
             selection_box = {{-1, -1}, {1, 1}},
             selection_priority = 100, -- 0-255 value with 255 being on-top of everything else
