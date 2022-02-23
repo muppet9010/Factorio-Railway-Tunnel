@@ -317,13 +317,22 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     managedTrain.approachingTrainReachedFullSpeed = nil
     managedTrain.portalTrackTrainBySignal = nil
 
-    -- Work out the distance the leading train front is beyond the train detector. If you breakpoint here you see the train before its visually moved this distance. But the entity field inspection will show its real position. Distance minus the length of the lead carriage. So this value is expected to be a negative result.
-    --TODO: this needs to be collision box size and not connectioned distance. as loco's collison box is 0.2 smaller than this would imply and thus wrong.
-    local enteringTrainDistanceBeyond = Utils.GetDistance(enteringTrainLeadCarriage_entity.position, managedTrain.entrancePortal.transitionUsageDetectorPosition) - Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] + Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name]
-    -- The travel distance is the underground distance, portal train waiting length, distance from lead carriage's front to train detector, and 15.5 tiles for the static extras; 1.5 tiles in to the entry portal part from the train detector's outer collision box edge, the 2 blocked portals (6*2), 2 tiles to get to the first blocked portal). These exact values may be affected if the portal train detector entities and front of train placement positins are moved; if changed will need careful review.
-    -- TODO: this ends up short
-    -- TODO: this distance is entity collision box center to placement front (not collision box). Make sure this variance is account for. We want the leaving train placed on its conected carriage size and not collision box to avoid future issues with modded train sizes. As all stadnard length ones will be 7 connected length, but their collision boxes could be quite random.
-    managedTrain.traversalTravelDistance = managedTrain.tunnel.underground.tilesLength + managedTrain.exitPortal.trainWaitingAreaTilesLength + enteringTrainDistanceBeyond + 15.5
+    --[[
+        The travel distance is:
+            + distance from lead carriage's center to train detector center
+            + 4.5 tiles from the train detector's center to the entrance blocked portal part's center, hard coded in Portal.BlockingEndPortalSetup.transitionUsageDetectorEntityDistance
+            + 3 tiles for the entrance blocked portal end center to edge with tunnel
+            + underground distance
+            + 6 tiles for the exit blocked portal part
+            + exit portal train waiting length
+            + 3 tiles for the exit entry portal end's edge with waiting area to center
+            - 1 tile for the distance from the exit entry portal center back to the position of the front of the leaving train, hard coded in Portal.EntryEndPortalSetup.leavingTrainFrontPosition
+            - distance from front of leaving train position to the leaving train's entity center. This is the Common.CarriagePlacementDistances - Common.CarriagesOwnOffsetFromOtherConnectedCarriage as the train is palced hard up against the front position and not offset by its inter carriage connection distance.
+        These exact values may be affected if the portal train detector entities and front of train placement positins are moved; if changed will need careful review.
+    --]]
+    local enteringTrainDistanceToDetector = Utils.GetDistance(enteringTrainLeadCarriage_entity.position, managedTrain.entrancePortal.transitionUsageDetectorPosition)
+    local leavingCarriageOffsetFromExitPortal = (Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name])
+    managedTrain.traversalTravelDistance = enteringTrainDistanceToDetector + 4.5 + 3 + managedTrain.tunnel.underground.tilesLength + 6 + managedTrain.exitPortal.trainWaitingAreaTilesLength + 3 - 1 - leavingCarriageOffsetFromExitPortal
 
     -- Remove the entering train's carriage entities. Have to use this reference and not the cached data as it was updated earlier in this function.
     for i, carriage in pairs(enteringTrain_carriages) do
@@ -469,7 +478,8 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
     end
 
-    --TODO: managedTrain.playerTrain_currentSpeedAbsolute needs to account for the 256/th rounding issue Facotrio has. I need to check which way it rounds in each case. 0.00390625
+    -- Make the recorded newSpeed be a multiple of a 256th as this is what the game rounds to. We can then use the stored value normally.
+    managedTrain.playerTrain_currentSpeedAbsolute = math.floor(managedTrain.playerTrain_currentSpeedAbsolute * 256) / 256
 
     -- Update the distance travelled so far and distance to current breaking spot.
     managedTrain.playerTrain_traversalDistanceRemaining = managedTrain.playerTrain_traversalDistanceRemaining - managedTrain.playerTrain_currentSpeedAbsolute
@@ -494,6 +504,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
         travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute
     end
 
+    --TODO: comment update
     -- If train will have covered the required distance in the allotted extra ticks covered distance then it has arrived. Do this as if we wait for it to be too close then in some cases the players view jumps backwards on switching to the leaving train. Does lead to the last ticks movement being an odd length, but this isn't too noticable, and is much better than jumping backwards.
     if managedTrain.playerTrain_traversalDistanceRemaining - travelDistancePadding <= 0 then
         managedTrain.trainLeavingSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
@@ -1011,7 +1022,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
             driver = refCarriageData.entity.get_driver()
             if driver ~= nil then
                 managedTrain.undergroundTrainHasPlayersRiding = true
-                MOD.Interfaces.PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, lastPlacedCarriage)
+                MOD.Interfaces.PlayerContainer.PlayerInCarriageEnteringTunnel(managedTrain, driver, refCarriageData.entity, lastPlacedCarriage)
             end
         end
 

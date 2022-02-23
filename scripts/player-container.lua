@@ -188,8 +188,9 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param driver LuaPlayer|LuaEntity
+---@param currentCarriage LuaEntity
 ---@param playersLeavingCarriage LuaEntity
-PlayerContainer.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, playersLeavingCarriage)
+PlayerContainer.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, currentCarriage, playersLeavingCarriage)
     local player  ---type LuaPlayer
     if not driver.is_player() then
         -- Is a character body player driving.
@@ -199,8 +200,8 @@ PlayerContainer.PlayerInCarriageEnteringTunnel = function(managedTrain, driver, 
         player = driver
     end
 
-    -- The player container creation position should be where te player currently is as their position has already been moved for the current tick at this point by the train, but the train graphics haven't updated to new position yet on breakpoint as this happens at the end of a tick.
-    local playerContainerPosition = driver.position
+    -- The player container needs to be created where the train carriage is and not where the players position is. As the players position is alwys 1 tick behind the vehcile they ride in's position.
+    local playerContainerPosition = currentCarriage.position
 
     -- Create the player container.
     local playerContainerEntity = managedTrain.surface.create_entity {name = "railway_tunnel-player_container", position = playerContainerPosition, force = driver.force}

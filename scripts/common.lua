@@ -1,4 +1,5 @@
 local Utils = require("utility.utils")
+local PrototypeAttributes = require("utility.prototype-attributes")
 local Common = {}
 
 -- Make the entity lists.
@@ -62,6 +63,16 @@ Common.CarriagesOwnOffsetFromOtherConnectedCarriage = {
     ["cargo-wagon"] = 0.5,
     ["fluid-wagon"] = 0.5,
     ["artillery-wagon"] = 0.5
+}
+
+--- Gets the carriages collision box length.
+---
+--- Hardcoded as we have to hardcoded other values and it saves having to obtain these specially during the right data lifecycle stage (control.lua when this file is loaded doesn't allow game or data access).
+Common.CarriagesCollisionBoxLength = {
+    ["locomotive"] = 5.2,
+    ["cargo-wagon"] = 4.8,
+    ["fluid-wagon"] = 4.8,
+    ["artillery-wagon"] = 4.8
 }
 
 ---@class TunnelSignalDirection
