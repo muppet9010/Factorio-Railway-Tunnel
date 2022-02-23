@@ -181,7 +181,7 @@ TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, posit
     end
 end
 
---- Shows warning/error text on the map to either the player (character) or the force (construction robots) doign the interaction.
+--- Shows warning/error text on the map to either the player (character) or the force (construction robots) doing the interaction.
 ---@param entityDoingInteraction EntityActioner
 ---@param text LocalisedString @ Text shown.
 ---@param surface LuaSurface

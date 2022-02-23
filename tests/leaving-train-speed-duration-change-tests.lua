@@ -53,7 +53,7 @@ local StartingSpeed = {
 }
 ---@class Tests_LTSDCT_LeavingTrackCondition
 local LeavingTrackCondition = {
-    clear = "clear", -- Train station far away so more than breaking distance.
+    clear = "clear", -- Train station far away so more than braking distance.
     nearStation = "nearStation", -- A train station near to the portal so the train has to brake very aggressively leaving the portal.
     farStation = "farStation", -- A train station far to the portal so the train has to brake gently leaving the portal.
     portalSignal = "portalSignal", -- The portla exit signal will be closed so the train has to crawl out of the portal.

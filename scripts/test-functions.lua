@@ -80,7 +80,7 @@ TestFunctions.TestFailed = function(testName, errorText)
         EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests_Scheduled")
     end
 end
---- Goes in to the test log file after the equals sign on the current row. For rare cases a test wants to inject log data in for doign full test runs to file.
+--- Goes in to the test log file after the equals sign on the current row. For rare cases a test wants to inject log data in for doing full test runs to file.
 ---
 --- Can be called in all cases and will only write if "justLogAllTests" is enabled.
 ---@param text string
@@ -157,7 +157,7 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
     local activeTestCheckFunc = function(event)
         local testManagerData = global.testManager.testsToRun[testName]
-        -- Each test that registered an event handler has a unique reaction (this) function that checks that test's own state data for. So an instance per test's OnLoad() which each watching for its own test beign the currently active test and ignoring it otherwise.
+        -- Each test that registered an event handler has a unique reaction (this) function that checks that test's own state data for. So an instance per test's OnLoad() which each watching for its own test being the currently active test and ignoring it otherwise.
         if testManagerData.runLoopsCount > 0 and not testManagerData.finished then
             event.testName = testName
             testFunction(event)

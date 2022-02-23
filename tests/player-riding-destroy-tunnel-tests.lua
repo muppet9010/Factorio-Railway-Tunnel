@@ -279,7 +279,7 @@ Test.CalculateExpectedResults = function(testScenario)
         -- Player not on portal/tunnel.
         expectedPlayerState = FinalPlayerState.inVehicle
     elseif testScenario.destroyOnTunnelAction == DestroyOnTunnelAction.partiallyOnPortalTrack then
-        -- Players carraige may be destroyed.
+        -- Players carriage may be destroyed.
         if testScenario.playerInEndOfTrain == PlayerInEndOfTrain.front then
             expectedPlayerState = FinalPlayerState.aliveOutOfVehicle
         else

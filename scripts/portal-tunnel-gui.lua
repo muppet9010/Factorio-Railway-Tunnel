@@ -552,7 +552,7 @@ end
 ---@return uint fullCarriages
 PortalTunnelGui.GetMaxTrainLengthInCarriages = function(tiles)
     local fullCarriages = math.floor(tiles / 7)
-    -- If theres 6 tiles left then the last carraige can fit in that as it doens't need a connection onwards.
+    -- If theres 6 tiles left then the last carriage can fit in that as it doens't need a connection onwards.
     if tiles - (fullCarriages * 7) >= 6 then
         fullCarriages = fullCarriages + 1
     end

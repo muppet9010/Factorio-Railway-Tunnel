@@ -1,10 +1,10 @@
 Now
 ---
-    - Typo's of brake and braking everywhere: break and breaking.
+    - Add test for if riding train and its path reverses once entered tunnel.
+
 
 Bugs
 ----
-    - localise math.x() and string.x() functions when commonly called in classes or library functions.
 
 
 Features to add/change
@@ -21,7 +21,7 @@ Features to add/change
     - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
         - Some very high values are from tests that shouldn't have a variation measured, i.e: "<", "none", "full", "noPath".
         - The change to tunnel distance to cover calculations for when players ride trains may ahve thrown the no player maths off slightly as the fianl length isn't quite what it was before.
-        - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on breaking time.
+        - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on braking time.
         - Will probably need to account for excessive speeds entering the tunnel.
         - Check the train traversing final speed and if it ends up at max then its likely our estimate went over max at some point. So do a backwards calculation to correct it somehow if needed? Check if this is an issue and cause of speed wrongness as just a passing thought noted down, not specifically observed.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
@@ -65,9 +65,9 @@ Concept change ideas
             - Would replace TrainManager.TrainOnPortalTrackOngoing() with calling TrainManager.TrainApproachingOngoing() and letting that manage it.
             - This probably won't have any UPS impact overall, but should make the logic simplier for edge cases.
             - Ignore manual driving for now, just worry about scheduled trains and if their path/station changes during approach.
-            - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
+            - Would resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some braking as a % of distance remaining, this didn't use to happen as entering trains were on manaul forced speed in the old mod.
         Cons:
-            - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some breaking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
+            - Would still need to resolve the current issue where the train's speed slows as it approaches the signal as although we reset it every tick (TrainManager.TrainApproachingOngoing()) the game applies some braking as a % of distance remaining, this didn't use to happen as entering trains were on manual forced speed in the old mod.
     - Players riding trains when the tunnel is destroyed have their corpse left wherever the player happened to be in the tunnel at the time. Should the corpse be dumped at the nearest portal entry end like if a player ejects from the train while underground. If the player is on the portal tracks (above ground) and the tunnel is destroyed killing the train, currently the player is ejected at the portal entrance; maybe the player should be killed in this scenario as well.
 
 
@@ -134,7 +134,7 @@ Functionality not currently supported (FROM OLD MOD VERSION - BUT STILL GENERALL
             - Apply the acceleration to the underground train and let it naturally push its speed to both the entering and leaving train parts.
             - Apply the players direction input to the leaving train part if they're not in it.
             - Have it go through on auto for now from when it commits to when it starts leaving.
-            - Will need to add tests for manually driven trains beign changed to automatic at various points in their tunnel usage.
+            - Will need to add tests for manually driven trains being changed to automatic at various points in their tunnel usage.
         - Handle 2 trains both trying to use the tunnel and its portals at once.
             - This first and second trains may each be coasting train, player driven or scheduled trains (not both scheduled).
             - This should be reduced by coasting trains and carriage add/remove logic.

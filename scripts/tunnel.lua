@@ -22,7 +22,7 @@ local Utils = require("utility.utils")
 ---@field tunnelId Id @ Id of the tunnel.
 ---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
 ---@field undergroundSegmentEntities  table<UnitNumber, LuaEntity> @ array of all the underground segments making up the underground section of the tunnel.
----@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+---@field tunnelUsageId Id @ the managed train using the tunnel if any.
 
 ---@class RemotePortalDetails
 ---@field portalId Id @ unique id of the portal object.
@@ -181,7 +181,7 @@ end
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
 ---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
----@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+---@field tunnelUsageId Id @ the managed train using the tunnel if any.
 
 ---@class RemotePortalDetails
 ---@field portalId Id @ unique id of the portal object.

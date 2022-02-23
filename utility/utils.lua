@@ -2227,7 +2227,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
                 -- Count all forward moving loco's. Just assume they all have the same fuel to avoid inspecting each one.
                 forwardFacingLocoCount = forwardFacingLocoCount + 1
 
-                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
+                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be braking for the signal theres no currently burning.
                 if fuelAccelerationBonus == nil then
                     local carriage = carriageEntity or carriageCachedData.entity
                     local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
@@ -2335,13 +2335,13 @@ end
 ---@param requiredSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@return Tick ticksToStop @ Rounded up.
----@return double breakingDistance
+---@return double brakingDistance
 Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute, forcesBrakingForceBonus)
     local speedToDropAbsolute = initialSpeedAbsolute - requiredSpeedAbsolute
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local ticksToStop = math_ceil(speedToDropAbsolute / ((trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight))
-    local breakingDistance = (ticksToStop * requiredSpeedAbsolute) + ((ticksToStop / 2.0) * speedToDropAbsolute)
-    return ticksToStop, breakingDistance
+    local brakingDistance = (ticksToStop * requiredSpeedAbsolute) + ((ticksToStop / 2.0) * speedToDropAbsolute)
+    return ticksToStop, brakingDistance
 end
 
 --- Calculates the train speed if it brakes for a time period.

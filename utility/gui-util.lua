@@ -84,7 +84,7 @@ GuiUtil.AddElement = function(elementDetails)
         error("GuiUtil.AddElement() had a 'styleing' attribute, this is a typo for 'styling'.")
     end
 
-    -- If its being intentionally excluded from beign created due to the templating.
+    -- If its being intentionally excluded from being created due to the templating.
     if elementDetails.exclude == true then
         return
     end

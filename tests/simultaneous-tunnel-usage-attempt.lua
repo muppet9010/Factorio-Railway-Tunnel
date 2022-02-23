@@ -84,7 +84,7 @@ Test.Start = function(testName)
         end
     end
 
-    -- Train speed is based on how we want to trigger the portal. Do this after all setup so train pathign and state is applied correctly.
+    -- Train speed is based on how we want to trigger the portal. Do this after all setup so train pathing and state is applied correctly.
     local trainTargetSpeed
     if testScenario.portalTriggered == PortalTriggered.onPortalTrack then
         trainTargetSpeed = 0

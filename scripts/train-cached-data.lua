@@ -225,7 +225,7 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
             if currentFuelPrototype ~= nil then
                 -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
                 fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
-                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.0a
+                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train will be braking for the signal theres no currently burning.0a
                 break
             end
         end

@@ -15,6 +15,7 @@ local Common = require("scripts.common")
 local TrainManagerRemote = require("scripts.train-manager-remote")
 local TunnelShared = require("scripts.tunnel-shared")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageState, Common.TunnelUsageAction
+local math_abs, math_floor, math_ceil = math.abs, math.floor, math.ceil
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
@@ -32,7 +33,7 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---@field forwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData forwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
 ---@field backwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData backwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
 ---
----@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't breaking. This is a real speed and not absolute. Cleared when the train enters the tunnel.
+---@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't braking. This is a real speed and not absolute. Cleared when the train enters the tunnel.
 ---@field approachingTrainReachedFullSpeed? boolean|null @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
 ---@field entranceSignalClosingCarriage LuaEntity @ A dummy carriage added on the entrance portal to keep its entry signals closed when the entering train is cloned to the leaving portal. Reference not cleared when train enters tunnel.
 ---
@@ -52,8 +53,8 @@ local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUs
 ---
 ---@field playerTrain_traversalDistanceRemaining? double|null @ How much of the tunnel distance the train has left to cover until it emerges.
 ---@field playerTrain_currentSpeedAbsolute? double|null @ The current speed this tick of the underground train and player containers.
----@field playerTrain_breakingEntityId? UnitNumber|null @ The unit_number of the entity the train is having to break for.
----@field playerTrain_stoppingDistance? double|null @ How far before the train needs to have stopped. Based on either the current trains stopping point or a cached breaking point if the breakignEntityId hasn't changed from previously.
+---@field playerTrain_brakingEntityId? UnitNumber|null @ The unit_number of the entity the train is having to brake for.
+---@field playerTrain_stoppingDistance? double|null @ How far before the train needs to have stopped. Based on either the current trains stopping point or a cached braking point if the brakingEntityId hasn't changed from previously.
 ---@field playerTrain_brakingOutsideOfTunnel? boolean|null @ If the underground train had ever started braking outside of the tunnel. As once it starts brakig outside of the tunnel it can not return to blindly accelerating within the tunnel. Is to protect against flip flopping braking distance in/out of the tunnel.
 ---
 ---@field surface LuaSurface @ The main world surface that this managed train is on.
@@ -136,7 +137,7 @@ end
 ---
 --- if its pathed to the tranisition signal already and claimed the tunnel we just need to record that it has entered the portal tracks in case it aborts its use of the tunnel (downgrades).
 ---
---- If its not pathed to the transition signal then we need to reserve the tunnel now for it. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their breaking distance is the stopping signal or when driven manually. They will claim the signal at a later point (upgrade) and thne that logic will superseed this.
+--- If its not pathed to the transition signal then we need to reserve the tunnel now for it. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their braking distance is the stopping signal or when driven manually. They will claim the signal at a later point (upgrade) and thne that logic will superseed this.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 ---@param managedTrain? ManagedTrain|null @ Populated if this is an alrady approachingTrain entering the portal tracks.
@@ -249,7 +250,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     local newAbsSpeed, newSpeed
     if not managedTrain.approachingTrainReachedFullSpeed then
         -- If the train hasn't yet reached its full speed then work out the new speed.
-        newAbsSpeed = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, math.abs(managedTrain.approachingTrainExpectedSpeed))
+        newAbsSpeed = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, math_abs(managedTrain.approachingTrainExpectedSpeed))
         if managedTrain.approachingTrainExpectedSpeed == newAbsSpeed then
             -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
             managedTrain.approachingTrainReachedFullSpeed = true
@@ -301,7 +302,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     managedTrain.trainMovingForwards = nil -- Blank it as it will have to be worked out again when starting to leave based on the new trains orientation and destination direction at the time.
 
     -- Record the required generic data.
-    local currentAbsSpeed = math.abs(managedTrain.approachingTrainExpectedSpeed)
+    local currentAbsSpeed = math_abs(managedTrain.approachingTrainExpectedSpeed)
     managedTrain.traversalInitialSpeedAbsolute = currentAbsSpeed
     managedTrain.forcesBrakingBonus = managedTrain.force.train_braking_force_bonus
 
@@ -396,7 +397,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
 
             -- So its stopping distance is the remainder of the tunnel.
             managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 1 -- The leaving train has 1 tile to the end of the portal.
-            managedTrain.playerTrain_breakingEntityId = nil
+            managedTrain.playerTrain_brakingEntityId = nil
         else
             -- Exit signal is open so check in to the rail network beyond,
 
@@ -413,22 +414,22 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
             if leavingTrain_state == defines.train_state.on_the_path then
                 -- Train can leave at full speed this tick.
                 managedTrain.playerTrain_stoppingDistance = nil
-                managedTrain.playerTrain_breakingEntityId = nil
+                managedTrain.playerTrain_brakingEntityId = nil
             elseif leavingTrain_state == defines.train_state.path_lost or leavingTrain_state == defines.train_state.no_schedule or leavingTrain_state == defines.train_state.no_path or leavingTrain_state == defines.train_state.destination_full then
                 -- Train has no where to go, so will be pulling up to the end of the station.
 
                 -- So its stopping distance is the remainder of the tunnel.
                 managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 1 -- The leaving train has 1 tile to the end of the portal.
-                managedTrain.playerTrain_breakingEntityId = nil
+                managedTrain.playerTrain_brakingEntityId = nil
             elseif leavingTrain_state == defines.train_state.arrive_station then
                 -- Train has to brake for station/rail target within next tick.
-                local breakingEntity = leavingTrain.path_end_stop or leavingTrain.path_end_rail
-                local breakingEntity_unitNumber = breakingEntity.unit_number
+                local brakingEntity = leavingTrain.path_end_stop or leavingTrain.path_end_rail
+                local brakingEntity_unitNumber = brakingEntity.unit_number
 
                 -- If its the same entity Id as before we don't need to update the stopping distance.
-                if managedTrain.playerTrain_breakingEntityId ~= breakingEntity_unitNumber then
-                    -- Is a new breaking entity so record its Id and get the distance we need to stop in.
-                    managedTrain.playerTrain_breakingEntityId = breakingEntity_unitNumber
+                if managedTrain.playerTrain_brakingEntityId ~= brakingEntity_unitNumber then
+                    -- Is a new braking entity so record its Id and get the distance we need to stop in.
+                    managedTrain.playerTrain_brakingEntityId = brakingEntity_unitNumber
 
                     -- Get the distance to the target train stop.
                     local leavingTrain_path = leavingTrain.path
@@ -439,14 +440,14 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 1 -- The leaving train has 1 tile to the end of the portal.
                 end
             elseif leavingTrain_state == defines.train_state.arrive_signal then
-                -- Train needs to be breaking for this signal.
+                -- Train needs to be braking for this signal.
                 local leavingTrain_signal = leavingTrain.signal
                 local leavingTrain_signal_unitNumber = leavingTrain_signal.unit_number
 
                 -- If its the same signal as before we don't need to update the stopping distance.
-                if managedTrain.playerTrain_breakingEntityId ~= leavingTrain_signal_unitNumber then
-                    -- Is a new breaking entity so record its Id and get the distance we need to stop in.
-                    managedTrain.playerTrain_breakingEntityId = leavingTrain_signal_unitNumber
+                if managedTrain.playerTrain_brakingEntityId ~= leavingTrain_signal_unitNumber then
+                    -- Is a new braking entity so record its Id and get the distance we need to stop in.
+                    managedTrain.playerTrain_brakingEntityId = leavingTrain_signal_unitNumber
 
                     local signalRail = leavingTrain_signal.get_connected_rails()[1]
                     managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain, managedTrain.targetTrainStop) + managedTrain.playerTrain_traversalDistanceRemaining
@@ -473,15 +474,15 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
         accelerationState = defines.riding.acceleration.nothing
         managedTrain.playerTrain_currentSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
     else
-        -- Train needs to break based on breaking target distance.
+        -- Train needs to brake based on braking target distance.
         accelerationState = defines.riding.acceleration.braking
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
     end
 
     -- Make the recorded newSpeed be a multiple of a 256th as this is what the game rounds to. We can then use the stored value normally.
-    managedTrain.playerTrain_currentSpeedAbsolute = math.floor(managedTrain.playerTrain_currentSpeedAbsolute * 256) / 256
+    managedTrain.playerTrain_currentSpeedAbsolute = math_floor(managedTrain.playerTrain_currentSpeedAbsolute * 256) / 256
 
-    -- Update the distance travelled so far and distance to current breaking spot.
+    -- Update the distance travelled so far and distance to current braking spot.
     managedTrain.playerTrain_traversalDistanceRemaining = managedTrain.playerTrain_traversalDistanceRemaining - managedTrain.playerTrain_currentSpeedAbsolute
     if managedTrain.playerTrain_stoppingDistance ~= nil then
         managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - managedTrain.playerTrain_currentSpeedAbsolute
@@ -675,12 +676,12 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             -- Tunnel distance still to cover.
             ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, requiredSpeedAbsoluteAtPortalEnd, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
         else
-            -- Train has to break longer than the tunnel is. The time spent breaking covers the full amount and we will just ignore the fact that the train was accelerating in to the tunnel when it shouldn't have been.
+            -- Train has to brake longer than the tunnel is. The time spent braking covers the full amount and we will just ignore the fact that the train was accelerating in to the tunnel when it shouldn't have been.
             ticksTraversingRemaingDistance = 0
         end
 
         -- Work out the delay for leaving the tunnel.
-        local delayTicks = math.ceil(ticksSpentMatchingSpeed + ticksTraversingRemaingDistance - managedTrain.nonPlayerTrain_traversalInitialDuration)
+        local delayTicks = math_ceil(ticksSpentMatchingSpeed + ticksTraversingRemaingDistance - managedTrain.nonPlayerTrain_traversalInitialDuration)
         if delayTicks < 0 then
             error("leaving train shouldn't be able to be rescheduled with negative delay compared to previous computing")
         end
@@ -1062,7 +1063,7 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, sa
     end
 
     -- Work out if we will need to flip the cloned carriage or not.
-    --[[local orientationDif = math.abs(refCarriage.orientation - requiredOrientation)
+    --[[local orientationDif = math_abs(refCarriage.orientation - requiredOrientation)
     local haveToFlipCarriage = false
     if orientationDif > 0.25 and orientationDif < 0.75 then
         -- Will need to flip the carriage.
