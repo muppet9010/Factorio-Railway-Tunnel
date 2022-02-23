@@ -1,6 +1,5 @@
 Now
 ---
-    - Add test for if riding train and its path reverses once entered tunnel.
 
 
 Bugs
@@ -33,7 +32,7 @@ Features to add/change
     - Make graphics a little smoother, review potral structure and make ground be stone with soft edge. Use portal shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
     - Add a tips & tricks section to cover tunnel and portal construction.
     - Make Portal Tunnel GUI nicer, only very rough one at present.
-    - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new TRain GUI for that player. If they close the placeholder GUI then don't open the new GUI.
+    - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
     - Portal/Tunnel GUI Improvements:
         - Review layout and current information presentation.
         - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.

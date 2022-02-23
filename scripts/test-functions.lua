@@ -653,11 +653,22 @@ TestFunctions.WriteTestScenariosToFile = function(testName, testScenarios)
 
     -- Add the headers.
     local logText = "#, " .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n"
-    -- Add the test's keys
+    -- Add the test's keys.
+    local value
     for testIndex, test in pairs(testScenarios) do
         logText = logText .. tostring(testIndex)
         for key in pairs(keysToRecord) do
-            logText = logText .. ", " .. tostring(test[key])
+            value = test[key]
+            if type(value) == "table" then
+                -- Is a table so check for known key field we want to print if present.
+                if value.composition ~= nil then
+                    value = value.composition
+                else
+                    -- Just write out the number of records as a default.
+                    value = "table of " .. #value .. " keys"
+                end
+            end
+            logText = logText .. ", " .. tostring(value)
         end
         logText = logText .. "\r\n"
     end

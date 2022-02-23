@@ -227,9 +227,9 @@ Test.GenerateTestScenarios = function(testName)
         DoMinimalTests = false
     end
 
-    local destroyOnTunnelActionToTest  ---@type Tests_PRDTT_DestroyOnTunnelAction
-    local playerControllerToTest  ---@type Tests_PRDTT_PlayerController
-    local playerInEndOfTrainToTest  ---@type Tests_PRDTT_PlayerInEndOfTrain
+    local destroyOnTunnelActionToTest  ---@type Tests_PRDTT_DestroyOnTunnelAction[]
+    local playerControllerToTest  ---@type Tests_PRDTT_PlayerController[]
+    local playerInEndOfTrainToTest  ---@type Tests_PRDTT_PlayerInEndOfTrain[]
     if DoSpecificTests then
         -- Adhock testing option.
         destroyOnTunnelActionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(DestroyOnTunnelAction, SpecificDestroyOnTunnelActionFilter)

@@ -1,8 +1,11 @@
 --[[
     Tests that run different train types, tunnel compositions, starting speeds and leaving track scenarios. Confirms that the mod completes the activities and provides a non tunnel identical track and train for visual speed comparison.
     Repathing back through the tunnel is handled by force-repath-back-through-tunnel-tests.lua as there are a lot of combinations for it.
+
     If the global test setting "JustLogAllTests" is enabled then the variance of each test is recorded to the generic test result output.
+
     Usage Note: this is a slower test to run as it places varying numbers of entities everywhere so no BP's are currently used in it. Advised to run Factorio outside of the debugger as it runs much faster.
+
     Code Note: this test's Start() function has been made quite messy to enable it to run much faster by reducing the amount of leaving track built. This required the train to be built mid track building so leaving track length requirements could be calculated.
 --]]
 --
