@@ -492,21 +492,8 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
         MOD.Interfaces.PlayerContainer.MoveATrainsPlayerContainers(managedTrain, managedTrain.playerTrain_currentSpeedAbsolute)
     end
 
-    -- Work out how early before the end of the tunnel to declare having arrived.
-    local travelDistancePadding
-    if accelerationState == defines.riding.acceleration.accelerating then
-        travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute
-    elseif accelerationState == defines.riding.acceleration.braking then
-        -- TODO: This is now back to regular as I believe the increase was needed due to inaccuracies in the tunnel distance calculations and updating. With low speeds the inaccuracy was more than the final speed and thus isuses occured. In future once everything is updated this shouldn't be an issue. If so then remove this entire logic block.
-        travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute
-    else
-        -- Just steady.
-        travelDistancePadding = managedTrain.playerTrain_currentSpeedAbsolute
-    end
-
-    --TODO: comment update
-    -- If train will have covered the required distance in the allotted extra ticks covered distance then it has arrived. Do this as if we wait for it to be too close then in some cases the players view jumps backwards on switching to the leaving train. Does lead to the last ticks movement being an odd length, but this isn't too noticable, and is much better than jumping backwards.
-    if managedTrain.playerTrain_traversalDistanceRemaining - travelDistancePadding <= 0 then
+    -- If train has covered the required distance then it has arrived.
+    if managedTrain.playerTrain_traversalDistanceRemaining <= 0 then
         managedTrain.trainLeavingSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
 
         -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.

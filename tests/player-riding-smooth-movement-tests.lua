@@ -2,6 +2,7 @@
     Have a player riding in a train and monitor the players position to ensure its smooth. Test various train entering and leaving speeds.
     Can only test the players view never moves backwards. Trying to track the forward movement between ticks triggered on un-avoidable irregular forwards variation when the unerground train changes to leaving.
     If the global test setting "JustLogAllTests" is enabled then the variance of each test is recorded to the generic test result output. A jump of 0% is ideal, with more/less than 100% indicating an excess tick. At present some braking situations can exceed 100% as I want to avoid overly complicated logic in the mod to try and smooth it out.
+    Usage Note: this is a slower test to run as it places varying numbers of entities everywhere so no BP's are currently used in it. Advised to run Factorio outside of the debugger as it runs much faster.
 --]]
 --
 
@@ -54,12 +55,11 @@ local TrainStartingSpeed = {
 -- Test configuration.
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
---TODO: update beign final merge
-local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionFilter = {"<"} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelOversizedFilter = {"none"} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificLeavingTrackConditionFilter = {"noPath"} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificTrainStartingSpeedFilter = {"none"} -- Pass in an array of TrainStartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrainCompositionFilter = {} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelOversizedFilter = {} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTrainStartingSpeedFilter = {} -- Pass in an array of TrainStartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -320,14 +320,7 @@ Test.EveryTick = function(event)
     end
     local newPlayerXMovementPercentage = Utils.RoundNumberToDecimalPlaces((newPlayerXMovement / testDataBespoke.lastPlayerXMovement) * 100, 0)
 
-    -- Check movement is not backwards.
-    if newPlayerXMovement < 0 then
-        TestFunctions.TestFailed(testName, "player movement less than 0, so going backwards.")
-        return
-    end
-
-    -- Log change in players movement difference for transition from underground to leaving train. Will always be a little erratic as I can't line up 2 independent speeds and positions, so this is just to provide reviewable data.
-    -- Can't have a strict test as theres a known good case that's above 100% at present due to simplicity in braking logic. Comments are in the train-manager code for this.
+    -- Log and check the change in players movement difference for transition from underground to leaving train. Will always be a little erratic as I can't line up 2 independent speeds and positions, so this is just to provide reviewable data.
     if trainLeftThisTick then
         -- A diff between the old and new percentages of 0 is ideal. More or less than 100 indicates that a tick has been exceed.
         local diffOfPlayerXMovementPercentage = Utils.RoundNumberToDecimalPlaces(((1 / (testDataBespoke.lastPlayerXMovementPercentage / newPlayerXMovementPercentage) - 1) * 100), 0)
@@ -335,6 +328,17 @@ Test.EveryTick = function(event)
         game.print("underground player difference: " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "%")
         game.print("jump in difference: " .. tostring(diffOfPlayerXMovementPercentage) .. "%")
         TestFunctions.LogTestDataToTestRow("jump: " .. tostring(diffOfPlayerXMovementPercentage) .. "% from " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "% to " .. tostring(newPlayerXMovementPercentage) .. "%")
+
+        if diffOfPlayerXMovementPercentage >= 100 or diffOfPlayerXMovementPercentage <= -100 then
+            TestFunctions.TestFailed(testName, "Player screen jumpped more than double the preivous tick.")
+            return
+        end
+    end
+
+    -- Check movement is not backwards.
+    if newPlayerXMovement < 0 then
+        TestFunctions.TestFailed(testName, "player movement less than 0, so going backwards.")
+        return
     end
 
     -- Store the old movement value as we're done comparing.
