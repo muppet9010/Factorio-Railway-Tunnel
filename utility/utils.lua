@@ -2264,18 +2264,38 @@ Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initial
     return math_min(((initialSpeedAbsolute + trainData.locomotiveAccelerationPower) - trainData.trainWeightedFrictionForce) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
 end
 
---- Estimates how long an accelerating train takes to cover a distance, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
+--- Estimates how long an accelerating train takes to cover a distance. Approximately accounts for air resistence, but final value will be a little off.
 ---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param distance double
 ---@return Tick ticks @ Rounded up.
-Utils.EstimateAcceleratingTrainTicksToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
+---@return number absoluteFinalSpeed
+Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
+    -- Work uot how long it will take to accelerate over the distance. This doesn't (can't) limit the train to its max speed.
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local ticks = math_ceil((math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration)
-    return ticks
+
+    -- Check how fast the train would have been going at the end of this period. This may be greater than max speed.
+    local finalSpeed = initialSpeedAbsolute + (acceleration * ticks)
+
+    -- If the train was going faster than max speed at the end then run an additional calcualtion to work out the real time within the max speed limit.
+    if finalSpeed > trainData.maxSpeed then
+        -- Work out how long and distance it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
+        local ticksToMaxSpeed = math_ceil((trainData.maxSpeed - initialSpeedAbsolute) / acceleration)
+        local distanceToMaxSpeed = (ticksToMaxSpeed * initialSpeedAbsolute) + (((trainData.maxSpeed - initialSpeedAbsolute) * ticksToMaxSpeed) / 2)
+
+        -- Work out how long it will take to cover the remaining distance at max speed.
+        local ticksAtMaxSpeed = math_ceil((distance - distanceToMaxSpeed) / trainData.maxSpeed)
+
+        -- Set the final results.
+        ticks = ticksToMaxSpeed + ticksAtMaxSpeed
+        finalSpeed = trainData.maxSpeed
+    end
+
+    return ticks, finalSpeed
 end
 
 --- Estimates train speed and distance covered after set number of ticks. Approximately accounts for air resistence, but final value will be a little off.

@@ -319,6 +319,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     managedTrain.portalTrackTrainBySignal = nil
 
     --[[
+        Work out the tunnel distance to be covered by the train. This accuracy is needed for players riding trains, but doesn't do any harm for the scheduled non-player ridden trains.
         The travel distance is:
             + distance from lead carriage's center to train detector center
             + 4.5 tiles from the train detector's center to the entrance blocked portal part's center, hard coded in Portal.BlockingEndPortalSetup.transitionUsageDetectorEntityDistance
@@ -361,10 +362,8 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 
         -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
         -- Estimate how long it will take to complete the distance and then final speed.
-        local estimatedTicks = Utils.EstimateAcceleratingTrainTicksToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, managedTrain.traversalTravelDistance)
-        managedTrain.trainLeavingSpeedAbsolute, _ = Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, estimatedTicks)
-        managedTrain.nonPlayerTrain_traversalInitialDuration = estimatedTicks
-        managedTrain.nonPlayerTrain_traversalArrivalTick = tick + estimatedTicks
+        managedTrain.nonPlayerTrain_traversalInitialDuration, managedTrain.trainLeavingSpeedAbsolute = Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, managedTrain.traversalTravelDistance)
+        managedTrain.nonPlayerTrain_traversalArrivalTick = tick + managedTrain.nonPlayerTrain_traversalInitialDuration
 
         EventScheduler.ScheduleEventOnce(managedTrain.nonPlayerTrain_traversalArrivalTick, "TrainManager.TrainUndergroundOngoing_Scheduled", managedTrain.id, {managedTrain = managedTrain})
         managedTrain.skipTickCheck = true -- We can ignore this managed train until its arrival tick event fires.
@@ -644,7 +643,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
         -- Calculate the delayed arrival time and delay the schedule to this. This will account for the full speed change and will account for if the train entered the tunnel overly fast, making the total duration and leaving speed correct.
 
         local currentForcesBrakingBonus = managedTrain.forcesBrakingBonus
-        stoppingPointDistance = stoppingPointDistance - 6 -- Remove the 3 straight rails at the end of the portal that are listed in train's path. The train is already on these and so they can't be braked over.
+        stoppingPointDistance = stoppingPointDistance - 6 -- Make sure the train is set to brake BEFORE the target (short) so that it doesn't re-trigger the same breaking entity. This does mean the train leaving is fractionally slower, but its close enough.
 
         if stoppingPointDistance <= 0 then
             -- This should never be reaced with current code. Indicates the train is doing an incorrect reverse or something has gone wrong.
@@ -662,22 +661,30 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
         -- Work out how much time and distance in the tunnel it takes to change speed to the required leaving speed.
         local ticksSpentMatchingSpeed, distanceSpentMatchingSpeed
         if managedTrain.traversalInitialSpeedAbsolute < requiredSpeedAbsoluteAtPortalEnd then
-            -- Need to accelerate within tunnel up to required speed.
+            -- Need to accelerate within tunnel up to required speed. The train is accelerating for some of the tunnel trip, but not all of it.
             ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd)
-        else
-            -- Need to brake within tunnel up to required speed.
+        elseif managedTrain.traversalInitialSpeedAbsolute > requiredSpeedAbsoluteAtPortalEnd then
+            -- Need to brake within tunnel down to required speed.
             ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd, currentForcesBrakingBonus)
+        else
+            -- Train enters and exits the tunnel at an identical speed.
+            ticksSpentMatchingSpeed = 0
+            distanceSpentMatchingSpeed = 0
         end
         local remainingTunnelDistanceToCover = managedTrain.traversalTravelDistance - distanceSpentMatchingSpeed
 
         -- Work out how many ticks within the tunnel it takes to cover the distance gap. We must start and end at the same speed over this distance, so accelerate and brake during it.
-        local ticksTraversingRemaingDistance
+        local ticksTraversingRemaingDistance = 0
         if remainingTunnelDistanceToCover > 0 then
             -- Tunnel distance still to cover.
             ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, requiredSpeedAbsoluteAtPortalEnd, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
-        else
-            -- Train has to brake longer than the tunnel is. The time spent braking covers the full amount and we will just ignore the fact that the train was accelerating in to the tunnel when it shouldn't have been.
-            ticksTraversingRemaingDistance = 0
+        elseif remainingTunnelDistanceToCover < 0 then
+            -- Train has to brake longer than the tunnel is.
+            -- TODO: this is where our excess delay is coming from. Some of the distance we are covering in our braking time has already been covered by the train when accelerating towards the tunnel. These duplicate tiles covered are being double time counted at present.
+
+            -- TODO: temp improvement is to just add a negative time for the time to brake outside of the tunnel. This ignores the excessive acceleration outside and so is now too fast, but better than before. NOTE: this does error in some usage cases, so is only a partial improvement.
+            --ticksTraversingRemaingDistance = 0
+            ticksTraversingRemaingDistance = -Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, requiredSpeedAbsoluteAtPortalEnd, -remainingTunnelDistanceToCover)
         end
 
         -- Work out the delay for leaving the tunnel.

@@ -429,9 +429,16 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
             error("TestFunctions.BuildTrain - unsupported carriage type built: " .. placedCarriage_type)
         end
 
-        -- Insert the fuel if approperiate.
+        -- Insert the fuel if approperiate. Puts it in the burner first then fuel inventory so that when we set the speed the trains max speed accounts for the fuel type.
         if placedCarriage_type == "locomotive" and locomotiveFuel ~= nil then
-            placedCarriage.insert(locomotiveFuel)
+            if placedCarriage.burner.currently_burning == nil then
+                placedCarriage.burner.currently_burning = game.item_prototypes[locomotiveFuel.name]
+                locomotiveFuel = Utils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
+                locomotiveFuel.count = locomotiveFuel.count - 1
+            end
+            if locomotiveFuel.count > 0 then
+                placedCarriage.insert(locomotiveFuel)
+            end
         end
 
         -- Place the player in this carriage if set. Done here as we know the exact build order at this point.
@@ -559,7 +566,14 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 
     for _, fuelProxy in pairs(fuelProxies) do
         for item, count in pairs(fuelProxy.item_requests) do
-            fuelProxy.proxy_target.insert({name = item, count = count})
+            -- First try to insert it in the burner, then in the fuel inventory.
+            if fuelProxy.proxy_target.burner.currently_burning == nil then
+                fuelProxy.proxy_target.burner.currently_burning = game.item_prototypes[item]
+                count = count - 1 -- No worries about this being a shared table so can just remove 1 from it.
+            end
+            if count > 0 then
+                fuelProxy.proxy_target.insert({name = item, count = count})
+            end
         end
         fuelProxy.destroy()
     end

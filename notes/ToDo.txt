@@ -1,5 +1,10 @@
 Now
 ---
+    - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
+        - The change to tunnel distance to cover calculations for when players ride trains may have thrown the no player maths off slightly as the fianl length isn't quite what it was before. Check that the tunnel length and stopping point for portal signal is correct distance.
+        - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on braking time.
+        - Should account for excessive speeds entering the tunnel as the entering train goes at full speed in regardless of the state on the other side of the tunnel. When in code we have "ticksTraversingRemaingDistance = 0". This train does loose some speed in the process as a "clear" tunnel trian is a few ticks behind an equal non-tunnel train.
+        - Check the train traversing final speed and if it ends up at max then its likely our estimate went over max at some point. So do a backwards calculation to correct it somehow if needed? Check if this is an issue and cause of speed wrongness as just a passing thought noted down, not specifically observed.
 
 
 Bugs
@@ -17,12 +22,6 @@ Features to add/change
             - Look at setting the transitioning train's speed every tick to alternate between +/- 0.00000001 (rather than 0). Will mean the leavingTrain is never "stopped" and so nothing should ever activate. Would require identifying if the train has either roboports or artillary wagons in it and then shuffling just that train. Would have a high UPS cost for when robot mods are active on the save..
             - The idea of using the transitioning train rather than a dummy train and adding a non movable carriage may resolve this in the neatest and most UPS effecient manner.
             - Could remove the ammo from artillery carriage types on entry and add them back on leaving. The robots would be harder as would need toc heck each carriage for an equipment grid and if found then removing their robots for the tunnel traversal. Sounds fine for artillery wagons as they are simple prototype type check, but roboports would be lots of checking carriage inventories every time when a mod that adds logistic robots to trains is present (bobs mod).
-    - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
-        - Some very high values are from tests that shouldn't have a variation measured, i.e: "<", "none", "full", "noPath".
-        - The change to tunnel distance to cover calculations for when players ride trains may ahve thrown the no player maths off slightly as the fianl length isn't quite what it was before.
-        - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on braking time.
-        - Will probably need to account for excessive speeds entering the tunnel.
-        - Check the train traversing final speed and if it ends up at max then its likely our estimate went over max at some point. So do a backwards calculation to correct it somehow if needed? Check if this is an issue and cause of speed wrongness as just a passing thought noted down, not specifically observed.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
         - Example edge cases:

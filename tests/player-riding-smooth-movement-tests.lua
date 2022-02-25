@@ -442,7 +442,8 @@ Test.EveryTick_StraightThrough = function(event)
         game.print("leaving player difference: " .. tostring(newPlayerXMovementPercentage) .. "%")
         game.print("underground player difference: " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "%")
         game.print("jump in difference: " .. tostring(diffOfPlayerXMovementPercentage) .. "%")
-        TestFunctions.LogTestDataToTestRow("jump: " .. tostring(diffOfPlayerXMovementPercentage) .. "% from " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "% to " .. tostring(newPlayerXMovementPercentage) .. "%")
+        -- Log the variance for if JustLogAllTests is enabled. Its logged with a comma both sides so the text file can be imported in to excel and split on comma for value sorting. Not perfect, but good enough bodge.
+        TestFunctions.LogTestDataToTestRow(",jump: ," .. tostring(diffOfPlayerXMovementPercentage) .. "%, from ," .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "%, to ," .. tostring(newPlayerXMovementPercentage) .. "%,")
 
         if diffOfPlayerXMovementPercentage >= 100 or diffOfPlayerXMovementPercentage <= -100 then
             TestFunctions.TestFailed(testName, "Player screen jumpped more than double the preivous tick.")

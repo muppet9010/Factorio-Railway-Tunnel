@@ -14,7 +14,7 @@ local TrainCompositions = {
 ---@class Tests_BTL_StartingSpeeds
 local StartingSpeeds = {
     none = 0,
-    half = 0.6,
+    half = 0.7,
     full = 1.4
 }
 
