@@ -511,7 +511,9 @@ end
 ---@field railway_tunnel-portal_end LuaEntity[]
 ---@field railway_tunnel-underground_segment-straight LuaEntity[]
 
---- Builds a given blueprint string centered on the given position. Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
+--- Builds a given blueprint string centered on the given position.
+--- Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
+--- Blueprints are build as the "player" force.
 ---@param blueprintString string
 ---@param position Position
 ---@param testName TestManager_TestName

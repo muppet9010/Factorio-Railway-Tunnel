@@ -59,6 +59,7 @@ local TestsToRun = {
     ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-abort")},
     ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-indecisive")},
     BidirectionalTunnelLoop = {enabled = false, testScript = require("tests/bidirectional-tunnel-loop")},
+    UndergroundArtilleryTrain = {enabled = false, testScript = require("tests/underground-artillery-train")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},

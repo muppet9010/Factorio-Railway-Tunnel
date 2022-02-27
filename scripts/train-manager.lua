@@ -32,6 +32,14 @@ local math_abs, math_floor, math_ceil = math.abs, math.floor, math.ceil
 ---@field directionalTrainSpeedCalculationData Utils_TrainSpeedCalculationData @ The TrainSpeedCalculationData from the trainCachedData for the moving direction of this train right now. As the global trainCachedData has it for both facings. Updated during leaving when speed indicates direction change.
 ---@field forwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData forwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
 ---@field backwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData backwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
+---@field surface LuaSurface @ The main world surface that this managed train is on.
+---@field entrancePortal Portal @ The portal global object of the entrance portal for this tunnel usage instance.
+---@field entrancePortalEntryTransitionSignal PortalTransitionSignal @ The transitionSignal global object of the rail signal at the transition point of the entrance portal track for entering trains (forced closed signal).
+---@field exitPortal Portal @ Ref to the portal global object of the exit portal for this tunnel usage instance.
+---@field exitPortalEntryTransitionSignal PortalTransitionSignal @ Ref to the transitionSignal global object of the rail signal at the end of the exit portal for entering trains (forced closed signal).
+---@field exitPortalEntrySignalOut PortalEntrySignal @ Ref to the entrySignal global object on the rail signal at the entrance of the exit portal for leaving trains.
+---@field exitPortalExitSignalIn PortalEntrySignal @ Ref to the entrySignal global object on the rail signal at the entrance of the exit portal for entering trains.
+---@field tunnel Tunnel @ Ref to the global tunnel object.
 ---
 ---@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't braking. This is a real speed and not absolute. Cleared when the train enters the tunnel.
 ---@field approachingTrainReachedFullSpeed? boolean|null @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
@@ -47,6 +55,7 @@ local math_abs, math_floor, math_ceil = math.abs, math.floor, math.ceil
 ---@field dummyTrainCarriage? LuaEntity|null @ The dummy train carriage used to keep the train stop reservation alive while the main train is traversing the tunel.
 ---@field targetTrainStop? LuaEntity|null @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 ---@field forcesBrakingBonus double @ The train carriage's braking force bonus at the time the train enters the tunnel.
+---@field leavingTrainArtilleryShellsPerCarriageId? table<Id, table<string, uint>>|null @ A table of leaving artillery carriage Ids and their inventory contents table if they had any. Any artillery shell type items in the artiller carriage inventory is noted upon entering the tunnel and remvoed from the carraige. When the train starts leaving the shells are returned. Is to stop the artillery train from shooting at enemies while stopped when travelling underground.
 ---
 ---@field nonPlayerTrain_traversalStartTick? Tick|null @ The tick the train started entering the tunnel
 ---@field nonPlayerTrain_traversalArrivalTick? Tick|null @ The tick the train is currently expected to reach the far end of the tunnel and be restarted.
@@ -56,15 +65,6 @@ local math_abs, math_floor, math_ceil = math.abs, math.floor, math.ceil
 ---@field playerTrain_brakingEntityId? UnitNumber|null @ The unit_number of the entity the train is having to brake for.
 ---@field playerTrain_stoppingDistance? double|null @ How far before the train needs to have stopped. Based on either the current trains stopping point or a cached braking point if the brakingEntityId hasn't changed from previously.
 ---@field playerTrain_brakingOutsideOfTunnel? boolean|null @ If the underground train had ever started braking outside of the tunnel. As once it starts brakig outside of the tunnel it can not return to blindly accelerating within the tunnel. Is to protect against flip flopping braking distance in/out of the tunnel.
----
----@field surface LuaSurface @ The main world surface that this managed train is on.
----@field entrancePortal Portal @ The portal global object of the entrance portal for this tunnel usage instance.
----@field entrancePortalEntryTransitionSignal PortalTransitionSignal @ The transitionSignal global object of the rail signal at the transition point of the entrance portal track for entering trains (forced closed signal).
----@field exitPortal Portal @ Ref to the portal global object of the exit portal for this tunnel usage instance.
----@field exitPortalEntryTransitionSignal PortalTransitionSignal @ Ref to the transitionSignal global object of the rail signal at the end of the exit portal for entering trains (forced closed signal).
----@field exitPortalEntrySignalOut PortalEntrySignal @ Ref to the entrySignal global object on the rail signal at the entrance of the exit portal for leaving trains.
----@field exitPortalExitSignalIn PortalEntrySignal @ Ref to the entrySignal global object on the rail signal at the entrance of the exit portal for entering trains.
----@field tunnel Tunnel @ Ref to the global tunnel object.
 
 ---@alias TrainTravelOrientation "0"|"0.25"|"0.5"|"0.75"
 
@@ -348,6 +348,24 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel(managedTrain)
     TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.entered)
     MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
+
+    -- Handle any artillery carriages in the leaving train that may have ammo in them.
+    for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
+        if carriageData.prototypeType == "artillery-wagon" then
+            local inventory = carriageData.entity.get_inventory(defines.inventory.artillery_wagon_ammo)
+            local contents = inventory.get_contents()
+            if next(contents) ~= nil then
+                -- Items in the artillery wagon's inventory.
+
+                -- Cache the inventory contents count for adding back in when start leaving.
+                managedTrain.leavingTrainArtilleryShellsPerCarriageId = managedTrain.leavingTrainArtilleryShellsPerCarriageId or {}
+                managedTrain.leavingTrainArtilleryShellsPerCarriageId[carriageData.entity.unit_number] = contents
+
+                -- Clear the inventory now.
+                inventory.clear()
+            end
+        end
+    end
 
     -- Handle the next step of processing differently based on if there are players in the train or not.
     if managedTrain.undergroundTrainHasPlayersRiding then
@@ -794,7 +812,7 @@ end
 ---@param managedTrain ManagedTrain
 TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Return the leaving train carriages to their origional force and let them take damage again.
-    local carriage
+    local carriage  ---@type LuaEntity
     for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
         carriage = carriageData.entity
         carriage.force = managedTrain.force
@@ -806,6 +824,24 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
         MOD.Interfaces.PlayerContainer.TransferPlayersFromContainersToLeavingCarriages(managedTrain)
     end
     managedTrain.undergroundTrainHasPlayersRiding = false
+
+    -- Handle any artillery carriages that had ammo in them.
+    if managedTrain.leavingTrainArtilleryShellsPerCarriageId ~= nil then
+        -- There's some cached artillery wagon inventory for the train, so check each carriage and add in any cached items.
+        for _, carriageData in pairs(managedTrain.trainCachedData.carriagesCachedData) do
+            if carriageData.prototypeType == "artillery-wagon" then
+                -- See if theres any cached contents for this specific artillery wagon.
+                local contents = managedTrain.leavingTrainArtilleryShellsPerCarriageId[carriageData.entity.unit_number]
+                if contents ~= nil then
+                    -- Conents for this specific artillery wagon.
+                    local inventory = carriageData.entity.get_inventory(defines.inventory.artillery_wagon_ammo)
+                    for itemName, itemCount in pairs(contents) do
+                        inventory.insert({name = itemName, count = itemCount})
+                    end
+                end
+            end
+        end
+    end
 
     -- Set the per tick event back to running. In some UndergroundOngoing states this was set to skip each tick as not needed due to scheduled events.
     managedTrain.skipTickCheck = false

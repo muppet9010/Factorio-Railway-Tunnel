@@ -10,6 +10,12 @@ For applying a new mod version to your game you will need to do the below manual
     - Put the new mod in place and load the save (save 2). Your game is now on the new mod version and the tunnel's can be re-added.
 
 
+FACTORIO BUGS
+=============
+
+- At present the artillery wagon can't have its force changed, so it will leave a tunnel as the tunnel force and not be returned to the players force. Reportedly fixed in 1.1.56: https://forums.factorio.com/viewtopic.php?f=7&t=101731
+
+
 Mod Features
 ============
 
