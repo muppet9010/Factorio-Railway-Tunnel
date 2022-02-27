@@ -1,16 +1,15 @@
 Now
 ---
+    - Make it so that the mod supports a train that is leavingOngoing a tunnel path in to the next tunnel. Yes the train is using both, but they aren't affecting each other in any way.
     - Leaving train scheduled can often have set the leaving speed then if it's complete it sets it again the same tick. Avoid this duplicate setting when not needed.
-    - Add a test for a train going through 1 tunnel straight in to the next tunnel.
 
 Bugs
 ----
+    - Review item and cost - Make a tunnel portal part (segment and end) be less cost effecient than a wall (don't want it usable as a good wall). Health should be equal to the thinist side length of wall. Make resistences copy wall. Check landfill cost for tunnel parts and make landfill be a pre-req tech.
 
 
 Features to add/change
 ----------------------
-    - Make graphics a little smoother, review potral structure and make ground be stone with soft edge. Use portal shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
-    - Review item and cost - Make a tunnel portal part (segment and end) be less cost effecient than a wall (don't want it usable as a good wall). Health should be equal to the thinist side length of wall. Make resistences copy wall. Check landfill cost for tunnel parts and make landfill be a pre-req tech.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
         - Example edge cases:
@@ -25,6 +24,7 @@ Features to add/change
         - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
         - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
             - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
+    - Make graphics a little smoother, review portal structure and make ground be stone with soft edge. Use portal shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
 
 
 UPS / code plans
