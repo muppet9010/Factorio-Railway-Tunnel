@@ -1,10 +1,5 @@
 Now
 ---
-    - Improve train speeds and tunnel traversal times, some usage cases are wildly off. See leaving train arrival time and speed test results to reduce varation to the regular train time.
-        - The change to tunnel distance to cover calculations for when players ride trains may have thrown the no player maths off slightly as the fianl length isn't quite what it was before. Check that the tunnel length and stopping point for portal signal is correct distance.
-        - When "scheduleFutureArrival" is set to false for various logic paths we just release the train right then, but often the train leaves this at 0 speed and so this should be adding on braking time.
-        - Should account for excessive speeds entering the tunnel as the entering train goes at full speed in regardless of the state on the other side of the tunnel. When in code we have "ticksTraversingRemaingDistance = 0". This train does loose some speed in the process as a "clear" tunnel trian is a few ticks behind an equal non-tunnel train.
-        - Check the train traversing final speed and if it ends up at max then its likely our estimate went over max at some point. So do a backwards calculation to correct it somehow if needed? Check if this is an issue and cause of speed wrongness as just a passing thought noted down, not specifically observed.
 
 
 Bugs
@@ -29,6 +24,7 @@ Features to add/change
                 A: The first train leaves the portal and the tunnel is released. The entry signals would still show red entry, but the mod would believe the tunnel is free. This would allow a new manual/coasting/etc train (third) to enter the portal against the red signal and successfully reserve the tunnel as the second train is invisible to the mod. When this third train traverses it would try and be cloned on top of the second train.
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
     - Make graphics a little smoother, review potral structure and make ground be stone with soft edge. Use portal shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
+    - review item and cost - Make a tunnel portal part (segment and end) be less cost effecient than a wall (don't want it usable as a good wall). Health should be equal to the thinist side length of wall. Make resistences copy wall. Check landfill cost for tunnel parts and make landfill be a pre-req tech.
     - Add a tips & tricks section to cover tunnel and portal construction.
     - Make Portal Tunnel GUI nicer, only very rough one at present.
     - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
@@ -55,7 +51,8 @@ Concept change ideas
     - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
         - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
         - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well. Would it be an advantage?
-        - using the real train would resolve the artillery and espcially the roboport mod issue in a very effecient manenr.
+        - Using the real train would resolve the artillery and espcially the roboport mod issue in a very effecient manenr.
+        - Keeping the real train running at 0 speed would remove the impact the currently stopped leaving train currently has on the path finder weightings.
     - Commit train to use tunnel upon triggering portal entry train detector.
         Pros:
             - If we did we could create the dummy train at this point, rather than at traversing time.

@@ -531,7 +531,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
     end
 
     -- Train can't just leave at its current speed blindly, so work out how to proceed based on its state.
-    local crawlAbsSpeed = 0.03 -- The speed for the train if its going to crawl forwards to the end of the portal.
+    local crawlAbsSpeed = 0.03 -- The speed for the train if its going to crawl forwards to the end of the portal. Used for edge cases.
     local stoppingPointDistance, trainNewAbsoluteSpeed, scheduleFutureArrival, brakingTargetEntityId = 0, nil, nil, nil
     if train_state == defines.train_state.path_lost or train_state == defines.train_state.no_schedule or train_state == defines.train_state.no_path or train_state == defines.train_state.destination_full then
         -- Train has no where to go so just pull to the end of the tunnel and then return to its regular broken state.
@@ -592,17 +592,33 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
 
         -- Handle the various portal signals differently to a signal on the main rail network.
         if train_signal_unitNumber == managedTrain.exitPortalEntrySignalOut.id then
-            -- Its the exit signal of this portal so just crawl forwards.
-            trainNewAbsoluteSpeed = crawlAbsSpeed
-            scheduleFutureArrival = false
+            -- It's the exit signal of this portal.
+
+            -- If this is the train's first time braking to this signal then we need to calculate the delay. Otherwise it can just leave now.
+            -- When braking at the exit signal the train will always be stopping at it on the check. Even a train with 0 speed has this state.
+            if previousBrakingTargetEntityId ~= brakingTargetEntityId then
+                scheduleFutureArrival = true
+
+                local enteringTrainLeadCarriage_name
+                if (managedTrain.trainFacingForwardsToCacheData) then
+                    enteringTrainLeadCarriage_name = managedTrain.trainCachedData.carriagesCachedData[1].prototypeName
+                elseif (not managedTrain.trainFacingForwardsToCacheData) then
+                    enteringTrainLeadCarriage_name = managedTrain.trainCachedData.carriagesCachedData[#managedTrain.trainCachedData.carriagesCachedData].prototypeName
+                end
+
+                -- The stopping distance is the carriages size plus the 1 tile the carriage can brake over.
+                stoppingPointDistance = ((Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name]) * 2) + 1
+            else
+                scheduleFutureArrival = false
+            end
         elseif train_signal_unitNumber == managedTrain.exitPortalExitSignalIn.id then
-            -- Its the entry signal of this portal as the leaving train has looped back around to the same tunnel.
+            -- It's the entry signal of this portal as the leaving train has looped back around to the same tunnel.
             -- Train can NOT just leave at full speed while it has reserved a full path back around to this tunnel portal's signals. As it triggers the portals entry signals before leaving and thus is trying to chained 2 tunnel usages over each other, which isn't supported. So we need to make it leave very slowly so it will complete leaving the tunnel before its path reserved its loop back to its exit portal. It only occurs on a silly edge case when maing a tiny figure 8 through a tunnel with non stop trains and stations.
             trainNewAbsoluteSpeed = crawlAbsSpeed
             scheduleFutureArrival = false
         elseif train_signal_unitNumber == managedTrain.exitPortalEntryTransitionSignal.id then
-            -- Its the transition signal of this portal as the leaving train has reversed at speed when trying to leave the tunnel. Occurs for dual direction trains only.
-            -- This should never be a reached state with curretn logic, as if the leaving train is reversing it should start at 0 speed, but this state requires it to start at higher speed.
+            -- It's the transition signal of this portal as the leaving train has reversed at speed when trying to leave the tunnel. Occurs for dual direction trains only.
+            -- This state should never be reachable with current logic. As if the leaving train is reversing it should start at 0 speed, but this state requires it to start at higher speed. If debug we will error to flag the issue, but otherwise we will set the speed to near 0 and just let it happen.
             if global.debugRelease then
                 error("leaving train is reversing at starting speed back in to tunnel")
             else
@@ -613,20 +629,9 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
         else
             -- Signal on main rail network so need to work out the rough distance.
 
-            -- Check this isn't a second loop for the same target due to some bug in the braking maths.
-            local skipProcessingForDelay = false
-            if previousBrakingTargetEntityId == brakingTargetEntityId then
-                -- Is a repeat.
-                if global.debugRelease then
-                    error("Looped on leaving train for same signal.")
-                else
-                    -- Just let the mod continue to run, its not the end of the world. As npo main variables are changed from default the train will leave now.
-                    skipProcessingForDelay = true
-                end
-            end
-
-            -- Do the processing assuming this isn't a repeat loop (it shouldn't be a repeat if maths works correctly).
-            if not skipProcessingForDelay then
+            -- If this is a new braking target work out the stoppping distance and set to have a delayed arrival calculated.
+            if previousBrakingTargetEntityId ~= brakingTargetEntityId then
+                -- Work out the stopping distance for the train.
                 local signalRail = train_signal.get_connected_rails()[1]
                 stoppingPointDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train, managedTrain.targetTrainStop)
                 stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
@@ -635,24 +640,44 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 TrainManager.SetTrainToAuto(managedTrain.train, managedTrain.targetTrainStop)
 
                 scheduleFutureArrival = true
+            else
+                -- Is a repeat stopping at the same target due to a bug in braking maths. Handle it based on if debug mode or not.
+                if global.debugRelease then
+                    error("Looped on leaving train for same signal.")
+                else
+                    -- Just let the mod continue to run, its not the end of the world. As no main variables are changed from default the train will leave now.
+                    scheduleFutureArrival = false
+                end
             end
         end
     else
-        error("unsupported train state for leaving tunnel: " .. train_state)
+        error("Unsupported train state for leaving tunnel: " .. train_state)
     end
 
-    -- Handle the next steps based on the processing.
+    -- If the train needs to have its arrival delayed work out the details. Otherwise the trains arrival will be now and handled later in this function.
     if scheduleFutureArrival then
         -- Calculate the delayed arrival time and delay the schedule to this. This will account for the full speed change and will account for if the train entered the tunnel overly fast, making the total duration and leaving speed correct.
 
         local currentForcesBrakingBonus = managedTrain.forcesBrakingBonus
-        stoppingPointDistance = stoppingPointDistance - 6 -- Make sure the train is set to brake BEFORE the target (short) so that it doesn't re-trigger the same breaking entity. This does mean the train leaving is fractionally slower, but its close enough.
 
+        local enteringTrainLeadCarriage_name
+        if (managedTrain.trainFacingForwardsToCacheData) then
+            enteringTrainLeadCarriage_name = managedTrain.trainCachedData.carriagesCachedData[1].prototypeName
+        elseif (not managedTrain.trainFacingForwardsToCacheData) then
+            enteringTrainLeadCarriage_name = managedTrain.trainCachedData.carriagesCachedData[#managedTrain.trainCachedData.carriagesCachedData].prototypeName
+        end
+
+        -- Make sure the train is set to brake BEFORE the target (short) so that it doesn't re-trigger the same breaking entity. This does mean the train leaving is fractionally slower, but its close enough.
+        -- The train is set to brake minus its size.
+        stoppingPointDistance = stoppingPointDistance - ((Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name]) * 2)
+
+        -- Check the stopping point is valid.
         if stoppingPointDistance <= 0 then
             -- This should never be reaced with current code. Indicates the train is doing an incorrect reverse or something has gone wrong.
             if global.debugRelease then
-                error("leaving train has 0 or lower initial path distance")
+                error("Leaving train has 0 or lower initial path distance")
             else
+                -- If release mode then just set it to 0 to avoid an error. May cause the trains arrival time/speed to be odd, but better than crashing.
                 stoppingPointDistance = 0
             end
         end
@@ -674,14 +699,15 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             ticksSpentMatchingSpeed = 0
             distanceSpentMatchingSpeed = 0
         end
-        -- Record how much distance within the tunnel is still to be covered other than by the accelerating/braking to desried speed. This an be a positivie number (tunnel distance still to cover), or a negative number (brakign has to start before the train entered the tunnel).
+        -- Record how much distance within the tunnel is still to be covered other than by the accelerating/braking to desried speed. This an be a positive number (tunnel distance still to cover), or a negative number (braking has to start before the train entered the tunnel).
         local remainingTunnelDistanceToCover = managedTrain.traversalTravelDistance - distanceSpentMatchingSpeed
 
         -- Work out how long of a delay to wait for the slowdown in train's speed going through the tunnel.
         local newArriveTick
         if remainingTunnelDistanceToCover > 0 then
             -- Tunnel distance still to cover. We must start and end at the same speed over this distance, so we will accelerate and brake during it as its the quickest way for a train to cover the distance.
-            local ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, requiredSpeedAbsoluteAtPortalEnd, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
+            -- The speed we do this at is the starting speed. As this way we accelerate from the faster entering speed as long as possible, then this brakes back to the starting speed. Upon which the already calculated braking to leaving speed takes the train down to the required finish. If we ran this on the leaving speed we would be doing this part slower than needed.
+            local ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
             newArriveTick = managedTrain.nonPlayerTrain_traversalStartTick + ticksSpentMatchingSpeed + ticksTraversingRemaingDistance
         elseif remainingTunnelDistanceToCover < 0 then
             -- Train has to brake over a longer length than the tunnel is. So need to re-calculate the entire tunnel traversal duration, and account for the approaching train being slower than really happened.
@@ -690,12 +716,13 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             local tunnelBrakingTime, correctTunnelEntranceSpeed = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalTravelDistance, managedTrain.trainLeavingSpeedAbsolute, managedTrain.forcesBrakingBonus)
 
             -- Work out how long extra it should have taken the train to reach the tunnel entrance.
-            local trainAcceleratingAllApproach = false -- TODO: This gives better results in some tests when the train is accelerating than the logic that is designed for this purpose. TRY ALL TESTS LIKE THIS AND SEE IF ANYTHING IS A MASSIVE OUTLIER STILL.
+            -- OVERHUAL: at present setting this to TRUE every time gives better rsults even for when it should be false. Obviously something overlooked, but is pretty minor impact in game so just left at present.
+            local trainAcceleratingAllApproach = false
             local extraTunnelApproachTicksForCorrectEnteringSpeed
             if trainAcceleratingAllApproach then
                 -- This assumes the train approached the tunnel while accelerating up to the speed it entered the tunnel, and not that the train was at full speed for part/all of the approach.
 
-                -- TODO: Testing Note: this ends up with a delay far too great when comparing "<" trains at different speeds. So it might be techncially more right, but the real world effect is a long delay.
+                -- OVERHUAL: Testing Note: this ends up with a delay far too great when comparing "<" trains at different speeds. So it might be techncially more right, but the real world effect is a long delay.
 
                 -- Get how long the train was accelerating from the new correct entrance speed up to the previous entrance speed, and over how much distance.
                 local ticksSpentIncorrectlyAcceleratingDuringTunnelApproach, distanceCoveredWhileIncorrectlyAcceleratingDuringTunnelApproach = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, correctTunnelEntranceSpeed, managedTrain.traversalInitialSpeedAbsolute)
@@ -708,7 +735,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             else
                 -- This assumes the train was at its entering speed for the entire approach.
 
-                -- TODO: Testing Note: This generally seems the best option in all cases. Technically in some cases haveing no extra delay upon the tunnel delay is more accurate, but that isn't a generic solution.
+                -- OVERHUAL: Testing Note: This generally seems the best option in all cases. Technically in some cases haveing no extra delay upon the tunnel delay is more accurate, but that isn't a generic solution.
 
                 -- Get how long and distance the approaching train should have been braking for in advance.
                 local correctTunnelApproachTicks, distanceToBrakeForCorrectApproachingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, correctTunnelEntranceSpeed, managedTrain.forcesBrakingBonus)

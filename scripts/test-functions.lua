@@ -431,13 +431,16 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
 
         -- Insert the fuel if approperiate. Puts it in the burner first then fuel inventory so that when we set the speed the trains max speed accounts for the fuel type.
         if placedCarriage_type == "locomotive" and locomotiveFuel ~= nil then
+            local thisLocomotivesFuel
             if placedCarriage.burner.currently_burning == nil then
                 placedCarriage.burner.currently_burning = game.item_prototypes[locomotiveFuel.name]
-                locomotiveFuel = Utils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
-                locomotiveFuel.count = locomotiveFuel.count - 1
+                thisLocomotivesFuel = Utils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
+                thisLocomotivesFuel.count = thisLocomotivesFuel.count - 1
+            else
+                thisLocomotivesFuel = locomotiveFuel
             end
-            if locomotiveFuel.count > 0 then
-                placedCarriage.insert(locomotiveFuel)
+            if thisLocomotivesFuel.count > 0 then
+                placedCarriage.insert(thisLocomotivesFuel)
             end
         end
 
@@ -568,7 +571,9 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
         for item, count in pairs(fuelProxy.item_requests) do
             -- First try to insert it in the burner, then in the fuel inventory.
             if fuelProxy.proxy_target.burner.currently_burning == nil then
-                fuelProxy.proxy_target.burner.currently_burning = game.item_prototypes[item]
+                local fuelItem = game.item_prototypes[item]
+                fuelProxy.proxy_target.burner.currently_burning = fuelItem
+                fuelProxy.proxy_target.burner.remaining_burning_fuel = fuelItem.fuel_value -- Have to set in this case otherwise it ends up as a value of 0 and the fuel is instantly used up.
                 count = count - 1 -- No worries about this being a shared table so can just remove 1 from it.
             end
             if count > 0 then

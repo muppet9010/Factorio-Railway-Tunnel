@@ -2208,17 +2208,17 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
                 if carriage_faceingFrontOfTrain == nil then
                     -- Data not known so obtain and cache.
                     if carriageCachedData.entity.speed == train_speed then
-                        carriage_faceingFrontOfTrain = trainMovingForwards
+                        carriage_faceingFrontOfTrain = true
                     else
-                        carriage_faceingFrontOfTrain = not trainMovingForwards
+                        carriage_faceingFrontOfTrain = false
                     end
                     carriageCachedData.faceingFrontOfTrain = carriage_faceingFrontOfTrain
                 end
             else
                 if carriageEntity.speed == train_speed then
-                    carriage_faceingFrontOfTrain = trainMovingForwards
+                    carriage_faceingFrontOfTrain = true
                 else
-                    carriage_faceingFrontOfTrain = not trainMovingForwards
+                    carriage_faceingFrontOfTrain = false
                 end
             end
 
@@ -2273,7 +2273,7 @@ end
 ---@return Tick ticks @ Rounded up.
 ---@return number absoluteFinalSpeed
 Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
-    -- Work uot how long it will take to accelerate over the distance. This doesn't (can't) limit the train to its max speed.
+    -- Work out how long it will take to accelerate over the distance. This doesn't (can't) limit the train to its max speed.
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local ticks = math_ceil((math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration)
@@ -2341,11 +2341,15 @@ end
 Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(trainData, targetSpeedAbsolute, distance, forcesBrakingForceBonus)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * targetSpeedAbsolute
     local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
-    local accelerationDistanceFormula = (math_sqrt(2 * acceleration * distance + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / acceleration
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local brakingDistanceFormula = (math_sqrt(2 * tickBrakingReduction * distance + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / tickBrakingReduction
-    local ticks = math_ceil(accelerationDistanceFormula + brakingDistanceFormula)
+
+    local accelerationDistanceFormula = (math_sqrt(2 * acceleration + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / acceleration
+    local brakingDistanceFormula = (math_sqrt(2 * tickBrakingReduction + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / tickBrakingReduction
+    local combinedFormulaPerTile = (accelerationDistanceFormula + brakingDistanceFormula) / 2
+
+    local ticks = math.ceil(combinedFormulaPerTile * distance)
+
     return ticks
 end
 
@@ -2364,17 +2368,20 @@ Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed = function(tra
     return ticksToStop, brakingDistance
 end
 
---- Calculates the train speed if it brakes for a time period.
+--- Calculates the final train speed and distance covered if it brakes for a time period.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param currentSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@param ticksToBrake Tick
 ---@return double newSpeedAbsolute
-Utils.CalculateBrakingTrainSpeedForTime = function(trainData, currentSpeedAbsolute, forcesBrakingForceBonus, ticksToBrake)
+---@return double distanceCovered
+Utils.CalculateBrakingTrainSpeedAndDistanceCoveredForTime = function(trainData, currentSpeedAbsolute, forcesBrakingForceBonus, ticksToBrake)
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
     local newSpeedAbsolute = currentSpeedAbsolute - (tickBrakingReduction * ticksToBrake)
-    return newSpeedAbsolute
+    local speedDropped = currentSpeedAbsolute - newSpeedAbsolute
+    local distanceCovered = (ticksToBrake * newSpeedAbsolute) + ((ticksToBrake / 2.0) * speedDropped)
+    return newSpeedAbsolute, distanceCovered
 end
 
 --- Calculates a train's intial speed at the start of a stopping distance.
