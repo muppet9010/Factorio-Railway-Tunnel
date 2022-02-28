@@ -60,12 +60,12 @@ TrainCachedData.OnTrainCreated = function(event)
     end
 
     -- Check if there is a managed train that needs stopping for either/both. Both could be using a tunnel if both leaving portals and are coupled togeather.
-    local managedTrain1 = global.trainManager.trainIdToManagedTrain[event.old_train_id_1] --TrainManager.GetTrainIdsManagedTrain()
+    local managedTrain1 = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(event.old_train_id_1) --global.trainManager.trainIdToManagedTrain[event.old_train_id_1]
     if managedTrain1 ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
         MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain1)
     end
-    local managedTrain2 = global.trainManager.trainIdToManagedTrain[event.old_train_id_2] --TrainManager.GetTrainIdsManagedTrain()
+    local managedTrain2 = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(event.old_train_id_2) --global.trainManager.trainIdToManagedTrain[event.old_train_id_2]
     if managedTrain2 ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
         MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain2)
@@ -93,7 +93,7 @@ TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
     end
 
     -- Check if there is a managed train that needs stopping.
-    local managedTrain = global.trainManager.trainIdToManagedTrain[trainId] --TrainManager.GetTrainIdsManagedTrain()
+    local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(trainId) --global.trainManager.trainIdToManagedTrain[trainId]
     if managedTrain ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
         MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)

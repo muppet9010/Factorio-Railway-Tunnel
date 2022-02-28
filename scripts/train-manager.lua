@@ -99,25 +99,41 @@ end
 ---@param train_id Id
 ---@param entrancePortalEntryTransitionSignal PortalTransitionSignal
 TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, entrancePortalEntryTransitionSignal)
-    -- Check if this train is already using the tunnel in some way.
-    local existingTrainIdManagedTrain = global.trainManager.trainIdToManagedTrain[train_id]
+    -- Check if this train is already using a tunnel in some way.
+    -- TODO: needs to handle a train leaving one tunnel reserving in to a second tunnel.
+    local existingTrainIdManagedTrain = TrainManager.GetTrainIdsManagedTrain(train_id) --global.trainManager.trainIdToManagedTrain[train_id]
     local reversedManagedTrain, committedManagedTrain = nil, nil
     if existingTrainIdManagedTrain ~= nil then
-        -- Train was using the tunnel already so handle the various states.
+        -- Train was using some tunnel before, work out which one and handle it.
+        local newTunnel = entrancePortalEntryTransitionSignal.portal.tunnel
+        if existingTrainIdManagedTrain.tunnel.id == newTunnel.id then
+            -- Train was using this tunnel already so handle the various states.
 
-        if existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
-            -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
-            reversedManagedTrain = existingTrainIdManagedTrain
-            -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
-            TrainManager.TerminateTunnelTrip(reversedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
-        elseif existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
-            -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful. Note check what in CreateManagedTrainObject() is only done on traversal as we will need to include an upgrade path through the function. Review UPS cost of doing it current way as it does make code simplier to re-recreate rather than upgrade.
-            -- Train was using the portal track and is now entering the tunnel.
-            committedManagedTrain = existingTrainIdManagedTrain
-            -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
-            TrainManager.RemoveManagedTrainEntry(committedManagedTrain)
+            if existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
+                -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
+                reversedManagedTrain = existingTrainIdManagedTrain
+                -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
+                TrainManager.TerminateTunnelTrip(reversedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
+            elseif existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
+                -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful. Note check what in CreateManagedTrainObject() is only done on traversal as we will need to include an upgrade path through the function. Review UPS cost of doing it current way as it does make code simplier to re-recreate rather than upgrade.
+                -- Train was using the portal track and is now entering the tunnel.
+                committedManagedTrain = existingTrainIdManagedTrain
+                -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
+                TrainManager.RemoveManagedTrainEntry(committedManagedTrain)
+            else
+                error("Unsupported situation for train approaching same tunnel as it was already using.")
+            end
         else
-            error("Unsupported situation")
+            -- Train was using another tunnel while starting with this one.
+
+            if existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
+                -- Train is leaving the old tunnel so can just enter the new tunnel fine.
+                -- Just remvoe the old train Id to ManagedTrain global lookup so nothing finds the old ManagedTrain. But it will continue to be processed until the train completes leaving.
+                --TODO: this might upset the leaving train detector when it gets triggered by a train it doesn't know is leaving? Maybe we need to keep a lookup of leaving trainId's to managed train as well?
+                global.trainManager.trainIdToManagedTrain[train_id] = nil
+            else
+                error("Unsupported situation for train approaching new tunnel comapred to old tunnel it was using.")
+            end
         end
     end
 
@@ -143,6 +159,7 @@ end
 ---@param managedTrain? ManagedTrain|null @ Populated if this is an alrady approachingTrain entering the portal tracks.
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, managedTrain)
     -- Check if this is a new tunnel usage or part of an exisitng transition signal reservation.
+    -- TODO: needs to handle a train leaving one tunnel reserving in to a second tunnel.
     if managedTrain ~= nil then
         -- Is an already approaching train entering the portal tracks. Just capture this and do nothing further in relation to this.
         managedTrain.portalTrackTrainBySignal = false
@@ -1024,7 +1041,7 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.RemoveManagedTrainEntry = function(managedTrain)
-    -- Only remove the global if it points to this managedTrain. The reversal process can have made the global train Id references invalid or MAY have overwritten them to poitn at another ManagedTrain object, so check they still point to our entry before removing. This was from V1 mod and left in V2 as doesn;t seem to cause any issues.
+    -- Only remove the global if it points to this managedTrain. The current global entry for the train Id may be pointing at a newer ManagedTrain instance. This can occur if the leaving train starts using a second tunnels portal (approaching, onPortalTrack), or possibly the reversal process  (this case may be a V1 left over?).
     if managedTrain.trainId ~= nil and global.trainManager.trainIdToManagedTrain[managedTrain.trainId] ~= nil and global.trainManager.trainIdToManagedTrain[managedTrain.trainId].id == managedTrain.id then
         global.trainManager.trainIdToManagedTrain[managedTrain.trainId] = nil
     end
@@ -1040,7 +1057,9 @@ end
 
 ---@param trainId Id
 ---@return ManagedTrain
+--TODO: also update direct references to global.trainManager.trainIdToManagedTrain to use this function.
 TrainManager.GetTrainIdsManagedTrain = function(trainId)
+    -- TODO: this needs to support that thre could be multiple tunnels being usd by the same train id in cases, i.e. a train leaving one tunnel has reserved in to the next tunnel. At present this returns the older tunnel usage and will miss the new tunnel usage entirely.
     return global.trainManager.trainIdToManagedTrain[trainId]
 end
 

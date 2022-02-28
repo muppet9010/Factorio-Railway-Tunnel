@@ -1272,6 +1272,8 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
                     return
                 end
             else
+                -- The train has a reservation on another tunnel.
+                -- TODO: this needs to support this for a leaving train. As when this is triggered the global lookup for train Id has bene overridden already. Think a global lookup of leaving trains is the right idea here.
                 error("Train has entered one portal in automatic mode, while it has a reservation on another.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
                 return
             end

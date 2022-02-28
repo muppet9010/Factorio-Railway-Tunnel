@@ -1,11 +1,11 @@
 Now
 ---
     - Make it so that the mod supports a train that is leavingOngoing a tunnel path in to the next tunnel. Yes the train is using both, but they aren't affecting each other in any way.
-    - Leaving train scheduled can often have set the leaving speed then if it's complete it sets it again the same tick. Avoid this duplicate setting when not needed.
 
-Bugs
-----
+Bugs / Next
+-----------
     - Review item and cost - Make a tunnel portal part (segment and end) be less cost effecient than a wall (don't want it usable as a good wall). Health should be equal to the thinist side length of wall. Make resistences copy wall. Check landfill cost for tunnel parts and make landfill be a pre-req tech.
+    - Leaving train scheduled can often have set the leaving speed then if it's complete it sets it again the same tick. Avoid this duplicate setting when not needed.
 
 
 Features to add/change

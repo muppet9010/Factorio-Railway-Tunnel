@@ -75,7 +75,7 @@ end
 ---@param trainId Id
 ---@return RemoteTunnelUsageEntry
 TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
-    local managedTrain = global.trainManager.trainIdToManagedTrain[trainId]
+    local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(trainId) --global.trainManager.trainIdToManagedTrain[trainId]
     if managedTrain == nil then
         return nil
     end

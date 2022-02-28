@@ -281,11 +281,13 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
 
         if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train.id) ~= nil then
             -- Carriage was built as part of a managed train, so just ignore it for these purposes.
+            -- TODO: does this ever get triggered, seems logically impossible given we don't track train id's of trains as the tunnel makes them, just before and after Ids.
+            error("test")
             return
         end
 
         local createdEntity_unitNumber = createdEntity.unit_number
-        -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
+        -- Look at the train and work out where the placed wagon fits in it. Then check the approperiate ends of the train's rails.
         local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
         if train.front_stock.unit_number == createdEntity_unitNumber then
             trainFrontStockIsPlacedEntity = true
