@@ -133,8 +133,8 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, en
     local existingLeavingManagedTrain = global.trainManager.leavingTrainIdToManagedTrain[train_id]
     if existingLeavingManagedTrain ~= nil then
         if existingLeavingManagedTrain.tunnel.id == newTunnel.id then
-            -- Train was leaving this tunnel already. So as its starting to use it again it must have reversed befoe fully leaving and pathed back through the tunnel.
-            reversedManagedTrain = existingActivelyUsingManagedTrain
+            -- Train was leaving this tunnel already. So as its starting to use it again it must have reversed before fully leaving and pathed back through the tunnel.
+            reversedManagedTrain = existingLeavingManagedTrain
             -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
             TrainManager.TerminateTunnelTrip(reversedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
         else

@@ -50,8 +50,8 @@ local function OnLoad()
             end,
             ---@param trainId Id
             ---@return RemoteTunnelUsageEntry
-            get_tunnel_usage_entry_for_train = function(trainId)
-                return TrainManagerRemote.GetATrainsTunnelUsageEntry(trainId)
+            get_tunnel_usage_entries_for_train = function(trainId)
+                return TrainManagerRemote.GetATrainsTunnelUsageEntries(trainId)
             end,
             ---@return table<string, string>
             get_temporary_carriage_names = function()
