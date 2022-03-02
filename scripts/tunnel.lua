@@ -279,7 +279,7 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
 
-        if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train.id) ~= nil then
+        if global.trainManager.activelyUsingTrainIdToManagedTrain[train.id] ~= nil or global.trainManager.leavingTrainIdToManagedTrain[train.id] ~= nil then
             -- Carriage was built as part of a managed train, so just ignore it for these purposes.
             -- TODO: does this ever get triggered, seems logically impossible given we don't track train id's of trains as the tunnel makes them, just before and after Ids.
             error("test")

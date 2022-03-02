@@ -75,10 +75,8 @@ end
 ---@param trainId Id
 ---@return RemoteTunnelUsageEntry
 TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
-    local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(trainId) --global.trainManager.trainIdToManagedTrain[trainId]
-    if managedTrain == nil then
-        return nil
-    end
+    --TODO: this could return both the entering and leaving tunnels at once. So needs an update to return a new syntax.
+    local managedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[trainId]
     if managedTrain ~= nil then
         local tunnelUsageEntry = {}
         TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrain.id)

@@ -1253,44 +1253,59 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
         return
     end
 
-    -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
+    -- Is a scheduled train following its schedule so check if its already reserved a tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train_id)
-        if managedTrain ~= nil then
-            -- This train has reserved a tunnel somewhere.
-            if managedTrain.tunnel.id == portal.tunnel.id then
-                -- The train has reserved this tunnel.
-                if managedTrain.tunnelUsageState == TunnelUsageState.approaching then
+        -- Check tunnels that this train is leaving. Check first as a train leaving a tunnel should be handled before it checks if its entering a different tunnel.
+        local leavingManagedTrain = global.trainManager.leavingTrainIdToManagedTrain[train_id]
+        if leavingManagedTrain ~= nil then
+            -- This train is leaving a tunnel somewhere, so check if its this tunnel or another one and handle.
+
+            if leavingManagedTrain.tunnel.id == portal.tunnel.id then
+                -- The train is leaving this tunnel.
+
+                -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
+                return
+            else
+                -- The train is leaving another tunnel.
+                -- We don't need to do any action for this.
+            end
+        end
+
+        -- Check tunnels that this train is actively using (approaching, traversing).
+        local activelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[train_id]
+        if activelyUsingManagedTrain ~= nil then
+            -- This train is using a tunnel somewhere, so check if its this tunnel or another one and handle.
+
+            if activelyUsingManagedTrain.tunnel.id == portal.tunnel.id then
+                -- The train is using this tunnel.
+
+                if activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.approaching then
                     -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entry portal track. This is healthy activity.
-                    MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, managedTrain)
-                    return
-                elseif managedTrain.tunnelUsageState == TunnelUsageState.leaving then
-                    -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
+                    MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, activelyUsingManagedTrain)
                     return
                 else
-                    error("Train is crossing a tunnel portal's threshold while not in an expected state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                    error("Train is crossing a tunnel portal's threshold while not in an expected state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                     return
                 end
             else
-                -- The train has a reservation on another tunnel.
-                -- TODO: this needs to support this for a leaving train. As when this is triggered the global lookup for train Id has bene overridden already. Think a global lookup of leaving trains is the right idea here.
-                error("Train has entered one portal in automatic mode, while it has a reservation on another.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                -- The train is using another tunnel.
+                error("Train has entered one portal in automatic mode, while it is using another.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                 return
             end
-        else
-            -- This train hasn't reserved any tunnel.
-            if portal.tunnel.managedTrain == nil then
-                -- Portal's tunnel isn't reserved so this train can grab the portal.
-                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
-                return
-            else
-                -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
-                -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
+        end
 
-                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
-                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
-                return
-            end
+        -- This train isn't using any tunnel.
+        if portal.tunnel.managedTrain == nil then
+            -- Portal's tunnel isn't reserved so this train can grab the portal.
+            MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
+            return
+        else
+            -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
+            -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
+
+            TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+            Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
+            return
         end
     end
 
@@ -1419,29 +1434,34 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local managedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train_id)
-        if managedTrain ~= nil then
-            -- This train has reserved a tunnel somewhere.
-            if managedTrain.tunnel.id == portal.tunnel.id then
+        --TODO: don't check leaving trains anywhere in this function at present, do we need to?
+        local activelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[train_id]
+        if activelyUsingManagedTrain ~= nil then
+            -- This train has reserved a tunnel somewhere, so check if its this or another one and handle.
+
+            if activelyUsingManagedTrain.tunnel.id == portal.tunnel.id then
                 -- The train has reserved this tunnel.
-                if managedTrain.tunnelUsageState == TunnelUsageState.approaching then
+
+                if activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.approaching then
                     -- Train had reserved the tunnel via signals at distance and is now ready to fully enter the tunnel.
-                    MOD.Interfaces.TrainManager.TrainEnterTunnel(managedTrain, event.tick)
+                    MOD.Interfaces.TrainManager.TrainEnterTunnel(activelyUsingManagedTrain, event.tick)
                     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                     return
-                elseif managedTrain.tunnelUsageState == TunnelUsageState.leaving then
+                elseif activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
+                    --TODO: this doesn't make sense to check leaving state for an actively using managed train object.
                     error("Train has been using the tunnel and is now trying to pass backwards through the tunnel. This may be supported in future, but error for now.")
                     return
                 else
-                    error("Train is crossing a tunnel portal's transition threshold while not in an expected state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                    error("Train is crossing a tunnel portal's transition threshold while not in an expected state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                     return
                 end
             else
-                error("Train has reached the transition point of one portal, while it has a reservation on another portal.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                error("Train has reached the transition point of one portal, while it has a reservation on another portal.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                 return
             end
         else
             -- This train hasn't reserved any tunnel.
+
             if portal.tunnel.managedTrain == nil then
                 -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now.
                 error("unexpected train entering tunnel without having passed through entry detector")

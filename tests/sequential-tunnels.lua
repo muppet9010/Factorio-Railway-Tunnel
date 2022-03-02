@@ -1,4 +1,5 @@
 -- A train goes through 2 tunnels in a row. Test with different train starting speeds.
+-- Train runs left to right as this way it goes through the tunnel's numbered 1 and then 2. As they are numbered as built from the BP, which is top-left to botom right.
 
 -- Requires and this tests class object.
 local Test = {}
@@ -17,7 +18,8 @@ local StartingSpeed = {
 -- Test configuration.
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
-local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+--TODO
+local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificStartingSpeedFilter = {} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
@@ -48,24 +50,33 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNq1Wtty2jAQ/Rc9Q0er1ZX3fkMfOhnGISrx1NiMbdJmMvx7JUiTtNBWu1V4wRdxztpn9+iCnsRtd4j7se1nsXoS7WboJ7H6/CSmdts3Xb42P+6jWIl2jjuxEH2zy2dj03bfmsf1fOj72C33wzg33XqK213s5+U0p/vb+1kcF6Lt7+J3sYLjggka+7s3OOp4sxCJo53beI70dPK47g+72zgmohe4HESfYhn2iWI/TOknQ5/JE8xSybAQj+nApcjEXTvGzfm2XYhpbs7H4lOc8kNckKiCmC85wcOZ04YLzodmbJ9Z4QohUt/8FXbnuOy6Brvhspsa7MhltzXY2bq7Cuw2XGdX/2T3Ndgdlz3UYDdcdpC8GrfAZoQ/MR6S943bcUjfF0+9zG3Xm3GYprbfXovIsBUAxYnoagx8HbBaDMiOQb+TMvxcMbzs1Ow+AGoYoWbbMNRwQs32YahhhRjY9DW8ENk+oGQNerYFKKhBz65+pWrQs1NPIa/UFbvUleYxAp+xxhgP2Oaiangb8BWu4W2SbS6qhrdJvvY1vE2yzQVreJtkmwvW8DbJHkcgbyYb2F0J4rsMpQJfAF1pfBn4IphKIXj2TA/tu8ji+XniWInp2X0AVnBBx/ZgrGCC/7G+U8ED+es7uoIFOnb96wqjO8cufV1hYY+/vqMrLOxZftbx5rCWXeL61eR+cbC/LQ9fvNRruI6A6wi4noBrCLiBgIvluEYScIGAC8W4EAi6GUXAJehmkIBL0M1oAi5FN0PApehWXm/gKbo5Ai5FN0/ApehWXm+gCLpZScAl6GbL680QZLPl5WYIqtnyajME0Wx5sRmKZuW1ZiiSlZeapkj2WmndsBl2w9w+xGuYb1/sMLYJ5rkflh/ywHAzdMOYG4/5CgQFxnpr04EHZ70L3qejvAq0zQ20VU4bkFKZ4Lz0Hp0P0ub7tydIp4wOEhGszg2UQ42Zp8l3pcQzgTcBrTdW2eDRamVc5sj/Jc9xN53CGTZf47z8cohdKtPjtTdQ7gmakrTllqAJSevKHUETktZBWRrkOdSf0kBdpIHB08cC6KSwVsqbpNpLEqigISVH0hBlklHq1Ler5Oc/k0CdZXaADgMGAxqsfAaonweu3Lw0oW5duXkhoW5duXkhIWtduXkhJWtt2Z6NF0x3MdF53bLxsclbNm7Spc19vDt0z7tEXvM2nydfc/CmzXnLy2/bPm4yymmHyurNLpk0y4jjdOb1oF1QziivNKrj8Qetq8c1"
+    local blueprint = "0eNq1WtuO2jAQ/Rc/Q5Xx+Mp7v6CP1Qpl2ZSNGhKUhG3Rin+vndCyu9B2PAm8QGJzzmQuJ2PLr+KxOhT7tqx7sXoV5aapO7H6+iq6clvnVbzXH/eFWImyL3ZiIep8F6/avKx+5Md1f6jrolrum7bPq3VXbHdF3S+7Poxvn3txWoiyfip+ihWcFkzQon56gyNPDwsROMq+LEZLh4vjuj7sHos2EP2Bi0bUwZZmHyj2TRf+0tSRPMAsnV2IY4DDAP1UtsVmHDQL0fX5+Ft86fM2PsMVhySYfE2p/Uip31MGsJe8Lc+kcIMOU91+g1szudUM3HiT2/yXW8/ADUxuM51beSa3nYHbMuPtZuDm5pqfgRuZ3JCxahq5NQ3wN75DELp22zbh++qJl3HuetM2XVfW21v2aGbOgeTYc8sCbrUDzmUBt+ZB3SUmkqsDoFk5Kdk5MIPoSbbzZ1A9YHt6BtkDyyWfQfeAq7kym4GcK7oSZiAHLrmcTs5Vf4m8DpJLpzh0bLbpfRvbr9MVDLgCJqcLGHDfnXK6fgH3rSGnyxdwu1Wcrl7AXpVNFy/J1S5krUAlt6IR79EYsfsiVPN0iuxGEfVMBnDrHc09AsJePKDlpCOy4z9d7RTb89PVTnHdrKarneI2qWq62imu0qrpnZrmKq2avvmmue2xmr75xt/3Y6092Vuc6iJoVbNpdk1fvhS3tm3VhaBpy4ByBs0+2WDxpqmaNs5t4x2Nw8cAKOdQSek0aBPfgts4LL0CsEZ7xAyNyxR4L8FFnMdhPMNwrS2gRY9egwKTnQHyOCEbJxjnAoZxYcR4h0ZJbR0MJsb97W6wp9l8L/rlt0NRBS+dbnngoqHv9Pofe9cfvXwL1dFRNR3V01GRjKozOirQUYGWWdb+NbPkVWbBGHdjwg8XcshZ75yMQT/nljLSKg1ZJrW3LgvpZ53PhtQZcstaqZXPEMGoOEFaVGjvklhakt1qPd2tSEelp6tWdFR6umpNR01IV0NHTUhXugyYhGjRZcAkRIsuA4YeLUOXAUOPlgEyKj1YhlxaCZjkwkp5enJdpQSKXFYJOWXIVZWQ/oZcVAmVasg1lSAqhlxSCfpnyRWVINWWXFAJbxVLLqiEDsCSKyqhWbHkikroqyy5ohJaQGtIJyJ+I9qr1v1yIOJzPIrxEO5snounQ3U+gHFpq+J16OQ1vJkznib5ABFBhrMfqzfnT8IioWi7kdWBsl5aLZ1UKE+nX2LEpl8="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
-    -- Get the "West" train stop of the 2 train stops we know are in the BP.
-    local westTrainStop = placedEntitiesByGroup["train-stop"][1]
-    if westTrainStop.backer_name ~= "West" then
-        westTrainStop = placedEntitiesByGroup["train-stop"][2]
+    -- Get the "End" train stop of the 2 train stops we know are in the BP.
+    local endTrainStop = placedEntitiesByGroup["train-stop"][1]
+    if endTrainStop.backer_name ~= "End" then
+        endTrainStop = placedEntitiesByGroup["train-stop"][2]
     end
 
     -- Set the trains starting speed based on the test scenario.
-    local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
+    local train = placedEntitiesByGroup["locomotive"][1].train ---@type LuaTrain @ All the loco's we built are part of the same train.
+    local targetSpeed
     if testScenario.startingSpeed == StartingSpeed.full then
-        train.speed = 1.4
+        targetSpeed = 1.4
     elseif testScenario.startingSpeed == StartingSpeed.half then
-        train.speed = 0.7
+        targetSpeed = 0.7
     else
-        train.speed = 0
+        targetSpeed = 0
+    end
+    if targetSpeed > 0 then
+        train.manual_mode = true
+        train.speed = targetSpeed
+        train.manual_mode = false
+        if train.speed == 0 then
+            train.speed = -targetSpeed
+        end
     end
 
     -- Add test data for use in the EveryTick().
@@ -73,7 +84,7 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_ST_TestScenarioBespokeData
     local testDataBespoke = {
-        westTrainStop = westTrainStop ---@type LuaEntity
+        endTrainStop = endTrainStop ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
 
@@ -96,7 +107,7 @@ Test.EveryTick = function(event)
     local testScenario = testData.testScenario ---@type Tests_ST_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_ST_TestScenarioBespokeData
 
-    if testDataBespoke.westTrainStop.get_stopped_train() ~= nil then
+    if testDataBespoke.endTrainStop.get_stopped_train() ~= nil then
         TestFunctions.TestCompleted(testName)
         return
     end
