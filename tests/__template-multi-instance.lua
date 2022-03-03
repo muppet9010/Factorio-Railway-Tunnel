@@ -21,7 +21,7 @@ local FirstLetterTypes = {
 ---@class Tests_TMI_TrainStartingSpeeds
 local TrainStartingSpeeds = {
     none = "none", -- 0 speed
-    full = "full" -- 2 speed
+    full = "full" -- 1.4 speed
 }
 
 -- Test configuration.
