@@ -24,7 +24,7 @@ styleData.styleVersion = "_1_0_0"
 
 -- Enable to write the styles out to a text file to use for updating EmmyLua class. This is for when updating the styles library only during development.
 -- Doesn't include Style version as we don't want to hardcode that in to usage code.
-local writeStyleNames = true
+local writeStyleNames = false
 styleNamesGenerated = {}
 
 local GenerateDetailsName = function(detailsName)

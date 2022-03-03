@@ -128,3 +128,9 @@ Player riding train
 -------------------
 
 - In vanilla Factorio a player's screen position when riding in a vanilla train carriage is always 1 tick behind the trains position. This has to be accounted for when comparing players and their vehicles positions on the screen.
+
+
+Train tunnel usage
+------------------
+
+A train can be leaving a tunnel and start to use (approaching, onPortalTrack) another tunnel. But it can not be either leaving 2 tunnels at the same time or using 2 tunnels at once. The portal length of >= to train length prevents a train from physically being able to utilise 2 tunnels for the same action state.

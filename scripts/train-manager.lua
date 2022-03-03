@@ -2,7 +2,7 @@
 
 --[[
     Notes:
-        - All of the ongoing or scheduled functions are protected against invalid main train references by the train-cached-data module and its tracking of removed carriage's train Id's to global.trainManager.trainIdToManagedTrain and if found calling TrainManager.InvalidTrainFound().
+        - All of the ongoing or scheduled functions are protected against invalid main train references by the train-cached-data module and its tracking of removed carriage's train Id's to global.trainManager.activelyUsingTrainIdToManagedTrain and global.trainManager.leavingTrainIdToManagedTrain and if found calling TrainManager.InvalidTrainFound().
 --]]
 --
 
@@ -72,7 +72,8 @@ TrainManager.CreateGlobals = function()
     global.trainManager = global.trainManager or {}
     global.trainManager.nextManagedTrainId = global.trainManager.nextManagedTrainId or 1 ---@type Id
     global.trainManager.managedTrains = global.trainManager.managedTrains or {} ---@type table<Id, ManagedTrain>
-    global.trainManager.trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain or {} ---@type table<Id, ManagedTrain> @ Used to track trainIds to ManagedTrain entries.
+    global.trainManager.activelyUsingTrainIdToManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain or {} ---@type table<Id, ManagedTrain> @ Used to track trainIds that are actively using (entering or traversing) to their ManagedTrain objects. These are the trains properly using the tunnel in some manner. We do care greatly what these trains try to do as we need to detect/avoid unsupported states.
+    global.trainManager.leavingTrainIdToManagedTrain = global.trainManager.leavingTrainIdToManagedTrain or {} ---@type table<Id, ManagedTrain> @ Used to track leaving trainIds to their ManagedTrain objects. These are the trains thta just happen to be on the tunnel's portal track and are leaving the tunnel at present. They need to be tracked, but we don't really care what else they try and start doing.
 end
 
 TrainManager.OnLoad = function()
@@ -81,9 +82,9 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack = TrainManager.RegisterTrainOnPortalTrack
     MOD.Interfaces.TrainManager.TrainEnterTunnel = TrainManager.TrainEnterTunnel
     MOD.Interfaces.TrainManager.On_TunnelRemoved = TrainManager.On_TunnelRemoved
-    MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain = TrainManager.GetTrainIdsManagedTrain
     MOD.Interfaces.TrainManager.InvalidTrainFound = TrainManager.InvalidTrainFound
     MOD.Interfaces.TrainManager.GetCurrentTrain = TrainManager.GetCurrentTrain
+    MOD.Interfaces.TrainManager.EnteringTrainReversedIntoOtherTunnel = TrainManager.EnteringTrainReversedIntoOtherTunnel
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundOngoing_Scheduled", TrainManager.TrainUndergroundOngoing_Scheduled)
@@ -95,29 +96,50 @@ end
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
+--- Called when a train is starting to Approach a tunnel (pathed to the tranisition signal).
+---
+--- There is very little filtering before this function is called in response to the transition signal being reserved. So this function must handle most edge cases.
+---
+--- Handles upgrades of a tunnel's usage from onPortalTrack to Approaching and reversals of leaving trains back in to a tunnel.
 ---@param train LuaTrain
 ---@param train_id Id
 ---@param entrancePortalEntryTransitionSignal PortalTransitionSignal
 TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, entrancePortalEntryTransitionSignal)
-    -- Check if this train is already using the tunnel in some way.
-    local existingTrainIdManagedTrain = global.trainManager.trainIdToManagedTrain[train_id]
+    -- Track special existing ManagedTrain objects for this train id.
     local reversedManagedTrain, committedManagedTrain = nil, nil
-    if existingTrainIdManagedTrain ~= nil then
-        -- Train was using the tunnel already so handle the various states.
+    local newTunnel = entrancePortalEntryTransitionSignal.portal.tunnel
 
-        if existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.leaving then
-            -- Train was in left state, but is now re-entering. Happens if the train doesn't fully leave the exit portal signal block before coming back in.
-            reversedManagedTrain = existingTrainIdManagedTrain
+    -- Check if this train is already actively using (entering, traversing) a tunnel.
+    local existingActivelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[train_id]
+    if existingActivelyUsingManagedTrain ~= nil then
+        if existingActivelyUsingManagedTrain.tunnel.id == newTunnel.id then
+            -- Train was entering this tunnel already.
+
+            if existingActivelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
+                -- Train was using the portal track and has upgraded to start approaching the tunnel.
+                -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful. Note check what in CreateManagedTrainObject() is only done on traversal as we will need to include an upgrade path through the function. Review UPS cost of doing it current way as it does make code simplier to re-recreate rather than upgrade.
+                committedManagedTrain = existingActivelyUsingManagedTrain
+                -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
+                TrainManager.RemoveManagedTrainEntry(committedManagedTrain)
+            else
+                error("Unsupported situation for a train using the same tunnel as it was already using if not an upgrade from OnPortalTrack to Approaching.")
+            end
+        else
+            -- Train was entering another tunnel already.
+            error("Unsupported situation for train using a tunnel to start using a second tunnel.")
+        end
+    end
+
+    -- Check if this train is already leaving a tunnel.
+    local existingLeavingManagedTrain = global.trainManager.leavingTrainIdToManagedTrain[train_id]
+    if existingLeavingManagedTrain ~= nil then
+        if existingLeavingManagedTrain.tunnel.id == newTunnel.id then
+            -- Train was leaving this tunnel already. So as its starting to use it again it must have reversed before fully leaving and pathed back through the tunnel.
+            reversedManagedTrain = existingLeavingManagedTrain
             -- Terminate the old tunnel reservation, but don't release the tunnel as we will just overwrite its user.
             TrainManager.TerminateTunnelTrip(reversedManagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
-        elseif existingTrainIdManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
-            -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful. Note check what in CreateManagedTrainObject() is only done on traversal as we will need to include an upgrade path through the function. Review UPS cost of doing it current way as it does make code simplier to re-recreate rather than upgrade.
-            -- Train was using the portal track and is now entering the tunnel.
-            committedManagedTrain = existingTrainIdManagedTrain
-            -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
-            TrainManager.RemoveManagedTrainEntry(committedManagedTrain)
         else
-            error("Unsupported situation")
+            -- Train was leaving another tunnel already and so is free to enter a new tunnel
         end
     end
 
@@ -135,14 +157,16 @@ end
 
 --- Used when a train is on a portal's track and thus the tunnel.
 ---
---- if its pathed to the tranisition signal already and claimed the tunnel we just need to record that it has entered the portal tracks in case it aborts its use of the tunnel (downgrades).
+--- There is a lot of state filtering done by the portal train detector entities so this function is only called in valid situations for it to be processed.
+---
+--- If its pathed to the tranisition signal already and claimed the tunnel we just need to record that it has entered the portal tracks in case it aborts its use of the tunnel (downgrades).
 ---
 --- If its not pathed to the transition signal then we need to reserve the tunnel now for it. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their braking distance is the stopping signal or when driven manually. They will claim the signal at a later point (upgrade) and thne that logic will superseed this.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
 ---@param managedTrain? ManagedTrain|null @ Populated if this is an alrady approachingTrain entering the portal tracks.
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, managedTrain)
-    -- Check if this is a new tunnel usage or part of an exisitng transition signal reservation.
+    -- Check if this is a new tunnel usage or part of an existing transition signal reservation.
     if managedTrain ~= nil then
         -- Is an already approaching train entering the portal tracks. Just capture this and do nothing further in relation to this.
         managedTrain.portalTrackTrainBySignal = false
@@ -226,14 +250,14 @@ end
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local train = managedTrain.train ---@type LuaTrain
 
-    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away.
+    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away or just stop.
     if train.state ~= defines.train_state.arrive_signal or train.signal ~= managedTrain.entrancePortalEntryTransitionSignal.entity then
         -- Check if the train had reached the portal tracks yet or not, as it affects next step in handling process.
         if not managedTrain.trainReachedPortalTracks then
             -- Train never made it to the portal tracks, so can just abandon it.
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
         else
-            -- Train made it to the portal tracks, so need to enable tracking of it until it leaves.
+            -- Train made it to the portal tracks, so need to enable tracking of it until it either resumes its approach or leaves the portal track. We default assume it will continue its approaching in the future and thus keep it actively using the tunnel.
             managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
 
             -- This is a downgrade so remove the approaching state data from the managed train.
@@ -296,7 +320,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 
     -- Update the TrainManager object for the new train. Old entering train will be destroyed later in function.
     local leavingTrainId = leavingTrain.id
-    global.trainManager.trainIdToManagedTrain[leavingTrainId] = managedTrain
+    global.trainManager.leavingTrainIdToManagedTrain[leavingTrainId] = managedTrain
     managedTrain.train = leavingTrain
     managedTrain.trainId = leavingTrainId
     managedTrain.trainMovingForwards = nil -- Blank it as it will have to be worked out again when starting to leave based on the new trains orientation and destination direction at the time.
@@ -313,7 +337,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 
     -- Clear references and data thats no longer valid before we do anything else to the train. As we need these to be blank for when other functions are triggered from changing the train and its carriages.
     -- Note that some of these may be cached prior to this within this function for use after the clearance.
-    global.trainManager.trainIdToManagedTrain[enteringTrainId] = nil
+    global.trainManager.activelyUsingTrainIdToManagedTrain[enteringTrainId] = nil
     managedTrain.approachingTrainExpectedSpeed = nil
     managedTrain.approachingTrainReachedFullSpeed = nil
     managedTrain.portalTrackTrainBySignal = nil
@@ -644,6 +668,11 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 trainNewAbsoluteSpeed = crawlAbsSpeed
                 scheduleFutureArrival = false
             end
+        elseif global.tunnels.transitionSignals[train_signal_unitNumber] ~= nil then
+            -- Its a transition signal of another tunnel. If its arriving at this inner signal then the portal entrance signal must be open and so this train can continue at speed in to it.
+            -- Code Note: without this the train didn't settle on the end signal and so never reserved the second tunnel before it actually starting leaving the first tunnel. But it did just leave slowly.
+            trainNewAbsoluteSpeed = nil -- So current leaving speed will be used
+            scheduleFutureArrival = false
         else
             -- Signal on main rail network so need to work out the rough distance.
 
@@ -846,12 +875,8 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Set the per tick event back to running. In some UndergroundOngoing states this was set to skip each tick as not needed due to scheduled events.
     managedTrain.skipTickCheck = false
 
-    -- Tidy up for the leaving train and propigate state updates.
-    TrainManager.DestroyDummyTrain(managedTrain)
-    TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
-    managedTrain.tunnelUsageState = TunnelUsageState.leaving
-    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
-    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
+    -- Update the ManagedTrain object for the change to leaving.
+    TrainManager.ManagedTrainToLeavingState(managedTrain)
 end
 
 --- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left.
@@ -869,6 +894,17 @@ end
 -----------------------          MINOR FUNCTIONS          ---------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
+
+--- Tidy up for the leaving train and propigate state updates.
+---@param managedTrain ManagedTrain
+---@param changeReason? TunnelUsageChangeReason|null
+TrainManager.ManagedTrainToLeavingState = function(managedTrain, changeReason)
+    TrainManager.DestroyDummyTrain(managedTrain)
+    TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
+    managedTrain.tunnelUsageState = TunnelUsageState.leaving
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving, changeReason)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
+end
 
 --- Update the passed in train schedule if the train is currently heading for a tunnel or portal rail. If so change the target rail to be the end of the portal. Avoids the train infinite loop pathing through the tunnel trying to reach a tunnel or portal rail it never can.
 ---@param managedTrain ManagedTrain
@@ -991,7 +1027,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalEntryTrans
     end
 
     global.trainManager.managedTrains[managedTrain.id] = managedTrain
-    global.trainManager.trainIdToManagedTrain[train_id] = managedTrain
+    global.trainManager.activelyUsingTrainIdToManagedTrain[train_id] = managedTrain
 
     managedTrain.surface = managedTrain.tunnel.surface
     managedTrain.trainTravelOrientation = managedTrain.trainTravelDirection / 8
@@ -1024,9 +1060,12 @@ end
 
 ---@param managedTrain ManagedTrain
 TrainManager.RemoveManagedTrainEntry = function(managedTrain)
-    -- Only remove the global if it points to this managedTrain. The reversal process can have made the global train Id references invalid or MAY have overwritten them to poitn at another ManagedTrain object, so check they still point to our entry before removing. This was from V1 mod and left in V2 as doesn;t seem to cause any issues.
-    if managedTrain.trainId ~= nil and global.trainManager.trainIdToManagedTrain[managedTrain.trainId] ~= nil and global.trainManager.trainIdToManagedTrain[managedTrain.trainId].id == managedTrain.id then
-        global.trainManager.trainIdToManagedTrain[managedTrain.trainId] = nil
+    -- Only remove the globals if they point to this ManagedTrain object. The current global entry for the train Id may be pointing at a newer ManagedTrain instance. This can possibly occur from the reversal process (unconfirmed in V2 and so may be a V1 left over?).
+    if managedTrain.trainId ~= nil and global.trainManager.activelyUsingTrainIdToManagedTrain[managedTrain.trainId] ~= nil and global.trainManager.activelyUsingTrainIdToManagedTrain[managedTrain.trainId].id == managedTrain.id then
+        global.trainManager.activelyUsingTrainIdToManagedTrain[managedTrain.trainId] = nil
+    end
+    if managedTrain.trainId ~= nil and global.trainManager.leavingTrainIdToManagedTrain[managedTrain.trainId] ~= nil and global.trainManager.leavingTrainIdToManagedTrain[managedTrain.trainId].id == managedTrain.id then
+        global.trainManager.leavingTrainIdToManagedTrain[managedTrain.trainId] = nil
     end
 
     TrainManager.DestroyDummyTrain(managedTrain)
@@ -1036,12 +1075,6 @@ TrainManager.RemoveManagedTrainEntry = function(managedTrain)
     managedTrain.tunnelUsageState = TunnelUsageState.finished
 
     global.trainManager.managedTrains[managedTrain.id] = nil
-end
-
----@param trainId Id
----@return ManagedTrain
-TrainManager.GetTrainIdsManagedTrain = function(trainId)
-    return global.trainManager.trainIdToManagedTrain[trainId]
 end
 
 --- Clone the entering train to the front of the exit portal. This will minimise any tracking of the train when leaving.
@@ -1512,6 +1545,44 @@ TrainManager.GetTrainPathDistanceToRail = function(rail, train, targetTrainStop)
     train.schedule = schedule
 
     return distanceFromTrainToRail
+end
+
+--- Called when the train was possibly leaving one tunnel and definitely actively using another tunnel, and has just reversed in to actively using the first tunnel.
+---@param oldLeavingMangagedTrain ManagedTrain
+---@param oldEnteringManagedTrain ManagedTrain
+---@param train LuaTrain
+---@param portal Portal
+TrainManager.EnteringTrainReversedIntoOtherTunnel = function(oldLeavingMangagedTrain, oldEnteringManagedTrain, train, portal)
+    -- If there was an old leaving tunnel entry for the train this needs terminating before we create the new actively using entry for it.
+    if oldLeavingMangagedTrain ~= nil then
+        -- By terminating it we avoid any messyness with its cached data being for the wrong direction.
+        TrainManager.TerminateTunnelTrip(oldLeavingMangagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
+    end
+
+    -- The old actively using train entry needs to become a leaving entry.
+    TrainManager.ManagedTrainToLeavingState(oldEnteringManagedTrain, TunnelUsageChangeReason.reversedAfterLeft)
+    global.trainManager.leavingTrainIdToManagedTrain[oldEnteringManagedTrain.trainId] = oldEnteringManagedTrain
+    global.trainManager.activelyUsingTrainIdToManagedTrain[oldEnteringManagedTrain.trainId] = nil
+
+    -- Update the now leaving entries cached data used for leaving logic as we've flipped its tunnel usage. This is the only logic that does this under V2 of the mod. The leaving logic only uses a few data items so easier to do this than create a whole new mini ManagedTrain object straight in to the leaving state.
+    ---@typelist Portal, Portal
+    local newExitPortal, newEntrancePortal
+    if oldEnteringManagedTrain.exitPortal.id == oldEnteringManagedTrain.tunnel.portals[1].id then
+        newEntrancePortal = oldEnteringManagedTrain.tunnel.portals[1]
+        newExitPortal = oldEnteringManagedTrain.tunnel.portals[2]
+    else
+        newEntrancePortal = oldEnteringManagedTrain.tunnel.portals[2]
+        newExitPortal = oldEnteringManagedTrain.tunnel.portals[1]
+    end
+    oldEnteringManagedTrain.entrancePortal = newEntrancePortal
+    oldEnteringManagedTrain.entrancePortalEntryTransitionSignal = newEntrancePortal.transitionSignals[TunnelSignalDirection.inSignal]
+    oldEnteringManagedTrain.exitPortalEntryTransitionSignal = newExitPortal.transitionSignals[TunnelSignalDirection.inSignal]
+    oldEnteringManagedTrain.exitPortal = newExitPortal
+    oldEnteringManagedTrain.exitPortalEntrySignalOut = newExitPortal.entrySignals[TunnelSignalDirection.outSignal]
+    oldEnteringManagedTrain.exitPortalExitSignalIn = newExitPortal.entrySignals[TunnelSignalDirection.inSignal]
+
+    -- Register the new actively using entry.
+    TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
 end
 
 return TrainManager

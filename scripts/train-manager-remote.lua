@@ -73,19 +73,25 @@ TrainManagerRemote.GetTunnelUsageEntry = function(managedTrainId)
 end
 
 ---@param trainId Id
----@return RemoteTunnelUsageEntry
-TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
-    local managedTrain = global.trainManager.trainIdToManagedTrain[trainId]
-    if managedTrain == nil then
-        return nil
+---@return RemoteTunnelUsageEntry activelyUsingTunnelUsageEntry
+---@return RemoteTunnelUsageEntry leavingTunnelUsageEntry
+TrainManagerRemote.GetATrainsTunnelUsageEntries = function(trainId)
+    ---@typelist RemoteTunnelUsageEntry, RemoteTunnelUsageEntry
+    local activelyUsingTunnelUsageEntry, leavingTunnelUsageEntry
+
+    local activelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[trainId]
+    if activelyUsingManagedTrain ~= nil then
+        activelyUsingTunnelUsageEntry = {}
+        TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(activelyUsingTunnelUsageEntry, activelyUsingManagedTrain.id)
     end
-    if managedTrain ~= nil then
-        local tunnelUsageEntry = {}
-        TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrain.id)
-        return tunnelUsageEntry
-    else
-        return nil
+
+    local leavingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[trainId]
+    if leavingManagedTrain ~= nil then
+        leavingTunnelUsageEntry = {}
+        TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(leavingTunnelUsageEntry, leavingManagedTrain.id)
     end
+
+    return activelyUsingTunnelUsageEntry, leavingTunnelUsageEntry
 end
 
 ---@return table<string, string> @ Entity names.

@@ -405,7 +405,7 @@ Test.EveryTick_StraightThrough = function(event)
         return
     end
 
-    -- Only do anything once the train has entered. As the entry jump will be odd due to the mod having to fight the trains speed just before the entry. So its per tick variation looks large. Also we don;t have any reverse action that needs to trigger before then and it makes the maths simplier.
+    -- Only do anything once the train has entered. As the entry jump will be odd due to the mod having to fight the trains speed just before the entry. So its per tick variation looks large. Also we don't have any reverse action that needs to trigger before then and it makes the maths simplier.
     if tunnelUsageChanges.actions[Common.TunnelUsageAction.entered] == nil then
         return
     end
@@ -492,7 +492,7 @@ Test.EveryTick_Reverse = function(event)
         return
     end
 
-    -- Only do anything once the train has entered. As the entry jump will be odd due to the mod having to fight the trains speed just before the entry. So its per tick variation looks large. Also we don;t have any reverse action that needs to trigger before then and it makes the maths simplier.
+    -- Only do anything once the train has entered. As the entry jump will be odd due to the mod having to fight the trains speed just before the entry. So its per tick variation looks large. Also we don't have any reverse action that needs to trigger before then and it makes the maths simplier.
     if tunnelUsageChanges.actions[Common.TunnelUsageAction.entered] == nil then
         return
     end

@@ -279,13 +279,8 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
 
-        if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrain(train.id) ~= nil then
-            -- Carriage was built as part of a managed train, so just ignore it for these purposes.
-            return
-        end
-
         local createdEntity_unitNumber = createdEntity.unit_number
-        -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
+        -- Look at the train and work out where the placed wagon fits in it. Then check the approperiate ends of the train's rails.
         local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
         if train.front_stock.unit_number == createdEntity_unitNumber then
             trainFrontStockIsPlacedEntity = true

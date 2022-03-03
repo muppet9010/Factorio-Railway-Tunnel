@@ -378,4 +378,15 @@ TunnelShared.OnPreMinedEntity = function(event)
     error("some function should have been called")
 end
 
+--- Prints a red warning message to all players, including that they should report this bug to the mod author.
+---
+--- For use when an edge case will error in Debug Release, but is allowed in production release as probably shouldn't error.
+---@param text string
+TunnelShared.PrintWarningAndReportToModAuthor = function(text)
+    if text[#text] ~= "." then
+        text = text .. "."
+    end
+    game.print("WARNING: " .. text " Report to mod author", Colors.red)
+end
+
 return TunnelShared

@@ -61,6 +61,7 @@ local TestsToRun = {
     BidirectionalTunnelLoop = {enabled = false, testScript = require("tests/bidirectional-tunnel-loop")},
     UndergroundArtilleryTrain = {enabled = false, testScript = require("tests/underground-artillery-train")},
     SequentialTunnels = {enabled = false, testScript = require("tests/sequential-tunnels")},
+    SequentialTunnelReverseTests = {enabled = false, testScript = require("tests/sequential-tunnel-reverse-tests")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},

@@ -1,9 +1,9 @@
 -- A train goes through 2 tunnels in a row. Test with different train starting speeds.
+-- Train runs left to right as this way it goes through the tunnel's numbered 1 and then 2. As they are numbered as built from the BP, which is top-left to bottom right.
 
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Common = require("scripts.common")
 
 -- Internal test types.
 --- Class name includes the abbreviation of the test name to make it unique across the mod.
@@ -48,24 +48,33 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNq1Wtty2jAQ/Rc9Q0er1ZX3fkMfOhnGISrx1NiMbdJmMvx7JUiTtNBWu1V4wRdxztpn9+iCnsRtd4j7se1nsXoS7WboJ7H6/CSmdts3Xb42P+6jWIl2jjuxEH2zy2dj03bfmsf1fOj72C33wzg33XqK213s5+U0p/vb+1kcF6Lt7+J3sYLjggka+7s3OOp4sxCJo53beI70dPK47g+72zgmohe4HESfYhn2iWI/TOknQ5/JE8xSybAQj+nApcjEXTvGzfm2XYhpbs7H4lOc8kNckKiCmC85wcOZ04YLzodmbJ9Z4QohUt/8FXbnuOy6Brvhspsa7MhltzXY2bq7Cuw2XGdX/2T3Ndgdlz3UYDdcdpC8GrfAZoQ/MR6S943bcUjfF0+9zG3Xm3GYprbfXovIsBUAxYnoagx8HbBaDMiOQb+TMvxcMbzs1Ow+AGoYoWbbMNRwQs32YahhhRjY9DW8ENk+oGQNerYFKKhBz65+pWrQs1NPIa/UFbvUleYxAp+xxhgP2Oaiangb8BWu4W2SbS6qhrdJvvY1vE2yzQVreJtkmwvW8DbJHkcgbyYb2F0J4rsMpQJfAF1pfBn4IphKIXj2TA/tu8ji+XniWInp2X0AVnBBx/ZgrGCC/7G+U8ED+es7uoIFOnb96wqjO8cufV1hYY+/vqMrLOxZftbx5rCWXeL61eR+cbC/LQ9fvNRruI6A6wi4noBrCLiBgIvluEYScIGAC8W4EAi6GUXAJehmkIBL0M1oAi5FN0PApehWXm/gKbo5Ai5FN0/ApehWXm+gCLpZScAl6GbL680QZLPl5WYIqtnyajME0Wx5sRmKZuW1ZiiSlZeapkj2WmndsBl2w9w+xGuYb1/sMLYJ5rkflh/ywHAzdMOYG4/5CgQFxnpr04EHZ70L3qejvAq0zQ20VU4bkFKZ4Lz0Hp0P0ub7tydIp4wOEhGszg2UQ42Zp8l3pcQzgTcBrTdW2eDRamVc5sj/Jc9xN53CGTZf47z8cohdKtPjtTdQ7gmakrTllqAJSevKHUETktZBWRrkOdSf0kBdpIHB08cC6KSwVsqbpNpLEqigISVH0hBlklHq1Ler5Oc/k0CdZXaADgMGAxqsfAaonweu3Lw0oW5duXkhoW5duXkhIWtduXkhJWtt2Z6NF0x3MdF53bLxsclbNm7Spc19vDt0z7tEXvM2nydfc/CmzXnLy2/bPm4yymmHyurNLpk0y4jjdOb1oF1QziivNKrj8Qetq8c1"
+    local blueprint = "0eNq1Wttu2kAQ/Zd9JpVnZq+89wv6WEXIAYtaMjayTVoU8e/dBRTS4KiTWYcXsL2cM96Zczxe7Yt6ag7Vvq/bUS1fVL3u2kEtf76ood62ZZPOjcd9pZaqHqudWqi23KWjvqyb3+VxNR7atmoe9l0/ls1qqLa7qh0fhjFe3/4a1Wmh6nZT/VFLOC2EoFW7eYODp8eFihz1WFeXSM8Hx1V72D1VfSR6hUtBtDGWbh8p9t0Q/9K1iTzCPHi3UMf4HeNSm7qv1peLdqGGsbz8Vj/Gsk/3cMeBjJDvKU04U75jjFjPZV9fOWGCjT476xPURkatZ6CmKWr7X2ozAzXIqG0+tQ4yajcDtZPl2s9ALSyzMAM1yaihEGmZhFoG+IjuEP2t3/Zd/L6734c0drXuu2Go2+1UOEZWboCScKYCEKocaK4AhFoH/SUJQaH+wYjKEaX5n8HqUDrzM3gdSKd5BrMDJ+Sewe1AaLRYzMAtdFqEGbhByI353ELHR5I1i0I2LWGTkuX3aNJJzfctENoW5tsWCB+WmO9aIHxQYL5pgbAvpXzPAumbV75lodCxSPSOiUIlE31FFyRtgkjP0xRKe0IyM/ELdU72K7IhfUcgJ6lEkuY+3+O0dNrzPU4L51jne5wWtqM63+O00F51fldmhPaq8xfVjLAP1vmLauLlPNHbpXTdUt9srOnW3a4b6+dqailWv+J3fR1BrpjFNxfjXXdN16ehfTpj6PyxANp70ojegLHpsbdNlzFoAGdNICrI+kJDCAg+4TydrxcUj40DchQoGNBgiytAmQYUlwHW+4hhfbxigyer0TgPaNI69FjthhTPuktL2aY4Td36zTP/seePF6Lfz+4UqOeDGjZo4IMSF9QUfFBggwKvnJz7qJzwrpzgkmxr4w8fC8e74D2mTF8LSlt02kBRoAnOF7HmnA/FuV7OBeUcGh0KIrA6DUBHmtzM1WSQPZ0usKeT+KDsEjWaD8ouUWP4oPwStXxQfonyZW/5ieLL3vITxZe9ZSfK8mVv2YmywAZl58myBcWHZMvpE7fOVtMncsQWE7+YLFtL/Kq3bCnx5WnZSuL7iGULiW94jq0jvjM7toz4jxDHlhH/Ke/YOuK3I46tI37f5Ng64jd4zrL2LlwB6a4fv+1c+J72TDzGM+tf1ebQXHdK3NqmdBzbcwNvxly2fbyDSCDnTRrLNxtFYudf9cOF1YN2AZ1Bj5rwdPoLTcSRYg=="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
-    -- Get the "West" train stop of the 2 train stops we know are in the BP.
-    local westTrainStop = placedEntitiesByGroup["train-stop"][1]
-    if westTrainStop.backer_name ~= "West" then
-        westTrainStop = placedEntitiesByGroup["train-stop"][2]
+    -- Get the "End" train stop of the 2 train stops we know are in the BP.
+    local endTrainStop = placedEntitiesByGroup["train-stop"][1]
+    if endTrainStop.backer_name ~= "End" then
+        endTrainStop = placedEntitiesByGroup["train-stop"][2]
     end
 
     -- Set the trains starting speed based on the test scenario.
-    local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
+    local train = placedEntitiesByGroup["locomotive"][1].train ---@type LuaTrain @ All the loco's we built are part of the same train.
+    local targetSpeed
     if testScenario.startingSpeed == StartingSpeed.full then
-        train.speed = 1.4
+        targetSpeed = 1.4
     elseif testScenario.startingSpeed == StartingSpeed.half then
-        train.speed = 0.7
+        targetSpeed = 0.7
     else
-        train.speed = 0
+        targetSpeed = 0
+    end
+    if targetSpeed > 0 then
+        train.manual_mode = true
+        train.speed = targetSpeed
+        train.manual_mode = false
+        if train.speed == 0 then
+            train.speed = -targetSpeed
+        end
     end
 
     -- Add test data for use in the EveryTick().
@@ -73,7 +82,7 @@ Test.Start = function(testName)
     testData.testScenario = testScenario
     ---@class Tests_ST_TestScenarioBespokeData
     local testDataBespoke = {
-        westTrainStop = westTrainStop ---@type LuaEntity
+        endTrainStop = endTrainStop ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
 
@@ -96,7 +105,7 @@ Test.EveryTick = function(event)
     local testScenario = testData.testScenario ---@type Tests_ST_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_ST_TestScenarioBespokeData
 
-    if testDataBespoke.westTrainStop.get_stopped_train() ~= nil then
+    if testDataBespoke.endTrainStop.get_stopped_train() ~= nil then
         TestFunctions.TestCompleted(testName)
         return
     end
