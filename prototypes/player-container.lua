@@ -11,7 +11,7 @@ data:extend(
             name = "railway_tunnel-player_container",
             icon = "__railway_tunnel__/graphics/icon/railway_tunnel.png",
             icon_size = 32,
-            icon_mipmaps = 4,
+            icon_mipmaps = 1,
             subgroup = "railway_tunnel-hidden_player_container",
             collision_mask = {},
             flags = {"not-on-map", "placeable-off-grid", "not-selectable-in-game"},
