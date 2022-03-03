@@ -755,6 +755,16 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             -- Tunnel distance still to cover. We must start and end at the same speed over this distance, so we will accelerate and brake during it as its the quickest way for a train to cover the distance.
             -- The speed we do this at is the starting speed. As this way we accelerate from the faster entering speed as long as possible, then this brakes back to the starting speed. Upon which the already calculated braking to leaving speed takes the train down to the required finish. If we ran this on the leaving speed we would be doing this part slower than needed.
             local ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
+
+            local test_acceleratingToMaxSpeed_ticks, test_acceleratingToMaxSpeed_distance = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, managedTrain.directionalTrainSpeedCalculationData.maxSpeed)
+            local test_brakingToRequiredSpeed_ticks, test_brakingToRequiredSpeed_distance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.directionalTrainSpeedCalculationData.maxSpeed, managedTrain.traversalInitialSpeedAbsolute, currentForcesBrakingBonus)
+            local test_atMaxSpeed_distance = remainingTunnelDistanceToCover - test_acceleratingToMaxSpeed_distance - test_brakingToRequiredSpeed_distance
+            local test_atMaxSpeed_ticks = math.ceil(test_atMaxSpeed_distance / managedTrain.directionalTrainSpeedCalculationData.maxSpeed)
+            local test_total_ticks = test_acceleratingToMaxSpeed_ticks + test_brakingToRequiredSpeed_ticks + test_atMaxSpeed_ticks
+            --TODO: is this how it becomes negative as Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed doesn't limit to max speed, but before I hadn't commented or accounted for this in any of its uses?
+            --TODO: note some of these test values are negative results as the train can never go from its initial speed to the max speed I asked it. This flagged the max speed issue in Utils.
+            --TODO: this flagged the issue with train's calculated max speed in Utils as this is distorting everything.
+
             newArriveTick = managedTrain.nonPlayerTrain_traversalStartTick + ticksSpentMatchingSpeed + ticksTraversingRemaingDistance
         elseif remainingTunnelDistanceToCover < 0 then
             -- Train has to brake over a longer length than the tunnel is. So need to re-calculate the entire tunnel traversal duration, and account for the approaching train being slower than really happened.
@@ -801,7 +811,16 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
 
         -- Work out the delay for leaving the tunnel.
         if delayTicks < 0 then
-            error("leaving train shouldn't be able to be rescheduled with negative delay compared to previous computing")
+            -- TODO: With a very large train with very slow acceleration/braking and only a small speed drop to the leaving speed this can end up below 0 due to inperfect estimation and rounding isues at present.
+            -- TODO: do we just blindly floor this to 0 and say good enough if we can't fix the calculation data?
+
+            -- This should never be reached with current code. Indicates something has gone wrong.
+            if 1 == 0 and global.debugRelease then
+                error("Leaving train shouldn't be able to be rescheduled with negative delay compared to previous computing")
+            else
+                -- If release mode then just set it to 0 to avoid an error. May cause the trains arrival time/speed to be odd, but better than crashing.
+                delayTicks = 0
+            end
         end
 
         -- If the new time is not the same as the old then we need to reschedule, this is the expected situation. However if the arrival times are the same then just let the code flow in to releasing the train now.

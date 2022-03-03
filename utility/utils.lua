@@ -2195,6 +2195,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
             firstCarriage = false
             trainData.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainWeight / 1000))
             -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
+            --TODO: max speed needs to be worked out as the real speed this train can reach and not just its prototype max. This needs to include current fuel and be updated when it is. So some raw data cached and some current value cached. As a large 1-9 loco train has a real max speed of 0.6.
             if trainMovingForwards then
                 trainData.maxSpeed = train.max_forward_speed
             elseif not trainMovingForwards then
@@ -2331,6 +2332,8 @@ Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed = functio
 end
 
 --- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance.
+---
+--- This doesn't limit to max speed !!!
 ---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
