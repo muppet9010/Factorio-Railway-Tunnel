@@ -668,6 +668,11 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 trainNewAbsoluteSpeed = crawlAbsSpeed
                 scheduleFutureArrival = false
             end
+        elseif global.tunnels.transitionSignals[train_signal_unitNumber] ~= nil then
+            -- Its a transition signal of another tunnel. If its arriving at this inner signal then the portal entrance signal must be open and so this train can continue at speed in to it.
+            -- Code Note: without this the train didn't settle on the end signal and so never reserved the second tunnel before it actually starting leaving the first tunnel. But it did just leave slowly.
+            trainNewAbsoluteSpeed = nil -- So current leaving speed will be used
+            scheduleFutureArrival = false
         else
             -- Signal on main rail network so need to work out the rough distance.
 

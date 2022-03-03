@@ -1,10 +1,9 @@
 -- A train goes through 2 tunnels in a row. Test with different train starting speeds.
--- Train runs left to right as this way it goes through the tunnel's numbered 1 and then 2. As they are numbered as built from the BP, which is top-left to botom right.
+-- Train runs left to right as this way it goes through the tunnel's numbered 1 and then 2. As they are numbered as built from the BP, which is top-left to bottom right.
 
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Common = require("scripts.common")
 
 -- Internal test types.
 --- Class name includes the abbreviation of the test name to make it unique across the mod.
@@ -49,7 +48,7 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNq1WtuO2jAQ/Rc/Q5Xx+Mp7v6CP1Qpl2ZSNGhKUhG3Rin+vndCyu9B2PAm8QGJzzmQuJ2PLr+KxOhT7tqx7sXoV5aapO7H6+iq6clvnVbzXH/eFWImyL3ZiIep8F6/avKx+5Md1f6jrolrum7bPq3VXbHdF3S+7Poxvn3txWoiyfip+ihWcFkzQon56gyNPDwsROMq+LEZLh4vjuj7sHos2EP2Bi0bUwZZmHyj2TRf+0tSRPMAsnV2IY4DDAP1UtsVmHDQL0fX5+Ft86fM2PsMVhySYfE2p/Uip31MGsJe8Lc+kcIMOU91+g1szudUM3HiT2/yXW8/ADUxuM51beSa3nYHbMuPtZuDm5pqfgRuZ3JCxahq5NQ3wN75DELp22zbh++qJl3HuetM2XVfW21v2aGbOgeTYc8sCbrUDzmUBt+ZB3SUmkqsDoFk5Kdk5MIPoSbbzZ1A9YHt6BtkDyyWfQfeAq7kym4GcK7oSZiAHLrmcTs5Vf4m8DpJLpzh0bLbpfRvbr9MVDLgCJqcLGHDfnXK6fgH3rSGnyxdwu1Wcrl7AXpVNFy/J1S5krUAlt6IR79EYsfsiVPN0iuxGEfVMBnDrHc09AsJePKDlpCOy4z9d7RTb89PVTnHdrKarneI2qWq62imu0qrpnZrmKq2avvmmue2xmr75xt/3Y6092Vuc6iJoVbNpdk1fvhS3tm3VhaBpy4ByBs0+2WDxpqmaNs5t4x2Nw8cAKOdQSek0aBPfgts4LL0CsEZ7xAyNyxR4L8FFnMdhPMNwrS2gRY9egwKTnQHyOCEbJxjnAoZxYcR4h0ZJbR0MJsb97W6wp9l8L/rlt0NRBS+dbnngoqHv9Pofe9cfvXwL1dFRNR3V01GRjKozOirQUYGWWdb+NbPkVWbBGHdjwg8XcshZ75yMQT/nljLSKg1ZJrW3LgvpZ53PhtQZcstaqZXPEMGoOEFaVGjvklhakt1qPd2tSEelp6tWdFR6umpNR01IV0NHTUhXugyYhGjRZcAkRIsuA4YeLUOXAUOPlgEyKj1YhlxaCZjkwkp5enJdpQSKXFYJOWXIVZWQ/oZcVAmVasg1lSAqhlxSCfpnyRWVINWWXFAJbxVLLqiEDsCSKyqhWbHkikroqyy5ohJaQGtIJyJ+I9qr1v1yIOJzPIrxEO5snounQ3U+gHFpq+J16OQ1vJkznib5ABFBhrMfqzfnT8IioWi7kdWBsl5aLZ1UKE+nX2LEpl8="
+    local blueprint = "0eNq1Wttu2kAQ/Zd9JpVnZq+89wv6WEXIAYtaMjayTVoU8e/dBRTS4KiTWYcXsL2cM96Zczxe7Yt6ag7Vvq/bUS1fVL3u2kEtf76ood62ZZPOjcd9pZaqHqudWqi23KWjvqyb3+VxNR7atmoe9l0/ls1qqLa7qh0fhjFe3/4a1Wmh6nZT/VFLOC2EoFW7eYODp8eFihz1WFeXSM8Hx1V72D1VfSR6hUtBtDGWbh8p9t0Q/9K1iTzCPHi3UMf4HeNSm7qv1peLdqGGsbz8Vj/Gsk/3cMeBjJDvKU04U75jjFjPZV9fOWGCjT476xPURkatZ6CmKWr7X2ozAzXIqG0+tQ4yajcDtZPl2s9ALSyzMAM1yaihEGmZhFoG+IjuEP2t3/Zd/L6734c0drXuu2Go2+1UOEZWboCScKYCEKocaK4AhFoH/SUJQaH+wYjKEaX5n8HqUDrzM3gdSKd5BrMDJ+Sewe1AaLRYzMAtdFqEGbhByI353ELHR5I1i0I2LWGTkuX3aNJJzfctENoW5tsWCB+WmO9aIHxQYL5pgbAvpXzPAumbV75lodCxSPSOiUIlE31FFyRtgkjP0xRKe0IyM/ELdU72K7IhfUcgJ6lEkuY+3+O0dNrzPU4L51jne5wWtqM63+O00F51fldmhPaq8xfVjLAP1vmLauLlPNHbpXTdUt9srOnW3a4b6+dqailWv+J3fR1BrpjFNxfjXXdN16ehfTpj6PyxANp70ojegLHpsbdNlzFoAGdNICrI+kJDCAg+4TydrxcUj40DchQoGNBgiytAmQYUlwHW+4hhfbxigyer0TgPaNI69FjthhTPuktL2aY4Td36zTP/seePF6Lfz+4UqOeDGjZo4IMSF9QUfFBggwKvnJz7qJzwrpzgkmxr4w8fC8e74D2mTF8LSlt02kBRoAnOF7HmnA/FuV7OBeUcGh0KIrA6DUBHmtzM1WSQPZ0usKeT+KDsEjWaD8ouUWP4oPwStXxQfonyZW/5ieLL3vITxZe9ZSfK8mVv2YmywAZl58myBcWHZMvpE7fOVtMncsQWE7+YLFtL/Kq3bCnx5WnZSuL7iGULiW94jq0jvjM7toz4jxDHlhH/Ke/YOuK3I46tI37f5Ng64jd4zrL2LlwB6a4fv+1c+J72TDzGM+tf1ebQXHdK3NqmdBzbcwNvxly2fbyDSCDnTRrLNxtFYudf9cOF1YN2AZ1Bj5rwdPoLTcSRYg=="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
