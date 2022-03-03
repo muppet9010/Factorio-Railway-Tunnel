@@ -84,6 +84,7 @@ TrainManager.OnLoad = function()
     MOD.Interfaces.TrainManager.On_TunnelRemoved = TrainManager.On_TunnelRemoved
     MOD.Interfaces.TrainManager.InvalidTrainFound = TrainManager.InvalidTrainFound
     MOD.Interfaces.TrainManager.GetCurrentTrain = TrainManager.GetCurrentTrain
+    MOD.Interfaces.TrainManager.EnteringTrainReversedIntoOtherTunnel = TrainManager.EnteringTrainReversedIntoOtherTunnel
 
     Events.RegisterHandlerEvent(defines.events.on_tick, "TrainManager.ProcessManagedTrains", TrainManager.ProcessManagedTrains)
     EventScheduler.RegisterScheduledEventType("TrainManager.TrainUndergroundOngoing_Scheduled", TrainManager.TrainUndergroundOngoing_Scheduled)
@@ -249,14 +250,14 @@ end
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local train = managedTrain.train ---@type LuaTrain
 
-    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away.
+    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away or just stop.
     if train.state ~= defines.train_state.arrive_signal or train.signal ~= managedTrain.entrancePortalEntryTransitionSignal.entity then
         -- Check if the train had reached the portal tracks yet or not, as it affects next step in handling process.
         if not managedTrain.trainReachedPortalTracks then
             -- Train never made it to the portal tracks, so can just abandon it.
             TrainManager.TerminateTunnelTrip(managedTrain, TunnelUsageChangeReason.abortedApproach)
         else
-            -- Train made it to the portal tracks, so need to enable tracking of it until it leaves.
+            -- Train made it to the portal tracks, so need to enable tracking of it until it either resumes its approach or leaves the portal track. We default assume it will continue its approaching in the future and thus keep it actively using the tunnel.
             managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
 
             -- This is a downgrade so remove the approaching state data from the managed train.
@@ -869,12 +870,8 @@ TrainManager.TrainUndergroundCompleted = function(managedTrain)
     -- Set the per tick event back to running. In some UndergroundOngoing states this was set to skip each tick as not needed due to scheduled events.
     managedTrain.skipTickCheck = false
 
-    -- Tidy up for the leaving train and propigate state updates.
-    TrainManager.DestroyDummyTrain(managedTrain)
-    TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
-    managedTrain.tunnelUsageState = TunnelUsageState.leaving
-    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving)
-    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
+    -- Update the ManagedTrain object for the change to leaving.
+    TrainManager.ManagedTrainToLeavingState(managedTrain)
 end
 
 --- Track the tunnel's exit portal entry rail signal so we can mark the tunnel as open for the next train when the current train has left.
@@ -892,6 +889,17 @@ end
 -----------------------          MINOR FUNCTIONS          ---------------------
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
+
+--- Tidy up for the leaving train and propigate state updates.
+---@param managedTrain ManagedTrain
+---@param changeReason? TunnelUsageChangeReason|null
+TrainManager.ManagedTrainToLeavingState = function(managedTrain, changeReason)
+    TrainManager.DestroyDummyTrain(managedTrain)
+    TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
+    managedTrain.tunnelUsageState = TunnelUsageState.leaving
+    TrainManagerRemote.TunnelUsageChanged(managedTrain.id, TunnelUsageAction.leaving, changeReason)
+    MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
+end
 
 --- Update the passed in train schedule if the train is currently heading for a tunnel or portal rail. If so change the target rail to be the end of the portal. Avoids the train infinite loop pathing through the tunnel trying to reach a tunnel or portal rail it never can.
 ---@param managedTrain ManagedTrain
@@ -1532,6 +1540,44 @@ TrainManager.GetTrainPathDistanceToRail = function(rail, train, targetTrainStop)
     train.schedule = schedule
 
     return distanceFromTrainToRail
+end
+
+--- Called when the train was possibly leaving one tunnel and definitely actively using another tunnel, and has just reversed in to actively using the first tunnel.
+---@param oldLeavingMangagedTrain ManagedTrain
+---@param oldEnteringManagedTrain ManagedTrain
+---@param train LuaTrain
+---@param portal Portal
+TrainManager.EnteringTrainReversedIntoOtherTunnel = function(oldLeavingMangagedTrain, oldEnteringManagedTrain, train, portal)
+    -- If there was an old leaving tunnel entry for the train this needs terminating before we create the new actively using entry for it.
+    if oldLeavingMangagedTrain ~= nil then
+        -- By terminating it we avoid any messyness with its cached data being for the wrong direction.
+        TrainManager.TerminateTunnelTrip(oldLeavingMangagedTrain, TunnelUsageChangeReason.reversedAfterLeft, true)
+    end
+
+    -- The old actively using train entry needs to become a leaving entry.
+    TrainManager.ManagedTrainToLeavingState(oldEnteringManagedTrain, TunnelUsageChangeReason.reversedAfterLeft)
+    global.trainManager.leavingTrainIdToManagedTrain[oldEnteringManagedTrain.trainId] = oldEnteringManagedTrain
+    global.trainManager.activelyUsingTrainIdToManagedTrain[oldEnteringManagedTrain.trainId] = nil
+
+    -- Update the now leaving entries cached data used for leaving logic as we've flipped its tunnel usage. This is the only logic that does this under V2 of the mod. The leaving logic only uses a few data items so easier to do this than create a whole new mini ManagedTrain object straight in to the leaving state.
+    ---@typelist Portal, Portal
+    local newExitPortal, newEntrancePortal
+    if oldEnteringManagedTrain.exitPortal.id == oldEnteringManagedTrain.tunnel.portals[1].id then
+        newEntrancePortal = oldEnteringManagedTrain.tunnel.portals[1]
+        newExitPortal = oldEnteringManagedTrain.tunnel.portals[2]
+    else
+        newEntrancePortal = oldEnteringManagedTrain.tunnel.portals[2]
+        newExitPortal = oldEnteringManagedTrain.tunnel.portals[1]
+    end
+    oldEnteringManagedTrain.entrancePortal = newEntrancePortal
+    oldEnteringManagedTrain.entrancePortalEntryTransitionSignal = newEntrancePortal.transitionSignals[TunnelSignalDirection.inSignal]
+    oldEnteringManagedTrain.exitPortalEntryTransitionSignal = newExitPortal.transitionSignals[TunnelSignalDirection.inSignal]
+    oldEnteringManagedTrain.exitPortal = newExitPortal
+    oldEnteringManagedTrain.exitPortalEntrySignalOut = newExitPortal.entrySignals[TunnelSignalDirection.outSignal]
+    oldEnteringManagedTrain.exitPortalExitSignalIn = newExitPortal.entrySignals[TunnelSignalDirection.inSignal]
+
+    -- Register the new actively using entry.
+    TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
 end
 
 return TrainManager

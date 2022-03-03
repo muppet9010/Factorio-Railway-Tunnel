@@ -76,7 +76,7 @@ EventScheduler.ScheduleEventOnce = function(eventTick, eventName, instanceId, ev
         eventTick = nowTick + 1
     elseif eventTick == -1 then
         -- Special case for callbacks within same tick.
-        eventTick = game.tick
+        eventTick = nowTick
     elseif eventTick <= nowTick then
         error("EventScheduler.ScheduleEventOnce scheduled for in the past. eventName: '" .. tostring(eventName) .. "' instanceId: '" .. tostring(instanceId) .. "'")
     end
@@ -86,7 +86,7 @@ EventScheduler.ScheduleEventOnce = function(eventTick, eventName, instanceId, ev
     global.UTILITYSCHEDULEDFUNCTIONS[eventTick] = global.UTILITYSCHEDULEDFUNCTIONS[eventTick] or {} ---@type UtilityScheduledEvent_ScheduledFunctionsTicksEventNames
     global.UTILITYSCHEDULEDFUNCTIONS[eventTick][eventName] = global.UTILITYSCHEDULEDFUNCTIONS[eventTick][eventName] or {} ---@type UtilityScheduledEvent_ScheduledFunctionsTicksEventNamesInstanceIds
     if global.UTILITYSCHEDULEDFUNCTIONS[eventTick][eventName][instanceId] ~= nil then
-        error("WARNING: Overridden schedule event: '" .. eventName .. "' id: '" .. instanceId .. "' at tick: " .. eventTick)
+        error("EventScheduler.ScheduleEventOnce tried to override schedule event: '" .. eventName .. "' id: '" .. instanceId .. "' at tick: " .. eventTick)
     end
     global.UTILITYSCHEDULEDFUNCTIONS[eventTick][eventName][instanceId] = eventData
 end

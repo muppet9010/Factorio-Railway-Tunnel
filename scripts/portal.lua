@@ -1267,7 +1267,7 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
                 return
             else
                 -- The train is leaving another tunnel.
-                -- This isn';'t a leaving train state we want to react to, and we don;t want to stop further processing (no return).
+                -- This isn't a leaving train state we want to react to, and we don't want to stop further processing (no return).
             end
         end
 
@@ -1284,11 +1284,20 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
                     MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, activelyUsingManagedTrain)
                     return
                 else
-                    error("Train is crossing a tunnel portal's transition threshold while registered as actively using this tunnel, but not in the approaching stste.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
+                    error("Train is crossing a tunnel portal's transition threshold while registered as actively using this tunnel, but not in the approaching state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                     return
                 end
             else
                 -- The train is using another tunnel.
+
+                -- If the train was actively using another tunnel and has just reversed. If it had reached the portal track (regardless of approaching or not) it will have been downgraded on that tunnel to just onPortalTrack.
+                if activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
+                    -- The train is flipping its active direction and current tunnel usage.
+                    MOD.Interfaces.TrainManager.EnteringTrainReversedIntoOtherTunnel(leavingManagedTrain, activelyUsingManagedTrain, train, portal)
+                    return
+                end
+
+                -- All other cases of this scenario are an error.
                 error("Train has entered one portal in automatic mode, while it is has an active usage registered for another tunnel.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                 return
             end
@@ -1451,7 +1460,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
                     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                     return
                 else
-                    error("Train is crossing a tunnel portal's transition threshold while registered as actively using this tunnel, but not in the approaching stste.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
+                    error("Train is crossing a tunnel portal's transition threshold while registered as actively using this tunnel, but not in the approaching state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                     return
                 end
             else
@@ -1462,7 +1471,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
 
         -- This train hasn't reserved any tunnel.
         if portal.tunnel.managedTrain == nil then
-            -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now. But is none standard as the train didn;t pass through the entity detector.
+            -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now. But is none standard as the train didn't pass through the entity detector.
             if global.debugRelease then
                 error("unexpected train entering tunnel without having passed through entry detector")
             end
