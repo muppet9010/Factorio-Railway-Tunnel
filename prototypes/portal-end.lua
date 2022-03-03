@@ -8,17 +8,8 @@ local portalEnd = {
     collision_box = {{-2.9, -2.9}, {2.9, 2.9}},
     collision_mask = {"item-layer", "object-layer", "player-layer", "water-tile"},
     selection_box = {{-2.9, -2.9}, {2.9, 2.9}},
-    max_health = 1000,
-    resistances = {
-        {
-            type = "fire",
-            percent = 100
-        },
-        {
-            type = "acid",
-            percent = 100
-        }
-    },
+    max_health = 3000,
+    resistances = data.raw["wall"]["stone-wall"].resistances,
     flags = {"player-creation", "not-on-map"},
     picture = {
         north = {

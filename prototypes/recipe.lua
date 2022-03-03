@@ -33,7 +33,7 @@ data:extend(
                 {"concrete", 10},
                 {"steel-plate", 10},
                 {"rail", 1},
-                {"landfill", 1}
+                {"landfill", 6}
             },
             result = "railway_tunnel-underground_segment-straight",
             result_count = 1

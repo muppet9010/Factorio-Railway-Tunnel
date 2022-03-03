@@ -4,11 +4,11 @@ Now
 
 Bugs / Next
 -----------
-    - Review item and cost - Make a tunnel portal part (segment and end) be less cost effecient than a wall (don't want it usable as a good wall). Health should be equal to the thinist side length of wall. Make resistences copy wall. Check landfill cost for tunnel parts and make landfill be a pre-req tech.
     - Leaving train scheduled can often have set the leaving speed then if it's complete it sets it again the same tick. Avoid this duplicate setting when not needed.
     - 3.828 Warning! Sprite at {0,0; 32x32} from __railway_tunnel__/graphics/icon/railway_tunnel.png is defined with 4 mipmap levels, but level 1 is expected to be at {32,0; 16x16} which is out of bounds of the source image.
     - Where I have release builds able to accept invalid situations and not error, I should have a printed message to the player asking them to report the issue to the mod author. In testing on debug builds these hard error so I'd know about them.
     - Change the tests with starting speed to use coal and not rocket fuel so the starting speeds have a greater impact. Both sequential tunnel tests have this already.
+    - Check all my recent changes haven't caused any new excess UPS usage.
 
 
 Features to add/change
