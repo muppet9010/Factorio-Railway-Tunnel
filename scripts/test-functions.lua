@@ -180,7 +180,15 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
     else
         listToTest = {}
         for _, entry in pairs(filterList) do
-            listToTest[entry] = fullList[entry]
+            if fullList[entry] ~= nil then
+                -- Simple key/value pair full list with the key and value being equal.
+                listToTest[entry] = fullList[entry]
+            elseif type(entry) == "table" then
+                if fullList[entry.composition] ~= nil then
+                    -- If the value of a TestFunctions_TrainSpecifiction object is passed in rather than the key itself.
+                    listToTest[entry.composition] = fullList[entry.composition]
+                end
+            end
         end
     end
     if Utils.IsTableEmpty(listToTest) then

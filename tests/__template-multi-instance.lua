@@ -65,7 +65,7 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNq1WduOmzAQ/Rc/J5U942ve+w19qFYRS9wsKoEIyLbRKv9eO6SbXUFbj8vmJYCdcyacOTMGv7DH+uSPXdUMbPPCqrJterb5+sL6at8Udbw2nI+ebVg1+ANbsaY4xLOuqOofxXk7nJrG1+tj2w1Fve39/uCbYd0PYXz/NLDLilXNzv9kG3FZZYL6ZvcGBy4PKxY4qqHyY6TXk/O2OR0efReIXuFiEE2IpT0GimPbh5+0TSQPMGuh3Iqdw4ELkbFd1flyHNYr1g/FeMy++D7+iQkJJMQ8wylunNZNOJ+LrrqxihlCpN75OXaVyy6XYMdcdrUEu8hl1wuw82zdzRLsZp4d/slul2BXuexuCXbMZRc8y+POZROKPxGeQunr9l0bvid/eh3nbsuu7fuq2c8FlH3/BeQENBdCvgi4VAgiOwT5IbLY/DxRWYlps6u/WKAE2uz6KxYogSa7/ooFSqAx2ewLlECT7X/gC7BnWx/EAuzZrgf4f3adnXWAWRbX2RaHe5F7V8H+tnCe3NQ5XEXANQRcTcBVBFxDwEUCriXgCgKuS8eVBN2QE3AJuqEg4BJ0QyDgEnRDJOASdEOC35CiG8FvSNGN4Dek6EbwG1J0I/gNKboR/AYE3STBb0DQTRL8BgTdJMFvQNBNpvtNE2ST6XajdDeZ7jZKc5PpZqP0NpnuNUprk+lWo3Q2eXda3ZbtoR2qZz+D+a77tF0VYG7rHP4pLn3Ltm67OLmLV4QDobTVOhxYYbQ1ztpwFHN/HydIDUYqwTkoZyy3Fo11XMfxxyukASUdRxRaxglgUGLkKeIo5zgSWOVQW6VBO4tagjKRI77FHPyhv4bTlt/9sP528jXbqMvca6/0mkBp7Sq9JFA6u0qvCJTGrjAxDfif0wAmaaDw+tFCyKCwBLAqqPaaBOCkCMkRNEQeZORSuCCrNb+TAEaZTWih6NCp0Po1vwF8QB6kFy/K0kalFy/KykalFy/KwkalFy/KukbZtN2CV0wzeZC8bxZ8LuJmwUO4VD753am+7U/c8zaeB6sqfDNn3GyZbjhMYCPwdbtk82bLJjzY+a4fQ7FhJe7AKLAgES6XX60Og40="
+    local blueprint = "0eNq1md1y2jAQhd9F19CRdvXLfZ+hF50M4xgN8YyxGdukZTK8eyVMAq1Ju5JpbvCPcj6ho7MW8ht7rg9+31XNwFZvrCrbpmer72+sr7ZNUcdrw3Hv2YpVg9+xBWuKXTzriqr+URzXw6FpfL3ct91Q1Oveb3e+GZb9EO5vXwZ2WrCq2fifbCVOi0xR32xudOD0tGCBUQ2VH3t6Pjmum8Pu2XcB9CEXO9GEvrT7gNi3ffiXtonwILPUasGO4VMF6U3V+XK8qResH4rxmH3zffwKEwQQejwlwoWIE+Jr0VUXpriDw9RRv8MWmWw5ny1cJls9gG0y2foB7Fy/zQPYeJcN/2TbB7BFJtvNZ7tMtOBZkVa5OPEZ7hCqXLft2vA5+b7L2HZddm3fV8323sjndgdyujPtQDYfH8PPnfRC/g87sieHypmLuUVWzK90nxQbAnt+pcsusmJ+pct+uIj5lU7kVjrgs9mQm3MQ89m5GQeYz86da4A5iYbcSMO1nP1Wq/6yCv5zOO+pKroq0lU1XVXQVQ1ZVTm6qqWrGrqqo6vS3UJOV6W7hYKuSncLgawq6W4h0lXpbiE9WzLBLXq2ZIJb9GzJBLfo2cIEt+jZwgS36NlCuluSni2kuyXp2UK6W5KeLaC7JcnZShkAcrRSvCInK2FaSXKwEhIgyblKCKskxyqhrshrquq2bHftUL36O4o3A9p2VRC5rFn4FxNcKdu67WLTLl4RDoTSVutwYIXR1jhrw1FcdWxjA6nBSCU4B+WM5daisY7reP/5LGlASccRhZaxARiUGDlFvMs5jgCrHGqrNGhnUUtQJjLi9uLgd33sTtnGHUrFT/d2pMjJTyj+ihz8hOeUIuc+4ZGqkGS8kp8aDxPjFZ7/tBAyeCoBrAo+fdgOToowHYJryINxXAoXjLTm3XYYjTUCDTp0Skih+UXgoc6Ti1PCwkeRi1PCGk2Ri1PCclKRi1PCyldZ0lb9u6KY/OS77tR/LeJO/VO4VL74zaG+vBq4ztJ4Hma6wps243uO6W7/RDYKn99UrG7eloSfYb7rx65YIY0Do8CCRDidfgFDkmRv"
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
@@ -76,6 +76,7 @@ Test.Start = function(testName)
     end
 
     -- Set the trains starting speed based on the test scenario.
+    -- Tests that set the train speed need to consider the train's fuel type used in their test. As very fast acceleration may nullify slower starting speeds.
     local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
     if testScenario.trainStartingSpeed == TrainStartingSpeeds.full then
         train.speed = -1.4 -- Max locomotive speed. Train is moving backwards for Factorio reasons.

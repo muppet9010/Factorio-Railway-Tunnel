@@ -72,7 +72,7 @@ Test.Start = function(testName)
     -- Add the train.
     local carriageLength = #testScenario.trainDetails * 7
     local frontOfTrainPosition = {x = northStation.position.x - 2, y = northStation.position.y + carriageLength}
-    local train = TestFunctions.BuildTrain(frontOfTrainPosition, testScenario.trainDetails, defines.direction.south, nil, testScenario.startingSpeed, {name = "rocket-fuel", count = 10})
+    local train = TestFunctions.BuildTrain(frontOfTrainPosition, testScenario.trainDetails, defines.direction.south, nil, testScenario.startingSpeed, {name = "coal", count = 50})
     train.schedule = {
         current = 1,
         records = {

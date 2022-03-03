@@ -108,7 +108,7 @@ Test.Start = function(testName)
 
     local tunnelTrackY, aboveTrackY, trainDataY, centerX, testSurface, testForce = -5, 5, -15, 0, TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local tunnelEndStation, aboveEndStation, currentPos, offset
-    local trainFuel = {name = "rocket-fuel", count = 10}
+    local trainFuel = {name = "coal", count = 50}
 
     -- Get the train data worked out as its added in a messy way as we need the train data during setup.
     local trainStartXPos, tunnelTrain, aboveTrain  -- Populated during rail building time.

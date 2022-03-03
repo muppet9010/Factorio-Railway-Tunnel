@@ -199,7 +199,7 @@ Test.Start = function(testName)
     end
 
     -- Build the train, have to use a fake constant speed to generate acceleration data.
-    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - (#testScenario.trainCarriageDetails * 7), y = trackYPosition}, testScenario.trainCarriageDetails, defines.direction.west, 1, 0.1, {name = "rocket-fuel", count = 10})
+    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - (#testScenario.trainCarriageDetails * 7), y = trackYPosition}, testScenario.trainCarriageDetails, defines.direction.west, 1, 0.1, {name = "coal", count = 50})
 
     -- Add the post tunnel parts.
     local nearPositionDistance, farPositionDistance = 20, 100

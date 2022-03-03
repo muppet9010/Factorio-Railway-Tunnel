@@ -720,7 +720,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
 
         -- Check the stopping point is valid.
         if stoppingPointDistance <= 0 then
-            -- This should never be reaced with current code. Indicates the train is doing an incorrect reverse or something has gone wrong.
+            -- This should never be reached with current code. Indicates the train is doing an incorrect reverse or something has gone wrong.
             if global.debugRelease then
                 error("Leaving train has 0 or lower initial path distance")
             else
