@@ -2104,11 +2104,12 @@ end
 ---@field trainWeight double @ The total weight of the train.
 ---@field trainFrictionForce double @ The total friction force of the train.
 ---@field trainWeightedFrictionForce double @ The train's friction force divided by train weight.
----@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add.
+---@field locomotiveFuelAccelerationPower double @ The max acceleration power per tick the train can add for the fuel type on last data update.
+---@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add (ignoring fuel bonus).
 ---@field trainAirResistanceReductionMultiplier double @ The air resistance of the train (lead carriage in current direction).
----@field maxSpeed double @ The max speed the train can achieve.
+---@field maxSpeed double @ The max speed the train can achieve on current fuel type.
 ---@field trainRawBrakingForce double @ The total braking force of the train ignoring any force bonus percentage from LuaForce.train_braking_force_bonus.
----@field forwardFacingLocoCount uint @ The number of locomotives facing forwards. Used when recalcultaing locomotiveAccelerationPower.
+---@field forwardFacingLocoCount uint @ The number of locomotives facing forwards. Used when recalcultaing locomotiveFuelAccelerationPower.
 
 ---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
 ---@field entity LuaEntity
@@ -2138,12 +2139,6 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
     end
 
     local trainWeight = train.weight
-
-    ---@type Utils_TrainSpeedCalculationData
-    local trainData = {
-        trainWeight = trainWeight
-    }
-
     local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce, trainAirResistanceReductionMultiplier = 0, 0, nil, 0, nil
     local trainMovingForwards = train_speed > 0
 
@@ -2220,61 +2215,90 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
             if trainMovingForwards == carriage_faceingFrontOfTrain then
                 -- Count all forward moving loco's. Just assume they all have the same fuel to avoid inspecting each one.
                 forwardFacingLocoCount = forwardFacingLocoCount + 1
-
-                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be braking for the signal theres no currently burning.
-                if fuelAccelerationBonus == nil then
-                    local carriage = carriageEntity or carriageCachedData.entity
-                    local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
-                    if currentFuelPrototype ~= nil then
-                        -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
-                        fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
-                    end
-                end
             end
         end
     end
 
-    local trainWeightedFrictionForce = (trainFrictionForce / trainWeight)
-    -- This assumes all loco's are the same power and have the same fuel. The 10 is for a 600 kW max_power of a vanilla locomotive.
-    local locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainWeight)
+    -- Record all the data in to the cache object.
+    ---@type Utils_TrainSpeedCalculationData
+    local trainData = {
+        trainWeight = trainWeight,
+        trainFrictionForce = trainFrictionForce,
+        trainWeightedFrictionForce = (trainFrictionForce / trainWeight),
+        -- This assumes all loco's are the same power and have the same fuel. The 10 is for a 600 kW max_power of a vanilla locomotive.
+        locomotiveAccelerationPower = 10 * forwardFacingLocoCount / trainWeight,
+        trainAirResistanceReductionMultiplier = trainAirResistanceReductionMultiplier,
+        forwardFacingLocoCount = forwardFacingLocoCount,
+        trainRawBrakingForce = trainRawBrakingForce
+    }
 
-    -- Have to get the right prototype max speed as they're not identical at runtime even if the train is symetrical.
-    local trainPrototypeMaxSpeed
-    if trainMovingForwards then
-        trainPrototypeMaxSpeed = train.max_forward_speed
-    elseif not trainMovingForwards then
-        trainPrototypeMaxSpeed = train.max_backward_speed
+    -- Update the train's data taht depends upon the trains current fuel.
+    -- TODO: needs to handle a carriage array being passed in to the function rather than the data cache table. Or maybe I just create a temporary cache table for the life of the function, as then internal data structure is the same.
+    -- TODO: we call this from some tests with just carriage array. So do need to support it, but making code simplier at a tiny cost to these non live usage edge cases is worth it.
+    -- TODO: none of this is tested since changing, so test with trains in both directions.
+    local noFuelFound = Utils.UpdateTrainSpeedCalculationDataForCurrentFuel(trainData, carriageCachedData, trainMovingForwards, train)
+
+    return trainData, noFuelFound
+end
+
+--- Updates a train speed calcualtion data object (Utils_TrainSpeedCalculationData) for the current fuel the train is utilising to power it. Updates max achievable speed and the acceleration data.
+---@param trainSpeedCalculationData Utils_TrainSpeedCalculationData
+---@param carriagesCachedData Utils_TrainCarriageData[]
+---@param trainMovingForwardsToCacheData boolean @ If the train is moving forwards in relation to the facing of the cached carriage data.
+---@param train LuaTrain
+---@return boolean noFuelFound @ TRUE if no fuel was found in any forward moving locomotive. Generally FALSE is returned when all is normal.
+Utils.UpdateTrainSpeedCalculationDataForCurrentFuel = function(trainSpeedCalculationData, carriagesCachedData, trainMovingForwardsToCacheData, train)
+    -- Get a current fuel for the forwards movement of the train.
+    local fuelPrototype
+    local noFuelFound = true
+    for _, carriageCachedData in pairs(carriagesCachedData) do
+        -- Only process locomotives that are powering the trains movement.
+        if carriageCachedData.prototypeType == "locomotive" and trainMovingForwardsToCacheData == carriageCachedData.faceingFrontOfTrain then
+            local carriage = carriageCachedData.entity
+            -- Coding Note: No point caching this as we only get 1 attribute of the prototype and we'd have to additionally get its name each time to utilsie a cache.
+            fuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
+            if fuelPrototype ~= nil then
+                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train will be braking for the signal theres no currently burning.
+                noFuelFound = false
+                break
+            end
+        end
     end
-    -- Work out the max speed of the train.
 
-    -- Only known way is to simulate its speeds. For trains that are too overloaded to reach their max speeds this has a big impact.
+    -- Update the acceleration data.
+    local fuelAccelerationBonus
+    if fuelPrototype ~= nil then
+        fuelAccelerationBonus = fuelPrototype.fuel_acceleration_multiplier
+    else
+        fuelAccelerationBonus = 1
+    end
+    trainSpeedCalculationData.locomotiveFuelAccelerationPower = trainSpeedCalculationData.locomotiveAccelerationPower * fuelAccelerationBonus
+
+    -- Have to get the right prototype max speed as they're not identical at runtime even if the train is symetrical. This API result includes the fuel type currently being burnt.
+    local trainPrototypeMaxSpeedIncludesFuelBonus
+    if trainMovingForwardsToCacheData then
+        trainPrototypeMaxSpeedIncludesFuelBonus = train.max_forward_speed
+    elseif not trainMovingForwardsToCacheData then
+        trainPrototypeMaxSpeedIncludesFuelBonus = train.max_backward_speed
+    end
+
+    -- Work out the achievable max speed of the train.
+    -- Iterate over the calculation for every tick until the speed settles. This is how the train calcualtor websites all do it.
     -- This is extremely costly to process.
     --[[local currentSpeed, lastSpeed = 0, nil
     while currentSpeed ~= lastSpeed do
         lastSpeed = currentSpeed
-        currentSpeed = math_min((math_max(0, currentSpeed - trainWeightedFrictionForce) + locomotiveAccelerationPower) * trainAirResistanceReductionMultiplier, trainPrototypeMaxSpeed)
+        currentSpeed = math_min((math_max(0, currentSpeed - trainSpeedCalculationData.trainWeightedFrictionForce) + trainSpeedCalculationData.locomotiveFuelAccelerationPower) * trainSpeedCalculationData.trainAirResistanceReductionMultiplier, trainPrototypeMaxSpeedIncludesFuelBonus)
     end]]
     --
 
+    -- Work out the achievable max speed of the train.
     -- Maths way based on knowing that its acceleration result will be 0 once its at max speed.
     --   0=s - ((s+a)*r)   in to Wolf Ram Alpha and re-arranged for s.
-    local maxSpeed = -(((locomotiveAccelerationPower - trainWeightedFrictionForce) * trainAirResistanceReductionMultiplier) / (trainAirResistanceReductionMultiplier - 1))
+    local maxSpeedForFuelBonus = -((((trainSpeedCalculationData.locomotiveFuelAccelerationPower) - trainSpeedCalculationData.trainWeightedFrictionForce) * trainSpeedCalculationData.trainAirResistanceReductionMultiplier) / (trainSpeedCalculationData.trainAirResistanceReductionMultiplier - 1))
+    trainSpeedCalculationData.maxSpeed = math_min(maxSpeedForFuelBonus, trainPrototypeMaxSpeedIncludesFuelBonus)
 
-    -- Record all the data in to the cache object.
-    trainData.maxSpeed = math_min(maxSpeed, trainPrototypeMaxSpeed)
-    trainData.trainFrictionForce = trainFrictionForce
-    trainData.trainWeightedFrictionForce = trainWeightedFrictionForce
-    trainData.locomotiveAccelerationPower = locomotiveAccelerationPower
-    trainData.trainAirResistanceReductionMultiplier = trainAirResistanceReductionMultiplier
-    trainData.forwardFacingLocoCount = forwardFacingLocoCount
-    trainData.trainRawBrakingForce = trainRawBrakingForce
-
-    local noFuelFound = false
-    if fuelAccelerationBonus == nil then
-        noFuelFound = true
-    end
-
-    return trainData, noFuelFound
+    return noFuelFound
 end
 
 --- Calculates the speed of a train for 1 tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive
@@ -2284,7 +2308,7 @@ end
 ---@param initialSpeedAbsolute double
 ---@return number newAbsoluteSpeed
 Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initialSpeedAbsolute)
-    return math_min((math_max(0, initialSpeedAbsolute - trainData.trainWeightedFrictionForce) + trainData.locomotiveAccelerationPower) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
+    return math_min((math_max(0, initialSpeedAbsolute - trainData.trainWeightedFrictionForce) + trainData.locomotiveFuelAccelerationPower) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
 end
 
 --- Estimates how long an accelerating train takes to cover a distance and its final speed. Approximately accounts for air resistence, but final value will be a little off.
@@ -2298,7 +2322,7 @@ end
 Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
     -- Work out how long it will take to accelerate over the distance. This doesn't (can't) limit the train to its max speed.
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local ticks = math_ceil((math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration)
 
     -- Check how fast the train would have been going at the end of this period. This may be greater than max speed.
@@ -2331,7 +2355,7 @@ end
 ---@return double distanceCovered
 Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks = function(trainData, initialSpeedAbsolute, ticks)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local newSpeedAbsolute = math_min(initialSpeedAbsolute + (acceleration * ticks), trainData.maxSpeed)
     local distanceTravelled = (ticks * initialSpeedAbsolute) + (((newSpeedAbsolute - initialSpeedAbsolute) * ticks) / 2)
     return newSpeedAbsolute, distanceTravelled
@@ -2347,7 +2371,7 @@ end
 ---@return double distanceCovered
 Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local ticks = math_ceil((requiredSpeedAbsolute - initialSpeedAbsolute) / acceleration)
     local distance = (ticks * initialSpeedAbsolute) + (((requiredSpeedAbsolute - initialSpeedAbsolute) * ticks) / 2)
     return ticks, distance
@@ -2365,7 +2389,7 @@ end
 ---@return Tick ticks @ Rounded up.
 Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(trainData, targetSpeedAbsolute, distance, forcesBrakingForceBonus)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * targetSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
 
