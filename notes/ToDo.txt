@@ -9,7 +9,7 @@ Bugs / Next
     - Where I have release builds able to accept invalid situations and not error, I should have a printed message to the player asking them to report the issue to the mod author. In testing on debug builds these hard error so I'd know about them.
     - Check all my recent changes haven't caused any new excess UPS usage.
 	- Copy the updated biome-trees.lua and biome-trees-data\base-game.lua from Muppet Streamer in to this Utils version. That mod has notes about it having been hotfixed.
-	- All tests need to have max starting speed based on real achievable speed (fuel dependant). Not just hard coded 1.4 which is unachievable for coal. Some tests like duration test need to test coal and nuclear fuel variations. Reduce train variations if needed to balance test  instance count.
+	- All tests need to have max starting speed based on real achievable speed (fuel dependant). Not just hard coded 1.4 which is unachievable for coal. Some tests like duration test need to test coal and nuclear fuel variations. Reduce train variations if needed to balance test instance count.
 	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.
 	- Check that the tunnel GUI isn't closed on player death or teleportation.
 	- Make the GUI updates/closing handle if the GUI is closed by something else. Just accept the closure, update any GUI state data and don't error.
@@ -85,6 +85,7 @@ Long term feature plans
         - Detect any mods that have destroyed train carriages spill contents on the ground. Drop train contents on ground at tunnel portals when a tunnel is destroyed.
         - Suppor for mods that enable vehicle grids for train carriages:
             Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots. At present the artillery wagons has been resolved in a simple manner by removing their ammo as will be a very rare case.
+            Can give trains a movement bonus from exoskeleton legs that we currently don't account for in Utils train data generation.
             Some thoughts on this and options to resolve:
                 - Observations:
                     - Can't use active state on rolling stock.

@@ -2235,8 +2235,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
     end
 
     local trainWeightedFrictionForce = (trainFrictionForce / trainWeight)
-    -- This assumes all loco's are the same power and have the same fuel. The 10 is for a default fuel bonus of 1.
-    -- TODO: remove the x10 from this and have it as part of the fuel prototype.
+    -- This assumes all loco's are the same power and have the same fuel. The 10 is for a 600 kW max_power of a vanilla locomotive.
     local locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainWeight)
 
     -- Have to get the right prototype max speed as they're not identical at runtime even if the train is symetrical.
