@@ -134,3 +134,9 @@ Train tunnel usage
 ------------------
 
 A train can be leaving a tunnel and start to use (approaching, onPortalTrack) another tunnel. But it can not be either leaving 2 tunnels at the same time or using 2 tunnels at once. The portal length of >= to train length prevents a train from physically being able to utilise 2 tunnels for the same action state.
+
+
+Train speed calulations
+-----------------------
+
+As train speeds within a tunnel are estimated the larger the acceleration difference from entering to leaving speed the greater the excessive leaving speed. As I have to use a static air resistance value based upon the speed the train initially enters a tunnel and there is no account for the fact this air resistance should increase with speed at present. We do clamp to max trains speed so the train just gets an acceleration bonus in the tunnel.

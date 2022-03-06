@@ -2144,7 +2144,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
         trainWeight = trainWeight
     }
 
-    local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce = 0, 0, nil, 0
+    local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce, trainAirResistanceReductionMultiplier = 0, 0, nil, 0, nil
     local trainMovingForwards = train_speed > 0
 
     -- Work out initial data based on what carriage data type has been passed in.
@@ -2193,14 +2193,7 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
 
         if firstCarriage then
             firstCarriage = false
-            trainData.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainWeight / 1000))
-            -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
-            --TODO: max speed needs to be worked out as the real speed this train can reach and not just its prototype max. This needs to include current fuel and be updated when it is. So some raw data cached and some current value cached. As a large 1-9 loco train has a real max speed of 0.6.
-            if trainMovingForwards then
-                trainData.maxSpeed = train.max_forward_speed
-            elseif not trainMovingForwards then
-                trainData.maxSpeed = train.max_backward_speed
-            end
+            trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainWeight / 1000))
         end
 
         if carriage_type == "locomotive" then
@@ -2241,10 +2234,40 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
         end
     end
 
+    local trainWeightedFrictionForce = (trainFrictionForce / trainWeight)
+    -- This assumes all loco's are the same power and have the same fuel. The 10 is for a default fuel bonus of 1.
+    -- TODO: remove the x10 from this and have it as part of the fuel prototype.
+    local locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainWeight)
+
+    -- Have to get the right prototype max speed as they're not identical at runtime even if the train is symetrical.
+    local trainPrototypeMaxSpeed
+    if trainMovingForwards then
+        trainPrototypeMaxSpeed = train.max_forward_speed
+    elseif not trainMovingForwards then
+        trainPrototypeMaxSpeed = train.max_backward_speed
+    end
+    -- Work out the max speed of the train.
+
+    -- Only known way is to simulate its speeds. For trains that are too overloaded to reach their max speeds this has a big impact.
+    -- This is extremely costly to process.
+    --[[local currentSpeed, lastSpeed = 0, nil
+    while currentSpeed ~= lastSpeed do
+        lastSpeed = currentSpeed
+        currentSpeed = math_min((math_max(0, currentSpeed - trainWeightedFrictionForce) + locomotiveAccelerationPower) * trainAirResistanceReductionMultiplier, trainPrototypeMaxSpeed)
+    end]]
+    --
+
+    -- Maths way based on knowing that its acceleration result will be 0 once its at max speed.
+    --   0=s - ((s+a)*r)   in to Wolf Ram Alpha and re-arranged for s.
+    local maxSpeed = -(((locomotiveAccelerationPower - trainWeightedFrictionForce) * trainAirResistanceReductionMultiplier) / (trainAirResistanceReductionMultiplier - 1))
+
+    -- Record all the data in to the cache object.
+    trainData.maxSpeed = math_min(maxSpeed, trainPrototypeMaxSpeed)
     trainData.trainFrictionForce = trainFrictionForce
-    trainData.trainWeightedFrictionForce = (trainFrictionForce / trainWeight)
+    trainData.trainWeightedFrictionForce = trainWeightedFrictionForce
+    trainData.locomotiveAccelerationPower = locomotiveAccelerationPower
+    trainData.trainAirResistanceReductionMultiplier = trainAirResistanceReductionMultiplier
     trainData.forwardFacingLocoCount = forwardFacingLocoCount
-    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainWeight)
     trainData.trainRawBrakingForce = trainRawBrakingForce
 
     local noFuelFound = false
@@ -2260,9 +2283,9 @@ end
 -- Often this is copied in to code inline for repeated calling.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
----@return number absoluteSpeed
+---@return number newAbsoluteSpeed
 Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initialSpeedAbsolute)
-    return math_min(((initialSpeedAbsolute + trainData.locomotiveAccelerationPower) - trainData.trainWeightedFrictionForce) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
+    return math_min((math_max(0, initialSpeedAbsolute - trainData.trainWeightedFrictionForce) + trainData.locomotiveAccelerationPower) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
 end
 
 --- Estimates how long an accelerating train takes to cover a distance and its final speed. Approximately accounts for air resistence, but final value will be a little off.
@@ -2282,7 +2305,7 @@ Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance = function(trai
     -- Check how fast the train would have been going at the end of this period. This may be greater than max speed.
     local finalSpeed = initialSpeedAbsolute + (acceleration * ticks)
 
-    -- If the train was going faster than max speed at the end then run an additional calcualtion to work out the real time within the max speed limit.
+    -- If the train was going faster than max speed at the end then run an additional calculations to work out the real time within the max speed limit.
     if finalSpeed > trainData.maxSpeed then
         -- Work out how long and distance it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
         local ticksToMaxSpeed = math_ceil((trainData.maxSpeed - initialSpeedAbsolute) / acceleration)
