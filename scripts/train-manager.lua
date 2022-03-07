@@ -763,7 +763,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             local tunnelBrakingTime, correctTunnelEntranceSpeed = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalTravelDistance, managedTrain.trainLeavingSpeedAbsolute, managedTrain.forcesBrakingBonus)
 
             -- Work out how long extra it should have taken the train to reach the tunnel entrance.
-            -- OVERHUAL: at present setting this to TRUE every time gives better rsults even for when it should be false. Obviously something overlooked, but is pretty minor impact in game so just left at present.
+            -- OVERHUAL: at present setting this to TRUE every time gives better results even for when it should be false. Obviously something overlooked, but is pretty minor impact in game so just left at present.
             local trainAcceleratingAllApproach = false
             local extraTunnelApproachTicksForCorrectEnteringSpeed
             if trainAcceleratingAllApproach then
@@ -1367,7 +1367,7 @@ TrainManager.SetLeavingTrainSpeedInCorrectDirection = function(train, absoluteSp
 
         -- Handle the train differently based on if it has loco's in one or 2 directions
         if managedTrain.trainCachedData.forwardFacingLocomotiveCount == 0 or managedTrain.trainCachedData.backwardFacingLocomotiveCount == 0 then
-            -- Train can only go in 1 direction so we can just set one and if it turns out to be wrong set it for correcting at the end of the function.
+            -- Train can only go in 1 direction so we can just set one and if it turns out to be wrong set it for correcting at the end of the function. This is much lighter on UPS.
             if managedTrain.trainFacingForwardsToCacheData then
                 train.speed = absoluteSpeed
                 initiallySetForwardsSpeed = true

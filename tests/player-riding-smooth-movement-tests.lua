@@ -209,7 +209,7 @@ Test.Start = function(testName)
     local railCountLeavingEndOfPortal
     if testScenario.leavingTrackCondition == LeavingTrackCondition.clear then
         -- Its a clear exit test then work out the railCountLeavingEndOfPortal length from the built train after building the entrance side of the portal.
-        local trainData = Utils.GetTrainSpeedCalculationData(train, train.speed, train.carriages)
+        local trainData = Utils.GetTrainSpeedCalculationData(train, train.speed, nil, train.carriages)
         local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
         railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10 -- This is excessive still as many trains won't be going at max speed when leaving, but I don't know how to simply work out leaving speed from test starting data only.
     elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then

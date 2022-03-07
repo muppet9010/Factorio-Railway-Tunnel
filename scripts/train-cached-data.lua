@@ -167,7 +167,6 @@ end
 ---@param trainCachedData TrainCachedData
 ---@return boolean trainForwardsCacheData @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
 TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, trainCachedData)
-    -- Code Dev Note: Looked at using the other direction's data if populated as base for new data, but the values that can be just copied are all cached base data already so basically just as quick to regenerate it and much simplier logic.
     local trainForwardsCacheData  ---@type boolean
     local trainSpeedCalculationData  ---@type Utils_TrainSpeedCalculationData
 
@@ -180,11 +179,12 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         trainForwardsCacheData = train_speed < 0
     end
 
+    -- Code Dev Note: I looked at using the other direction's data if populated as a base for new data in Utils.GetTrainSpeedCalculationData(), but very few values can be just copied. so basically very little could be saved and it's much simplier logic to just regenerate it.
     if trainForwardsCacheData then
         -- Train moving forwards.
         if trainCachedData.forwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
-            trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
+            trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, trainCachedData.carriagesCachedData, nil)
         else
             -- Just update the locomotiveFuelAccelerationPower later in this function for the existing train data.
             trainSpeedCalculationData = trainCachedData.forwardMovingTrainSpeedCalculationData
@@ -193,7 +193,7 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         -- Train moving backwards.
         if trainCachedData.backwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
-            trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
+            trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, trainCachedData.carriagesCachedData, nil)
         else
             -- Just update the locomotiveFuelAccelerationPower later in this function for the existing train data.
             trainSpeedCalculationData = trainCachedData.backwardMovingTrainSpeedCalculationData
@@ -202,7 +202,7 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
 
     -- Only run when speed calculated data is being generated for the first time. Completes data setup and returns.
     if trainSpeedCalculationData == nil then
-        -- Record how many locomotives are facing each direction if needed.
+        -- Record how many locomotives are facing each direction if not already cached.
         if trainCachedData.forwardFacingLocomotiveCount == nil then
             local otherDirectionName, otherDirectionFacing
             if trainForwardsCacheData then
@@ -217,7 +217,6 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
                 otherDirectionFacing = true
             end
 
-            -- TODO: check why we do this again and if it should be part of Utils.
             -- Loop over the cached carriage data and count how many locos are facing the other direction.
             local otherDirectionCount = 0
             for _, carriage in pairs(trainCachedData.carriagesCachedData) do

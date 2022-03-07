@@ -120,7 +120,7 @@ Test.Start = function(testName)
         trainData_currentPosition.x = trainData_currentPosition.x + 1
     end
     local trainData_train = TestFunctions.BuildTrain({x = 2, y = trainDataY}, testScenario.trainCarriageDetails, defines.direction.west, nil, 0.001, trainFuel)
-    local trainData = Utils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, trainData_train.carriages)
+    local trainData = Utils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, nil, trainData_train.carriages)
 
     -- Get the train data worked out as its added in a messy way as we need the train data during setup.
     local trainStartXPos, tunnelTrain, aboveTrain  -- Populated during rail building time.
