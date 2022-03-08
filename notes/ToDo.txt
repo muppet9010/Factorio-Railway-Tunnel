@@ -4,10 +4,13 @@ Now
 
 Bugs / Next
 -----------
-    - Leaving train scheduled can often have set the leaving speed then if it's complete it sets it again the same tick. Avoid this duplicate setting when not needed.
+    - Leaving train scheduled function can often have set the leaving speed during its processing and then if it's ready to leave right then it sets it again in the same tick. Avoid this duplicate setting when not needed as it triggers base game train updates and pathing.
     - Where I have release builds able to accept invalid situations and not error, I should have a printed message to the player asking them to report the issue to the mod author. In testing on debug builds these hard error so I'd know about them.
-    - Change the tests with starting speed to use coal and not rocket fuel so the starting speeds have a greater impact. Both sequential tunnel tests have this already.
     - Check all my recent changes haven't caused any new excess UPS usage.
+	- Copy the updated biome-trees.lua and biome-trees-data\base-game.lua from Muppet Streamer in to this Utils version. That mod has notes about it having been hotfixed.
+	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.
+	- Check that the tunnel GUI isn't closed on player death or teleportation.
+	- Make the GUI updates/closing handle if the GUI is closed by something else. Just accept the closure, update any GUI state data and don't error.
 
 
 Features to add/change
@@ -75,11 +78,12 @@ Long term feature plans
     - Mod Compatibility:
         - Look at TSM compatibility.
         - Look at LTN compatibility.
-        - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but Utils.GetTrainSpeedCalculationData() locomotiveAccelerationPower doesn't account for max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. I believe the current hardcoded value of "10" is for the default loco attribute.
+        - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but Utils.GetTrainSpeedCalculationData() locomotiveAccelerationPower doesn't account for non default max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. The current hardcoded value of 10 is for the default loco attribute value of 600kW.
         - My single train unit mod.
         - Detect any mods that have destroyed train carriages spill contents on the ground. Drop train contents on ground at tunnel portals when a tunnel is destroyed.
         - Suppor for mods that enable vehicle grids for train carriages:
             Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots. At present the artillery wagons has been resolved in a simple manner by removing their ammo as will be a very rare case.
+            Can give trains a movement bonus from exoskeleton legs that we currently don't account for in Utils train data generation.
             Some thoughts on this and options to resolve:
                 - Observations:
                     - Can't use active state on rolling stock.

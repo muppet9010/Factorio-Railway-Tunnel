@@ -180,7 +180,15 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
     else
         listToTest = {}
         for _, entry in pairs(filterList) do
-            listToTest[entry] = fullList[entry]
+            if fullList[entry] ~= nil then
+                -- Simple key/value pair full list with the key and value being equal.
+                listToTest[entry] = fullList[entry]
+            elseif type(entry) == "table" then
+                if fullList[entry.composition] ~= nil then
+                    -- If the value of a TestFunctions_TrainSpecifiction object is passed in rather than the key itself.
+                    listToTest[entry.composition] = fullList[entry.composition]
+                end
+            end
         end
     end
     if Utils.IsTableEmpty(listToTest) then
@@ -433,8 +441,10 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
         if placedCarriage_type == "locomotive" and locomotiveFuel ~= nil then
             local thisLocomotivesFuel
             if placedCarriage.burner.currently_burning == nil then
-                placedCarriage.burner.currently_burning = game.item_prototypes[locomotiveFuel.name]
                 thisLocomotivesFuel = Utils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
+                local fuelItem = game.item_prototypes[thisLocomotivesFuel.name]
+                placedCarriage.burner.currently_burning = fuelItem
+                placedCarriage.burner.remaining_burning_fuel = fuelItem.fuel_value -- Have to set in this case otherwise it ends up as a value of 0 and the fuel is instantly used up.
                 thisLocomotivesFuel.count = thisLocomotivesFuel.count - 1
             else
                 thisLocomotivesFuel = locomotiveFuel
@@ -576,7 +586,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
                 local fuelItem = game.item_prototypes[item]
                 fuelProxy.proxy_target.burner.currently_burning = fuelItem
                 fuelProxy.proxy_target.burner.remaining_burning_fuel = fuelItem.fuel_value -- Have to set in this case otherwise it ends up as a value of 0 and the fuel is instantly used up.
-                count = count - 1 -- No worries about this being a shared table so can just remove 1 from it.
+                count = count - 1 -- No possibility that this could be a shared table so can just remove 1 from it.
             end
             if count > 0 then
                 fuelProxy.proxy_target.insert({name = item, count = count})

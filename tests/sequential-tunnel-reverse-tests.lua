@@ -27,8 +27,8 @@ local ResumeForwardsPoint = {
 ---@class Tests_STRT_TrainStartingSpeed
 local TrainStartingSpeed = {
     none = "none", -- 0 speed
-    half = "half", -- 0.7 speed
-    full = "full" -- 1.4 speed
+    half = "half", -- 0.6 half max speed.
+    full = "full" -- 1.2 speed is the max of this train type and fuel type in the BP.
 }
 
 -- Test configuration.
@@ -108,9 +108,9 @@ Test.Start = function(testName)
     local firstTrain = eastLoco.train
     local targetSpeed
     if testScenario.trainStartingSpeed == TrainStartingSpeed.full then
-        targetSpeed = 1.4
+        targetSpeed = 1.2
     elseif testScenario.trainStartingSpeed == TrainStartingSpeed.half then
-        targetSpeed = 0.7
+        targetSpeed = 0.6
     else
         targetSpeed = 0
     end

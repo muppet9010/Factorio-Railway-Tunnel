@@ -36,9 +36,7 @@ local TrainComposition = {
 ---@class Tests_PRSMT_TunnelOversized
 local TunnelOversized = {
     none = "none",
-    portalOnly = "portalOnly",
-    undergroundOnly = "undergroundOnly",
-    portalAndUnderground = "portalAndUnderground"
+    portalOnly = "portalOnly"
 }
 
 ---@class Tests_PRSMT_LeavingTrackCondition
@@ -68,8 +66,8 @@ local ReverseTime = {
 ---@class Tests_PRSMT_TrainStartingSpeed
 local TrainStartingSpeed = {
     none = "none",
-    half = "half", --0.7
-    full = "full" -- 1.4 Vanailla locomotives max speed.
+    half = "half", -- Will be half the train's achievable max speed.
+    full = "full" -- Will be the train's achievable max speed.
 }
 
 -- Test configuration.
@@ -118,17 +116,38 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local trackYPosition = 1
+    local trackYPosition, trainDataYPosition = 1, -15
     local surface, testForce = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
+    local trainFuel = {name = "rocket-fuel", count = 10}
     local currentRailBuildPosition
+
+    -- Build a test copy of the train to get its train data. As we need this to know how long to build the entering rails for and the main trains placement.
+    local trainData_railCountToBuild = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 1
+    local trainData_currentPosition = {x = 1, y = trainDataYPosition}
+    for i = 1, trainData_railCountToBuild do
+        trainData_currentPosition.x = trainData_currentPosition.x + 1
+        surface.create_entity {name = "straight-rail", position = trainData_currentPosition, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        trainData_currentPosition.x = trainData_currentPosition.x + 1
+    end
+    local trainData_train = TestFunctions.BuildTrain({x = 2, y = trainDataYPosition}, testScenario.trainCarriageDetails, defines.direction.west, nil, 0.001, trainFuel)
+    local trainData = Utils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, nil, trainData_train.carriages)
+
+    -- Get the train data worked out as its added in a messy way as we need the train data during setup.
+    local startingSpeedValue
+    if testScenario.trainStartingSpeed == TrainStartingSpeed.none then
+        startingSpeedValue = 0
+    elseif testScenario.trainStartingSpeed == TrainStartingSpeed.half then
+        startingSpeedValue = trainData.maxSpeed / 2
+    elseif testScenario.trainStartingSpeed == TrainStartingSpeed.full then
+        startingSpeedValue = trainData.maxSpeed
+    else
+        error("unrecognised StartingSpeed: " .. testScenario.trainStartingSpeed)
+    end
 
     -- Work out how many tunnel parts are needed.
     local tunnelSegmentsCount = 4
-    if testScenario.tunnelOversized == TunnelOversized.undergroundOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
-        tunnelSegmentsCount = tunnelSegmentsCount * 4
-    end
     local portalSegmentsCount = math.ceil(#testScenario.trainCarriageDetails * 3.5)
-    if testScenario.tunnelOversized == TunnelOversized.portalOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
+    if testScenario.tunnelOversized == TunnelOversized.portalOnly then
         portalSegmentsCount = portalSegmentsCount * 4
     end
 
@@ -176,40 +195,34 @@ Test.Start = function(testName)
         end
     end
 
-    -- Work out how much rail to build at the start of the tunnel before the train and its track.
-    local railCountEntranceEndOfPortal
-    if testScenario.trainStartingSpeed == TrainStartingSpeed.full then
-        -- Start the train far enough away from the portal so its starting abstract high speed doesn't trigger the tunnel and then instantly release it when Factorio clamps to train max speed in first tick. The train isn't going to go any faster so greater starting distances don't really matter.
-        railCountEntranceEndOfPortal = 100
-    elseif testScenario.trainStartingSpeed == TrainStartingSpeed.half then
-        -- Start the train far enough away from the portal so its starting abstract high speed doesn't trigger the tunnel and then instantly release it when Factorio clamps to train max speed in first tick. The train isn't going to go any faster so greater starting distances don't really matter.
-        railCountEntranceEndOfPortal = 30
-    else
-        -- Start the train very close to the portal so its speed hasn't climbed much from the starting speed.
-        railCountEntranceEndOfPortal = 10
+    -- Work out how much rail to build at the start of the tunnel.
+    -- All situations need enough room for the train plus some padding rails.
+    local railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 5
+    if testScenario.trainStartingSpeed ~= TrainStartingSpeed.none then
+        -- Add extra starting distance to cover the trains starting speed's braking distance. So that the trains don't start the test braking into or using the tunnel.
+        local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, startingSpeedValue, 0, 0)
+        railCountEntranceEndOfPortal = railCountEntranceEndOfPortal + math.ceil(stoppingDistance / 2)
     end
 
     -- Build the pre tunnel rail, includes rails for the train to be placed on.
-    local trainRailsNeeded = math.ceil(#testScenario.trainCarriageDetails * 3.5)
     currentRailBuildPosition.x = entranceEntryPortalPartX + 3
-    for i = 1, railCountEntranceEndOfPortal + trainRailsNeeded do
+    for i = 1, railCountEntranceEndOfPortal do
         currentRailBuildPosition.x = currentRailBuildPosition.x + 1
         surface.create_entity {name = "straight-rail", position = currentRailBuildPosition, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
         currentRailBuildPosition.x = currentRailBuildPosition.x + 1
     end
 
     -- Build the train, have to use a fake constant speed to generate acceleration data.
-    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - (#testScenario.trainCarriageDetails * 7), y = trackYPosition}, testScenario.trainCarriageDetails, defines.direction.west, 1, 0.1, {name = "rocket-fuel", count = 10})
+    local train = TestFunctions.BuildTrain({x = currentRailBuildPosition.x - (#testScenario.trainCarriageDetails * 7), y = trackYPosition}, testScenario.trainCarriageDetails, defines.direction.west, 1, 0.1, trainFuel)
 
     -- Add the post tunnel parts.
     local nearPositionDistance, farPositionDistance = 20, 100
     local nearPositionX, farPositionX = exitEntryPortalPartX - nearPositionDistance, exitEntryPortalPartX - farPositionDistance
 
-    -- Work out how much track is needed.
+    -- Work out how much post tunneltrack is needed.
     local railCountLeavingEndOfPortal
     if testScenario.leavingTrackCondition == LeavingTrackCondition.clear then
         -- Its a clear exit test then work out the railCountLeavingEndOfPortal length from the built train after building the entrance side of the portal.
-        local trainData = Utils.GetTrainSpeedCalculationData(train, train.speed, train.carriages)
         local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
         railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10 -- This is excessive still as many trains won't be going at max speed when leaving, but I don't know how to simply work out leaving speed from test starting data only.
     elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
@@ -320,14 +333,8 @@ Test.Start = function(testName)
         reverseStation.backer_name = "ReverseEnd"
     end
 
-    -- Set the trains starting speed based on the test scenario.
-    if testScenario.trainStartingSpeed == TrainStartingSpeed.full then
-        train.speed = 1.4
-    elseif testScenario.trainStartingSpeed == TrainStartingSpeed.half then
-        train.speed = 0.7
-    else
-        train.speed = 0
-    end
+    -- Set the trains starting speed to the value preiovusly worked out for the test scenario.
+    train.speed = startingSpeedValue
 
     -- Give the train its orders
     local trainSchedule = {current = 1, records = {{station = "End"}}}
