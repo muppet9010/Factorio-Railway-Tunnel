@@ -247,7 +247,7 @@ end
 PlayerContainer.TransferPlayersFromContainersToLeavingCarriages = function(managedTrain)
     local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
     for _, playerContainer in pairs(thisTrainsPlayerContainers) do
-        -- Check the player isn't being moved backwards for debug builds only. If they are moved backwards it would just be a jarring jump on the screen and not a crash or error.
+        -- In debug builds check the player isn't being moved backwards. If they are moved backwards it would just be a jarring jump on the screen and not a crash or error.
         if global.debugRelease then
             local player_position, carriage_position = playerContainer.player.position, playerContainer.leavingCarriage.position
             local viewJumpedBackwards = false

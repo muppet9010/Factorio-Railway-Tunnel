@@ -518,18 +518,14 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
     end
 
     -- Calculate the new speed based on the stopping distance.
-    local accelerationState  ---@type defines.riding.acceleration
     if managedTrain.playerTrain_stoppingDistance == nil then
         -- Train can accelerate
-        accelerationState = defines.riding.acceleration.accelerating
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
     elseif currentUndergroundTrainBrakingDistance < managedTrain.playerTrain_stoppingDistance then
         -- Train can't accelerate as will have to start stopping soon, so just maintain speed.
-        accelerationState = defines.riding.acceleration.nothing
         managedTrain.playerTrain_currentSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
     else
         -- Train needs to brake based on braking target distance.
-        accelerationState = defines.riding.acceleration.braking
         managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
     end
 
@@ -622,6 +618,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                     error("Looped on leaving train for same target station.")
                 else
                     -- Just let the mod continue to run, its not the end of the world. As npo main variables are changed from default the train will leave now.
+                    TunnelShared.PrintWarningAndReportToModAuthor("Leaving train has been targetted at the same train-stop/rail entity twice in a row. Train will now just leave.")
                     skipProcessingForDelay = true
                 end
             end
@@ -675,6 +672,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 error("leaving train is reversing at starting speed back in to tunnel")
             else
                 -- Same logic as if it is the exitPortalExitSignalIn which is an expected and supported usage case.
+                TunnelShared.PrintWarningAndReportToModAuthor("Somehow a leaving train is reversing back in to its own tunnel with starting speed. Speed reduced so its less of a bizare situation.")
                 trainNewAbsoluteSpeed = crawlAbsSpeed
                 scheduleFutureArrival = false
             end
@@ -703,6 +701,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                     error("Looped on leaving train for same signal.")
                 else
                     -- Just let the mod continue to run, its not the end of the world. As no main variables are changed from default the train will leave now.
+                    TunnelShared.PrintWarningAndReportToModAuthor("Leaving train has been targetted at the same signal entity twice in a row. Train will now just leave.")
                     scheduleFutureArrival = false
                 end
             end
@@ -735,7 +734,8 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 error("Leaving train has 0 or lower initial path distance")
             else
                 -- If release mode then just set it to 0 to avoid an error. May cause the trains arrival time/speed to be odd, but better than crashing.
-                stoppingPointDistance = 0
+                TunnelShared.PrintWarningAndReportToModAuthor("Leaving train has ended up with a stopping distance of 0 or less ahead of it. Setting a fake stopping distance to hopefully kepe the mod running.")
+                stoppingPointDistance = 1
             end
         end
 
@@ -815,6 +815,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 error("Leaving train shouldn't be able to be rescheduled with negative delay compared to previous computing")
             else
                 -- If release mode then just set it to 0 to avoid an error. May cause the trains arrival time/speed to be odd, but better than crashing.
+                TunnelShared.PrintWarningAndReportToModAuthor("Leaving train is trying to be delayed by a negative time. Will just release the train now.")
                 delayTicks = 0
             end
         end
@@ -1284,9 +1285,14 @@ TrainManager.CreateDummyTrain = function(exitPortal, dummyTrainPosition, trainSc
     local dummyTrain = locomotive.train
     if not skipScheduling then
         TrainManager.TrainSetSchedule(dummyTrain, trainSchedule, false, targetTrainStop, false)
-        if global.debugRelease and dummyTrain.state == defines.train_state.destination_full then
-            -- If the train ends up in one of those states something has gone wrong.
-            error("dummy train has unexpected state '" .. tonumber(dummyTrain.state) .. "' at position: " .. Logging.PositionToString(dummyTrainPosition))
+        if dummyTrain.state == defines.train_state.destination_full then
+            if global.debugRelease then
+                -- If the train ends up in one of those states something has gone wrong.
+                error("dummy train has unexpected state '" .. tonumber(dummyTrain.state) .. "' at position: " .. Logging.PositionToString(dummyTrainPosition))
+            else
+                -- Don't need to do anything active about this for the mod, althought not sure what this would lead too so...
+                TunnelShared.PrintWarningAndReportToModAuthor("Dummy train is trying to go to a 'full' train stop. This might make the train leave the tunnel oddly.")
+            end
         end
     end
     return locomotive
@@ -1310,7 +1316,7 @@ TrainManager.DestroyEntranceSignalClosingLocomotive = function(managedTrain)
     managedTrain.entranceSignalClosingCarriage = nil
 end
 
---- Sets a trains schedule and returns it to automatic, while handling if the train should be in manual mode.
+--- Sets a train's schedule and returns it to automatic, while handling if the train should be in manual mode.
 ---@param train LuaTrain
 ---@param schedule TrainSchedule
 ---@param isManual boolean

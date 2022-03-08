@@ -4,8 +4,6 @@ Now
 
 Bugs / Next
 -----------
-    - Leaving train scheduled function can often have set the leaving speed during its processing and then if it's ready to leave right then it sets it again in the same tick. Avoid this duplicate setting when not needed as it triggers base game train updates and pathing.
-    - Where I have release builds able to accept invalid situations and not error, I should have a printed message to the player asking them to report the issue to the mod author. In testing on debug builds these hard error so I'd know about them.
     - Check all my recent changes haven't caused any new excess UPS usage.
 	- Copy the updated biome-trees.lua and biome-trees-data\base-game.lua from Muppet Streamer in to this Utils version. That mod has notes about it having been hotfixed.
 	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.

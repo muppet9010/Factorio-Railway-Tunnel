@@ -1475,7 +1475,7 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
             if global.debugRelease then
                 error("unexpected train entering tunnel without having passed through entry detector")
             end
-            TunnelShared.PrintWarningAndReportToModAuthor("Train entering tunnel without having passed through entry detector.")
+            TunnelShared.PrintWarningAndReportToModAuthor("Train entering tunnel without having passed through entry detector. Mod will try and continue.")
             MOD.Interfaces.TrainManager.TrainEnterTunnel(train, event.tick)
             return
         else
