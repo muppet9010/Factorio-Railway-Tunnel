@@ -10,8 +10,8 @@ local TestFunctions = require("scripts.test-functions")
 ---@class Tests_ST_StartingSpeed
 local StartingSpeed = {
     none = "none",
-    half = "half", --0.7
-    full = "full" -- 1.4 Vanailla locomotives max speed.
+    half = "half", -- 0.6 half max speed.
+    full = "full" -- 1.2 speed is the max of this train type and fuel type in the BP.
 }
 
 -- Test configuration.
@@ -62,9 +62,9 @@ Test.Start = function(testName)
     local train = placedEntitiesByGroup["locomotive"][1].train ---@type LuaTrain @ All the loco's we built are part of the same train.
     local targetSpeed
     if testScenario.startingSpeed == StartingSpeed.full then
-        targetSpeed = 1.4
+        targetSpeed = 1.2
     elseif testScenario.startingSpeed == StartingSpeed.half then
-        targetSpeed = 0.7
+        targetSpeed = 0.6
     else
         targetSpeed = 0
     end

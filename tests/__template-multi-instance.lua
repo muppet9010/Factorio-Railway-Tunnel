@@ -21,7 +21,7 @@ local FirstLetterTypes = {
 ---@class Tests_TMI_TrainStartingSpeeds
 local TrainStartingSpeeds = {
     none = "none", -- 0 speed
-    full = "full" -- 1.4 speed
+    full = "full" -- 1.2 speed is the max of this train type and fuel type in the BP.
 }
 
 -- Test configuration.
@@ -79,7 +79,7 @@ Test.Start = function(testName)
     -- Tests that set the train speed need to consider the train's fuel type used in their test. As very fast acceleration may nullify slower starting speeds.
     local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
     if testScenario.trainStartingSpeed == TrainStartingSpeeds.full then
-        train.speed = -1.4 -- Max locomotive speed. Train is moving backwards for Factorio reasons.
+        train.speed = -1.2 -- Train is moving backwards for Factorio reasons.
     end
 
     -- Add test data for use in the EveryTick().

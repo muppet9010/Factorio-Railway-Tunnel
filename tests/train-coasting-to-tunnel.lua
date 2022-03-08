@@ -37,7 +37,7 @@ Test.Start = function(testName)
 
     -- Get the blueprinted entities.
     local train = placedEntitiesByGroup["locomotive"][1].train ---@type LuaTrain
-    train.speed = 1.4 -- Max locomotive speed.
+    train.speed = 1.2 -- Max locomotive speed.
     if testScenario.trainScheduleState == "manualMode" then
         train.manual_mode = true
     elseif testScenario.trainScheduleState == "automaticNoSchedule" then

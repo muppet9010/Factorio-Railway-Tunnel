@@ -1,6 +1,5 @@
 Now
 ---
-	- All tests need to have max starting speed based on real achievable speed (fuel dependant). Not just hard coded 1.4 which is unachievable for coal.
 
 
 Bugs / Next
