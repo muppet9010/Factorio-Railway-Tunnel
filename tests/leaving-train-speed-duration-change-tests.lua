@@ -44,9 +44,7 @@ local TrainComposition = {
 ---@class Tests_LTSDCT_TunnelOversized
 local TunnelOversized = {
     none = "none",
-    portalOnly = "portalOnly",
-    undergroundOnly = "undergroundOnly",
-    portalAndUnderground = "portalAndUnderground"
+    portalOnly = "portalOnly"
 }
 ---@class Tests_LTSDCT_StartingSpeed
 local StartingSpeed = {
@@ -64,17 +62,22 @@ local LeavingTrackCondition = {
     farSignal = "farSignal", -- A signal far to the portal will be closed so the train has to brake gently leaving the portal.
     noPath = "noPath" -- The path from the portal is removed once the train has entered the tunnel. Doesn't get a variance score as not approperiate.
 }
+---@class Tests_LTSDCT_FuelType
+local FuelType = {
+    coal = "coal",
+    nuclearFuel = "nuclear-fuel"
+}
 
 -- Test configuration.
 local MaxTimeVariationPercentage = 10 -- The maximum approved time variation as a percentage of the journey time between the train using the tunnel and the train on regular tracks. Time variation applies in both directions, so is allowed to be either faster or slower than the other. Time variations greater than this will cause the test to fail. 10% passes at present for all variations. The largest variations are currently due to excess braking time for some near signals and near stations; this is caused by train-manager where we set trainAcceleratingAllApproach to true blindly every time, heavily commented code area with reasoning for this.
-local DoMinimalTests = false -- The minimal test to prove the concept.
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
---TODO
-local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionFilter = {TrainComposition["<>>>>>>>>>"]} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelOversizedFilter = {"none"} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificStartingSpeedFilter = {"full"} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificLeavingTrackConditionFilter = {"nearSignal"} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrainCompositionFilter = {} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelOversizedFilter = {} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificStartingSpeedFilter = {} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificFuelTypeFilter = {} -- Pass in an array of FuelType keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -96,7 +99,7 @@ end
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
-    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition.composition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   StartingSpeeds: " .. testScenario.startingSpeed .. "   -   " .. testScenario.leavingTrackCondition
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition.composition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   StartingSpeeds: " .. testScenario.startingSpeed .. "   -   " .. testScenario.leavingTrackCondition .. "   -   " .. testScenario.fuelType
 end
 
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
@@ -109,7 +112,14 @@ Test.Start = function(testName)
 
     local tunnelTrackY, aboveTrackY, trainDataY, centerX, testSurface, testForce = -5, 5, -15, 0, TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local tunnelEndStation, aboveEndStation, currentPos, offset
-    local trainFuel = {name = "coal", count = 50}
+    local trainFuel
+    if testScenario.fuelType == FuelType.coal then
+        trainFuel = {name = "coal", count = 50}
+    elseif testScenario.fuelType == FuelType.nuclearFuel then
+        trainFuel = {name = "nuclear-fuel", count = 1}
+    else
+        error("unsupported fuel type: " .. testScenario.fuelType)
+    end
 
     -- Build a test copy of the train to get its train data. As we need this to know how long to build the entering rails for and the main trains placement.
     local trainData_railCountToBuild = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 1
@@ -137,11 +147,8 @@ Test.Start = function(testName)
 
     -- Work out how many tunnel parts are needed.
     local tunnelSegments = 4
-    if testScenario.tunnelOversized == TunnelOversized.undergroundOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
-        tunnelSegments = tunnelSegments * 4
-    end
     local portalSegments = math.ceil(#testScenario.trainCarriageDetails * 3.5)
-    if testScenario.tunnelOversized == TunnelOversized.portalOnly or testScenario.tunnelOversized == TunnelOversized.portalAndUnderground then
+    if testScenario.tunnelOversized == TunnelOversized.portalOnly then
         portalSegments = portalSegments * 4
     end
 
@@ -512,23 +519,27 @@ Test.GenerateTestScenarios = function(testName)
     local tunnelOversizedToTest  ---@type Tests_LTSDCT_TunnelOversized
     local startingSpeedToTest  ---@type Tests_LTSDCT_StartingSpeed
     local leavingTrackConditionToTest  ---@type Tests_LTSDCT_LeavingTrackCondition
+    local fuelTypeToTest  ---@type Tests_LTSDCT_FuelType
     if DoSpecificTests then
         -- Adhock testing option.
         trainCompositionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainComposition, SpecificTrainCompositionFilter)
         tunnelOversizedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TunnelOversized, SpecificTunnelOversizedFilter)
         startingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(StartingSpeed, SpecificStartingSpeedFilter)
         leavingTrackConditionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(LeavingTrackCondition, SpecificLeavingTrackConditionFilter)
+        fuelTypeToTest = TestFunctions.ApplySpecificFilterToListByKeyName(FuelType, SpecificFuelTypeFilter)
     elseif DoMinimalTests then
         trainCompositionToTest = {TrainComposition["<---->"]}
         tunnelOversizedToTest = {TunnelOversized.none}
         startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
         leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
+        fuelTypeToTest = {FuelType.coal}
     else
         -- Do whole test suite.
         trainCompositionToTest = TrainComposition
         tunnelOversizedToTest = TunnelOversized
         startingSpeedToTest = StartingSpeed
         leavingTrackConditionToTest = LeavingTrackCondition
+        fuelTypeToTest = FuelType
     end
 
     -- Work out the combinations of the various types that we will do a test for.
@@ -536,16 +547,19 @@ Test.GenerateTestScenarios = function(testName)
         for _, tunnelOversized in pairs(tunnelOversizedToTest) do
             for _, startingSpeed in pairs(startingSpeedToTest) do
                 for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
-                    ---@class Tests_LTSDCT_TestScenario
-                    local scenario = {
-                        trainComposition = trainComposition,
-                        tunnelOversized = tunnelOversized,
-                        startingSpeed = startingSpeed,
-                        leavingTrackCondition = leavingTrackCondition,
-                        trainCarriageDetails = TestFunctions.GetTrainCompositionFromTextualRepresentation(trainComposition)
-                    }
-                    table.insert(Test.TestScenarios, scenario)
-                    Test.RunLoopsMax = Test.RunLoopsMax + 1
+                    for _, fuelType in pairs(fuelTypeToTest) do
+                        ---@class Tests_LTSDCT_TestScenario
+                        local scenario = {
+                            trainComposition = trainComposition,
+                            tunnelOversized = tunnelOversized,
+                            startingSpeed = startingSpeed,
+                            leavingTrackCondition = leavingTrackCondition,
+                            fuelType = fuelType,
+                            trainCarriageDetails = TestFunctions.GetTrainCompositionFromTextualRepresentation(trainComposition)
+                        }
+                        table.insert(Test.TestScenarios, scenario)
+                        Test.RunLoopsMax = Test.RunLoopsMax + 1
+                    end
                 end
             end
         end

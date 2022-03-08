@@ -162,6 +162,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, en
     else
         managedTrain.approachingTrainStartedAtFullSpeed = false
     end--]]
+    --
 end
 
 --- Used when a train is on a portal's track and thus the tunnel.
@@ -775,6 +776,8 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             local extraTunnelApproachTicksForCorrectEnteringSpeed
             -- CODE NOTE: the handling for approaching at non full speeds gives bad results for trains near max speed. While the full speed code seems very close even for slow trains. So just using the full speed code for all use cases.
             --[[if managedTrain.approachingTrainStartedAtFullSpeed then]]
+            --
+
             -- This assumes the train was at its full speed for the entire approach.
 
             -- Get how long and distance the approaching train should have been braking for in advance.
@@ -785,6 +788,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
 
             -- How long extra the train would have taken to cover the distance.
             extraTunnelApproachTicksForCorrectEnteringSpeed = correctTunnelApproachTicks - ticksSpentApproachingTunnelAtExcessiveSpeed
+
             --[[else
                 -- This assumes the train approached the tunnel while accelerating up to the speed it entered the tunnel. Only handles time it should have been braking in its approach. The rest of the approach time isn't modified.
 
