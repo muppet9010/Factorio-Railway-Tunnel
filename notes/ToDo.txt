@@ -4,8 +4,6 @@ Now
 
 Bugs / Next
 -----------
-    - Check all my recent changes haven't caused any new excess UPS usage.
-	- Copy the updated biome-trees.lua and biome-trees-data\base-game.lua from Muppet Streamer in to this Utils version. That mod has notes about it having been hotfixed.
 	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.
 	- Check that the tunnel GUI isn't closed on player death or teleportation.
 	- Make the GUI updates/closing handle if the GUI is closed by something else. Just accept the closure, update any GUI state data and don't error.

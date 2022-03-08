@@ -15,7 +15,7 @@ local Common = require("scripts.common")
 local TrainManagerRemote = require("scripts.train-manager-remote")
 local TunnelShared = require("scripts.tunnel-shared")
 local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageState, Common.TunnelUsageAction
-local math_abs, math_floor, math_ceil = math.abs, math.floor, math.ceil
+local math_abs, math_floor, math_ceil, math_min, math_max = math.abs, math.floor, math.ceil, math.min, math.max
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
@@ -256,12 +256,14 @@ TrainManager.TrainOnPortalTrackOngoing = function(managedTrain)
 end
 
 --- The train is approaching the transition signal so maintain its speed.
+---
+--- This is called a lot so needs to be optimised.
 ---@param managedTrain ManagedTrain
 TrainManager.TrainApproachingOngoing = function(managedTrain)
     local train = managedTrain.train ---@type LuaTrain
 
-    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away or just stop.
-    if train.state ~= defines.train_state.arrive_signal or train.signal ~= managedTrain.entrancePortalEntryTransitionSignal.entity then
+    -- Check whether the train is still approaching the tunnel portal as its not committed yet it can turn away or just stop. We can ignore if the train was waiting at the transition signal as it shouldn't be a reachable state.
+    if train.signal ~= managedTrain.entrancePortalEntryTransitionSignal.entity then
         -- Check if the train had reached the portal tracks yet or not, as it affects next step in handling process.
         if not managedTrain.trainReachedPortalTracks then
             -- Train never made it to the portal tracks, so can just abandon it.
@@ -281,22 +283,22 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     end
 
     -- This won't keep the train exactly at this speed as it will try and brake increasingly as it appraoches the blocker signal. But will stay reasonably close to its desired speed, as most of the ticks its 5% or less below target, with just the last few ticks it climbing significantly as a % of current speed.
-    local newAbsSpeed, newSpeed
     if not managedTrain.approachingTrainReachedFullSpeed then
         -- If the train hasn't yet reached its full speed then work out the new speed.
-        newAbsSpeed = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, math_abs(managedTrain.approachingTrainExpectedSpeed))
+
+        -- Work out the new speed. Copy of Utils.CalculateAcceleratingTrainSpeedForSingleTick() as called a lot.
+        local newAbsSpeed = math_min((math_max(0, math_abs(managedTrain.approachingTrainExpectedSpeed) - managedTrain.directionalTrainSpeedCalculationData.trainWeightedFrictionForce) + managedTrain.directionalTrainSpeedCalculationData.locomotiveFuelAccelerationPower) * managedTrain.directionalTrainSpeedCalculationData.trainAirResistanceReductionMultiplier, managedTrain.directionalTrainSpeedCalculationData.maxSpeed)
         if managedTrain.approachingTrainExpectedSpeed == newAbsSpeed then
             -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
             managedTrain.approachingTrainReachedFullSpeed = true
         end
         if managedTrain.trainMovingForwards then
-            newSpeed = newAbsSpeed
+            managedTrain.approachingTrainExpectedSpeed = newAbsSpeed
         else
-            newSpeed = -newAbsSpeed
+            managedTrain.approachingTrainExpectedSpeed = -newAbsSpeed
         end
 
-        managedTrain.approachingTrainExpectedSpeed = newSpeed
-        train.speed = newSpeed
+        train.speed = managedTrain.approachingTrainExpectedSpeed
     else
         -- Train is at full speed so just maintain it.
         train.speed = managedTrain.approachingTrainExpectedSpeed
@@ -372,7 +374,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 
     -- Remove the entering train's carriage entities. Have to use this reference and not the cached data as it was updated earlier in this function.
     for i, carriage in pairs(enteringTrain_carriages) do
-        carriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods.
+        carriage.destroy {raise_destroy = true} -- Is a standard game entity removed so raise destroyed for other mods. Does mean we trigger our functions that then ignore it.
     end
 
     -- Add the entry signal closing entity to keep the signals closed as it takes a few ticks for the signals to update from the cloned carriage.
