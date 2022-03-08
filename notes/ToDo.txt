@@ -1,6 +1,5 @@
 Now
 ---
-    - Does "trainAcceleratingAllApproach" give more expected results when used in the right scenarios (manually) now max speed is fixed?
     - Check in to the remaining worst variation tests as looks like they are grouped togeather; all short trains with short stopping distances ans slow starts:  <   -   Oversized: undergroundOnly   -   StartingSpeeds: none   -   nearSignal
 
 

@@ -320,20 +320,20 @@ Test.Start = function(testName)
     local tunnelBlockingLocomotive, aboveBlockingLocomotive
     if testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
         -- Put a loco just after the portal to close the portal's exit signal.
-        tunnelBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
-    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal then
-        -- Put a signal at the near position and a loco to close it just after.
-        testSurface.create_entity {name = "rail-signal", position = {x = nearPositionX - 0.5, y = tunnelTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        tunnelBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX - 7, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        testSurface.create_entity {name = "rail-signal", position = {x = nearPositionX - 0.5, y = aboveTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
-    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farSignal then
-        -- Put a signal at the far position and a loco to close it just after.
-        testSurface.create_entity {name = "rail-signal", position = {x = farPositionX - 0.5, y = tunnelTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        tunnelBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = farPositionX - 7, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        testSurface.create_entity {name = "rail-signal", position = {x = farPositionX - 0.5, y = aboveTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
-        aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = farPositionX - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        tunnelBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX + 7, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = nearPositionX + 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.farSignal then
+        -- Put a signal at the approperiate position and a loco just after it to close the signal.
+        local xPosition
+        if testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal then
+            xPosition = nearPositionX
+        else
+            xPosition = farPositionX
+        end
+        testSurface.create_entity {name = "rail-signal", position = {x = xPosition - 0.5, y = tunnelTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        tunnelBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = xPosition - 7, y = tunnelTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        testSurface.create_entity {name = "rail-signal", position = {x = xPosition - 0.5, y = aboveTrackY - 1.5}, direction = defines.direction.east, force = testForce, raise_built = false, create_build_effect_smoke = false}
+        aboveBlockingLocomotive = testSurface.create_entity {name = "locomotive", position = {x = xPosition - 7, y = aboveTrackY}, direction = defines.direction.west, force = testForce, raise_built = false, create_build_effect_smoke = false}
     end
 
     -- Set the trains schedules and state last as we want the rail network all set before we get the trains to try and find their real paths.
