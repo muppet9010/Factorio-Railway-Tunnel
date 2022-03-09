@@ -1,13 +1,13 @@
 # Factorio-Railway-Tunnel
 
-ALPHA MOD
+BETA MOD
 =========
 
-Early release mod and future versions won't allow upgrading. Use for testing/experimenting only.
-For applying a new mod version to your game you will need to do the below manual upgrade process. I'd advise the save games are done as separate so you can rollback if needed:
-    - Empty all your tunnels and save the game (save 1). Take safety blueprint copies of any tunnel/track designs you wish as they will be removed in the next stage.
+Early release of the mod and you can't upgrade to future releases. Use for testing/experimenting only.
+To apply a new mod version to your game you will need to do the below manual upgrade process. I'd advise that an extra safey save of the game is kept before this process is started so you can rollback if needed:
+    - Empty all your tunnels of their trains and save the game (save 1). Take blueprint copies of any tunnel/track designs you wish as they will be removed in the next stage.
     - Remove the old mod version and load the save (save 1). This will purge your map and game state of old mod entities and data. Save the game again (save 2).
-    - Put the new mod in place and load the save (save 2). Your game is now on the new mod version and the tunnel's can be re-added.
+    - Put the new mod in place and load the save (save 2). Your game is now on the new mod version. Add your tunnels back in and should be good to go.
 
 
 FACTORIO BUGS

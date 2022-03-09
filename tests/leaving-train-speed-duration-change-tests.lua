@@ -59,8 +59,7 @@ local LeavingTrackCondition = {
     farStation = "farStation", -- A train station far to the portal so the train has to brake gently leaving the portal.
     portalSignal = "portalSignal", -- The portla exit signal will be closed so the train has to crawl out of the portal.
     nearSignal = "nearSignal", -- A signal near to the portal will be closed so the train has to brake very aggressively leaving the portal.
-    farSignal = "farSignal", -- A signal far to the portal will be closed so the train has to brake gently leaving the portal.
-    noPath = "noPath" -- The path from the portal is removed once the train has entered the tunnel. Doesn't get a variance score as not approperiate.
+    farSignal = "farSignal" -- A signal far to the portal will be closed so the train has to brake gently leaving the portal.
 }
 ---@class Tests_LTSDCT_FuelType
 local FuelType = {
@@ -169,7 +168,7 @@ Test.Start = function(testName)
         local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
         -- The +10 is so the train stop is safely beyond braking distance when leaving the tunnel.
         railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10
-    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
+    elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
         -- Far rail distance plus 10 as the max rail distance needed for any test.
         railCountLeavingEndOfPortal = (nearPositionDistance) / 2
     elseif testScenario.leavingTrackCondition == LeavingTrackCondition.farSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.farStation then
@@ -370,7 +369,6 @@ Test.Start = function(testName)
         farPositionX = farPositionX, ---@type double
         tunnelTrackY = tunnelTrackY, ---@type double
         aboveTrackY = aboveTrackY, ---@type double
-        noPath_trackRemoved = false, ---@type boolean
         tunnelTrainStoppedTick = nil, ---@type Tick @ Will overwrite at run time.
         aboveTrainStoppedTick = nil, ---@type Tick @ Will overwrite at run time.
         testStartedTick = game.tick, ---@type Tick
@@ -414,28 +412,6 @@ Test.EveryTick = function(event)
         end
     end
 
-    -- LeavingTrackCondition.noPath only - track when to remove the rail to cause a noPath.
-    if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
-        if not testDataBespoke.noPath_trackRemoved and not testDataBespoke.tunnelTrainPreTunnel.valid then
-            -- Train has entered tunnel, remove the forwards path out of the tunnel on both rails.
-            testDataBespoke.noPath_trackRemoved = true
-            local railCenterX = testDataBespoke.nearPositionX + 5
-            local searchBoundingBox = {
-                left_top = {x = railCenterX - 0.5, y = testDataBespoke.tunnelTrackY - 0.5},
-                right_bottom = {x = railCenterX + 0.5, y = testDataBespoke.aboveTrackY + 0.5}
-            }
-
-            local railsFound = TestFunctions.GetTestSurface().find_entities_filtered {area = searchBoundingBox, name = "straight-rail"}
-            if #railsFound < 2 then
-                error("rails not found where expected")
-            else
-                for _, railFound in pairs(railsFound) do
-                    railFound.destroy()
-                end
-            end
-        end
-    end
-
     -- Capture the leaving train when it first emerges.
     if testDataBespoke.tunnelTrainPostTunnel == nil and tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving then
         testDataBespoke.tunnelTrainPostTunnel = tunnelUsageChanges.train
@@ -466,15 +442,6 @@ Test.EveryTick = function(event)
 
         -- If both trains have stopped the test is fully over.
         if testDataBespoke.tunnelTrainStoppedTick ~= nil and testDataBespoke.aboveTrainStoppedTick ~= nil then
-            -- NoPath test just ends as a time variance is meaningless for it.
-            if testScenario.leavingTrackCondition == LeavingTrackCondition.noPath then
-                -- Do logging same as variance tests so results text is consitent syntax.
-                game.print("variation precentage: NA")
-                TestFunctions.LogTestDataToTestRow(",NA,")
-                TestFunctions.TestCompleted(testName)
-                return
-            end
-
             -- For the other test types compare the train time differences.
             local tunnelTrainTime = testDataBespoke.tunnelTrainStoppedTick - testDataBespoke.testStartedTick
             local aboveTrainTime = testDataBespoke.aboveTrainStoppedTick - testDataBespoke.testStartedTick
@@ -531,7 +498,7 @@ Test.GenerateTestScenarios = function(testName)
         trainCompositionToTest = {TrainComposition["<---->"]}
         tunnelOversizedToTest = {TunnelOversized.none}
         startingSpeedToTest = {StartingSpeed.none, StartingSpeed.full}
-        leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal, LeavingTrackCondition.noPath}
+        leavingTrackConditionToTest = {LeavingTrackCondition.clear, LeavingTrackCondition.farSignal, LeavingTrackCondition.nearStation, LeavingTrackCondition.portalSignal}
         fuelTypeToTest = {FuelType.coal}
     else
         -- Do whole test suite.

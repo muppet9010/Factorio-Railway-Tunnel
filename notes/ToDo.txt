@@ -1,6 +1,5 @@
 Now
 ---
-    - Look at Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance for TODO's.
     - Speed duration tests need to include different braking forces.
 
 

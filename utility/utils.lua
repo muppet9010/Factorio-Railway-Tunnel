@@ -2445,9 +2445,9 @@ Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance 
     local speedToDropAbsolute = initialSpeed - finalSpeedAbsolute
     local ticks = math_ceil(speedToDropAbsolute / tickBrakingReduction)
 
-    --TODO: this could have an initialSpeed greater than the trains max speed !
-
-    --TODO: is this "ticks" value really correct?
+    if initialSpeed > trainData.maxSpeed then
+        error("Initial train speed calculated pre-braking as greater than trains max speed.")
+    end
 
     return ticks, initialSpeed
 end
