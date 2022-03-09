@@ -1,9 +1,12 @@
 Now
 ---
+    - Look at Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance for TODO's.
+    - Speed duration tests need to include different braking forces.
 
 
 Bugs / Next
 -----------
+    - Use portal shadows to hide train carriage shadows of the traversing train.
 	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.
 	- Check that the tunnel GUI isn't closed on player death or teleportation.
 	- Make the GUI updates/closing handle if the GUI is closed by something else. Just accept the closure, update any GUI state data and don't error.
@@ -25,7 +28,7 @@ Features to add/change
         - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
         - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
             - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
-    - Make graphics a little smoother, review portal structure and make ground be stone with soft edge. Use portal shadows to hide train carriage shadows of the traversing train. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
+    - Make graphics a little smoother, review portal structure and make ground be stone with soft edge. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
 
 
 UPS / code plans

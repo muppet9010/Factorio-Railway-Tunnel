@@ -65,19 +65,19 @@ local LeavingTrackCondition = {
 ---@class Tests_LTSDCT_FuelType
 local FuelType = {
     coal = "coal",
-    nuclearFuel = "nuclear-fuel"
+    nuclearFuel = "nuclearFuel"
 }
 
 -- Test configuration.
 local MaxTimeVariationPercentage = 10 -- The maximum approved time variation as a percentage of the journey time between the train using the tunnel and the train on regular tracks. Time variation applies in both directions, so is allowed to be either faster or slower than the other. Time variations greater than this will cause the test to fail. 10% passes at present for all variations. The largest variations are currently due to excess braking time for some near signals and near stations; this is caused by train-manager where we set trainAcceleratingAllApproach to true blindly every time, heavily commented code area with reasoning for this.
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
-local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionFilter = {} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificTunnelOversizedFilter = {} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificStartingSpeedFilter = {} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
-local SpecificFuelTypeFilter = {} -- Pass in an array of FuelType keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local DoSpecificTests = true -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
+local SpecificTrainCompositionFilter = {"<"} -- Pass in an array of TrainComposition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTunnelOversizedFilter = {"none"} -- Pass in an array of TunnelOversized keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificStartingSpeedFilter = {"none"} -- Pass in an array of StartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificLeavingTrackConditionFilter = {"farStation"} -- Pass in an array of LeavingTrackCondition keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificFuelTypeFilter = {"nuclearFuel"} -- Pass in an array of FuelType keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 

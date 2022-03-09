@@ -460,7 +460,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
             -- Work out how far beyond the portal the train might try to go if accelerating and check this path.
             local currentBreakingDistanceBeyondTunnel = currentUndergroundTrainBrakingDistance - managedTrain.playerTrain_traversalDistanceRemaining
             local acceleratingDistance = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
-            local maximumBrakingSpeed = Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance(managedTrain.directionalTrainSpeedCalculationData, currentBreakingDistanceBeyondTunnel + acceleratingDistance, managedTrain.forcesBrakingBonus)
+            local _, maximumBrakingSpeed = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, currentBreakingDistanceBeyondTunnel + acceleratingDistance, 0, managedTrain.forcesBrakingBonus)
 
             -- Set the leaving trains speed to this test speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
             TrainManager.SetLeavingTrainSpeedInCorrectDirection(leavingTrain, maximumBrakingSpeed, managedTrain, managedTrain.targetTrainStop)
@@ -742,7 +742,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
         end
 
         -- Work out the speed we should be going when leaving the tunnel to stop at the required location.
-        local requiredSpeedAbsoluteAtPortalEnd = Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance(managedTrain.directionalTrainSpeedCalculationData, stoppingPointDistance, currentForcesBrakingBonus)
+        local _, requiredSpeedAbsoluteAtPortalEnd = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, stoppingPointDistance, 0, currentForcesBrakingBonus)
         managedTrain.trainLeavingSpeedAbsolute = requiredSpeedAbsoluteAtPortalEnd
 
         -- Work out how much time and distance in the tunnel it takes to change speed to the required leaving speed.

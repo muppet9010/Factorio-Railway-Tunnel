@@ -2264,16 +2264,6 @@ Utils.UpdateTrainSpeedCalculationDataForCurrentFuel = function(trainSpeedCalcula
     end
 
     -- Work out the achievable max speed of the train.
-    -- Iterate over the calculation for every tick until the speed settles. This is how the train calcualtor websites all do it.
-    -- This is extremely costly to process.
-    --[[local currentSpeed, lastSpeed = 0, nil
-    while currentSpeed ~= lastSpeed do
-        lastSpeed = currentSpeed
-        currentSpeed = math_min((math_max(0, currentSpeed - trainSpeedCalculationData.trainWeightedFrictionForce) + trainSpeedCalculationData.locomotiveFuelAccelerationPower) * trainSpeedCalculationData.trainAirResistanceReductionMultiplier, trainPrototypeMaxSpeedIncludesFuelBonus)
-    end]]
-    --
-
-    -- Work out the achievable max speed of the train.
     -- Maths way based on knowing that its acceleration result will be 0 once its at max speed.
     --   0=s - ((s+a)*r)   in to Wolf Ram Alpha and re-arranged for s.
     local maxSpeedForFuelBonus = -((((trainSpeedCalculationData.locomotiveFuelAccelerationPower) - trainSpeedCalculationData.trainWeightedFrictionForce) * trainSpeedCalculationData.trainAirResistanceReductionMultiplier) / (trainSpeedCalculationData.trainAirResistanceReductionMultiplier - 1))
@@ -2309,9 +2299,9 @@ Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance = function(trai
     -- Check how fast the train would have been going at the end of this period. This may be greater than max speed.
     local finalSpeed = initialSpeedAbsolute + (acceleration * ticks)
 
-    -- If the train was going faster than max speed at the end then run an additional calculations to work out the real time within the max speed limit.
+    -- If the train would be going faster than max speed at the end then cap at max speed and estimate extra time at this speed.
     if finalSpeed > trainData.maxSpeed then
-        -- Work out how long and distance it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
+        -- Work out how long and the distance covered it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
         local ticksToMaxSpeed = math_ceil((trainData.maxSpeed - initialSpeedAbsolute) / acceleration)
         local distanceToMaxSpeed = (ticksToMaxSpeed * initialSpeedAbsolute) + (((trainData.maxSpeed - initialSpeedAbsolute) * ticksToMaxSpeed) / 2)
 
@@ -2358,9 +2348,7 @@ Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed = functio
     return ticks, distance
 end
 
---- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance.
----
---- This doesn't limit to max speed !!!
+--- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance. Train speed durign this is capped to it's max speed.
 ---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
@@ -2369,16 +2357,44 @@ end
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@return Tick ticks @ Rounded up.
 Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(trainData, targetSpeedAbsolute, distance, forcesBrakingForceBonus)
+    -- Get the acceleration and braking force per tick.
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * targetSpeedAbsolute
-    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local accelerationForcePerTick = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
-    local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
+    local brakingForcePerTick = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
 
-    local accelerationDistanceFormula = (math_sqrt(2 * acceleration + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / acceleration
-    local brakingDistanceFormula = (math_sqrt(2 * tickBrakingReduction + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / tickBrakingReduction
-    local combinedFormulaPerTile = (accelerationDistanceFormula + brakingDistanceFormula) / 2
+    -- This estimates distance that has to be spent on the speed change action. So a greater ratio of acceleration to braking force means more distance will be spent braking than accelerating.
+    local accelerationToBrakingForceRatio = accelerationForcePerTick / (accelerationForcePerTick + brakingForcePerTick)
+    local accelerationDistance = distance * (1 - accelerationToBrakingForceRatio)
 
-    local ticks = math.ceil(combinedFormulaPerTile * distance)
+    -- Estimate how long it would take to accelerate over this distance and how fast the train would have been going at the end of this period. This may be greater than max speed.
+    local accelerationTicks = (math_sqrt(2 * accelerationForcePerTick * accelerationDistance + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / accelerationForcePerTick
+    local finalSpeed = targetSpeedAbsolute + (accelerationForcePerTick * accelerationTicks)
+
+    -- Based on if the train would be going faster than its max speed handle the braking time part differently.
+    local ticks
+    if finalSpeed > trainData.maxSpeed then
+        -- The train would be going faster than max speed at the end so re-estimate acceleration up to the max speed cap and then the time it will take at max speed to cover the required distance.
+
+        -- Work out how long and the distance covered it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
+        local ticksToMaxSpeed = (trainData.maxSpeed - targetSpeedAbsolute) / accelerationForcePerTick
+        local distanceToMaxSpeed = (ticksToMaxSpeed * targetSpeedAbsolute) + (((trainData.maxSpeed - targetSpeedAbsolute) * ticksToMaxSpeed) / 2)
+
+        -- Work out how long it will take to brake from max speed back to the required finish speed.
+        local ticksToBrake = (trainData.maxSpeed - targetSpeedAbsolute) / brakingForcePerTick
+        local distanceToBrake = (ticksToBrake * targetSpeedAbsolute) + (((trainData.maxSpeed - targetSpeedAbsolute) * ticksToBrake) / 2)
+
+        -- Work out how long it will take to cover the remaining distance at max speed.
+        local ticksAtMaxSpeed = (distance - distanceToMaxSpeed - distanceToBrake) / trainData.maxSpeed
+
+        -- Update the final results.
+        ticks = math.ceil(ticksToMaxSpeed + ticksAtMaxSpeed + ticksToBrake)
+    else
+        -- The train didn't reach max speed when accelerating so stopping ticks is for just the braking ratio of distance.
+        local brakingDistance = distance * accelerationToBrakingForceRatio
+        local brakingTicks = (math_sqrt(2 * brakingForcePerTick * brakingDistance + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / brakingForcePerTick
+        ticks = math.ceil(accelerationTicks + brakingTicks)
+    end
 
     return ticks
 end
@@ -2414,19 +2430,7 @@ Utils.CalculateBrakingTrainSpeedAndDistanceCoveredForTime = function(trainData, 
     return newSpeedAbsolute, distanceCovered
 end
 
---- Calculates a train's intial speed at the start of a stopping distance.
----@param trainData Utils_TrainSpeedCalculationData
----@param distance double
----@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
----@return double initialAbsoluteSpeed
-Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance = function(trainData, distance, forcesBrakingForceBonus)
-    local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
-    local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local initialAbsoluteSpeed = math_sqrt(2 * tickBrakingReduction * distance)
-    return initialAbsoluteSpeed
-end
-
---- Calculates a train's time taken and intial speed to brake to a final speedover a distance.
+--- Calculates a train's time taken and intial speed to brake to a final speed over a distance.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param distance double
 ---@param finalSpeedAbsolute double
@@ -2437,8 +2441,14 @@ Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance 
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
     local initialSpeed = math_sqrt((finalSpeedAbsolute ^ 2) + (2 * tickBrakingReduction * distance))
+
     local speedToDropAbsolute = initialSpeed - finalSpeedAbsolute
     local ticks = math_ceil(speedToDropAbsolute / tickBrakingReduction)
+
+    --TODO: this could have an initialSpeed greater than the trains max speed !
+
+    --TODO: is this "ticks" value really correct?
+
     return ticks, initialSpeed
 end
 
