@@ -1,10 +1,10 @@
 Now
 ---
+    - Portal part shadows don't quite meet up, probably just need a slight enlargement to cover 1 pixel larger each on their joining edge?
 
 
 Bugs / Next
 -----------
-    - Use portal shadows to hide train carriage shadows of the traversing train.
 	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.
 	- Check that the tunnel GUI isn't closed on player death or teleportation.
 	- Make the GUI updates/closing handle if the GUI is closed by something else. Just accept the closure, update any GUI state data and don't error.
@@ -26,7 +26,6 @@ Features to add/change
         - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
         - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
             - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
-    - Make graphics a little smoother, review portal structure and make ground be stone with soft edge. Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
 
 
 UPS / code plans
@@ -94,6 +93,9 @@ Long term feature plans
     - Look at if tiles (concrete) can be placed over tunnel segments or something done to allow them to be paved over (even if just a visual). Maybe have tunnel segments have below tile graphics and I place tunnel tiles down, keeping a record of the old tile. This lets people concrete over and remove concrete. If the tunnel segment is removed I return the stored origional tile name back.
 	- Handle forces being merged via event and also surfaces being cleared and deleted. Just to mass updates or state deletion in these cases as they are extreme events.
     - The state diagram needs updating as it doesn't include trains that reversing while using 2 tunnels. Should be same events raised as if the train was using the 2 tunnels in seperate time spans.
+    - Make graphics a little smoother:
+        - Review portal structure and make ground be something different to structure and have a soft edge.
+        - Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
 
 
 Feature Ideas

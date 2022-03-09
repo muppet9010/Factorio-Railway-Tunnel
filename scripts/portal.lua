@@ -652,6 +652,15 @@ Portal.PortalComplete = function(portal)
                 surface = endPortalPart.surface
             }
         )
+        table.insert(
+            endPortalPart.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-shadow-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
+                render_layer = global.portalGraphicsLayerOverTrain,
+                target = endPortalPart.entity_position,
+                surface = endPortalPart.surface
+            }
+        )
     end
 
     -- Add the portal segment's graphics.
@@ -663,6 +672,15 @@ Portal.PortalComplete = function(portal)
                 rendering.draw_sprite {
                     sprite = "railway_tunnel-portal_graphics-portal_complete-middle-0_" .. tostring(portalSegment.entity_orientation * 100),
                     render_layer = global.portalGraphicsLayerOverTrain,
+                    target = portalSegment.entity_position,
+                    surface = portalSegment.surface
+                }
+            )
+            table.insert(
+                portalSegment.graphicRenderIds,
+                rendering.draw_sprite {
+                    sprite = "railway_tunnel-portal_graphics-portal_complete-middle-shadow-0_" .. tostring(portalSegment.entity_orientation * 100),
+                    render_layer = "higher-object-under",
                     target = portalSegment.entity_position,
                     surface = portalSegment.surface
                 }
@@ -896,6 +914,24 @@ Portal.On_PreTunnelCompleted = function(portals)
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-far-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
                 render_layer = "lower-object",
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-shadow-near-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = "higher-object-under",
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-shadow-far-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = "item",
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
             }
@@ -1141,6 +1177,15 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = global.portalGraphicsLayerOverTrain,
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-shadow-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
                 render_layer = global.portalGraphicsLayerOverTrain,
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
