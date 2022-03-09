@@ -453,7 +453,11 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
             managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 1 -- The leaving train has 1 tile to the end of the portal.
             managedTrain.playerTrain_brakingEntityId = nil
         else
-            -- Exit signal is open so check in to the rail network beyond,
+            -- Exit signal is open so check in to the rail network beyond.
+
+            -- We have to set the train tunnel force's braking force to the train owners. So that when we have the game do a pathing test with the LuaTrain it has the right braking bonus and thus game generated stopping distance.
+            -- Code Dev Note: Doing it this way saves having to change all of the carriages back and fourth between scheduled function calls.
+            global.force.tunnelForce.train_braking_force_bonus = managedTrain.forcesBrakingBonus
 
             -- Work out how far beyond the portal the train might try to go if accelerating and check this path.
             local currentBreakingDistanceBeyondTunnel = currentUndergroundTrainBrakingDistance - managedTrain.playerTrain_traversalDistanceRemaining
@@ -566,6 +570,10 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
     end
 
     local train = managedTrain.train
+
+    -- We have to set the train tunnel force's braking force to the train owners. So that when we have the game do a pathing test with the LuaTrain it has the right braking bonus and thus game generated stopping distance.
+    -- Code Dev Note: Doing it this way saves having to change all of the carriages back and fourth between scheduled function calls.
+    global.force.tunnelForce.train_braking_force_bonus = managedTrain.forcesBrakingBonus
 
     -- Set the leaving trains speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
     TrainManager.SetLeavingTrainSpeedInCorrectDirection(train, managedTrain.trainLeavingSpeedAbsolute, managedTrain, managedTrain.targetTrainStop)
@@ -1363,6 +1371,8 @@ end
 --- Sets a leaving trains speed correctly when we are unsure of the trains facing direction or the direction of its target. Sets managedTrain.trainMovingForwards for future usage.
 ---
 --- In some cases where this is called the train does a reversal, i.e. when starting to leave a tunnel and finding the forwards path is blocked, but reversing through the tunnel is valid.
+---
+--- Make sure the LuaTrain's current owner force has the correct braking bonus before running this.
 ---@param train LuaTrain
 ---@param absoluteSpeed double
 ---@param managedTrain ManagedTrain

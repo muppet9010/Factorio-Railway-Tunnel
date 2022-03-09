@@ -25,7 +25,7 @@ local TrainStartingSpeeds = {
 }
 
 -- Test configuration.
-local DoMinimalTests = false -- The minimal test to prove the concept.
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
 local SpecificFirstLetterFilter = {FirstLetterTypes.a} -- Pass in an array of FirstLetterTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.

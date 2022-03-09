@@ -1,6 +1,5 @@
 Now
 ---
-    - Speed duration tests need to include different braking forces.
 
 
 Bugs / Next

@@ -2431,6 +2431,8 @@ Utils.CalculateBrakingTrainSpeedAndDistanceCoveredForTime = function(trainData, 
 end
 
 --- Calculates a train's time taken and intial speed to brake to a final speed over a distance.
+---
+--- Caps the intial speed generated at the trains max speed.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param distance double
 ---@param finalSpeedAbsolute double
@@ -2442,12 +2444,13 @@ Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance 
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
     local initialSpeed = math_sqrt((finalSpeedAbsolute ^ 2) + (2 * tickBrakingReduction * distance))
 
+    if initialSpeed > trainData.maxSpeed then
+        -- Initial speed is greater than max speed so cap the inital speed to max speed.
+        initialSpeed = trainData.maxSpeed
+    end
+
     local speedToDropAbsolute = initialSpeed - finalSpeedAbsolute
     local ticks = math_ceil(speedToDropAbsolute / tickBrakingReduction)
-
-    if initialSpeed > trainData.maxSpeed then
-        error("Initial train speed calculated pre-braking as greater than trains max speed.")
-    end
 
     return ticks, initialSpeed
 end

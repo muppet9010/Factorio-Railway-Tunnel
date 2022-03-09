@@ -69,6 +69,16 @@ local TrainStartingSpeed = {
     half = "half", -- Will be half the train's achievable max speed.
     full = "full" -- Will be the train's achievable max speed.
 }
+---@class Tests_PRSMT_FuelType
+local FuelType = {
+    coal = "coal",
+    nuclearFuel = "nuclearFuel"
+}
+---@class Tests_PRSMT_BrakingForce
+local BrakingForce = {
+    none = "none", -- Default starting level.
+    max = "max" -- 1 is vanilla game's max research level.
+}
 
 -- Test configuration.
 local DoMinimalTests = true -- The minimal test to prove the concept.
@@ -82,6 +92,8 @@ local SpecificLeavingTrackConditionFilter = {} -- Pass in an array of LeavingTra
 local SpecificReverseBehaviourFilter = {} -- Pass in an array of ReverseBehaviour keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 local SpecificReverseTimeFilter = {} -- Pass in an array of ReverseTime keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 local SpecificTrainStartingSpeedFilter = {} -- Pass in an array of TrainStartingSpeed keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificFuelTypeFilter = {} -- Pass in an array of FuelType keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificBrakingForceFilter = {} -- Pass in an array of BrakingForce keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -103,7 +115,7 @@ end
 Test.GetTestDisplayName = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
-    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition.composition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   " .. testScenario.leavingTrackCondition .. "   -   ReverseBehaviour: " .. testScenario.reverseBehaviour .. "   -   ReverseTime: " .. testScenario.reverseTime .. "   -   StartingSpeed: " .. testScenario.trainStartingSpeed
+    return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainComposition.composition .. "   -   Oversized: " .. testScenario.tunnelOversized .. "   -   " .. testScenario.leavingTrackCondition .. "   -   ReverseBehaviour: " .. testScenario.reverseBehaviour .. "   -   ReverseTime: " .. testScenario.reverseTime .. "   -   StartingSpeed: " .. testScenario.trainStartingSpeed .. "   -   " .. testScenario.fuelType .. "   -   BrakingBonus: " .. testScenario.brakingForce
 end
 
 local ReverseEastTrackBP = "0eNqV0tsKgzAMANB/yXMHa+tl66+MMZyGLaBV2ioT6b+v6hi7OJiPveQkJBngXLbYGNIO1ACU19qCOgxg6aKzcrxzfYOggBxWwEBn1XgyGZXgGZAu8AaK+yMD1I4c4Rw/HfqTbqszmvDhGZm3psNiMwEMmtqGmFqPiYIjEwY9qI3YBrsgg/n8KD37IsWTtC5ol6v7he5nlKfvKF9A5X91RuJBRn4BidYhyXtZ8YIYr2rfR/PEApisbZ78HEgY+LQS6mWDGHRo7Jx0x6N0L9KYx1wmW+/vqcHKZA=="
@@ -118,8 +130,25 @@ Test.Start = function(testName)
 
     local trackYPosition, trainDataYPosition = 1, -15
     local surface, testForce = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
-    local trainFuel = {name = "rocket-fuel", count = 10}
     local currentRailBuildPosition
+
+    -- Set the braking force before anything else as it will affect some train speed data generation.
+    if testScenario.brakingForce == BrakingForce.none then
+        testForce.train_braking_force_bonus = 0
+    elseif testScenario.brakingForce == BrakingForce.max then
+        testForce.train_braking_force_bonus = 1
+    else
+        error("Unsupported brakingForce: " .. testScenario.brakingForce)
+    end
+
+    local trainFuel
+    if testScenario.fuelType == FuelType.coal then
+        trainFuel = {name = "coal", count = 50}
+    elseif testScenario.fuelType == FuelType.nuclearFuel then
+        trainFuel = {name = "nuclear-fuel", count = 1}
+    else
+        error("unsupported fuel type: " .. testScenario.fuelType)
+    end
 
     -- Build a test copy of the train to get its train data. As we need this to know how long to build the entering rails for and the main trains placement.
     local trainData_railCountToBuild = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 1
@@ -452,7 +481,7 @@ Test.EveryTick_StraightThrough = function(event)
         -- Log the variance for if JustLogAllTests is enabled. Its logged with a comma both sides so the text file can be imported in to excel and split on comma for value sorting. Not perfect, but good enough bodge.
         TestFunctions.LogTestDataToTestRow(",jump: ," .. tostring(diffOfPlayerXMovementPercentage) .. "%, from ," .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "%, to ," .. tostring(newPlayerXMovementPercentage) .. "%,")
 
-        if diffOfPlayerXMovementPercentage >= 100 or diffOfPlayerXMovementPercentage <= -100 then
+        if diffOfPlayerXMovementPercentage > 100 or diffOfPlayerXMovementPercentage < -100 then
             TestFunctions.TestFailed(testName, "Player screen jumpped more than double the preivous tick.")
             return
         end
@@ -605,6 +634,8 @@ Test.GenerateTestScenarios = function(testName)
     local reverseBehaviourToTest  ---@type Tests_PRSMT_ReverseBehaviour[]
     local reverseTimeToTest  ---@type Tests_PRSMT_ReverseTime[]
     local trainStartingSpeedToTest  ---@type Tests_PRSMT_TrainStartingSpeed[]
+    local fuelTypeToTest  ---@type Tests_PRSMT_FuelType
+    local brakingForceToTest  ---@type Tests_PRSMT_BrakingForce
     if DoSpecificTests then
         -- Adhock testing option.
         trainCompositionToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainComposition, SpecificTrainCompositionFilter)
@@ -613,6 +644,8 @@ Test.GenerateTestScenarios = function(testName)
         reverseBehaviourToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ReverseBehaviour, SpecificReverseBehaviourFilter)
         reverseTimeToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ReverseTime, SpecificReverseTimeFilter)
         trainStartingSpeedToTest = TestFunctions.ApplySpecificFilterToListByKeyName(TrainStartingSpeed, SpecificTrainStartingSpeedFilter)
+        fuelTypeToTest = TestFunctions.ApplySpecificFilterToListByKeyName(FuelType, SpecificFuelTypeFilter)
+        brakingForceToTest = TestFunctions.ApplySpecificFilterToListByKeyName(BrakingForce, SpecificBrakingForceFilter)
     elseif DoMinimalTests then
         trainCompositionToTest = {TrainComposition["<---->"]}
         tunnelOversizedToTest = {TunnelOversized.none}
@@ -620,6 +653,8 @@ Test.GenerateTestScenarios = function(testName)
         reverseBehaviourToTest = {ReverseBehaviour.none, ReverseBehaviour.reverseDifferentStation}
         reverseTimeToTest = {ReverseTime.half}
         trainStartingSpeedToTest = {TrainStartingSpeed.half}
+        fuelTypeToTest = {FuelType.coal}
+        brakingForceToTest = {BrakingForce.max}
     else
         -- Do whole test suite.
         trainCompositionToTest = TrainComposition
@@ -633,6 +668,8 @@ Test.GenerateTestScenarios = function(testName)
             reverseTimeToTest = {ReverseTime.entered}
         end
         trainStartingSpeedToTest = TrainStartingSpeed
+        fuelTypeToTest = FuelType
+        brakingForceToTest = BrakingForce
     end
 
     -- Work out the combinations of the various types that we will do a test for.
@@ -640,42 +677,47 @@ Test.GenerateTestScenarios = function(testName)
         for _, tunnelOversized in pairs(tunnelOversizedToTest) do
             for _, leavingTrackCondition in pairs(leavingTrackConditionToTest) do
                 for _, trainStartingSpeed in pairs(trainStartingSpeedToTest) do
-                    -- Don't put any non reverse related tests deeper within this FOR loop as in some cases only 1 iteration of this loop ha a test added for it.
-                    local reverseBehaviourNone_singleTestAdded = false
-                    for _, reverseBehaviour in pairs(reverseBehaviourToTest) do
-                        for _, reverseTime in pairs(reverseTimeToTest) do
-                            local addTest = true
+                    for _, fuelType in pairs(fuelTypeToTest) do
+                        for _, brakingForce in pairs(brakingForceToTest) do
+                            -- Don't put any non reverse related tests deeper within this FOR loop as in some cases only 1 iteration of this loop ha a test added for it.
+                            local reverseBehaviourNone_singleTestAdded = false
+                            for _, reverseBehaviour in pairs(reverseBehaviourToTest) do
+                                for _, reverseTime in pairs(reverseTimeToTest) do
+                                    local addTest = true
 
-                            -- Just allow 1 reverseTime test to be added if theres no reverse behaviour. The value of reverseTime will be ignored anyways, but no point repeating the same test over and over.
-                            if reverseBehaviour == ReverseBehaviour.none then
-                                if not reverseBehaviourNone_singleTestAdded then
-                                    reverseBehaviourNone_singleTestAdded = true
-                                    reverseTime = "none" -- Set it to none so the test logging looks clean.
-                                else
-                                    addTest = false
+                                    -- Just allow 1 reverseTime test to be added if theres no reverse behaviour. The value of reverseTime will be ignored anyways, but no point repeating the same test over and over.
+                                    if reverseBehaviour == ReverseBehaviour.none then
+                                        if not reverseBehaviourNone_singleTestAdded then
+                                            reverseBehaviourNone_singleTestAdded = true
+                                        else
+                                            addTest = false
+                                        end
+                                    end
+
+                                    -- If its the single forwards loco test "<" skip all reverse type tests as they will just sit there.
+                                    if trainComposition == TrainComposition["<"] then
+                                        if reverseBehaviour == ReverseBehaviour.reverseSameStation or reverseBehaviour == ReverseBehaviour.reverseDifferentStation then
+                                            addTest = false
+                                        end
+                                    end
+
+                                    if addTest then
+                                        ---@class Tests_PRSMT_TestScenario
+                                        local scenario = {
+                                            trainComposition = trainComposition,
+                                            tunnelOversized = tunnelOversized,
+                                            leavingTrackCondition = leavingTrackCondition,
+                                            reverseBehaviour = reverseBehaviour,
+                                            reverseTime = reverseTime,
+                                            trainStartingSpeed = trainStartingSpeed,
+                                            fuelType = fuelType,
+                                            brakingForce = brakingForce,
+                                            trainCarriageDetails = TestFunctions.GetTrainCompositionFromTextualRepresentation(trainComposition)
+                                        }
+                                        table.insert(Test.TestScenarios, scenario)
+                                        Test.RunLoopsMax = Test.RunLoopsMax + 1
+                                    end
                                 end
-                            end
-
-                            -- If its the single forwards loco test "<" skip all reverse type tests as they will just sit there.
-                            if trainComposition == TrainComposition["<"] then
-                                if reverseBehaviour == ReverseBehaviour.reverseSameStation or reverseBehaviour == ReverseBehaviour.reverseDifferentStation then
-                                    addTest = false
-                                end
-                            end
-
-                            if addTest then
-                                ---@class Tests_PRSMT_TestScenario
-                                local scenario = {
-                                    trainComposition = trainComposition,
-                                    tunnelOversized = tunnelOversized,
-                                    leavingTrackCondition = leavingTrackCondition,
-                                    reverseBehaviour = reverseBehaviour,
-                                    reverseTime = reverseTime,
-                                    trainStartingSpeed = trainStartingSpeed,
-                                    trainCarriageDetails = TestFunctions.GetTrainCompositionFromTextualRepresentation(trainComposition)
-                                }
-                                table.insert(Test.TestScenarios, scenario)
-                                Test.RunLoopsMax = Test.RunLoopsMax + 1
                             end
                         end
                     end

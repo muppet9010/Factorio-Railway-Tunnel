@@ -383,10 +383,10 @@ end
 --- For use when an edge case will error in Debug Release, but is allowed in production release as probably shouldn't error.
 ---@param text string
 TunnelShared.PrintWarningAndReportToModAuthor = function(text)
-    if text[#text] ~= "." then
+    if string.sub(text, #text) ~= "." then
         text = text .. "."
     end
-    game.print("WARNING: " .. text " Report to mod author", Colors.red)
+    game.print("WARNING: " .. text .. " Please report to mod author.", Colors.red)
 end
 
 return TunnelShared
