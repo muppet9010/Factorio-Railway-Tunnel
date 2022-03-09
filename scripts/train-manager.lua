@@ -41,7 +41,7 @@ local math_abs, math_floor, math_ceil, math_min, math_max = math.abs, math.floor
 ---@field exitPortalExitSignalIn PortalEntrySignal @ Ref to the entrySignal global object on the rail signal at the entrance of the exit portal for entering trains.
 ---@field tunnel Tunnel @ Ref to the global tunnel object.
 ---
----@field approachingTrainStartedAtFullSpeed? boolean|null @ If the train started approaching the tunnel at full speed. If it did we still have to do the per tick check on its state, but knowledge used by leaving speed calculations. CODE NOTE: unuses or populated at present.
+---@field approachingTrainStartedAtFullSpeed? boolean|null @ If the train started approaching the tunnel at full speed. If it did we still have to do the per tick check on its state, but knowledge used by leaving speed calculations.
 ---@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't braking. This is a real speed and not absolute. Cleared when the train enters the tunnel.
 ---@field approachingTrainReachedFullSpeed? boolean|null @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
 ---@field entranceSignalClosingCarriage LuaEntity @ A dummy carriage added on the entrance portal to keep its entry signals closed when the entering train is cloned to the leaving portal. Reference not cleared when train enters tunnel.
@@ -156,13 +156,11 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, en
     MOD.Interfaces.PortalTunnelGui.On_TunnelUsageChanged(managedTrain)
 
     -- Record if the train has enetered the tunnel at full speed. At initial ManagedTrain object creation approachingTrainExpectedSpeed is the trains current speed and hasn't started being updated each tick of the approach yet.
-    -- CODE NOTE: Not used at present.
-    --[[if managedTrain.approachingTrainExpectedSpeed >= managedTrain.directionalTrainSpeedCalculationData.maxSpeed then
+    if managedTrain.approachingTrainExpectedSpeed >= managedTrain.directionalTrainSpeedCalculationData.maxSpeed then
         managedTrain.approachingTrainStartedAtFullSpeed = true
     else
         managedTrain.approachingTrainStartedAtFullSpeed = false
-    end--]]
-    --
+    end
 end
 
 --- Used when a train is on a portal's track and thus the tunnel.
@@ -765,6 +763,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
         local newArriveTick
         if remainingTunnelDistanceToCover > 0 then
             -- Tunnel distance still to cover. We must start and end at the same speed over this distance, so we will accelerate and brake during it as its the quickest way for a train to cover the distance.
+
             -- The speed we do this at is the starting speed. As this way we accelerate from the faster entering speed as long as possible, then this brakes back to the starting speed. Upon which the already calculated braking to leaving speed takes the train down to the required finish. If we ran this on the leaving speed we would be doing this part slower than needed.
             local ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
             newArriveTick = managedTrain.nonPlayerTrain_traversalStartTick + ticksSpentMatchingSpeed + ticksTraversingRemaingDistance
@@ -776,23 +775,19 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
 
             -- Work out how long extra it should have taken the train to reach the tunnel entrance.
             local extraTunnelApproachTicksForCorrectEnteringSpeed
-            -- CODE NOTE: the handling for approaching at non full speeds gives bad results for trains near max speed. While the full speed code seems very close even for slow trains. So just using the full speed code for all use cases.
-            --[[if managedTrain.approachingTrainStartedAtFullSpeed then]]
-            --
+            if managedTrain.approachingTrainStartedAtFullSpeed then
+                -- The train was at its full speed when it started its approach and so didn't accelerate at all.
 
-            -- This assumes the train was at its full speed for the entire approach.
+                -- Get how long and distance the approaching train should have been braking for in advance.
+                local correctTunnelApproachTicks, distanceToBrakeForCorrectApproachingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, correctTunnelEntranceSpeed, managedTrain.forcesBrakingBonus)
 
-            -- Get how long and distance the approaching train should have been braking for in advance.
-            local correctTunnelApproachTicks, distanceToBrakeForCorrectApproachingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, correctTunnelEntranceSpeed, managedTrain.forcesBrakingBonus)
+                -- Get how long it took the train to approach at its full speed.
+                local ticksSpentApproachingTunnelAtExcessiveSpeed = math.ceil(distanceToBrakeForCorrectApproachingSpeed / managedTrain.traversalInitialSpeedAbsolute)
 
-            -- Get how long it took the train to approach at its full speed.
-            local ticksSpentApproachingTunnelAtExcessiveSpeed = math.ceil(distanceToBrakeForCorrectApproachingSpeed / managedTrain.traversalInitialSpeedAbsolute)
-
-            -- How long extra the train would have taken to cover the distance.
-            extraTunnelApproachTicksForCorrectEnteringSpeed = correctTunnelApproachTicks - ticksSpentApproachingTunnelAtExcessiveSpeed
-
-            --[[else
-                -- This assumes the train approached the tunnel while accelerating up to the speed it entered the tunnel. Only handles time it should have been braking in its approach. The rest of the approach time isn't modified.
+                -- How long extra the train would have taken to cover the distance.
+                extraTunnelApproachTicksForCorrectEnteringSpeed = correctTunnelApproachTicks - ticksSpentApproachingTunnelAtExcessiveSpeed
+            else
+                -- During the train's approach to the tunnel it was accelerating up to the speed it entered the tunnel. Only handles time it should have been braking in its approach. The rest of the approach time isn't modified.
 
                 -- Get how long the train was accelerating from the new correct entrance speed up to the previous entrance speed, and over how much distance. This is how much of the previous approach needs to be accounted for.
                 local ticksSpentIncorrectlyAcceleratingDuringTunnelApproach, distanceCoveredWhileIncorrectlyAcceleratingDuringTunnelApproach = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, correctTunnelEntranceSpeed, managedTrain.traversalInitialSpeedAbsolute)
@@ -802,8 +797,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
 
                 -- How long extra the train would have taken to cover the distance.
                 extraTunnelApproachTicksForCorrectEnteringSpeed = correctTunnelApproachTicks - ticksSpentIncorrectlyAcceleratingDuringTunnelApproach
-            end--]]
-            --
+            end
 
             -- Work out the new arrival time to account for the alternative train entering times.
             newArriveTick = managedTrain.nonPlayerTrain_traversalStartTick + tunnelBrakingTime + extraTunnelApproachTicksForCorrectEnteringSpeed
