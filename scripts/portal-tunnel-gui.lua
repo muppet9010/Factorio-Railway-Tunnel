@@ -187,9 +187,12 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
     local mainFrameContentsContainer = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main_contents_container", "flow")
     --Check that the GUI element obtained from cache is valid.
     if not mainFrameContentsContainer.valid then
-        -- Main container has been closed by something else. So tidy up and then re-open the GUI as if the player clicked on it, as this will ensure state consistency.
+        -- Main container has been closed by something else. So tidy up first.
         PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, portalPart)
-        PortalTunnelGui.On_OpenGuiInput({player_index = playerIndex, selected_prototype = {name = portalPart.entity.name, base_type = "entity", derived_type = portalPart.entity.type}}, portalPart.entity)
+        -- If the portal part entity is still valid then re-open the GUI as if the player clicked on it, as this will ensure state consistency. Otherwise the GUI can remain closed. Not entirely sure its possible for the entity to not exist still, but this is safe.
+        if portalPart.entity.valid then
+            PortalTunnelGui.On_OpenGuiInput({player_index = playerIndex, selected_prototype = {name = portalPart.entity.name, base_type = "entity", derived_type = portalPart.entity.type}}, portalPart.entity)
+        end
         return
     end
 

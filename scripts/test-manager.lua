@@ -36,7 +36,7 @@ local PlayerStartingZoom = 0.2 -- Sets players starting zoom level. 1 is default
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
-local HidePortalGraphics = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regualr player experience set this to FALSE.
+local ShowTrainGraphicsInPortal = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regular player experience set this to FALSE. This only applies to newly built portals and won't affect any existing graphics in a save game.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 -- There must use "/" in their require paths rather than "." for some Lua reason.
@@ -221,10 +221,11 @@ TestManager.OnStartup = function()
     game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
-    -- If option to hide portal graphics is set then change the Portal globla setting.
-    if HidePortalGraphics then
+    -- If option to show train graphics while in portal set the Portal global setting so when new portals are built their graphics match expected. Doesn;t affect existing graphics.
+    if ShowTrainGraphicsInPortal then
         global.portalGraphicsLayerOverTrain = 128 -- Behind main "object" layer.
     else
+        -- Default for the mod in non testing mode.
         global.portalGraphicsLayerOverTrain = 130 -- Infront of main "object" layer.
     end
 

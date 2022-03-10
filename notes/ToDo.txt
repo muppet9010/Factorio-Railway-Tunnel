@@ -4,9 +4,6 @@ Now
 
 Bugs / Next
 -----------
-    - Check its MP safe:
-        - With multiple players riding in the same and different trains.
-        - Opening and closing guis.
 
 
 Features to add/change
@@ -25,6 +22,9 @@ Features to add/change
         - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
         - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
             - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
+    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
+    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
+    - Support 2 tunnels crossing - details vary - UPDATED NOTES IN DEDICATED BRANCH FOR THIS
 
 
 UPS / code plans
@@ -59,8 +59,6 @@ Concept change ideas
 
 Long term feature plans
 -----------------------
-    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
-    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
 	- Support manually driven trains:
         - When they try to enter a portal area they should be stopped dead if the tunnel is in use, as per automatic trains in trying to use a reserved tunnel.
         - If tunnel is unreserved they need to reserve it at entrance train detector and can be manually driven through using same logic as was being worked on for full mod version.
@@ -69,7 +67,6 @@ Long term feature plans
         - When a tunnel is killed any riding players should have their bodies dumped at the tunnel entrance position (it may be gone), as in vanilla Factorio you can't loose a body.
         - When manually driving a train through a tunnel show a render of the train's carriages underground. Have them appear semi transparent or tinted so obviously not real.
         - Requires the train cloning process to support detecting train carriages in the way and destroying them (in "Features to add/change" list already).
-    - Support 2 tunnels crossing - details vary - UPDATED NOTES IN DEDICATED BRANCH FOR THIS
     - Mod Compatibility:
         - Look at TSM compatibility.
         - Look at LTN compatibility.

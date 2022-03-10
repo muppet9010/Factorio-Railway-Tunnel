@@ -286,7 +286,8 @@ PlayerContainer.RemovePlayerContainer = function(playerContainer)
     local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id]
     if thisTrainsPlayerContainers ~= nil then
         thisTrainsPlayerContainers[playerContainer.id] = nil
-        if #thisTrainsPlayerContainers == 0 then
+        -- If no other player containers in this trains dictionary then update the trains state so it knows theres no riding players.
+        if next(thisTrainsPlayerContainers) == nil then
             global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id] = nil
             playerContainer.managedTrain.undergroundTrainHasPlayersRiding = false
         end
