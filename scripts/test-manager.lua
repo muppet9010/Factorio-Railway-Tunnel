@@ -30,13 +30,13 @@ local ForceTestsFullSuite = false -- If true each test will do their full range,
 
 local EnableDebugMode = true -- Enables debug mode when tests are run. Enables "railway_tunnel_toggle_debug_state" command.
 local WaitForPlayerAtEndOfEachTest = false -- The game will be paused when each test is completed before the map is cleared if TRUE. Otherwise the tests will run from one to the next. On a test erroring the map will still pause regardless of this setting.
-local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures. Results written to a text file in: script-output/RailwayTunnel_Tests.txt
+local JustLogAllTests = false -- Rather than stopping at a failed test, run all tests and log the output to script-output folder. No pausing will ever occur between tests if enabled, even for failures. Writes the test display name and the result to a text file (not csv) in: script-output/RailwayTunnel_Tests.txt
 
 local PlayerStartingZoom = 0.2 -- Sets players starting zoom level. 1 is default Factorio, 0.1 is a good view for most tests.
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
-local HidePortalGraphics = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regualr player experience set this to FALSE.
+local ShowTrainGraphicsInPortal = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regular player experience set this to FALSE. This only applies to newly built portals and won't affect any existing graphics in a save game.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 -- There must use "/" in their require paths rather than "." for some Lua reason.
@@ -44,8 +44,8 @@ local HidePortalGraphics = true -- Makes the portal graphics appear behind the t
 local TestsToRun = {
     -- Regular core functionality tests (train using tunnel):
     ShortTunnelSingleLocoEastToWest = {enabled = false, testScript = require("tests/short-tunnel-single-loco-east-to-west")},
-    --ShortTunnelShortTrainEastToWestWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-east-to-west-with-player-rides")}, -- Player container not done yet.
-    --ShortTunnelShortTrainNorthToSouthWithPlayerRides = {enabled = true, testScript = require("tests/short-tunnel-short-train-north-to-south-with-player-rides")}, -- Player container not done yet.
+    ShortTunnelShortTrainEastToWest = {enabled = false, testScript = require("tests/short-tunnel-short-train-east-to-west")},
+    ShortTunnelShortTrainNorthToSouth = {enabled = false, testScript = require("tests/short-tunnel-short-train-north-to-south")},
     repathOnApproach = {enabled = false, testScript = require("tests/repath-on-approach")},
     DoubleRepathOnApproach = {enabled = false, testScript = require("tests/double-repath-on-approach")},
     PathingKeepReservation = {enabled = false, testScript = require("tests/pathing-keep-reservation")},
@@ -59,6 +59,9 @@ local TestsToRun = {
     ApproachingOnPortalTrackTrainAbort = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-abort")},
     ApproachingOnPortalTrackTrainIndecisive = {enabled = false, testScript = require("tests/approaching-on-portal-track-train-indecisive")},
     BidirectionalTunnelLoop = {enabled = false, testScript = require("tests/bidirectional-tunnel-loop")},
+    UndergroundArtilleryTrain = {enabled = false, testScript = require("tests/underground-artillery-train")},
+    SequentialTunnels = {enabled = false, testScript = require("tests/sequential-tunnels")},
+    SequentialTunnelReverseTests = {enabled = false, testScript = require("tests/sequential-tunnel-reverse-tests")},
     -- Pathing tests:
     PathToRail = {enabled = false, testScript = require("tests/path-to-rail")},
     PathToTunnelRailTests = {enabled = false, testScript = require("tests/path-to-tunnel-rail-tests")},
@@ -73,6 +76,11 @@ local TestsToRun = {
     MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
+    -- Player container tests:
+    PlayerRidingTrainEjectionTests = {enabled = false, testScript = require("tests/player-riding-train-ejection-tests")},
+    PlayerRidingMultipleConcurrentTrains = {enabled = false, testScript = require("tests/player-riding-multiple-concurrent-trains")},
+    PlayerRidingDestroyTunnelTests = {enabled = false, testScript = require("tests/player-riding-destroy-tunnel-tests")},
+    PlayerRidingSmoothMovementTests = {enabled = false, testScript = require("tests/player-riding-smooth-movement-tests")},
     -- Code Internal tests:
     TunnelUsageChangedEvents = {enabled = false, testScript = require("tests/tunnel-usage-changed-events")},
     TrainComparisonTests = {enabled = false, testScript = require("tests/train-comparison-tests")},
@@ -213,11 +221,12 @@ TestManager.OnStartup = function()
     game.speed = TestGameSpeed
     Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
-    -- If option to hide portal graphics is set then change the Portal globla setting.
-    if HidePortalGraphics then
-        global.portalGraphicsLayerOverTrain = "lower-object"
+    -- If option to show train graphics while in portal set the Portal global setting so when new portals are built their graphics match expected. Doesn;t affect existing graphics.
+    if ShowTrainGraphicsInPortal then
+        global.portalGraphicsLayerOverTrain = 128 -- Behind main "object" layer.
     else
-        global.portalGraphicsLayerOverTrain = "higher-object-above"
+        -- Default for the mod in non testing mode.
+        global.portalGraphicsLayerOverTrain = 130 -- Infront of main "object" layer.
     end
 
     -- Create the global test management state data. Lua script functions can't be included in to global object.
@@ -297,7 +306,7 @@ TestManager.ClearMap_Scheduled = function()
         PlayerAlerts.RemoveAllCustomAlertsFromForce(player.force)
     end
 
-    -- Wait 1 tick so any end of tick mod events from the mpa clearing are raised and ignored, before we start the next test.
+    -- Wait 1 tick so any end of tick mod events from the map clearing are raised and ignored, before we start the next test.
     EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.RunTests_Scheduled")
 end
 

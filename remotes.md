@@ -5,7 +5,7 @@ All remote interfaces are under the interface name "railway_tunnel".
 
 
 
-Tunnel Usage Entry Object Attributes
+Tunnel Usage Entry Object - Common Attributes
 ----------------
 The common attributes that are returned give details about a tunnel usage entry by many of the mods events and remote interfaces. If the tunnel usage has completed then these values will all be nil.
 - tunnelUsageId = id of the tunnel usage details (INT). Always present.
@@ -30,7 +30,7 @@ Get a custom event id via a remote interface call that can be registered to be n
 **Custom event raised**
 - Description: Event raised every time a tunnel usage details change. Any instances of this event are raised at the end of the tunnel's usage processing each tick, so train states should be stable. See the flow chart mapping out the states and events in the root of the mod folder: Tunnel Usage Changed Events.svg.
 - Event Attributes:
-    - Tunnel Usage Entry Object Attributes for this tunnel usage.
+    - Tunnel Usage Entry Object for this tunnel usage.
     - action: the action that occurred (STRING):
         - onPortalTrack: When the train has initially moved on to the tunnel portals tracks. This may be on route to use the tunnel or may be just moving on to some tracks within the portal. Either way the tunnel and the other portal are now reserved for this train. If the train leaves the portal track without using the tunnel the terminated action will be raised with a "changeReason" of "portalTrackReleased". If the train paths to the inner transition signals of the tunnel it will change to the "startApproaching" state. If the train moves to the end of the tunnel without reserviving the transition signals it will change to the "entered" state. There can be a "changeReason" attribute in the below situations:
             - abortedApproach: When a train has been approaching the tunnel and has passed on to the portal's rail tracks, but then aborts its approach. The train remains in the "onPortalTrack" state until it has either left the portal's rail tracks, resumes its approach to the tunnel or enters the tunnel. So the change reason is reporting a downgrade in trains usage of the tunnel and thus how its monitored.
@@ -55,21 +55,22 @@ Get Tunnel Usage Entry For Id
 - Interface Name: get_tunnel_usage_entry_for_id
 - Description: Remote interface to get details on specific tunnel usage entry. Can be called at any time.
 - Arguments:
-    - Tunnel Usage Id (INT). This is the "tunnelUsageId" attribute from the Tunnel Usage Entry Object Attributes that is returned by some other events and remote interfaces.
+    - Tunnel Usage Id (INT). This is the "tunnelUsageId" attribute from the Tunnel Usage Entry Object that is returned by some other events and remote interfaces.
 - Returns:
-    - Tunnel Usage Entry Object Attributes for this tunnel usage.
+    - Tunnel Usage Entry Object for this tunnel usage.
 
 
 
 Get Tunnel Usage Entry For Train
 ----------------
 
-- Interface Name: get_tunnel_usage_entry_for_train
-- Description: Remote interface to get details on if a specific train has a tunnel usage entry related to it. Can be called at any time on any train.
+- Interface Name: get_tunnel_usage_entries_for_train
+- Description: Remote interface to get details on if a specific train is actively using and/or leaving a tunnel. Can be called at any time on any train. Returns both values in all cases, even if both are nil.
 - Arguments:
     - Train's Id (INT) - LuaTrain.id of a train.
 - Returns:
-    - Tunnel Usage Entry Object Attributes if this train is part of a tunnel usage instance. Otherwise returns nil if there is no tunnel usage related to this train id.
+    - A Tunnel Usage Entry Object for if this train is *Actively Using* (approaching, onPortalTrack, underground) a tunnel. Otherwise returns nil if this train isn't actively using a tunnel.
+    - A Tunnel Usage Entry Object for if this train is *Leaving* (approaching, onPortalTrack, underground) a tunnel. Otherwise returns nil if this train isn't leaving a tunnel.
 
 
 

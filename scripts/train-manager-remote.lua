@@ -42,13 +42,7 @@ TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes = function(
     -- Only return valid LuaTrains as otherwise the events are dropped by Factorio.
     tableToPopulate.tunnelUsageId = managedTrainId
     tableToPopulate.primaryState = managedTrain.tunnelUsageState
-    if managedTrain.portalTrackTrain ~= nil then
-        tableToPopulate.train = managedTrain.portalTrackTrain
-    elseif managedTrain.approachingTrain ~= nil then
-        tableToPopulate.train = managedTrain.approachingTrain
-    elseif managedTrain.leavingTrain ~= nil then
-        tableToPopulate.train = managedTrain.leavingTrain
-    end
+    tableToPopulate.train = MOD.Interfaces.TrainManager.GetCurrentTrain(managedTrain)
     tableToPopulate.tunnelId = managedTrain.tunnel.id
 end
 
@@ -79,20 +73,25 @@ TrainManagerRemote.GetTunnelUsageEntry = function(managedTrainId)
 end
 
 ---@param trainId Id
----@return RemoteTunnelUsageEntry
-TrainManagerRemote.GetATrainsTunnelUsageEntry = function(trainId)
-    local trackedTrainIdObject = global.trainManager.trainIdToManagedTrain[trainId]
-    if trackedTrainIdObject == nil then
-        return nil
+---@return RemoteTunnelUsageEntry activelyUsingTunnelUsageEntry
+---@return RemoteTunnelUsageEntry leavingTunnelUsageEntry
+TrainManagerRemote.GetATrainsTunnelUsageEntries = function(trainId)
+    ---@typelist RemoteTunnelUsageEntry, RemoteTunnelUsageEntry
+    local activelyUsingTunnelUsageEntry, leavingTunnelUsageEntry
+
+    local activelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[trainId]
+    if activelyUsingManagedTrain ~= nil then
+        activelyUsingTunnelUsageEntry = {}
+        TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(activelyUsingTunnelUsageEntry, activelyUsingManagedTrain.id)
     end
-    local managedTrain = trackedTrainIdObject.managedTrain
-    if managedTrain ~= nil then
-        local tunnelUsageEntry = {}
-        TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(tunnelUsageEntry, managedTrain.id)
-        return tunnelUsageEntry
-    else
-        return nil
+
+    local leavingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[trainId]
+    if leavingManagedTrain ~= nil then
+        leavingTunnelUsageEntry = {}
+        TrainManagerRemote.PopulateTableWithTunnelUsageEntryObjectAttributes(leavingTunnelUsageEntry, leavingManagedTrain.id)
     end
+
+    return activelyUsingTunnelUsageEntry, leavingTunnelUsageEntry
 end
 
 ---@return table<string, string> @ Entity names.

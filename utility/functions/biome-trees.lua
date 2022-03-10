@@ -111,7 +111,7 @@ BiomeTrees.GetTruelyRandomTree = function(tile)
         -- Is a non-land tile
         return nil
     else
-        return global.UTILITYBIOMETREES.treeData[math.random(#global.UTILITYBIOMETREES.treeData)]
+        return global.UTILITYBIOMETREES.treeData[math.random(#global.UTILITYBIOMETREES.treeData)].name
     end
 end
 
@@ -167,6 +167,7 @@ BiomeTrees._SearchForSuitableTrees = function(tileData, tileTemp, tileMoisture)
             break
         end
     end
+
     return suitableTrees
 end
 
@@ -207,15 +208,16 @@ BiomeTrees._GetEnvironmentData = function()
         environmentData.deadTreeNames = {"dead-tree-desert", "dead-grey-trunk", "dead-dry-hairy-tree", "dry-hairy-tree", "dry-tree"}
         environmentData.randomTreeLastResort = "GetTruelyRandomTree"
     end
+
     return environmentData
 end
 
 BiomeTrees._GetTreeData = function()
-    local treeData = {}
+    local treeDataArray, treeData = {}, {}
     local environmentData = global.UTILITYBIOMETREES.environmentData
     local moistureRangeAttributeName = global.UTILITYBIOMETREES.environmentData.moistureRangeAttributeName
     local treeEntities = game.get_filtered_entity_prototypes({{filter = "type", type = "tree"}, {mode = "and", filter = "autoplace"}})
-    -- NOTE: temperature_optimal and temperature_range show as warnings as API docs don't specifically list them, instead it lists generic dimensions which the machine parsing can't handle.
+
     for _, prototype in pairs(treeEntities) do
         Logging.LogPrint(prototype.name, logData)
         local autoplace = nil
@@ -225,9 +227,10 @@ BiomeTrees._GetTreeData = function()
                 break
             end
         end
+
         if autoplace ~= nil then
             -- Use really wide range defaults for missing moisture values as likely unspecified by mods to mean ALL.
-            treeData[prototype.name] = {
+            treeData = {
                 name = prototype.name,
                 tempRange = {
                     (autoplace.temperature_optimal or 0) - (autoplace.temperature_range or 0),
@@ -240,12 +243,14 @@ BiomeTrees._GetTreeData = function()
                 probability = prototype.autoplace_specification.max_probability or 0.01
             }
             if environmentData.treeMetaData[prototype.name] ~= nil then
-                treeData[prototype.name].tags = environmentData.treeMetaData[prototype.name][1]
-                treeData[prototype.name].tile_restrictions = environmentData.treeMetaData[prototype.name][2]
+                treeData.tags = environmentData.treeMetaData[prototype.name][1]
+                treeData.tile_restrictions = environmentData.treeMetaData[prototype.name][2]
             end
+            table.insert(treeDataArray, treeData)
         end
     end
-    return treeData
+
+    return treeDataArray
 end
 
 BiomeTrees._AddTileDetails = function(tileDetails, tileName, type, range1, range2, tags)

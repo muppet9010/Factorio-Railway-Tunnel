@@ -85,13 +85,13 @@ Notes on this area:
 
 
 Portal part design
----------------------
+------------------
 
 The internal and external end of each portal needs to support having a rail singal 1 tile in. This is so that signals can be placed freely by the player outside of the portal, and for adjacent tunnel segment signals which are on the near portal side for one of the tunnel's 2 portals. This required the ends of portals to be atleast a 2 tile straight rail length and ruled out curved portal ends. Using the special larger end pieces that don't count towards max supported train length seemed more natural for the player, than forcing a short straight at each end and subtracting 12 tiles from the portal's total supported length.
 
 
 Portal graphics
-------------------
+---------------
 
 - The front 3 tiles of the portal area floor can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding). Note that when the open end of the portal is facing the player the tunnel roof is pushed back due to its height.
 - A portal will have a base graphic under regular entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics on both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
@@ -102,17 +102,42 @@ Portal graphics
     - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
 - The entry in/out signal graphics for the lights are currently offset away from the track so they are visible around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
 - On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
+Shadow type sprites don't render over the top of another sprite ever regardless of layer. So to make shadows inside the tunnel affect a trian leaving the tunnel they'd need to be done as a non-shadow semi-transparent dark color.
 
 
 Processing trains per tick
------------------------------
+--------------------------
 
 Explored delaying the TrainManager per tick functions (TrainApproachingOngoing, TrainLeavingOngoing, TrainOnPortalTrackOngoing) to be run every 10 ticks rather than per tick in branch "less_frequent_tick_processing". This did save some mod execution time, estimated around 15%. But it introduced a lot of risk as there could become odd timings between different events that I couldn't test and reasonably reproduce. So decided the UPS savings aren't worth the risk.
 The TrainApproachingOngoing function for setting speed seems less risky to delay as it would just make entering speed less stable, but when tested on a big train and 10 second initial delay it could cause the entering train to double call its signal reservation, flagging the risks involved.
 
 
 Train entry detector
-----------------------------
+--------------------
 
 The train entry detector is intended to prevent *most* invalid tunnel uses while the train is outside of the portal and thus easiest for players to resolve. With the future introduction of manual train driving and other features this protection will likely be weakened. An example of when it won't detect a bad train is if a second train tails a first train into the same portal.
 As it isn't guaranteed to block all bad train usage an undesirable state must be handled by the active elements of the tunnel's usage (transition detectors and traversing train cloning process).
+
+
+Automatic tests not done
+------------------------
+
+- Gui Tests: At present there are no automatic GUI tests. This is due to the module being largely isolated from the rest of the mod and its train complexities. Once the version 2 GUI is done and its finalised then tests can be added. For manual testing the key risk area is the change of portalPart state and train state not triggering the GUIs to update. The fuel distribution and train mining features should be testable on their own at present, but low priority.
+
+
+Player riding train
+-------------------
+
+- In vanilla Factorio a player's screen position when riding in a vanilla train carriage is always 1 tick behind the trains position. This has to be accounted for when comparing players and their vehicles positions on the screen.
+
+
+Train tunnel usage
+------------------
+
+A train can be leaving a tunnel and start to use (approaching, onPortalTrack) another tunnel. But it can not be either leaving 2 tunnels at the same time or using 2 tunnels at once. The portal length of >= to train length prevents a train from physically being able to utilise 2 tunnels for the same action state.
+
+
+Train speed calulations
+-----------------------
+
+As train speeds within a tunnel are estimated from a static air resistence, the larger the acceleration difference from entering to leaving speed the greater the excessive leaving speed. As I have to use a static air resistance value based upon the speed the train initially enters a tunnel and there is no account for the fact this air resistance should increase with speed at present. We do clamp to max trains speed so the train just gets a small acceleration bonus in the tunnel.

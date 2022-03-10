@@ -16,12 +16,13 @@ local Utils = require("utility.utils")
 ---@field tunnelRailEntities table<UnitNumber, LuaEntity> @ the underground rail entities (doesn't include above ground crossing rails).
 ---@field portalRailEntities table<UnitNumber, LuaEntity> @ the rail entities that are part of the portals.
 ---@field maxTrainLengthTiles uint @ the max train length in tiles this tunnel supports.
+---@field guiOpenedByPlayers table<PlayerIndex, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this tunnel.
 
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
 ---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
 ---@field undergroundSegmentEntities  table<UnitNumber, LuaEntity> @ array of all the underground segments making up the underground section of the tunnel.
----@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+---@field tunnelUsageId Id @ the managed train using the tunnel if any.
 
 ---@class RemotePortalDetails
 ---@field portalId Id @ unique id of the portal object.
@@ -68,7 +69,7 @@ Tunnel.TrainEnteringTunnel_OnTrainChangedState = function(event)
     -- In certain edge cases 2 trains can reserve the the tunnel's 2 transition signals simultaneously and the portal entry signal circuitry doesn't have time to react to prevent it.
     -- A train that doesn't leave the portal before turning around will also need to have its request allowed through to the TrainManager.
     local tunnel, train_id = transitionSignal.portal.tunnel, train.id
-    if tunnel.managedTrain ~= nil and tunnel.managedTrain.portalTrackTrainId ~= train_id and tunnel.managedTrain.approachingTrainId ~= train_id and tunnel.managedTrain.leavingTrainId ~= train_id then
+    if tunnel.managedTrain ~= nil and tunnel.managedTrain.trainId ~= train_id then
         -- Tunnel already reserved so this reservation is bad.
         TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
         return
@@ -94,7 +95,8 @@ Tunnel.CompleteTunnel = function(portals, underground)
         force = refPortal.force,
         underground = underground,
         tunnelRailEntities = {},
-        portalRailEntities = {}
+        portalRailEntities = {},
+        guiOpenedByPlayers = {}
     }
     global.tunnels.tunnels[tunnel.id] = tunnel
     global.tunnels.nextTunnelId = global.tunnels.nextTunnelId + 1
@@ -109,6 +111,14 @@ Tunnel.CompleteTunnel = function(portals, underground)
             tunnel.maxTrainLengthTiles = portal.trainWaitingAreaTilesLength
         else
             tunnel.maxTrainLengthTiles = math.min(tunnel.maxTrainLengthTiles, portal.trainWaitingAreaTilesLength)
+        end
+
+        -- Handle any open GUIs on the portals.
+        for _, portalPart in pairs(portal.guiOpenedByParts) do
+            for playerIndex, player in pairs(portalPart.guiOpenedByPlayers) do
+                tunnel.guiOpenedByPlayers[playerIndex] = player
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+            end
         end
     end
     underground.tunnel = tunnel
@@ -171,7 +181,7 @@ end
 ---@class RemoteTunnelDetails @ used by remote interface calls only.
 ---@field tunnelId Id @ Id of the tunnel.
 ---@field portals RemotePortalDetails[] @ the 2 portals in this tunnel.
----@field tunnelUsageId Id @ the managed train usign the tunnel if any.
+---@field tunnelUsageId Id @ the managed train using the tunnel if any.
 
 ---@class RemotePortalDetails
 ---@field portalId Id @ unique id of the portal object.
@@ -265,25 +275,12 @@ end
 -- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
-        return
-    end
-    local createdEntity_type = createdEntity.type
-    if not (createdEntity_type ~= "entity-ghost" and RollingStockTypes[createdEntity_type] ~= nil) and not (createdEntity_type == "entity-ghost" and RollingStockTypes[createdEntity.ghost_type] ~= nil) then
-        return
-    end]]
     if createdEntity_type ~= "entity-ghost" then
         -- Is a real entity so check it approperiately.
         local train = createdEntity.train
 
-        if MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train.id) then
-            -- Carriage was built as part of a managed train, so just ignore it for these purposes.
-            return
-        end
-
         local createdEntity_unitNumber = createdEntity.unit_number
-        -- Look at the train and work out where the placed wagon fits in it. Then chck the approperiate ends of the trains rails.
+        -- Look at the train and work out where the placed wagon fits in it. Then check the approperiate ends of the train's rails.
         local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
         if train.front_stock.unit_number == createdEntity_unitNumber then
             trainFrontStockIsPlacedEntity = true

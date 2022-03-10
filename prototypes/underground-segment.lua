@@ -9,16 +9,7 @@ local undergroundSegmentStraight = {
     collision_mask = {"item-layer", "object-layer", "water-tile"},
     selection_box = {{-2.9, -0.9}, {2.9, 0.9}},
     max_health = 1000,
-    resistances = {
-        {
-            type = "fire",
-            percent = 100
-        },
-        {
-            type = "acid",
-            percent = 100
-        }
-    },
+    resistances = data.raw["wall"]["stone-wall"].resistances,
     flags = {"player-creation", "not-on-map"},
     fast_replaceable_group = "railway_tunnel-underground_segment-straight",
     picture = {

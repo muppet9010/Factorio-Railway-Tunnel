@@ -78,14 +78,14 @@ local blueprintString = "0eNq1ms1y2jAUhd9Fa8hYkiVZ7PsMXXQyjAMq8dTYjG3SMhnevTakJQ
 
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.trainState .. "     " .. testScenario.tunnelPart .. "     " .. testScenario.removalAction .. "     Expected result: " .. testScenario.expectedTunnelState .. " tunnel - " .. testScenario.expectedTrainState .. " train"
 end
 
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     local surface = TestFunctions.GetTestSurface()
 

@@ -1,5 +1,5 @@
 --[[
-    A series of tests that removes the target train stop and rail while the tunnel is in use. The train will have an alternative station target either in fron of it, behind it, or none. As we remove the rail in all different tunnel states this tests the full range of reactions by the managed train. Covers:
+    A series of tests that removes the target train stop and rail while the tunnel is in use. The train will have an alternative station target either in front of it, behind it, or none. As we remove the rail in all different tunnel states this tests the full range of reactions by the managed train. Covers:
         - TargetTypes = rail, trainStop
         - TunnelUsageStates = startApproaching, onPortalTrack, entered, leaving, partlyLeftExitPortalTracks.
         - NextScheduleOrder = none, forwards, reversal.
@@ -67,14 +67,14 @@ local blueprintString = "0eNqtW9tu2koU/Rc/Q+U9Vw8f0A/oeTw6ihyYUqvGRrYhJ4r4945L2q
 
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.targetType .. "     " .. testScenario.tunnelUsageState .. "     " .. tostring(testScenario.nextScheduleOrder) .. "     Expected result: " .. testScenario.expectedFinalTrainState
 end
 
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     local surface = TestFunctions.GetTestSurface()
 

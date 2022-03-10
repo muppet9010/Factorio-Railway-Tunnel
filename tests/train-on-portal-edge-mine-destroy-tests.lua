@@ -31,7 +31,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.actionType
 end
@@ -39,7 +39,7 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local blueprint = "0eNq1mN9yojAUxt8l18CYf0Z8kb3YcRyKWZtZTJwkdNdxePcN4mxtwfb0YK8Uid/vkHzfAXImT02rj97YSNZnYmpnA1n/PJNg9rZq+t/i6ajJmpioDyQjtjr0R74yzZ/qtI2ttbrJj87HqtkGvT9oG/MQ0/n9cyRdRozd6b9kTbsMKart7kaHdZuMJIaJRg+VXg5OW9senrRPoP9yfRE21eKOCXF0If3F2R6eZHKRxp3SZ6qL7IzX9XBymZEQq+E7+aFDfwkjBANUPCYyfiGOgS+VN1cknaDxr076GE1LHFo8AK1waPkAtMShlw9AI9daPQBNp9DsU/RqPrrEkcv5ZIUj0wUqyRxJo/dobeptfu9d+hxdbd6P3dbehWDsflwNcrkpwxQzxmPngj8GL5F48R1LgXWhxLhwOueftxg6v71hGyud396wtxM6v71hb6J0fn9jyJCzxXw0MuCMzkcjw83YfDTSZoxjosyRUWZvu1h+fbwe6YtVMUxlvijku9mckn3tR2863/2naAoQXYJFeQkWVXBRBRZ9bRWNq93BRfOipxRZwVb0xqTOmyR1Xa9FoeSUeAmvWEIr5gu4KAeLUrgo2AWcgUUZ2AWcw0XBLuACKvqFdQIHC+5WvgS5VbCCrtQHXs0u7+KhH+5d/VvH/Fer06u67Kag4NzBs8xXUE140+HgtAlwLgQ4bAJsDAHOmgAbQ4CjJsBrJMBJk+A1EuCgSfgaSVAopCrUxx38XiqWU6kQ4FuchDsDnDQJdwY4afKOMzYZCfWz3rXNdQ/udZb749SThLwZM2wovttW2/Qql/2/9c0eZHrm0T4MmBUVqmRKlFIoybvuH3ksAsQ="

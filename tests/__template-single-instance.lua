@@ -8,6 +8,7 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 --- How long the test runs for (ticks) before being failed as un-completed. Should be safely longer than the test should take to complete, but can otherwise be approx.
 Test.RunTime = 3600
@@ -28,14 +29,14 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local blueprint = "0eNq1WMtu2zAQ/JWAZykQuXz6I3rpsQgMRWYdorJk6JHWMPzvpSQ3NuJNom0UH2wL5M6Qo1lKu0f2WPZ+34SqY6sj2/i2aMK+C3XFVoyn/K5r8lDd5dXmruurypcsYaGoq5atfhxZG7ZVXg6B3WHvY0To/C7OqPLdcBVDy9/5YT1Fpvu66fJy7asNO0WUauP/sBU/JbNwrkLEjJCyLupd3YVnfxUIaOBzaLo+Ly+x04xUXEXK00PCfNWFLvhp6+PFYV31u0ffxG1gzAnb122YxDyyYeUqYQe2SnXcAqubEEHyaThLWFGXdTNMjF/ZvYLxozmX1oIUwiqu9ACwHYaFk5wbrRxABtpmkjsnuDVx/HEczyBeK8PBgAOnuOQ6OwPkw4RsmqCtjRjaxhHtLGgplLFcqGHrUdB2XE9d/PJd+rOPd3+lToOIr3YvLtoNftk+del4z94WAIWBF5jRdWnb1XsEw7xgJJHvLCD7Ft31xBBUSV4cYItTZBiOwWgqjHIYjCH5Takbv92r147jkx+0jn9s9JY1zloxmOHsOamFkYpnmVDO2Cza0liXjZYaPWeMUNJlAFzLYYIwIMF8ieEsWUWDwTgyDLoanpFxUItxTsZBPcbJ+ShRk3Eg46Ayc3IKSlxncg5KXGdyEkpcZzPjUfcmJpjo+U1ofDENRpGe8yacE5RjfPYDvtZvdzEm/berd8iBTO6WI4/4H9GJbDE64WbQ8eXozAw6sRydot5JAcuRk20k5HLknEyuPpOwnJywQr/F18f3ymbb1PH3ZsfjWbQumrptQ7V9Zz0ww2jmf1bwDuec1LXLcs5JX/eVQs9IaMg+9SiYQbDYATXjDsJix9OcnS12HKkZZIsdP+TDANRS1I5MrRczD/nMBbMYN/lhA/YTWUk/7oFaTwj0tVJSywmBvuVKajUh0JduSS0mBFoDSGotIdCSRFJLCcAlplYSgEtMLSQAl9hQYXCJqVUx4BJTXYwXR4rqYrxWU1QX46WjoroYr2QV1cV4Ya2oLsbrfEV1Md52UFQX410QZea172DCuD1dL72873WP9/IU1eJD3+chQhdPftOX597tpWU2XPPEXM2Y+trISm46jQ8D8Nh1Xl010eNDwjftOFFYLo0TRjolzSD9XyErxQk="
+    local blueprint = "0eNq1WduOmzAQ/Rc/J5U942ve+w19qFYRS9wsKoEIyLbRKv9eO6SbXUFbj8vmJYCdcyacOTMGv7DH+uSPXdUMbPPCqrJterb5+sL6at8Udbw2nI+ebVg1+ANbsaY4xLOuqOofxXk7nJrG1+tj2w1Fve39/uCbYd0PYXz/NLDLilXNzv9kG3FZZYL6ZvcGBy4PKxY4qqHyY6TXk/O2OR0efReIXuFiEE2IpT0GimPbh5+0TSQPMGuh3Iqdw4ELkbFd1flyHNYr1g/FeMy++D7+iQkJJMQ8wylunNZNOJ+LrrqxihlCpN75OXaVyy6XYMdcdrUEu8hl1wuw82zdzRLsZp4d/slul2BXuexuCXbMZRc8y+POZROKPxGeQunr9l0bvid/eh3nbsuu7fuq2c8FlH3/BeQENBdCvgi4VAgiOwT5IbLY/DxRWYlps6u/WKAE2uz6KxYogSa7/ooFSqAx2ewLlECT7X/gC7BnWx/EAuzZrgf4f3adnXWAWRbX2RaHe5F7V8H+tnCe3NQ5XEXANQRcTcBVBFxDwEUCriXgCgKuS8eVBN2QE3AJuqEg4BJ0QyDgEnRDJOASdEOC35CiG8FvSNGN4Dek6EbwG1J0I/gNKboR/AYE3STBb0DQTRL8BgTdJMFvQNBNpvtNE2ST6XajdDeZ7jZKc5PpZqP0NpnuNUprk+lWo3Q2eXda3ZbtoR2qZz+D+a77tF0VYG7rHP4pLn3Ltm67OLmLV4QDobTVOhxYYbQ1ztpwFHN/HydIDUYqwTkoZyy3Fo11XMfxxyukASUdRxRaxglgUGLkKeIo5zgSWOVQW6VBO4tagjKRI77FHPyhv4bTlt/9sP528jXbqMvca6/0mkBp7Sq9JFA6u0qvCJTGrjAxDfif0wAmaaDw+tFCyKCwBLAqqPaaBOCkCMkRNEQeZORSuCCrNb+TAEaZTWih6NCp0Po1vwF8QB6kFy/K0kalFy/KykalFy/KwkalFy/KukbZtN2CV0wzeZC8bxZ8LuJmwUO4VD753am+7U/c8zaeB6sqfDNn3GyZbjhMYCPwdbtk82bLJjzY+a4fQ7FhJe7AKLAgES6XX60Og40="
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
-    -- Get the "South" train stop of the 2 train stops we know are in the BP.
-    local southTrainStop = placedEntitiesByGroup["train-stop"][1]
-    if southTrainStop.backer_name ~= "South" then
-        southTrainStop = placedEntitiesByGroup["train-stop"][2]
+    -- Get the "West" train stop of the 2 train stops we know are in the BP.
+    local westTrainStop = placedEntitiesByGroup["train-stop"][1]
+    if westTrainStop.backer_name ~= "West" then
+        westTrainStop = placedEntitiesByGroup["train-stop"][2]
     end
 
     -- Add test data for use in the EveryTick().
@@ -44,7 +45,7 @@ Test.Start = function(testName)
     ---@class Tests_TSI_TestScenarioBespokeData
     local testDataBespoke = {
         announcedTunnelUsage = false, ---@type boolean
-        southTrainStop = southTrainStop ---@type LuaEntity
+        westTrainStop = westTrainStop ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
 
@@ -67,18 +68,18 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_TSI_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    if tunnelUsageChanges.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+    if tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
         game.print("train has completed tunnel trip")
     end
 
-    if not testDataBespoke.southTrainStop.valid then
-        TestFunctions.TestFailed(testName, "South station was removed")
+    if not testDataBespoke.westTrainStop.valid then
+        TestFunctions.TestFailed(testName, "West station was removed")
         return
     end
 
-    if testDataBespoke.southTrainStop.get_stopped_train() ~= nil then
-        game.print("train reached South station, so stop test")
+    if testDataBespoke.westTrainStop.get_stopped_train() ~= nil then
+        game.print("train reached West station, so stop test")
         TestFunctions.TestCompleted(testName)
         return
     end

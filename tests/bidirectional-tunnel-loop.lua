@@ -14,16 +14,16 @@ local TrainCompositions = {
 ---@class Tests_BTL_StartingSpeeds
 local StartingSpeeds = {
     none = 0,
-    half = 0.6,
-    full = 1.4
+    half = 0.7, -- half max speed.
+    full = 1.4 -- 1.4 speed is the max of this train type and fuel type in the BP.
 }
 
 -- Test configuration.
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificTrainCompositionsFilter = {} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificStartingSpeedsFilter = {} -- Pass in an array of StartingSpeeds keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificTrainCompositionsFilter = {} -- Pass in an array of TrainCompositions keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificStartingSpeedsFilter = {} -- Pass in an array of StartingSpeeds keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -44,7 +44,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):        " .. testScenario.trainComposition.composition .. "      speed: " .. testScenario.startingSpeed
 end
@@ -52,7 +52,7 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     --Place the tracls, tunnel, stations, etc.
@@ -72,7 +72,7 @@ Test.Start = function(testName)
     -- Add the train.
     local carriageLength = #testScenario.trainDetails * 7
     local frontOfTrainPosition = {x = northStation.position.x - 2, y = northStation.position.y + carriageLength}
-    local train = TestFunctions.BuildTrain(frontOfTrainPosition, testScenario.trainDetails, defines.direction.south, nil, testScenario.startingSpeed, {name = "rocket-fuel", count = 10})
+    local train = TestFunctions.BuildTrain(frontOfTrainPosition, testScenario.trainDetails, defines.direction.south, nil, testScenario.startingSpeed, {name = "rocket-fuel", count = 50})
     train.schedule = {
         current = 1,
         records = {

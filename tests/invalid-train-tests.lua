@@ -28,9 +28,9 @@ local Delay = {
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificStateToRemoveOnFilter = {} -- Pass in an array of StateToRemoveOn keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificCarriageToRemoveFilter = {} -- Pass in an array of CarriageToRemove keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificDelayFilter = {} -- Pass in an array of Delay keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificStateToRemoveOnFilter = {} -- Pass in an array of StateToRemoveOn keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificCarriageToRemoveFilter = {} -- Pass in an array of CarriageToRemove keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificDelayFilter = {} -- Pass in an array of Delay keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -49,14 +49,14 @@ end
 
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.stateToRemoveOn .. "    -    " .. testScenario.carriageToRemove .. "    -    delay: " .. testScenario.delay
 end
 
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local blueprint = "0eNq1Wt1y8jYQfRdfQ0bS6pf77wl60YtOJkOMSjwFm7FN2kyGd69kAwkgmoOgVwRkn7PW2V3tevNZvK62ftNWdV/MPouqbOqumP3xWXTVsp6v4m/9x8YXs6Lq/bqYFPV8Hb+182pV7CZFVS/8P8WM7ybQLX/PP176bV371XTTtP189dL55drX/bTrw/ryrf8GKnbPkyKsVX3lR6OGLx8v9Xb96tvAesQ+3D0d7JoUm6YLdzV1NCYgTZWaFB/hk/NdtPQMRxxxIkwdbGk2KRA6gkwC43xcK373XbT6ApVQ6/7bOAkZp0zStl/ztG3qCFpu23e/uLpvcoTVAXVRtb4cF2UCUmOQVxBVAtHg8vIRlH4GteCTSztAslNEk0B0Jx4+3UdBAtE97YUWT+oUlhKwnGGWpg0VKUQ4Xq7sZ9JM8UOA+3qR2AwaY4mfEgQfep+31d57eYqObs0nl9zCZXLLB3CbTG71AG6Vya0fwJ2rt3kAN09xi5+57f3c3GVyuwdwmzxuwbJCmlMmHb9Gtw11QLtsm/B58bxD5nop26brqnqZMCdz44XIsSbBn7v59CB+lckv/xc1cn1D5bgiz8s14v48l5lhxf1ZLvNcEffnuMzTVNyf4XhmYid2P3WmQxO/nzozskncT53pZUQ5YSwy45hOU9i0fBv6pit1ueKHspydl+WpIpoUVu4rcYDl57CptoQ03OzotP4pULyD0gSDWhyUw6AO7/UcCioZDmpg0JtfOiCgAgeFhZJ0W6srzuIsBSlvbckROxUMKnHt8XiSuPZ4PElcezyeJK49Hk8SFkrh8USwUAqPJ4KFUnA8CVgnBb/PE7idcDwJfEPhcCJceTiaCHZRBQcT4Rp9xdKqKZt101fvPgH4tZlNWwWMfTHBnkygKptV08Yr2/iLNFYSJ0OWpGbOWUWKKx39ZjncoaVhyjpNxihN0uhx8TUuWnIiXOyUVZYxbph1AS2SzOMyY+O6tcqRtuFG7SxpKZSxXMSqIb5B7wZbmvIv30//3PpVLCBSzw6HPB5HGo54POA1HPB4ZtIC0j0eCmndxYXuTirmLJNCWhv+4FIq4kfV+SCbFkFtpZjmJBmRYOMVg/QsLErFg+jSWWeC1Dz4kLDDFY9XX8PZCT9ENJyd8NNOw9kJP5Y1nJ3w+kGbG9+VI5hYdlL6acwRaIriTrOYpaSyWgkZUhEZ69hXjrLRFUPuYtpoa5w9uOHgqIYPKSwkL0XMaG64vTtBJQdZGk5QeI1r2I1DNgQTH5PALmrgggRvbwwc8ngfZm4u8NXPAzIDtszTYyt+MSBLtflG3zbEtACkASfBe+HP5mPy++j1N1829SI1fDX25haSdnEW3pVvfrFd7YfhXzkkfg+ljxbfrhmH+GdD6udozel92l6/6fAIz5F8GObPvv27wKR49203ulI4H40TJlRGnDTb7f4F4gimGg=="

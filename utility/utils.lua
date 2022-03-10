@@ -203,6 +203,46 @@ Utils.DestroyCarriagesOnRailEntity = function(railEntity, killForce, killerCause
     end
 end
 
+--- Mines any carriages that would prevent the rail from being removed.
+---@param railEntity LuaEntity
+---@param surface LuaSurface
+---@param ignoreMinableEntityFlag boolean @ If TRUE an entities "minable" attribute will be ignored and the entity mined. If FALSE then the entities "minable" attribute will be honoured.
+---@param destinationInventory LuaInventory
+---@param stopTrain boolean @ If TRUE stops the train that it will try and mine.
+Utils.MineCarriagesOnRailEntity = function(railEntity, surface, ignoreMinableEntityFlag, destinationInventory, stopTrain)
+    -- Check if any carriage prevents the rail from being removed before just killing all carriages within the rails collision boxes as this is more like vanilla behaviour.
+    if not railEntity.can_be_destroyed() then
+        local railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "collision_box")
+        local positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
+        local carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+        for _, carriage in pairs(carriagesFound) do
+            -- If stopTrain is enabled and the carriage is currently moving stop its train.
+            if stopTrain then
+                if carriage.speed ~= 0 then
+                    carriage.train.speed = 0
+                    carriage.train.manual_mode = true
+                end
+            end
+            carriage.mine {inventory = destinationInventory, ignore_minable = ignoreMinableEntityFlag, raise_destroyed = true}
+        end
+        if railEntity.type == "curved-rail" then
+            railEntityCollisionBox = PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, railEntity.name, "secondary_collision_box")
+            positionedCollisionBox = Utils.ApplyBoundingBoxToPosition(railEntity.position, railEntityCollisionBox, railEntity.orientation)
+            carriagesFound = surface.find_entities_filtered {area = positionedCollisionBox, type = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}}
+            for _, carriage in pairs(carriagesFound) do
+                -- If stopTrain is enabled and the carriage is currently moving stop its train.
+                if stopTrain then
+                    if carriage.speed ~= 0 then
+                        carriage.train.speed = 0
+                        carriage.train.manual_mode = true
+                    end
+                end
+                carriage.mine {inventory = destinationInventory, ignore_minable = ignoreMinableEntityFlag, raise_destroyed = true}
+            end
+        end
+    end
+end
+
 ---@param thing table
 ---@return boolean
 Utils.IsTableValidPosition = function(thing)
@@ -402,6 +442,7 @@ Utils.RotateOffsetAroundPosition = function(orientation, offset, position)
 end
 
 --- Rotates the directionToRotate by a direction difference from the referenceDirection to the appliedDirection. Useful for rotating entities direction in proportion to a parent's direction change from known direction.
+---
 --- Should be done locally if called frequently.
 ---@param directionToRotate defines.direction
 ---@param referenceDirection defines.direction
@@ -533,6 +574,7 @@ Utils.RoundNumberToDecimalPlaces = function(num, numDecimalPlaces)
 end
 
 --- Checks if the provided number is a NaN value.
+---
 --- Should be done locally if called frequently.
 ---@param value number
 ---@return boolean valueIsANan
@@ -575,6 +617,7 @@ Utils.LoopFloatValueWithinRange = function(value, min, max)
 end
 
 --- This treats the min and max values as equal when looping: max - 0.1, max/min, min + 0.1. But maxExclusive will give the minInclusive value. So maxExclsuive can never be returned.
+---
 --- Should be done locally if called frequently.
 ---@param value number
 ---@param minInclusive number
@@ -600,6 +643,7 @@ Utils.ClampNumber = function(value, min, max)
 end
 
 --- Takes a orientation (0-1) and returns a direction (int 0-7).
+---
 --- Should be done locally if called frequently.
 ---@param orientation RealOrientation @ Will be rounded to the nearest cardinal or intercardinal direction.
 ---@return defines.direction
@@ -616,6 +660,7 @@ Utils.OrientationToDirection = function(orientation)
 end
 
 --- Takes a direction (int 0-7) and returns an orientation (0-1).
+---
 --- Should be done locally if called frequently.
 ---@param directionValue defines.direction
 ---@return RealOrientation
@@ -650,6 +695,7 @@ Utils.LoopDirectionValue = function(directionValue)
 end
 
 --- Takes an orientation input value and if it's greater/less than the allowed orientation range it loops it back within the range.
+---
 --- Should be done locally if called frequently.
 ---@param orientationValue RealOrientation
 ---@return RealOrientation
@@ -927,6 +973,7 @@ Utils.TableValueToCommaString = function(aTable)
 end
 
 --- Makes a numbered text string from a table's keys with the keys wrapped in single quotes.
+---
 --- i.e. 1: 'firstKey', 2: 'secondKey'
 ---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.t
 ---@return string
@@ -948,6 +995,7 @@ Utils.TableKeyToNumberedListString = function(aTable)
 end
 
 --- Makes a numbered text string from a table's values with the values wrapped in single quotes.
+---
 --- i.e. 1: 'firstValue', 2: 'secondValue'
 ---@param aTable table @ doesn't support commas in values or nested tables. Really for logging.t
 ---@return string
@@ -1198,7 +1246,8 @@ Utils.WasCreativeModeInstantDeconstructionUsed = function(event)
 end
 
 --- Updates the 'chancePropertyName' named attribute of each entry in the referenced `dataSet` table to be proportional of a combined dataSet value of 1.
--- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
+---
+--- The dataset is a table of entries. Each entry has various keys that are used in the calling scope and ignored by this funciton. It also has a key of the name passed in as the chancePropertyName parameter that defines the chance of this result.
 ---@param dataSet table[] @ The dataSet to be reviewed and updated.
 ---@param chancePropertyName string @ The attribute name that has the chance value per dataSet entry.
 ---@param skipFillingEmptyChance boolean @ If TRUE then total chance below 1 will not be scaled up, so that nil results can be had in random selection.
@@ -1512,53 +1561,86 @@ Utils.GetValueAndUnitFromString = function(text)
     return string_match(text, "%d+%.?%d*"), string_match(text, "%a+")
 end
 
--- Moves the full Lua Item Stacks so handles items with data and other complicated items. Updates the passed in inventory object.
----@return boolean @ if all items were moved successfully or not.
+--- Moves the full Lua Item Stacks from the source to the target inventories if possible. So handles items with data and other complicated items. --- Updates the source inventory counts in inventory object.
+---@param sourceInventory LuaInventory
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground (regardless of ratioToMove value). If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@param ratioToMove? double|null @ Ratio of the item count to try and move. Float number from 0 to 1. If not provided it defaults to 1. Number of items moved is rounded up.
+---@return boolean everythingMoved @ If all items were moved successfully in to the targetInventory. Ignores if things were dumped on the ground.
+---@return boolean anythingMoved @ If any items were moved successfully in to the targetInventory. Ignores if things were dumped on the ground.
 Utils.TryMoveInventoriesLuaItemStacks = function(sourceInventory, targetInventory, dropUnmovedOnGround, ratioToMove)
-    local sourceOwner, itemAllMoved = nil, true
+    -- Set default values.
+    ---@typelist LuaEntity, boolean, boolean
+    local sourceOwner, itemAllMoved, anythingMoved = nil, true, false
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
     end
     if ratioToMove == nil then
         ratioToMove = 1
     end
+
+    -- Clamp ratio to between 0 and 1.
+    ratioToMove = math_min(math_max(ratioToMove, 0), 1)
+
+    -- Handle simple returns that don't require item moving.
     if sourceInventory == nil or sourceInventory.is_empty() then
-        return itemAllMoved
+        return true, false
     end
+    if ratioToMove == 0 then
+        return false, false
+    end
+
+    --Do the actual item moving.
     for index = 1, #sourceInventory do
-        local itemStack = sourceInventory[index]
+        local itemStack = sourceInventory[index] ---@type LuaItemStack
         if itemStack.valid_for_read then
-            local toMoveCount = math_ceil(itemStack.count * ratioToMove)
-            local itemStackToMove = Utils.DeepCopy(itemStack)
-            itemStackToMove.count = toMoveCount
-            local movedCount = targetInventory.insert(itemStackToMove)
-            local remaining = itemStack.count - movedCount
+            -- Work out how many to try and move.
+            local itemStack_origionalCount = itemStack.count
+            local maxToMoveCount = math_ceil(itemStack_origionalCount * ratioToMove)
+
+            -- Have to set the source count to be the max amount to move, try the insert, and then set the source count back to the required final result. As this is a game object and so I can't just clone it to try the insert with without losing its associated data.
+            itemStack.count = maxToMoveCount
+            local movedCount = targetInventory.insert(itemStack)
+            itemStack.count = itemStack_origionalCount - movedCount
+
+            -- Check what was moved and any next steps.
             if movedCount > 0 then
-                itemStack.count = remaining
+                anythingMoved = true
             end
-            if remaining > 0 then
+            if movedCount < maxToMoveCount then
                 itemAllMoved = false
                 if dropUnmovedOnGround then
                     sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
-                    sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = itemStack.name, count = remaining}, true, sourceOwner.force, false)
+                    sourceOwner.surface.spill_item_stack(sourceOwner.position, itemStack, true, sourceOwner.force, false)
+                    itemStack.count = 0
                 end
             end
         end
     end
 
-    return itemAllMoved
+    return itemAllMoved, anythingMoved
 end
 
--- Can only move the item name and count via API, Facotrio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
----@return boolean @ if all items were moved successfully or not.
+--- Try and move all equipment from a grid to an inventory.
+---
+--- Can only move the item name and count via API, Factorio doesn't support putting equipment objects in an inventory. Updates the passed in grid object.
+---@param sourceGrid LuaEquipmentGrid
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground. If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@return boolean everythingMoved @ If all items were moved successfully or not.
 Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGround)
-    if sourceGrid == nil then
-        return
-    end
+    -- Set default values.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
     end
+
+    -- Handle simple returns that don't require item moving.
+    if sourceGrid == nil then
+        return
+    end
+
+    --Do the actual item moving.
     for _, equipment in pairs(sourceGrid.equipment) do
         local moved = targetInventory.insert({name = equipment.name, count = 1})
         if moved > 0 then
@@ -1569,18 +1651,21 @@ Utils.TryTakeGridsItems = function(sourceGrid, targetInventory, dropUnmovedOnGro
             if dropUnmovedOnGround then
                 sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
                 sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = equipment.name, count = 1}, true, sourceOwner.force, false)
+                sourceGrid.take({equipment = equipment})
             end
         end
     end
     return itemAllMoved
 end
 
--- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
----@return boolean @ if all items were moved successfully or not.
+--- Just takes a list of item names and counts that you get from the inventory.get_contents(). Updates the passed in contents object.
+---@param contents table<string, uint> @ A table of item names to counts, as returned by LuaInventory.get_contents().
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground. If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@param ratioToMove? double|null @ Ratio of the item count to try and move. Float number from 0 to 1. If not provided it defaults to 1. Number of items moved is rounded up.
+---@return boolean  everythingMoved @ If all items were moved successfully or not.
 Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
-    if Utils.IsTableEmpty(contents) then
-        return
-    end
+    -- Set default values.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
@@ -1588,6 +1673,19 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
     if ratioToMove == nil then
         ratioToMove = 1
     end
+
+    -- Clamp ratio to between 0 and 1.
+    ratioToMove = math_min(math_max(ratioToMove, 0), 1)
+
+    -- Handle simple returns that don't require item moving.
+    if Utils.IsTableEmpty(contents) then
+        return
+    end
+    if ratioToMove == 0 then
+        return false, false
+    end
+
+    --Do the actual item moving.
     for name, count in pairs(contents) do
         local toMove = math_ceil(count * ratioToMove)
         local moved = targetInventory.insert({name = name, count = toMove})
@@ -1600,18 +1698,21 @@ Utils.TryInsertInventoryContents = function(contents, targetInventory, dropUnmov
             if dropUnmovedOnGround then
                 sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
                 sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = name, count = remaining}, true, sourceOwner.force, false)
+                contents[name] = 0
             end
         end
     end
     return itemAllMoved
 end
 
--- Takes a table of SimpleItemStack and inserts them in to an inventory. Updates the passed in contents object.
----@return boolean @ if all items were moved successfully or not.
-Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGround, ratioToMove)
-    if contents == nil or #contents == 0 then
-        return
-    end
+--- Takes an array of SimpleItemStack and inserts them in to an inventory. Updates each SimpleItemStack passed in with the new count.
+---@param simpleItemStacks SimpleItemStack[]
+---@param targetInventory LuaInventory
+---@param dropUnmovedOnGround? boolean|null @ If TRUE then ALL items not moved are dropped on the ground. If FALSE then unmoved items are left in the source inventory. If not provided then defaults to FALSE.
+---@param ratioToMove? double|null @ Ratio of the item count to try and move. Float number from 0 to 1. If not provided it defaults to 1. Number of items moved is rounded up.
+---@return boolean everythingMoved @ If all items were moved successfully or not.
+Utils.TryInsertSimpleItems = function(simpleItemStacks, targetInventory, dropUnmovedOnGround, ratioToMove)
+    -- Set default values.
     local sourceOwner, itemAllMoved = nil, true
     if dropUnmovedOnGround == nil then
         dropUnmovedOnGround = false
@@ -1619,24 +1720,39 @@ Utils.TryInsertSimpleItems = function(contents, targetInventory, dropUnmovedOnGr
     if ratioToMove == nil then
         ratioToMove = 1
     end
-    for index, simpleItemStack in pairs(contents) do
+
+    -- Clamp ratio to between 0 and 1.
+    ratioToMove = math_min(math_max(ratioToMove, 0), 1)
+
+    -- Handle simple returns that don't require item moving.
+    if simpleItemStacks == nil or #simpleItemStacks == 0 then
+        return
+    end
+    if ratioToMove == 0 then
+        return false, false
+    end
+
+    --Do the actual item moving.
+    for index, simpleItemStack in pairs(simpleItemStacks) do
         local toMove = math_ceil(simpleItemStack.count * ratioToMove)
-        local moved = targetInventory.insert({name = simpleItemStack.name, count = toMove, health = simpleItemStack.health, durability = simpleItemStack.durablilty, ammo = simpleItemStack.ammo})
+        local moved = targetInventory.insert({name = simpleItemStack.name, count = toMove, health = simpleItemStack.health, ammo = simpleItemStack.ammo})
         local remaining = simpleItemStack.count - moved
         if moved > 0 then
-            contents[index].count = remaining
+            simpleItemStacks[index].count = remaining
         end
         if remaining > 0 then
             itemAllMoved = false
             if dropUnmovedOnGround then
                 sourceOwner = sourceOwner or targetInventory.entity_owner or targetInventory.player_owner
                 sourceOwner.surface.spill_item_stack(sourceOwner.position, {name = simpleItemStack.name, count = remaining}, true, sourceOwner.force, false)
+                simpleItemStacks[index].count = 0
             end
         end
     end
     return itemAllMoved
 end
 
+--- Get the inventory of the builder (player, bot, or god controller).
 ---@param builder EntityActioner
 Utils.GetBuilderInventory = function(builder)
     if builder.is_player() then
@@ -1648,19 +1764,22 @@ Utils.GetBuilderInventory = function(builder)
     end
 end
 
+--- Returns either tha player or force for robots from the EntityActioner. If script then returns neither.
+---
+--- Useful for passing in to rendering player/force filters or for returning items to them.
 ---@param actioner EntityActioner
----@return LuaPlayer[] @ Table of players or nil.
----@return LuaForce[] @ Table of forces or nil.
-Utils.GetRenderPlayersForcesFromActioner = function(actioner)
+---@return LuaPlayer|null
+---@return LuaForce|null
+Utils.GetPlayerForceFromActioner = function(actioner)
     if actioner == nil then
         -- Is a script.
         return nil, nil
     elseif actioner.is_player() then
         -- Is a player.
-        return {actioner}, nil
+        return actioner, nil
     else
         -- Is construction bot.
-        return nil, {actioner.force}
+        return nil, actioner.force
     end
 end
 
@@ -1916,9 +2035,8 @@ Utils.EntityDie = function(entity, killerForce, killerCauseEntity)
     end
 end
 
-Utils.MaxTrainStopLimit = 4294967295 ---@type uint
-
 --- Returns a luaObject if its valid, else nil. Convientent for inline usage when rarely called.
+---
 --- Should be done locally if called frequently.
 ---@param luaObject LuaBaseClass
 ---@return LuaBaseClass|null
@@ -1931,6 +2049,7 @@ Utils.ReturnValidLuaObjectOrNil = function(luaObject)
 end
 
 --- Gets the carriage at the head (leading) the train in its current direction.
+---
 --- Should be done locally if called frequently.
 ---@param train LuaTrain
 ---@param isFrontStockLeading boolean @ If the trains speed is > 0 then pass in true, if speed < 0 then pass in false.
@@ -1944,10 +2063,10 @@ Utils.GetLeadingCarriageOfTrain = function(train, isFrontStockLeading)
 end
 
 --- Checks the locomtive for its current fuel and returns it's prototype. Checks fuel inventories if nothing is currently burning.
----@param loco LuaEntity
+---@param locomotive LuaEntity
 ---@return LuaItemPrototype|null currentFuelPrototype @ Will be nil if there's no current fuel in the locomotive.
-Utils.GetLocomotivesCurrentFuelPrototype = function(loco)
-    local loco_burner = loco.burner
+Utils.GetLocomotivesCurrentFuelPrototype = function(locomotive)
+    local loco_burner = locomotive.burner
 
     -- Check any currently burning fuel inventory first.
     local currentFuelItem = loco_burner.currently_burning
@@ -1985,53 +2104,53 @@ end
 ---@field trainWeight double @ The total weight of the train.
 ---@field trainFrictionForce double @ The total friction force of the train.
 ---@field trainWeightedFrictionForce double @ The train's friction force divided by train weight.
----@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add.
+---@field locomotiveFuelAccelerationPower double @ The max acceleration power per tick the train can add for the fuel type on last data update.
+---@field locomotiveAccelerationPower double @ The max raw acceleration power per tick the train can add (ignoring fuel bonus).
 ---@field trainAirResistanceReductionMultiplier double @ The air resistance of the train (lead carriage in current direction).
----@field maxSpeed double @ The max speed the train can achieve.
+---@field maxSpeed double @ The max speed the train can achieve on current fuel type.
 ---@field trainRawBrakingForce double @ The total braking force of the train ignoring any force bonus percentage from LuaForce.train_braking_force_bonus.
----@field forwardFacingLocoCount uint @ The number of locomotives facing forwards. Used when recalcultaing locomotiveAccelerationPower.
+---@field forwardFacingLocoCount uint @ The number of locomotives facing forwards. Used when recalcultaing locomotiveFuelAccelerationPower.
 
 ---@class Utils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
----@field entity LuaEntity
+---@field entity LuaEntity @ Minimum this must be populated and the functions will populate other details if they are requried during each function's operation.
+---@field prototypeType? string|null
 ---@field prototypeName? string|null
 ---@field faceingFrontOfTrain? boolean|null @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
 
 --- Get the data other Utils functions need for calculating and estimating; a trains future speed, time to cover distance, etc.
+---
 --- This is only accurate while the train is heading in the same direction as when this data was gathered and requires the train to be moving.
---- Assumes all forward facing locomotives have the same fuel as the first one found. If no fuel is found in any locomotive then a default value of 1 is used and the return "noFuelFound" will indicate this,
---- Either train_carriages or trainCarriagesDataArray needs to be provided.
+---
+--- Assumes all forward facing locomotives have the same fuel as the first one found. If no fuel is found in any locomotive then a default value of 1 is used and the return "noFuelFound" will indicate this.
+---
+--- Either trainCarriagesDataArray or train_carriages needs to be provided.
 ---@param train LuaTrain
 ---@param train_speed double @ Must not be 0 (stationary train).
----@param train_carriages? LuaEntity[]|null @ If provided the carriage data will be obtained as needed, but not cached.
----@param trainCarriagesDataArray? Utils_TrainCarriageData[]|null @ If provided and it doesn't include the required data it will be obtained and added in to the cache table.
+---@param trainCarriagesDataArray? Utils_TrainCarriageData[]|null @ An array of carriage data for this train in the Utils_TrainCarriageData format in the same order as the train's internal carriage order. If provided and it doesn't include the required attribute data on the carriages it will be obtained and added in to the cache table.
+---@param train_carriages? LuaEntity[]|null @ If trainCarriagesDataArray isn't provided then the train's carriage array will need to be provided. The required attribute data on each carriage will have to be obtainedm, but not cached or passed out.
 ---@return Utils_TrainSpeedCalculationData trainSpeedCalculationData
 ---@return boolean noFuelFound @ TRUE if no fuel was found in any forward moving locomotive. Generally FALSE is returned when all is normal.
-Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriages, trainCarriagesDataArray)
+Utils.GetTrainSpeedCalculationData = function(train, train_speed, trainCarriagesDataArray, train_carriages)
     if train_speed == 0 then
         -- We can't work out what way is forward for counting locomotives that can assist with acceleration.
         error("Utils.GetTrainSpeedCalculationData() doesn't work for 0 speed train")
     end
 
-    local trainWeight = train.weight
-
-    ---@type Utils_TrainSpeedCalculationData
-    local trainData = {
-        trainWeight = trainWeight
-    }
-
-    local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce = 0, 0, nil, 0
-    local trainMovingForwards = train_speed > 0
-
-    -- Work out initial data based on what carriage data type has been passed in.
-    local carriageCount
-    if trainCarriagesDataArray ~= nil then
-        carriageCount = #trainCarriagesDataArray
-    else
-        carriageCount = #train_carriages
+    -- If trainCarriagesDataArray is nil we'll build it up as we go from the train_carriages array. This means that the functions logic only has 1 data structure to worry about. The trainCarriagesDataArray isn't passed out as a return and so while we build up the cache object it is dropped at the end of the function.
+    if trainCarriagesDataArray == nil then
+        trainCarriagesDataArray = {}
+        for i, entity in pairs(train_carriages) do
+            trainCarriagesDataArray[i] = {entity = entity}
+        end
     end
+
+    local trainWeight = train.weight
+    local trainFrictionForce, forwardFacingLocoCount, fuelAccelerationBonus, trainRawBrakingForce, trainAirResistanceReductionMultiplier = 0, 0, nil, 0, nil
+    local trainMovingForwards = train_speed > 0
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
     local minCarriageIndex, maxCarriageIndex, carriageIterator
+    local carriageCount = #trainCarriagesDataArray
     if trainMovingForwards then
         minCarriageIndex, maxCarriageIndex, carriageIterator = 1, carriageCount, 1
     elseif not trainMovingForwards then
@@ -2039,23 +2158,21 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
     end
 
     local firstCarriage = true
-    local carriageEntity  ---@type LuaEntity
-    local carriageCachedData  ---@type Utils_TrainCarriageData|null
-    local carriage_name  ---@type string
-    local carriage_faceingFrontOfTrain  ---@type boolean
+    ---@typelist Utils_TrainCarriageData, string, string, boolean
+    local carriageCachedData, carriage_type, carriage_name, carriage_faceingFrontOfTrain
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
-        if trainCarriagesDataArray ~= nil then
-            ---@type Utils_TrainCarriageData
-            carriageCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
-            carriage_name = carriageCachedData.prototypeName
-            if carriage_name == nil then
-                -- Data not known so obtain and cache.
-                carriage_name = carriageCachedData.entity.name
-                carriageCachedData.prototypeName = carriage_name
-            end
-        else
-            carriageEntity = train_carriages[currentSourceTrainCarriageIndex]
-            carriage_name = carriageEntity.name
+        carriageCachedData = trainCarriagesDataArray[currentSourceTrainCarriageIndex]
+        carriage_type = carriageCachedData.prototypeType
+        carriage_name = carriageCachedData.prototypeName
+        if carriage_type == nil then
+            -- Data not known so obtain and cache.
+            carriage_type = carriageCachedData.entity.type
+            carriageCachedData.prototypeType = carriage_type
+        end
+        if carriage_name == nil then
+            -- Data not known so obtain and cache.
+            carriage_name = carriageCachedData.entity.name
+            carriageCachedData.prototypeName = carriage_name
         end
 
         trainFrictionForce = trainFrictionForce + PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "friction_force")
@@ -2063,90 +2180,144 @@ Utils.GetTrainSpeedCalculationData = function(train, train_speed, train_carriage
 
         if firstCarriage then
             firstCarriage = false
-            trainData.trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainWeight / 1000))
-            -- Have to get the right max speed as they're not identical at runtime even if the train is symetrical.
-            if trainMovingForwards then
-                trainData.maxSpeed = train.max_forward_speed
-            elseif not trainMovingForwards then
-                trainData.maxSpeed = train.max_backward_speed
-            end
+            trainAirResistanceReductionMultiplier = 1 - (PrototypeAttributes.GetAttribute(PrototypeAttributes.PrototypeTypes.entity, carriage_name, "air_resistance") / (trainWeight / 1000))
         end
 
-        if carriage_name == "locomotive" then
-            if trainCarriagesDataArray ~= nil then
-                carriage_faceingFrontOfTrain = carriageCachedData.faceingFrontOfTrain
-                if carriage_faceingFrontOfTrain == nil then
-                    -- Data not known so obtain and cache.
-                    if carriageCachedData.entity.speed == train_speed then
-                        carriage_faceingFrontOfTrain = trainMovingForwards
-                    else
-                        carriage_faceingFrontOfTrain = not trainMovingForwards
-                    end
-                    carriageCachedData.faceingFrontOfTrain = carriage_faceingFrontOfTrain
-                end
-            else
-                if carriageEntity.speed == train_speed then
-                    carriage_faceingFrontOfTrain = trainMovingForwards
+        if carriage_type == "locomotive" then
+            carriage_faceingFrontOfTrain = carriageCachedData.faceingFrontOfTrain
+            if carriage_faceingFrontOfTrain == nil then
+                -- Data not known so obtain and cache.
+                if carriageCachedData.entity.speed == train_speed then
+                    carriage_faceingFrontOfTrain = true
                 else
-                    carriage_faceingFrontOfTrain = not trainMovingForwards
+                    carriage_faceingFrontOfTrain = false
                 end
+                carriageCachedData.faceingFrontOfTrain = carriage_faceingFrontOfTrain
             end
 
             -- Only process locomotives that are powering the trains movement.
             if trainMovingForwards == carriage_faceingFrontOfTrain then
                 -- Count all forward moving loco's. Just assume they all have the same fuel to avoid inspecting each one.
                 forwardFacingLocoCount = forwardFacingLocoCount + 1
-
-                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
-                if fuelAccelerationBonus == nil then
-                    local carriage = carriageEntity or carriageCachedData.entity
-                    local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
-                    if currentFuelPrototype ~= nil then
-                        -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
-                        fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
-                    end
-                end
             end
         end
     end
 
-    trainData.trainFrictionForce = trainFrictionForce
-    trainData.trainWeightedFrictionForce = (trainFrictionForce / trainWeight)
-    trainData.forwardFacingLocoCount = forwardFacingLocoCount
-    trainData.locomotiveAccelerationPower = 10 * forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainWeight)
-    trainData.trainRawBrakingForce = trainRawBrakingForce
+    -- Record all the data in to the cache object.
+    ---@type Utils_TrainSpeedCalculationData
+    local trainData = {
+        trainWeight = trainWeight,
+        trainFrictionForce = trainFrictionForce,
+        trainWeightedFrictionForce = (trainFrictionForce / trainWeight),
+        -- This assumes all loco's are the same power and have the same fuel. The 10 is for a 600 kW max_power of a vanilla locomotive.
+        locomotiveAccelerationPower = 10 * forwardFacingLocoCount / trainWeight,
+        trainAirResistanceReductionMultiplier = trainAirResistanceReductionMultiplier,
+        forwardFacingLocoCount = forwardFacingLocoCount,
+        trainRawBrakingForce = trainRawBrakingForce
+    }
 
-    local noFuelFound = false
-    if fuelAccelerationBonus == nil then
-        noFuelFound = true
-    end
+    -- Update the train's data taht depends upon the trains current fuel.
+    local noFuelFound = Utils.UpdateTrainSpeedCalculationDataForCurrentFuel(trainData, trainCarriagesDataArray, trainMovingForwards, train)
 
     return trainData, noFuelFound
 end
 
+--- Updates a train speed calcualtion data object (Utils_TrainSpeedCalculationData) for the current fuel the train is utilising to power it. Updates max achievable speed and the acceleration data.
+---@param trainSpeedCalculationData Utils_TrainSpeedCalculationData
+---@param trainCarriagesDataArray Utils_TrainCarriageData[]
+---@param trainMovingForwardsToCacheData boolean @ If the train is moving forwards in relation to the facing of the cached carriage data.
+---@param train LuaTrain
+---@return boolean noFuelFound @ TRUE if no fuel was found in any forward moving locomotive. Generally FALSE is returned when all is normal.
+Utils.UpdateTrainSpeedCalculationDataForCurrentFuel = function(trainSpeedCalculationData, trainCarriagesDataArray, trainMovingForwardsToCacheData, train)
+    -- Get a current fuel for the forwards movement of the train.
+    local fuelPrototype
+    local noFuelFound = true
+    for _, carriageCachedData in pairs(trainCarriagesDataArray) do
+        -- Only process locomotives that are powering the trains movement.
+        if carriageCachedData.prototypeType == "locomotive" and trainMovingForwardsToCacheData == carriageCachedData.faceingFrontOfTrain then
+            local carriage = carriageCachedData.entity
+            -- Coding Note: No point caching this as we only get 1 attribute of the prototype and we'd have to additionally get its name each time to utilsie a cache.
+            fuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
+            if fuelPrototype ~= nil then
+                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train will be braking for the signal theres no currently burning.
+                noFuelFound = false
+                break
+            end
+        end
+    end
+
+    -- Update the acceleration data.
+    local fuelAccelerationBonus
+    if fuelPrototype ~= nil then
+        fuelAccelerationBonus = fuelPrototype.fuel_acceleration_multiplier
+    else
+        fuelAccelerationBonus = 1
+    end
+    trainSpeedCalculationData.locomotiveFuelAccelerationPower = trainSpeedCalculationData.locomotiveAccelerationPower * fuelAccelerationBonus
+
+    -- Have to get the right prototype max speed as they're not identical at runtime even if the train is symetrical. This API result includes the fuel type currently being burnt.
+    local trainPrototypeMaxSpeedIncludesFuelBonus
+    if trainMovingForwardsToCacheData then
+        trainPrototypeMaxSpeedIncludesFuelBonus = train.max_forward_speed
+    elseif not trainMovingForwardsToCacheData then
+        trainPrototypeMaxSpeedIncludesFuelBonus = train.max_backward_speed
+    end
+
+    -- Work out the achievable max speed of the train.
+    -- Maths way based on knowing that its acceleration result will be 0 once its at max speed.
+    --   0=s - ((s+a)*r)   in to Wolf Ram Alpha and re-arranged for s.
+    local maxSpeedForFuelBonus = -((((trainSpeedCalculationData.locomotiveFuelAccelerationPower) - trainSpeedCalculationData.trainWeightedFrictionForce) * trainSpeedCalculationData.trainAirResistanceReductionMultiplier) / (trainSpeedCalculationData.trainAirResistanceReductionMultiplier - 1))
+    trainSpeedCalculationData.maxSpeed = math_min(maxSpeedForFuelBonus, trainPrototypeMaxSpeedIncludesFuelBonus)
+
+    return noFuelFound
+end
+
 --- Calculates the speed of a train for 1 tick as if accelerating. This doesn't match vanilla trains perfectly, but is very close with vanilla trains and accounts for everything known accurately. From https://wiki.factorio.com/Locomotive
+---
 -- Often this is copied in to code inline for repeated calling.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
----@return number absoluteSpeed
+---@return number newAbsoluteSpeed
 Utils.CalculateAcceleratingTrainSpeedForSingleTick = function(trainData, initialSpeedAbsolute)
-    return math_min(((initialSpeedAbsolute + trainData.locomotiveAccelerationPower) - trainData.trainWeightedFrictionForce) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
+    return math_min((math_max(0, initialSpeedAbsolute - trainData.trainWeightedFrictionForce) + trainData.locomotiveFuelAccelerationPower) * trainData.trainAirResistanceReductionMultiplier, trainData.maxSpeed)
 end
 
---- Estimates how long an accelerating train takes to cover a distance, but doesn't limit for max train speeds at all. Approximately accounts for air resistence, but final value will be a little off.
+--- Estimates how long an accelerating train takes to cover a distance and its final speed. Approximately accounts for air resistence, but final value will be a little off.
+---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param distance double
 ---@return Tick ticks @ Rounded up.
-Utils.EstimateAcceleratingTrainTicksToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
+---@return number absoluteFinalSpeed
+Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance = function(trainData, initialSpeedAbsolute, distance)
+    -- Work out how long it will take to accelerate over the distance. This doesn't (can't) limit the train to its max speed.
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local ticks = math_ceil((math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration)
-    return ticks
+
+    -- Check how fast the train would have been going at the end of this period. This may be greater than max speed.
+    local finalSpeed = initialSpeedAbsolute + (acceleration * ticks)
+
+    -- If the train would be going faster than max speed at the end then cap at max speed and estimate extra time at this speed.
+    if finalSpeed > trainData.maxSpeed then
+        -- Work out how long and the distance covered it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
+        local ticksToMaxSpeed = math_ceil((trainData.maxSpeed - initialSpeedAbsolute) / acceleration)
+        local distanceToMaxSpeed = (ticksToMaxSpeed * initialSpeedAbsolute) + (((trainData.maxSpeed - initialSpeedAbsolute) * ticksToMaxSpeed) / 2)
+
+        -- Work out how long it will take to cover the remaining distance at max speed.
+        local ticksAtMaxSpeed = math_ceil((distance - distanceToMaxSpeed) / trainData.maxSpeed)
+
+        -- Set the final results.
+        ticks = ticksToMaxSpeed + ticksAtMaxSpeed
+        finalSpeed = trainData.maxSpeed
+    end
+
+    return ticks, finalSpeed
 end
 
 --- Estimates train speed and distance covered after set number of ticks. Approximately accounts for air resistence, but final value will be a little off.
+---
 --- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
@@ -2155,13 +2326,15 @@ end
 ---@return double distanceCovered
 Utils.EstimateAcceleratingTrainSpeedAndDistanceForTicks = function(trainData, initialSpeedAbsolute, ticks)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local newSpeedAbsolute = math_min(initialSpeedAbsolute + (acceleration * ticks), trainData.maxSpeed)
     local distanceTravelled = (ticks * initialSpeedAbsolute) + (((newSpeedAbsolute - initialSpeedAbsolute) * ticks) / 2)
     return newSpeedAbsolute, distanceTravelled
 end
 
 --- Estimate how long it takes in ticks and distance for a train to accelerate from a starting speed to a final speed.
+---
+--- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param initialSpeedAbsolute double
 ---@param requiredSpeedAbsolute double
@@ -2169,26 +2342,60 @@ end
 ---@return double distanceCovered
 Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute)
     local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
+    local acceleration = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local ticks = math_ceil((requiredSpeedAbsolute - initialSpeedAbsolute) / acceleration)
     local distance = (ticks * initialSpeedAbsolute) + (((requiredSpeedAbsolute - initialSpeedAbsolute) * ticks) / 2)
     return ticks, distance
 end
 
---- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance.
+--- Estimate how fast a train can go a distance while starting and ending the distance with the same speed, so it accelerates and brakes over the distance. Train speed durign this is capped to it's max speed.
+---
+--- Note: none of the train speed/ticks/distance estimation functions give quite the same results as each other.
 ---@param trainData Utils_TrainSpeedCalculationData
----@param initialSpeedAbsolute double
+---@param targetSpeedAbsolute double
 ---@param distance double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@return Tick ticks @ Rounded up.
-Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(trainData, initialSpeedAbsolute, distance, forcesBrakingForceBonus)
-    local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * initialSpeedAbsolute
-    local acceleration = trainData.locomotiveAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
-    local accelerationDistanceFormula = (math_sqrt(2 * acceleration * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / acceleration
+Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed = function(trainData, targetSpeedAbsolute, distance, forcesBrakingForceBonus)
+    -- Get the acceleration and braking force per tick.
+    local initialSpeedAirResistence = (1 - trainData.trainAirResistanceReductionMultiplier) * targetSpeedAbsolute
+    local accelerationForcePerTick = trainData.locomotiveFuelAccelerationPower - trainData.trainWeightedFrictionForce - initialSpeedAirResistence
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
-    local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local brakingDistanceFormula = (math_sqrt(2 * tickBrakingReduction * distance + (initialSpeedAbsolute ^ 2)) - initialSpeedAbsolute) / tickBrakingReduction
-    local ticks = math_ceil(accelerationDistanceFormula + brakingDistanceFormula)
+    local brakingForcePerTick = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
+
+    -- This estimates distance that has to be spent on the speed change action. So a greater ratio of acceleration to braking force means more distance will be spent braking than accelerating.
+    local accelerationToBrakingForceRatio = accelerationForcePerTick / (accelerationForcePerTick + brakingForcePerTick)
+    local accelerationDistance = distance * (1 - accelerationToBrakingForceRatio)
+
+    -- Estimate how long it would take to accelerate over this distance and how fast the train would have been going at the end of this period. This may be greater than max speed.
+    local accelerationTicks = (math_sqrt(2 * accelerationForcePerTick * accelerationDistance + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / accelerationForcePerTick
+    local finalSpeed = targetSpeedAbsolute + (accelerationForcePerTick * accelerationTicks)
+
+    -- Based on if the train would be going faster than its max speed handle the braking time part differently.
+    local ticks
+    if finalSpeed > trainData.maxSpeed then
+        -- The train would be going faster than max speed at the end so re-estimate acceleration up to the max speed cap and then the time it will take at max speed to cover the required distance.
+
+        -- Work out how long and the distance covered it will take to get up to max speed. Code logic copied From Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed().
+        local ticksToMaxSpeed = (trainData.maxSpeed - targetSpeedAbsolute) / accelerationForcePerTick
+        local distanceToMaxSpeed = (ticksToMaxSpeed * targetSpeedAbsolute) + (((trainData.maxSpeed - targetSpeedAbsolute) * ticksToMaxSpeed) / 2)
+
+        -- Work out how long it will take to brake from max speed back to the required finish speed.
+        local ticksToBrake = (trainData.maxSpeed - targetSpeedAbsolute) / brakingForcePerTick
+        local distanceToBrake = (ticksToBrake * targetSpeedAbsolute) + (((trainData.maxSpeed - targetSpeedAbsolute) * ticksToBrake) / 2)
+
+        -- Work out how long it will take to cover the remaining distance at max speed.
+        local ticksAtMaxSpeed = (distance - distanceToMaxSpeed - distanceToBrake) / trainData.maxSpeed
+
+        -- Update the final results.
+        ticks = math.ceil(ticksToMaxSpeed + ticksAtMaxSpeed + ticksToBrake)
+    else
+        -- The train didn't reach max speed when accelerating so stopping ticks is for just the braking ratio of distance.
+        local brakingDistance = distance * accelerationToBrakingForceRatio
+        local brakingTicks = (math_sqrt(2 * brakingForcePerTick * brakingDistance + (targetSpeedAbsolute ^ 2)) - targetSpeedAbsolute) / brakingForcePerTick
+        ticks = math.ceil(accelerationTicks + brakingTicks)
+    end
+
     return ticks
 end
 
@@ -2198,38 +2405,64 @@ end
 ---@param requiredSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@return Tick ticksToStop @ Rounded up.
----@return double breakingDistance
-Utils.CalculateBrakingTrainDistanceAndTimeFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute, forcesBrakingForceBonus)
+---@return double brakingDistance
+Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed = function(trainData, initialSpeedAbsolute, requiredSpeedAbsolute, forcesBrakingForceBonus)
     local speedToDropAbsolute = initialSpeedAbsolute - requiredSpeedAbsolute
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local ticksToStop = math_ceil(speedToDropAbsolute / ((trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight))
-    local breakingDistance = (ticksToStop * requiredSpeedAbsolute) + ((ticksToStop / 2.0) * speedToDropAbsolute)
-    return ticksToStop, breakingDistance
+    local brakingDistance = (ticksToStop * requiredSpeedAbsolute) + ((ticksToStop / 2.0) * speedToDropAbsolute)
+    return ticksToStop, brakingDistance
 end
 
---- Calculates the train speed if it brakes for a time period.
+--- Calculates the final train speed and distance covered if it brakes for a time period.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param currentSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
 ---@param ticksToBrake Tick
 ---@return double newSpeedAbsolute
-Utils.CalculateBrakingTrainSpeedForTime = function(trainData, currentSpeedAbsolute, forcesBrakingForceBonus, ticksToBrake)
+---@return double distanceCovered
+Utils.CalculateBrakingTrainSpeedAndDistanceCoveredForTime = function(trainData, currentSpeedAbsolute, forcesBrakingForceBonus, ticksToBrake)
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
     local newSpeedAbsolute = currentSpeedAbsolute - (tickBrakingReduction * ticksToBrake)
-    return newSpeedAbsolute
+    local speedDropped = currentSpeedAbsolute - newSpeedAbsolute
+    local distanceCovered = (ticksToBrake * newSpeedAbsolute) + ((ticksToBrake / 2.0) * speedDropped)
+    return newSpeedAbsolute, distanceCovered
 end
 
---- Estimate a trains intial speed at the start of a stopping distance.
+--- Calculates a train's time taken and intial speed to brake to a final speed over a distance.
+---
+--- Caps the intial speed generated at the trains max speed.
 ---@param trainData Utils_TrainSpeedCalculationData
 ---@param distance double
+---@param finalSpeedAbsolute double
 ---@param forcesBrakingForceBonus double @ The force's train_braking_force_bonus.
+---@return Tick ticksToBrakeOverDistance @ Rounded up.
 ---@return double initialAbsoluteSpeed
-Utils.CalculateBrakingTrainInitialSpeedWhenStoppedOverDistance = function(trainData, distance, forcesBrakingForceBonus)
+Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance = function(trainData, distance, finalSpeedAbsolute, forcesBrakingForceBonus)
     local trainForceBrakingForce = trainData.trainRawBrakingForce + (trainData.trainRawBrakingForce * forcesBrakingForceBonus)
     local tickBrakingReduction = (trainForceBrakingForce + trainData.trainFrictionForce) / trainData.trainWeight
-    local initialAbsoluteSpeed = math_sqrt(2 * tickBrakingReduction * distance)
-    return initialAbsoluteSpeed
+    local initialSpeed = math_sqrt((finalSpeedAbsolute ^ 2) + (2 * tickBrakingReduction * distance))
+
+    if initialSpeed > trainData.maxSpeed then
+        -- Initial speed is greater than max speed so cap the inital speed to max speed.
+        initialSpeed = trainData.maxSpeed
+    end
+
+    local speedToDropAbsolute = initialSpeed - finalSpeedAbsolute
+    local ticks = math_ceil(speedToDropAbsolute / tickBrakingReduction)
+
+    return ticks, initialSpeed
+end
+
+--- Returns the new absolute speed for the train in 1 tick from current speed to stop within the required distance. This ignores any train data and will stop the train in time regardless of its braking force. The result can be applied to the current speed each tick to get the new speed.
+---@param currentSpeedAbsolute double
+---@param distance double
+---@return double brakingForceSpeedMultiplier
+Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance = function(currentSpeedAbsolute, distance)
+    -- Use a mass of 1.
+    local brakingSpeedReduction = (0.5 * 1 * currentSpeedAbsolute * currentSpeedAbsolute) / distance
+    return currentSpeedAbsolute - brakingSpeedReduction
 end
 
 return Utils

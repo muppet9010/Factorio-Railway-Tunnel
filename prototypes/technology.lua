@@ -23,7 +23,7 @@ data:extend(
                     recipe = "railway_tunnel-underground_segment-straight-rail_crossing"
                 }
             },
-            prerequisites = {"rail-signals"},
+            prerequisites = {"rail-signals", "landfill"},
             unit = {
                 count = 100,
                 ingredients = {

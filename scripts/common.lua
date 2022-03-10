@@ -1,4 +1,5 @@
 local Utils = require("utility.utils")
+local PrototypeAttributes = require("utility.prototype-attributes")
 local Common = {}
 
 -- Make the entity lists.
@@ -28,6 +29,7 @@ Common.RollingStockTypes = {
 }
 
 --- The distance from the center of the carriage to the end of it for when placing carriages. This is half the combined connection and joint distance of the carriage.
+---
 --- Hardcoded values as can't get the connection and joint distance via API.
 ---@class CarriagePlacementDistances
 Common.CarriagePlacementDistances = {
@@ -38,6 +40,7 @@ Common.CarriagePlacementDistances = {
 }
 
 --- Gets the combined connection and joint distance of the carriage.
+---
 --- Hardcoded values as can't get the connection and joint distance via API.
 ---@class CarriageConnectedLengths
 Common.CarriageConnectedLengths = {
@@ -48,8 +51,11 @@ Common.CarriageConnectedLengths = {
 }
 
 --- Gets the gap that the carriage has at one end of its entity when it connects to another carriage.
+---
 --- Hardcoded values as can't get the connection and joint distance via API.
+---
 --- This is the: (carriages connected length - double connection distance) / 2 as only 1 end of the entities total gap.
+---
 --- vanilla wagons: ( (3+4) - (3*2) ) / 2
 ---@class CarriageInterConnectionGaps
 Common.CarriagesOwnOffsetFromOtherConnectedCarriage = {
@@ -59,13 +65,23 @@ Common.CarriagesOwnOffsetFromOtherConnectedCarriage = {
     ["artillery-wagon"] = 0.5
 }
 
+--- Gets the carriages collision box length.
+---
+--- Hardcoded as we have to hardcoded other values and it saves having to obtain these specially during the right data lifecycle stage (control.lua when this file is loaded doesn't allow game or data access).
+Common.CarriagesCollisionBoxLength = {
+    ["locomotive"] = 5.2,
+    ["cargo-wagon"] = 4.8,
+    ["fluid-wagon"] = 4.8,
+    ["artillery-wagon"] = 4.8
+}
+
 ---@class TunnelSignalDirection
 Common.TunnelSignalDirection = {
     inSignal = "inSignal",
     outSignal = "outSignal"
 }
 
--- The managed train's state. Finished is for when the tunnel trip is completed.
+--- The managed train's state. Finished is for when the tunnel trip is completed.
 ---@class TunnelUsageState
 Common.TunnelUsageState = {
     portalTrack = "portalTrack",
@@ -75,15 +91,7 @@ Common.TunnelUsageState = {
     finished = "finished"
 }
 
--- A specific LuaTrain's role within its parent managed train object.
----@class TunnelUsageParts
-Common.TunnelUsageParts = {
-    approachingTrain = "approachingTrain",
-    leavingTrain = "leavingTrain",
-    portalTrackTrain = "portalTrackTrain"
-}
-
--- The train's state - Used by the train manager remote for state notifications to remote interface calls.
+--- The train's action to new state - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageAction
 Common.TunnelUsageAction = {
     startApproaching = "startApproaching",
@@ -93,7 +101,7 @@ Common.TunnelUsageAction = {
     terminated = "terminated"
 }
 
--- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
+--- The train's state change reason - Used by the train manager remote for state notifications to remote interface calls.
 ---@class TunnelUsageChangeReason
 Common.TunnelUsageChangeReason = {
     reversedAfterLeft = "reversedAfterLeft",

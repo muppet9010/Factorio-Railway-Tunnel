@@ -488,7 +488,7 @@ end
 ---@param undergroundTrainSpeed double
 TrainManagerStateFuncs.EnsureManagedTrainsFuel = function(managedTrain, undergroundTrainSpeed)
     local undergroundTrain = managedTrain.undergroundTrain
-    -- A train thats run out of fuel will still break for signals and stations. Only check if its on the path, as then it should not be losing speed.
+    -- A train thats run out of fuel will still brake for signals and stations. Only check if its on the path, as then it should not be losing speed.
     if undergroundTrainSpeed < managedTrain.undergroundTrainOldAbsoluteSpeed and undergroundTrainSpeed < 0.1 and undergroundTrain.state == defines.train_state.on_the_path then
         local leadLocoBurner = managedTrain.undergroundTrainAForwardsLocoBurnerCache
         if managedTrain.undergroundTrainAForwardsLocoBurnerCache == nil then

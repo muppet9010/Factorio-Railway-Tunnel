@@ -1,5 +1,6 @@
 --[[
     Has 5 loco's queued to reach a target with a variety of weighted routes and a tunnel for them to choose between.
+    The exact number of trains that choose the top line with the blocking moving train seems partially dependant upon exactly the timing of trains through the tunnel and the distances involved. Really as long as no trains go to the other blocked rail paths all is fine.
 ]]
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
@@ -11,7 +12,7 @@ Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
 end
 
-local blueprintString = "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"
+local blueprintString = "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"
 
 ---@param testName string
 Test.Start = function(testName)
@@ -25,10 +26,20 @@ Test.Start = function(testName)
         end
     end
 
+    -- Get the left most portal end.
+    local leftPortalEnd, leftPortalEndXPos = nil, 100000
+    for _, portalEntity in pairs(placedEntitiesByGroup["railway_tunnel-portal_end"]) do
+        if portalEntity.position.x < leftPortalEndXPos then
+            leftPortalEnd = portalEntity
+            leftPortalEndXPos = portalEntity.position.x
+        end
+    end
+
     local testData = TestFunctions.GetTestDataObject(testName)
     ---@class Tests_PW_TestScenarioBespokeData
     local testDataBespoke = {
-        stationEnd = stationEnd ---@type LuaEntity
+        stationEnd = stationEnd, ---@type LuaEntity
+        leftPortalEnd = leftPortalEnd ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
 
@@ -48,11 +59,19 @@ Test.EveryTick = function(event)
 
     local stationEndTrain = testDataBespoke.stationEnd.get_stopped_train()
 
-    -- Check that enough trains got within 40 tiles (west) of the end station. Should be 4 of the 5 make it with current path finder weightings.
+    -- Check that no trains have stopped in either bad path rail tracks.
+    local badInspectionArea = {left_top = {x = testDataBespoke.leftPortalEnd.position.x - 40, y = testDataBespoke.leftPortalEnd.position.y - 15}, right_bottom = {x = testDataBespoke.leftPortalEnd.position.x, y = testDataBespoke.leftPortalEnd.position.y - 6}}
+    local badLocosfound = TestFunctions.GetTestSurface().count_entities_filtered {area = badInspectionArea, name = "locomotive"}
+    if badLocosfound > 0 then
+        TestFunctions.TestFailed(testName, "Train used a bad middle path.")
+        return
+    end
+
+    -- Check that enough trains got within 40 tiles (west) of the end station. Should be 3 or more of the 5 make it with current path finder weightings.
     if stationEndTrain ~= nil then
         local inspectionArea = {left_top = {x = testDataBespoke.stationEnd.position.x - 40, y = testDataBespoke.stationEnd.position.y - 2}, right_bottom = {x = testDataBespoke.stationEnd.position.x + 2, y = testDataBespoke.stationEnd.position.y + 2}}
         local locosNearBy = TestFunctions.GetTestSurface().count_entities_filtered {area = inspectionArea, name = "locomotive"}
-        if locosNearBy == 4 then
+        if locosNearBy == 3 then
             TestFunctions.TestCompleted(testName)
             return
         end

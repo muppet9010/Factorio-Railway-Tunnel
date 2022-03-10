@@ -27,7 +27,7 @@ end
 --- Gets the test manager's test object reference. Persists across tests.
 ---@param testName TestManager_TestName
 ---@return TestManager_Test
-TestFunctions.GetTestMangaerObject = function(testName)
+TestFunctions.GetTestManagerObject = function(testName)
     return global.testManager.testsToRun[testName]
 end
 
@@ -80,7 +80,8 @@ TestFunctions.TestFailed = function(testName, errorText)
         EventScheduler.ScheduleEventOnce(game.tick + 1, "TestManager.WaitForPlayerThenRunTests_Scheduled")
     end
 end
---- Goes in to the test log file after the equals sign on the current row. For rare cases a test wants to inject log data in for doign full test runs to file.
+--- Goes in to the test log file after the equals sign on the current row. For rare cases a test wants to inject log data in for doing full test runs to file.
+---
 --- Can be called in all cases and will only write if "justLogAllTests" is enabled.
 ---@param text string
 TestFunctions.LogTestDataToTestRow = function(text)
@@ -97,6 +98,7 @@ TestFunctions.RegisterTestsScheduledEventType = function(testName, eventName, te
 end
 
 --- Schedule an event named function once at a given tick. To be called from Start().
+---
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param tick Tick
 ---@param testName TestManager_TestName
@@ -112,6 +114,7 @@ TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, insta
 end
 
 --- Schedule an event named function to run every tick until cancelled. To be called from Start().
+---
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
@@ -154,7 +157,7 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
     local activeTestCheckFunc = function(event)
         local testManagerData = global.testManager.testsToRun[testName]
-        -- Each test that registered an event handler has a unique reaction (this) function that checks that test's own state data for. So an instance per test's OnLoad() which each watching for its own test beign the currently active test and ignoring it otherwise.
+        -- Each test that registered an event handler has a unique reaction (this) function that checks that test's own state data for. So an instance per test's OnLoad() which each watching for its own test being the currently active test and ignoring it otherwise.
         if testManagerData.runLoopsCount > 0 and not testManagerData.finished then
             event.testName = testName
             testFunction(event)
@@ -163,21 +166,29 @@ TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunc
     Events.RegisterHandlerEvent(eventName, completeHandlerName, activeTestCheckFunc, filterData)
 end
 
---- Used to apply an optional filter list of keys against a full list of key/values. Includes error catching for passing in bad (empty) filter list.
+--- Used to apply an optional filter list of keys against a COPY of the full list of key/values. Includes error catching for passing in bad (empty) filter list.
 ---@param fullList table
 ---@param filterList? table|null
----@return table
+---@return table filteredCopyOfTable
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
     if Utils.IsTableEmpty(fullList) then
         error("empty/nil list provided to TestFunctions.ApplySpecificFilterToListByKeyName()")
     end
     local listToTest
     if Utils.IsTableEmpty(filterList) then
-        listToTest = fullList
+        listToTest = Utils.DeepCopy(fullList)
     else
         listToTest = {}
         for _, entry in pairs(filterList) do
-            listToTest[entry] = fullList[entry]
+            if fullList[entry] ~= nil then
+                -- Simple key/value pair full list with the key and value being equal.
+                listToTest[entry] = fullList[entry]
+            elseif type(entry) == "table" then
+                if fullList[entry.composition] ~= nil then
+                    -- If the value of a TestFunctions_TrainSpecifiction object is passed in rather than the key itself.
+                    listToTest[entry.composition] = fullList[entry.composition]
+                end
+            end
         end
     end
     if Utils.IsTableEmpty(listToTest) then
@@ -187,9 +198,13 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
 end
 
 --- Registers for tunnel usage change notifications to be recorded in the Test Data object's tunnelUsageChanges field. To be called from Start().
+---
 --- Used when a test will check tunnel usage events once per tick.
+---
 --- Doesn't distinguish between different tunnels or usage entries, so only suitable for tests with a single tunnel.
+---
 --- If multiple actions occur in the same tick only the last one is visible in the "lastAction" and "lastChangeReason" fields which shouldn't be an issue for normal tests. All the events are in the "actions" field.
+---
 --- If a test needs to react to each train state change in turn then the TestFunctions.RegisterTunnelUsageChangesToTestFunction() function should be used instead.
 ---@param testName string
 TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
@@ -197,6 +212,7 @@ TestFunctions.RegisterRecordTunnelUsageChanges = function(testName)
 end
 
 --- Registers for tunnel usage change notifications to be passed to a test function for processing sequentially. To be called from Start().
+---
 --- Used when a tests needs to react to each event in turn. In most use cases tests only need to check the lastest tunnel usage event per tick and the TestFunctions.RegisterRecordTunnelUsageChanges() function is more approperiate.
 ---@param testName string
 ---@param testCallbackFunction function @ When called recieves a single argument "event" of type TestFunctions_RemoteTunnelUsageChangedEvent.
@@ -213,7 +229,11 @@ end
 ---@field cargoInventory string @ The cargo of non-locomotives as a JSON string.
 ---@field color string @ Color attribute as a JSON string.
 
---- Returns an abstract view of a train purely for the purpose of being compared before and after using a tunnel. Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken. Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
+--- Returns an abstract view of a train purely for the purpose of being compared before and after using a tunnel.
+---
+--- Either the expected forwards orientation parameter must be provided or the train must be moving when snapshot taken.
+---
+--- Its not valid to compare snapshots if the train has changed direction (forwards/backwards) between snapshots.
 ---@param train LuaTrain
 ---@param forwardsOrientation RealOrientation @ The forwards orientation of this train. If provided the function can be used for a 0 speed train.
 ---@return TestFunctions_TrainSnapshot
@@ -274,7 +294,9 @@ TestFunctions.GetSnapshotOfTrain = function(train, forwardsOrientation)
     return trainSnapshot
 end
 
---- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel. Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
+--- Compares 2 train snapshots to see if they are the same train structure for when a train enters and then leaves a tunnel.
+---
+--- Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
 ---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
@@ -327,11 +349,11 @@ TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, curr
 end
 
 --- Used to specify a train carriage type as a human readable text string. The orientation of "Forwards" is defined at the building stage.
----    carriageSymbols:
----    <   forwards loco
----    >   rear loco
----    -   forwards cargo wagon
----    =   rear cargo wagon
+--- carriageSymbols:
+--- - < forwards loco
+--- - \> rear loco
+--- - \- forwards cargo wagon
+--- - = rear cargo wagon
 ---@alias TestFunctions_CarriageTextualRepresentation "<"|">"|"-"|"="
 
 ---@class TestFunctions_TrainSpecifiction @ used to specify a trains details in short-hand. Is parsed for usage in to full table by TestFunctions.GetTrainCompositionFromTextualRepresentation().
@@ -415,9 +437,21 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
             error("TestFunctions.BuildTrain - unsupported carriage type built: " .. placedCarriage_type)
         end
 
-        -- Insert the fuel if approperiate.
+        -- Insert the fuel if approperiate. Puts it in the burner first then fuel inventory so that when we set the speed the trains max speed accounts for the fuel type.
         if placedCarriage_type == "locomotive" and locomotiveFuel ~= nil then
-            placedCarriage.insert(locomotiveFuel)
+            local thisLocomotivesFuel
+            if placedCarriage.burner.currently_burning == nil then
+                thisLocomotivesFuel = Utils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
+                local fuelItem = game.item_prototypes[thisLocomotivesFuel.name]
+                placedCarriage.burner.currently_burning = fuelItem
+                placedCarriage.burner.remaining_burning_fuel = fuelItem.fuel_value -- Have to set in this case otherwise it ends up as a value of 0 and the fuel is instantly used up.
+                thisLocomotivesFuel.count = thisLocomotivesFuel.count - 1
+            else
+                thisLocomotivesFuel = locomotiveFuel
+            end
+            if thisLocomotivesFuel.count > 0 then
+                placedCarriage.insert(thisLocomotivesFuel)
+            end
         end
 
         -- Place the player in this carriage if set. Done here as we know the exact build order at this point.
@@ -426,7 +460,7 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
             if player ~= nil then
                 placedCarriage.set_driver(player)
             else
-                game.print("No player found to set as driver, test continuing regardless")
+                error("No player 1 found to set as driver")
             end
         end
     end
@@ -487,7 +521,9 @@ end
 ---@field railway_tunnel-portal_end LuaEntity[]
 ---@field railway_tunnel-underground_segment-straight LuaEntity[]
 
---- Builds a given blueprint string centered on the given position. Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
+--- Builds a given blueprint string centered on the given position.
+--- Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
+--- Blueprints are build as the "player" force.
 ---@param blueprintString string
 ---@param position Position
 ---@param testName TestManager_TestName
@@ -545,7 +581,16 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 
     for _, fuelProxy in pairs(fuelProxies) do
         for item, count in pairs(fuelProxy.item_requests) do
-            fuelProxy.proxy_target.insert({name = item, count = count})
+            -- First try to insert it in the burner, then in the fuel inventory.
+            if fuelProxy.proxy_target.burner.currently_burning == nil then
+                local fuelItem = game.item_prototypes[item]
+                fuelProxy.proxy_target.burner.currently_burning = fuelItem
+                fuelProxy.proxy_target.burner.remaining_burning_fuel = fuelItem.fuel_value -- Have to set in this case otherwise it ends up as a value of 0 and the fuel is instantly used up.
+                count = count - 1 -- No possibility that this could be a shared table so can just remove 1 from it.
+            end
+            if count > 0 then
+                fuelProxy.proxy_target.insert({name = item, count = count})
+            end
         end
         fuelProxy.destroy()
     end
@@ -556,6 +601,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
+---
 --- Only needs calling if trains are being built manually/scripted, as TestFunctions.BuildBlueprintFromString() includes it.
 ---@param locomotives? LuaEntity[]|null
 ---@param cargoWagons? LuaEntity[]|null
@@ -638,11 +684,22 @@ TestFunctions.WriteTestScenariosToFile = function(testName, testScenarios)
 
     -- Add the headers.
     local logText = "#, " .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n"
-    -- Add the test's keys
+    -- Add the test's keys.
+    local value
     for testIndex, test in pairs(testScenarios) do
         logText = logText .. tostring(testIndex)
         for key in pairs(keysToRecord) do
-            logText = logText .. ", " .. tostring(test[key])
+            value = test[key]
+            if type(value) == "table" then
+                -- Is a table so check for known key field we want to print if present.
+                if value.composition ~= nil then
+                    value = value.composition
+                else
+                    -- Just write out the number of records as a default.
+                    value = "table of " .. #value .. " keys"
+                end
+            end
+            logText = logText .. ", " .. tostring(value)
         end
         logText = logText .. "\r\n"
     end

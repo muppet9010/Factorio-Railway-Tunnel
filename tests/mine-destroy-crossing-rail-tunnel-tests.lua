@@ -26,9 +26,9 @@ local BlockingTrainTypes = {
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificActionTypesFilter = {} -- Pass in an array of ActionTypes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificBlockingTrainTypesFilter = {} -- Pass in an array of BlockingTrainTypes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSegmentsToRemoveFilter = {} -- Pass in an array of SegmentsToRemove keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificActionTypesFilter = {} -- Pass in an array of ActionTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificBlockingTrainTypesFilter = {} -- Pass in an array of BlockingTrainTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSegmentsToRemoveFilter = {} -- Pass in an array of SegmentsToRemove keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -53,7 +53,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.actionType .. "    -    segmentToRemove: " .. testScenario.segmentToRemove .. "    -    blockingTrain: " .. testScenario.blockingTrainType
 end
@@ -61,7 +61,7 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()

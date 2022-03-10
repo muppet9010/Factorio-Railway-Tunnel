@@ -1,42 +1,50 @@
 # Factorio-Railway-Tunnel
 
-ALPHA MOD
+BETA MOD
 =========
 
-Early release mod and future versions won't allow upgrading. Use for testing/experimenting only.
-For applying a new mod version to your game you will need to do the below manual upgrade process. I'd advise the save games are done as separate so you can rollback if needed:
-    - Empty all your tunnels and save the game (save 1). Take safety blueprint copies of any tunnel/track designs you wish as they will be removed in the next stage.
+Early release of the mod and you can't upgrade to future releases. Use for testing/experimenting only.
+To apply a new mod version to your game you will need to do the below manual upgrade process. I'd advise that an extra safey save of the game is kept before this process is started so you can rollback if needed:
+    - Empty all your tunnels of their trains and save the game (save 1). Take blueprint copies of any tunnel/track designs you wish as they will be removed in the next stage.
     - Remove the old mod version and load the save (save 1). This will purge your map and game state of old mod entities and data. Save the game again (save 2).
-    - Put the new mod in place and load the save (save 2). Your game is now on the new mod version and the tunnel's can be re-added.
+    - Put the new mod in place and load the save (save 2). Your game is now on the new mod version. Add your tunnels back in and should be good to go.
+
+
+FACTORIO BUGS
+=============
+
+- At present the artillery wagon can't have its force changed, so it will leave a tunnel as the tunnel force and not be returned to the players force. Reportedly fixed in 1.1.56: https://forums.factorio.com/viewtopic.php?f=7&t=101731
 
 
 Mod Features
 ============
 
 - Trains will natively use tunnels just like any other track, no need to specially path via them.
-- Tunnels are built by placing the entrance and exit tunnel portal parts and building underground tunnel parts between them. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel.
 - Tunnels can not be entered by players, they are purely for trains to go under one another. Players riding in trains through tunnels stay on the surface to enjoy the view.
+- Tunnels are built by placing the entrance and exit tunnel portal parts and building underground tunnel parts between them. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel.
 - Tunnels are composed of 2 complete portals with underground parts connecting them. Which comprise multiple parts for maximum design flexibility:
     - A complete portal is made of 2 portal End parts with a number of portal Segments between them. Each portal's segment’s length (end parts not counted) must be long enough for the train when it tries to use the tunnel.
         - When a complete portal is made a tunnel portal graphic will appear with both ends of the portal closed to trains.
     - The underground of the tunnel is made up of a series of underground parts.
     - When 2 valid portals are connected by underground parts a tunnel is formed. This can be seen as the outside ends of each portal facing the wider rail network will have their graphics show an opening, with rail and signals appearing on them. At this point trains can path through the tunnel and use it.
-- A train must fully fit within the tunnel's entrance and exit portal to be able to use the tunnel. If the train is too long it will be prevented access and a GUI alert raised to the player. Unfortunately I can't stop the train trying to path through the tunnel so some consideration by the player when building their rail network is required. The max length train a tunnel can accept is the minimum length of either portal's segments (non end parts). A train's length for vanilla Factorio carriages is 6 tiles, plus 1 tile per carriage connection. This will match the length of a train on a regular track. i.e. 1 carriage is 6 tiles, 2 carriages are 13 tiles (6+1+6).
-- The mod has been designed and optimised to be UPS efficient.
+- A train must fully fit within the tunnel's entrance and exit portal to be able to use the tunnel. If the train is too long it will be prevented access and a GUI alert raised to the player. Unfortunately I can't stop a too long train trying to path through the tunnel so some consideration by the player when building their rail network is required. The max length train a tunnel can accept is the minimum length of either portal's segments (non end parts). A train's length for vanilla Factorio carriages is 6 tiles, plus 1 tile per carriage connection. This will match the length of a train on a regular track. i.e. 1 carriage is 6 tiles, 2 carriages are 13 tiles (6+1+6).
+- The mod has been designed and optimised to be UPS efficient considering what it is trying to do.
 - Tunnels can be used in both directions, however, the mod is designed on the basis that most tunnels will be either used in a single direction as part of dual tracks or bi-directional on a very low usage rail track. There is a documented limitation around a rare issue with high frequency bi-diretional tunnel usage later in this readme.
+- Tunnel/Portal GUI shown when a portal part is clicked on. Shows key information about it including the size of train it supports and the current usage state. It has features to help the player handle any odd situations, with options to distribute fuel to the train using the tunnel, and an option to mine all train carriages on the tunnel portal's tracks.
 
 
 Usage Notes
 ===========
 
-- The tunnel parts can only be validly placed on the rail grid, however it isn't possible to snap these like a regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted, a green square for buildable locations and a red square for blocked locations, based on ghost type placement.
+- The tunnel parts can only be validly placed on the rail grid, however, it isn't possible to snap these like a regular rail track. So if the tunnel part is misplaced the nearby rail grid locations will be highlighted, a green square for buildable locations and a red square for blocked locations, based on ghost type placement.
 - The tunnel is a single block of rail and so only 1 train can use a tunnel at a time. Trains do slightly prefer empty normal tracks over tunnels, but will use a tunnel over congested track.
 - Trains using a tunnel have their speed and traversal time estimated. This means a train using a tunnel won't be exactly the same speed as a train on a regular track, but they are approximately equivalent in their total journey time.
-- If a train is using a tunnel and its forward path is removed due to rail network or station changes, once it has left the underground section it can look for a reverse path back through the tunnel. If it can't find a route it will pull to the front of the tunnel's exit portal ready for a path becoming available in the future.
+- If a train is using a tunnel and its forward path is removed due to rail network or station changes, once it has left the underground section it can look for a reverse path back through the tunnel. If it can't find a route it will pull to the front of the tunnel's exit portal ready for a path becoming available in the future. This delay in repathing may cause it to loose a station reservation if station train limits are being used.
 - Manually driven trains can not use a tunnel. They will be stopped at the tunnel portal entrance track or from entering the underground part of the tunnel.
 - Trains that aren't following an automatic schedule will be prevented from entering the tunnel portal's tracks or going underground. Tunnels are reserved for intentional train traffic and not free wheeling trains.
-- Destroyed tunnels will lose the train and players within.
-- If 2 trains try to use a tunnel at once one will be rejected and a GUI alert raised.
+- Destroyed tunnels will lose the train within and players corpses will be left on the surface.
+- If 2 trains try to enter a tunnel at once one will be rejected and a GUI alert raised.
+- Trains with players riding in them use a more detailed tunnel traversal logic than non-player trains to give the player a smoother riding experience. This will mean that they take a different amout of time to use a tunnel as its speed is more actively managed. This is only done for trains with players riding in them as its less UPS effecient and is approximately the same final result.
 
 
 Known Limitations

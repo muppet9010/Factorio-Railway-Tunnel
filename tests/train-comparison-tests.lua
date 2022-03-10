@@ -45,10 +45,10 @@ local SecondTrainCarriageColors = {
 local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificFirstTrainFilter = {} -- Pass in an array of FirstTrain keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSecondTrainCarriageOrderFilter = {} -- Pass in an array of SecondTrainCarriageOrder keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSecondTrainCarriageFacingFilter = {} -- Pass in an array of SecondTrainCarriageFacing keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificSecondTrainCarriageColorsFilter = {} -- Pass in an array of SecondTrainCarriageColors keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificFirstTrainFilter = {} -- Pass in an array of FirstTrain keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSecondTrainCarriageOrderFilter = {} -- Pass in an array of SecondTrainCarriageOrder keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSecondTrainCarriageFacingFilter = {} -- Pass in an array of SecondTrainCarriageFacing keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificSecondTrainCarriageColorsFilter = {} -- Pass in an array of SecondTrainCarriageColors keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -73,7 +73,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):     " .. testScenario.firstTrainString .. "     order: " .. testScenario.secondTrainCarriageOrder .. "     facing: " .. testScenario.secondTrainCarriageFacing .. "     color: " .. testScenario.secondTrainCarriageColors .. "     expected result: " .. testScenario.expectedResult
 end
@@ -81,7 +81,7 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     -- Add test data for use in the EveryTick().

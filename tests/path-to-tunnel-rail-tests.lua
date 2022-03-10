@@ -64,14 +64,14 @@ local blueprintString = "0eNqtnN1y2kgUhN9F18il+df4Pk+xlXJhULyqgEQJ4Y3LxbtHGNsYds
 
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      " .. testScenario.targetTunnelRail .. "     Next stop: " .. testScenario.nextStop .. "     Expected result: " .. testScenario.expectedTunnelStopHandling .. " - " .. testScenario.expectedFinalTrainState
 end
 
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprintString, {x = 0, y = 0}, testName)

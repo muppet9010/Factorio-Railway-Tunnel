@@ -9,6 +9,7 @@
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
+local Common = require("scripts.common")
 
 -- Internal test types.
 --- Class name includes the abbreviation of the test name to make it unique across the mod.
@@ -20,15 +21,15 @@ local FirstLetterTypes = {
 ---@class Tests_TMI_TrainStartingSpeeds
 local TrainStartingSpeeds = {
     none = "none", -- 0 speed
-    full = "full" -- 2 speed
+    full = "full" -- 1.2 speed is the max of this train type and fuel type in the BP.
 }
 
 -- Test configuration.
-local DoMinimalTests = false -- The minimal test to prove the concept.
+local DoMinimalTests = true -- The minimal test to prove the concept.
 
 local DoSpecificTests = false -- If TRUE does the below specific tests, rather than all the combinations. Used for adhock testing.
-local SpecificFirstLetterFilter = {FirstLetterTypes.a} -- Pass in an array of FirstLetterTypes keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
-local SpecificTrainStartingSpeedFilter = {TrainStartingSpeeds.none} -- Pass in an array of TrainStartingSpeeds keys to do just those. Leave as nil or empty table for all letters. Only used when DoSpecificTests is TRUE.
+local SpecificFirstLetterFilter = {FirstLetterTypes.a} -- Pass in an array of FirstLetterTypes keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
+local SpecificTrainStartingSpeedFilter = {TrainStartingSpeeds.none} -- Pass in an array of TrainStartingSpeeds keys to do just those. Leave as nil or empty table for all. Only used when DoSpecificTests is TRUE.
 
 local DebugOutputTestScenarioDetails = false -- If TRUE writes out the test scenario details to a csv in script-output for inspection in Excel.
 
@@ -53,7 +54,7 @@ end
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
 ---@param testName string
 Test.GetTestDisplayName = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
     return testName .. " (" .. testManagerEntry.runLoopsCount .. "):      letter: " .. testScenario.firstLetter .. "    -    Speed: " .. testScenario.trainStartingSpeed
 end
@@ -61,23 +62,24 @@ end
 --- This is run to setup and start the test including scheduling any events required. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Start = function(testName)
-    local testManagerEntry = TestFunctions.GetTestMangaerObject(testName)
+    local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local blueprint = "0eNq1WMtu2zAQ/JWAZykQuXz6I3rpsQgMRWYdorJk6JHWMPzvpSQ3NuJNom0UH2wL5M6Qo1lKu0f2WPZ+34SqY6sj2/i2aMK+C3XFVoyn/K5r8lDd5dXmruurypcsYaGoq5atfhxZG7ZVXg6B3WHvY0To/C7OqPLdcBVDy9/5YT1Fpvu66fJy7asNO0WUauP/sBU/JbNwrkLEjJCyLupd3YVnfxUIaOBzaLo+Ly+x04xUXEXK00PCfNWFLvhp6+PFYV31u0ffxG1gzAnb122YxDyyYeUqYQe2SnXcAqubEEHyaThLWFGXdTNMjF/ZvYLxozmX1oIUwiqu9ACwHYaFk5wbrRxABtpmkjsnuDVx/HEczyBeK8PBgAOnuOQ6OwPkw4RsmqCtjRjaxhHtLGgplLFcqGHrUdB2XE9d/PJd+rOPd3+lToOIr3YvLtoNftk+del4z94WAIWBF5jRdWnb1XsEw7xgJJHvLCD7Ft31xBBUSV4cYItTZBiOwWgqjHIYjCH5Takbv92r147jkx+0jn9s9JY1zloxmOHsOamFkYpnmVDO2Cza0liXjZYaPWeMUNJlAFzLYYIwIMF8ieEsWUWDwTgyDLoanpFxUItxTsZBPcbJ+ShRk3Eg46Ayc3IKSlxncg5KXGdyEkpcZzPjUfcmJpjo+U1ofDENRpGe8yacE5RjfPYDvtZvdzEm/berd8iBTO6WI4/4H9GJbDE64WbQ8eXozAw6sRydot5JAcuRk20k5HLknEyuPpOwnJywQr/F18f3ymbb1PH3ZsfjWbQumrptQ7V9Zz0ww2jmf1bwDuec1LXLcs5JX/eVQs9IaMg+9SiYQbDYATXjDsJix9OcnS12HKkZZIsdP+TDANRS1I5MrRczD/nMBbMYN/lhA/YTWUk/7oFaTwj0tVJSywmBvuVKajUh0JduSS0mBFoDSGotIdCSRFJLCcAlplYSgEtMLSQAl9hQYXCJqVUx4BJTXYwXR4rqYrxWU1QX46WjoroYr2QV1cV4Ya2oLsbrfEV1Md52UFQX410QZea172DCuD1dL72873WP9/IU1eJD3+chQhdPftOX597tpWU2XPPEXM2Y+trISm46jQ8D8Nh1Xl010eNDwjftOFFYLo0TRjolzSD9XyErxQk="
+    local blueprint = "0eNq1md1y2jAQhd9F19CRdvXLfZ+hF50M4xgN8YyxGdukZTK8eyVMAq1Ju5JpbvCPcj6ho7MW8ht7rg9+31XNwFZvrCrbpmer72+sr7ZNUcdrw3Hv2YpVg9+xBWuKXTzriqr+URzXw6FpfL3ct91Q1Oveb3e+GZb9EO5vXwZ2WrCq2fifbCVOi0xR32xudOD0tGCBUQ2VH3t6Pjmum8Pu2XcB9CEXO9GEvrT7gNi3ffiXtonwILPUasGO4VMF6U3V+XK8qResH4rxmH3zffwKEwQQejwlwoWIE+Jr0VUXpriDw9RRv8MWmWw5ny1cJls9gG0y2foB7Fy/zQPYeJcN/2TbB7BFJtvNZ7tMtOBZkVa5OPEZ7hCqXLft2vA5+b7L2HZddm3fV8323sjndgdyujPtQDYfH8PPnfRC/g87sieHypmLuUVWzK90nxQbAnt+pcsusmJ+pct+uIj5lU7kVjrgs9mQm3MQ89m5GQeYz86da4A5iYbcSMO1nP1Wq/6yCv5zOO+pKroq0lU1XVXQVQ1ZVTm6qqWrGrqqo6vS3UJOV6W7hYKuSncLgawq6W4h0lXpbiE9WzLBLXq2ZIJb9GzJBLfo2cIEt+jZwgS36NlCuluSni2kuyXp2UK6W5KeLaC7JcnZShkAcrRSvCInK2FaSXKwEhIgyblKCKskxyqhrshrquq2bHftUL36O4o3A9p2VRC5rFn4FxNcKdu67WLTLl4RDoTSVutwYIXR1jhrw1FcdWxjA6nBSCU4B+WM5daisY7reP/5LGlASccRhZaxARiUGDlFvMs5jgCrHGqrNGhnUUtQJjLi9uLgd33sTtnGHUrFT/d2pMjJTyj+ihz8hOeUIuc+4ZGqkGS8kp8aDxPjFZ7/tBAyeCoBrAo+fdgOToowHYJryINxXAoXjLTm3XYYjTUCDTp0Skih+UXgoc6Ti1PCwkeRi1PCGk2Ri1PCclKRi1PCyldZ0lb9u6KY/OS77tR/LeJO/VO4VL74zaG+vBq4ztJ4Hma6wps243uO6W7/RDYKn99UrG7eloSfYb7rx65YIY0Do8CCRDidfgFDkmRv"
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
-    -- Get the "South" train stop of the 2 train stops we know are in the BP.
-    local southTrainStop = placedEntitiesByGroup["train-stop"][1]
-    if southTrainStop.backer_name ~= "South" then
-        southTrainStop = placedEntitiesByGroup["train-stop"][2]
+    -- Get the "West" train stop of the 2 train stops we know are in the BP.
+    local westTrainStop = placedEntitiesByGroup["train-stop"][1]
+    if westTrainStop.backer_name ~= "West" then
+        westTrainStop = placedEntitiesByGroup["train-stop"][2]
     end
 
     -- Set the trains starting speed based on the test scenario.
+    -- Tests that set the train speed need to consider the train's fuel type used in their test. As very fast acceleration may nullify slower starting speeds.
     local train = placedEntitiesByGroup["locomotive"][1].train -- All the loco's we built are part of the same train.
     if testScenario.trainStartingSpeed == TrainStartingSpeeds.full then
-        train.speed = -1.4 -- Max locomotive speed. Train is moving backwards for Factorio reasons.
+        train.speed = -1.2 -- Train is moving backwards for Factorio reasons.
     end
 
     -- Add test data for use in the EveryTick().
@@ -87,7 +89,7 @@ Test.Start = function(testName)
     ---@class Tests_TMI_TestScenarioBespokeData
     local testDataBespoke = {
         announcedTunnelUsage = false, ---@type boolean
-        southTrainStop = southTrainStop ---@type LuaEntity
+        westTrainStop = westTrainStop ---@type LuaEntity
     }
     testData.bespoke = testDataBespoke
 
@@ -111,18 +113,18 @@ Test.EveryTick = function(event)
     local testDataBespoke = testData.bespoke ---@type Tests_TMI_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 
-    if tunnelUsageChanges.lastAction == "leaving" and not testDataBespoke.announcedTunnelUsage then
+    if tunnelUsageChanges.lastAction == Common.TunnelUsageAction.leaving and not testDataBespoke.announcedTunnelUsage then
         testDataBespoke.announcedTunnelUsage = true
         game.print("train has completed tunnel trip")
     end
 
-    if not testDataBespoke.southTrainStop.valid then
-        TestFunctions.TestFailed(testName, "South station was removed")
+    if not testDataBespoke.westTrainStop.valid then
+        TestFunctions.TestFailed(testName, "West station was removed")
         return
     end
 
-    if testDataBespoke.southTrainStop.get_stopped_train() ~= nil then
-        game.print("train reached South station, so stop test")
+    if testDataBespoke.westTrainStop.get_stopped_train() ~= nil then
+        game.print("train reached West station, so stop test")
         game.print("test letter: " .. testScenario.firstLetter)
         TestFunctions.TestCompleted(testName)
         return

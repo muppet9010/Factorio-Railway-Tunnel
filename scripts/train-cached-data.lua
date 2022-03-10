@@ -60,15 +60,26 @@ TrainCachedData.OnTrainCreated = function(event)
     end
 
     -- Check if there is a managed train that needs stopping for either/both. Both could be using a tunnel if both leaving portals and are coupled togeather.
-    local trainIdToManagedTrain1 = global.trainManager.trainIdToManagedTrain[event.old_train_id_1] --TrainManager.GetTrainIdsManagedTrainDetails()
-    if trainIdToManagedTrain1 ~= nil then
+    local managedTrain
+    managedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[event.old_train_id_1]
+    if managedTrain ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
-        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain1.managedTrain)
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
     end
-    local trainIdToManagedTrain2 = global.trainManager.trainIdToManagedTrain[event.old_train_id_2] --TrainManager.GetTrainIdsManagedTrainDetails()
-    if trainIdToManagedTrain2 ~= nil then
+    managedTrain = global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_1]
+    if managedTrain ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
-        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain2.managedTrain)
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
+    end
+    managedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[event.old_train_id_2]
+    if managedTrain ~= nil then
+        -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
+    end
+    managedTrain = global.trainManager.leavingTrainIdToManagedTrain[event.old_train_id_2]
+    if managedTrain ~= nil then
+        -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
     end
 end
 
@@ -76,11 +87,6 @@ end
 ---@param event on_player_mined_entity|on_robot_mined_entity|on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
-    --[[local diedEntity = event.entity
-    -- Handle any other registrations of this event across the mod.
-    if Common.RollingStockTypes[diedEntity.type] == nil then
-        return
-    end]]
     -- This function can be called either by local event registration or from tunnel-shared event handlder function.
     if diedEntity == nil then
         diedEntity = event.entity
@@ -98,10 +104,16 @@ TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
     end
 
     -- Check if there is a managed train that needs stopping.
-    local trainIdToManagedTrain = global.trainManager.trainIdToManagedTrain[trainId] --TrainManager.GetTrainIdsManagedTrainDetails()
-    if trainIdToManagedTrain ~= nil then
+    local managedTrain
+    managedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[trainId]
+    if managedTrain ~= nil then
         -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
-        MOD.Interfaces.TrainManager.InvalidTrainFound(trainIdToManagedTrain.managedTrain)
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
+    end
+    managedTrain = global.trainManager.leavingTrainIdToManagedTrain[trainId]
+    if managedTrain ~= nil then
+        -- Managed train for this Id exist, so stop it processing as the main train is now invalid.
+        MOD.Interfaces.TrainManager.InvalidTrainFound(managedTrain)
     end
 end
 
@@ -155,7 +167,6 @@ end
 ---@param trainCachedData TrainCachedData
 ---@return boolean trainForwardsCacheData @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
 TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, trainCachedData)
-    -- Code Dev Note: Looked at using the other direction's data if populated as base for new data, but the values that can be just copied are all cached base data already so basically just as quick to regenerate it and much simplier logic.
     local trainForwardsCacheData  ---@type boolean
     local trainSpeedCalculationData  ---@type Utils_TrainSpeedCalculationData
 
@@ -168,29 +179,30 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         trainForwardsCacheData = train_speed < 0
     end
 
+    -- Code Dev Note: I looked at using the other direction's data if populated as a base for new data in Utils.GetTrainSpeedCalculationData(), but very few values can be just copied. so basically very little could be saved and it's much simplier logic to just regenerate it.
     if trainForwardsCacheData then
         -- Train moving forwards.
         if trainCachedData.forwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
-            trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
+            trainCachedData.forwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, trainCachedData.carriagesCachedData, nil)
         else
-            -- Just update the locomotiveAccelerationPower.
+            -- Just update the locomotiveFuelAccelerationPower later in this function for the existing train data.
             trainSpeedCalculationData = trainCachedData.forwardMovingTrainSpeedCalculationData
         end
     else
         -- Train moving backwards.
         if trainCachedData.backwardMovingTrainSpeedCalculationData == nil then
             -- No data held for current direction so generate it.
-            trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, nil, trainCachedData.carriagesCachedData)
+            trainCachedData.backwardMovingTrainSpeedCalculationData = Utils.GetTrainSpeedCalculationData(train, train_speed, trainCachedData.carriagesCachedData, nil)
         else
-            -- Just update the locomotiveAccelerationPower.
+            -- Just update the locomotiveFuelAccelerationPower later in this function for the existing train data.
             trainSpeedCalculationData = trainCachedData.backwardMovingTrainSpeedCalculationData
         end
     end
 
-    -- Only run when speed calculated data is being generated for the first time
+    -- Only run when speed calculated data is being generated for the first time. Completes data setup and returns.
     if trainSpeedCalculationData == nil then
-        -- Record how many locomotives are facing each direction if needed.
+        -- Record how many locomotives are facing each direction if not already cached.
         if trainCachedData.forwardFacingLocomotiveCount == nil then
             local otherDirectionName, otherDirectionFacing
             if trainForwardsCacheData then
@@ -219,23 +231,8 @@ TrainCachedData.UpdateTrainSpeedCalculationData = function(train, train_speed, t
         return trainForwardsCacheData
     end
 
-    -- Update the acceleration value back in to the cache on each calling.
-    local fuelAccelerationBonus
-    for _, carriageCachedData in pairs(trainCachedData.carriagesCachedData) do
-        -- Note: this is a partial clone from Utils.GetTrainSpeedCalculationData().
-        -- Only process locomotives that are powering the trains movement.
-        if carriageCachedData.prototypeName == "locomotive" and trainForwardsCacheData == carriageCachedData.faceingFrontOfTrain then
-            local carriage = carriageCachedData.entity
-            local currentFuelPrototype = Utils.GetLocomotivesCurrentFuelPrototype(carriage)
-            if currentFuelPrototype ~= nil then
-                -- No benefit to using PrototypeAttributes.GetAttribute() as we'd have to get the prototypeName to load from the cache each time and theres only 1 attribute we want in this case.
-                fuelAccelerationBonus = currentFuelPrototype.fuel_acceleration_multiplier
-                -- Just get fuel from one forward facing loco that has fuel. Have to check the inventory as the train ill be breaking for the signal theres no currently burning.
-                break
-            end
-        end
-    end
-    trainSpeedCalculationData.locomotiveAccelerationPower = 10 * trainSpeedCalculationData.forwardFacingLocoCount * ((fuelAccelerationBonus or 1) / trainSpeedCalculationData.trainWeight)
+    -- Update the acceleration value for current fuel back in to the cache for when we already had the core data from before.
+    Utils.UpdateTrainSpeedCalculationDataForCurrentFuel(trainSpeedCalculationData, trainCachedData.carriagesCachedData, trainForwardsCacheData, train)
 
     return trainForwardsCacheData
 end

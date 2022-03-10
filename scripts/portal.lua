@@ -1,20 +1,20 @@
---local Events = require("utility.events")
 local Utils = require("utility.utils")
 local TunnelShared = require("scripts.tunnel-shared")
 local Common = require("scripts.common")
-local TunnelSignalDirection, TunnelUsageParts = Common.TunnelSignalDirection, Common.TunnelUsageParts
---local PortalEndAndSegmentEntityNames = Common.PortalEndAndSegmentEntityNames
+local TunnelSignalDirection, TunnelUsageState = Common.TunnelSignalDirection, Common.TunnelUsageState
 local Portal = {}
 local EventScheduler = require("utility.event-scheduler")
 
 ---@class Portal
 ---@field id uint @ unique id of the portal object.
 ---@field isComplete boolean @ if the portal has 2 connected portal end objects or not.
+---@field portalParts table<UnitNumber, PortalPart> @ The portal end and portal segment objects. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalEnds table<UnitNumber, PortalEnd> @ the portal end objects of this portal. No direction, orientation or role information implied by this array. Key'd by the portal end entity unit_number (id).
 ---@field portalSegments table<UnitNumber, PortalSegment> @ the portal segment objects of this portal. Key'd by the portal segment entity unit_number (id).
 ---@field trainWaitingAreaTilesLength uint @ how many tiles this portal has for trains to wait in it when using the tunnel.
 ---@field force LuaForce @ the force this portal object belongs to.
 ---@field surface LuaSurface @ the surface this portal part object is on.
+---@field guiOpenedByParts table<Id, PortalPart> @ A table of portal part Id's to PortalParts that have a GUI opened on this portal for one or more players.
 ---
 ---@field portalTunneExternalConnectionSurfacePositionStrings? table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject>|null @ the 2 external positions the portal should look for underground segments at. Only established on a complete portal.
 ---
@@ -25,7 +25,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field tunnel? Tunnel|null @ ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
 ---@field portalRailEntities? table<UnitNumber, LuaEntity>|null @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
 ---@field portalOtherEntities? table<UnitNumber, LuaEntity>|null @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
----@field portalEntryPointPosition? Position|null @ the position of the entry point to the portal. Only established once this portal is part of a valid tunnel.
+---@field portalEntryPointPosition? Position|null @ the position of the entry point to the portal. Is the middle of the rail track where they meet the portal edge. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorEntity? LuaEntity|null @ hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorPosition? Position|null @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorEntity? LuaEntity|null @ hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
@@ -55,6 +55,7 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field nonConnectedInternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected internal positions to check inside of the entity. Always exists, even if not part of a portal.
 ---@field nonConnectedExternalSurfacePositionStrings table<SurfacePositionString, SurfacePositionString> @ a table of this end part's non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
 ---@field graphicRenderIds Id[] @ a table of all render Id's that are associated with this portal part.
+---@field guiOpenedByPlayers table<PlayerIndex, LuaPlayer> @ A table of player Id's to LuaPlayer's who have a GUI opened on this portal part.
 ---
 ---@field portal? Portal|null @ ref to the parent portal object. Only populated if this portal part is connected to another portal part.
 ---
@@ -169,9 +170,10 @@ local PortalTypeData = {
 
 -- Distances are from entry end portal position in the Portal.entryDirection direction.
 local EntryEndPortalSetup = {
-    trackEntryPointFromCenter = 3, -- The border of the portal on the entry side. -- OVERHAUL: likely not needed in the end and can then be removed.
+    trackEntryPointFromCenter = 3, -- The border of the portal on the entry side.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
-    enteringTrainUsageDetectorEntityDistance = 1.95 -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carriages and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
+    enteringTrainUsageDetectorEntityDistance = 1.95, -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carriages and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
+    leavingTrainFrontPosition = -1 -- Has to balance being far enough back so the graphics that are often 0.5 longer than the collision box don't pertrude, but not so far back that on a single loco and 3 portal parts the carriage hits the transition train detector. Currently the collision box start is 1 tile back from the opening.
 }
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
@@ -194,7 +196,9 @@ Portal.CreateGlobals = function()
     global.portals.portalTunnelInternalConnectionSurfacePositionStrings = global.portals.portalTunnelInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by internal position string for trying to connect to an underground.
 
     --- The layer to draw graphics at that hide the train. Debug options can lower this so that trains appear on top of it for visual inspection.
-    global.portalGraphicsLayerOverTrain = "higher-object-above"
+    --- Shadows don't appear over other graphics and so we can use this layer for shadows as well as long as we add the shadow render after the main image render.
+    global.portalGraphicsLayerOverTrain = 130 -- Infront of main "object" layer.
+    global.portalGraphicsLayerUnderTrain = 128 -- Behind main "object" layer.
 end
 
 Portal.OnLoad = function()
@@ -205,6 +209,9 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition = Portal.CanAPortalConnectAtItsInternalPosition
     MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel = Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel
     MOD.Interfaces.Portal.On_PostTunnelCompleted = Portal.On_PostTunnelCompleted
+    MOD.Interfaces.Portal.GuiOpenedOnPortalPart = Portal.GuiOpenedOnPortalPart
+    MOD.Interfaces.Portal.GuiClosedOnPortalPart = Portal.GuiClosedOnPortalPart
+
     -- Merged event handler interfaces.
     MOD.Interfaces.Portal.OnBuiltEntity = Portal.OnBuiltEntity
     MOD.Interfaces.Portal.OnBuiltEntityGhost = Portal.OnBuiltEntityGhost
@@ -220,14 +227,6 @@ end
 ---@param createdEntity LuaEntity
 ---@param createdEntity_name string
 Portal.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid then
-        return
-    end
-    local createdEntity_name = createdEntity.name
-    if PortalEndAndSegmentEntityNames[createdEntity_name] == nil then
-        return
-    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -263,7 +262,8 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
         surface_index = surface_index,
         force = builtEntity.force,
         typeData = portalTypeData,
-        graphicRenderIds = {}
+        graphicRenderIds = {},
+        guiOpenedByPlayers = {}
     }
 
     -- Handle the caching of specific portal part type information and to their globals.
@@ -315,8 +315,10 @@ Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
     -- Register the part's entity for reverse lookup.
     global.portals.portalPartEntityIdToPortalPart[portalPartObject.id] = portalPartObject
 
+    -- Join this portal part to a portal if approperiate. This will check and update the Portal.isComplete attribute used below.
     Portal.UpdatePortalsForNewPortalPart(portalPartObject)
 
+    -- If the portal is complete then check if we've just connected to underground parts.
     if portalPartObject.portal ~= nil and portalPartObject.portal.isComplete then
         Portal.CheckAndHandleTunnelCompleteFromPortal(portalPartObject.portal)
     end
@@ -391,11 +393,13 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
             local portal = {
                 id = portalId,
                 isComplete = false,
+                portalParts = {},
                 portalEnds = {},
                 portalSegments = {},
                 trainWaitingAreaTilesLength = 0,
                 force = portalPartObject.force,
-                surface = portalPartObject.surface
+                surface = portalPartObject.surface,
+                guiOpenedByParts = {}
             }
             global.portals.portals[portalId] = portal
             Portal.AddPartToPortal(portal, portalPartObject)
@@ -420,6 +424,19 @@ Portal.UpdatePortalsForNewPortalPart = function(portalPartObject)
         else
             -- If a situation should be ignored add it explicitly.
             error("unexpected scenario")
+        end
+
+        -- Something was done to this portal so update any open GUIs on any parts it has.
+        -- This will lead to an open GUI being refreshed multiple times for re-created portals as each part is added to the portal. But we need the last value and is pretty edge case.
+        for _, portalPart in pairs(portalPartObject.portal.portalParts) do
+            for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+            end
+        end
+    else
+        -- If this part was open in a GUI already then update it as its likely been part of a portal and is now orphaned.
+        for playerIndex in pairs(portalPartObject.guiOpenedByPlayers) do
+            MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPartObject, playerIndex, false)
         end
     end
 
@@ -446,12 +463,19 @@ Portal.AddPartToPortal = function(portal, portalPart)
     else
         error("invalid portal type: " .. portalPart.typeData.partType)
     end
+    portal.portalParts[portalPart.id] = portalPart
+
+    -- Check for any already open GUIs on the portalPart and if so update portal to know of the part.
+    if next(portalPart.guiOpenedByPlayers) ~= nil then
+        portal.guiOpenedByParts[portalPart.id] = portalPart
+    end
 end
 
 --- Moves the old partal parts to the new portal and removes the old portal object.
 ---@param oldPortal Portal
 ---@param newPortal Portal
 Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
+    -- Move over all portal parts to the new portal's lists.
     for id, part in pairs(oldPortal.portalEnds) do
         newPortal.portalEnds[id] = part
         part.portal = newPortal
@@ -460,8 +484,20 @@ Portal.MergePortalInToOtherPortal = function(oldPortal, newPortal)
         newPortal.portalSegments[id] = part
         part.portal = newPortal
     end
+    for id, part in pairs(oldPortal.portalParts) do
+        newPortal.portalParts[id] = part
+    end
+
+    -- Update the train waiting area length to be the sum of the 2 portals as this is updated as each part is added to a portal.
     newPortal.trainWaitingAreaTilesLength = newPortal.trainWaitingAreaTilesLength + oldPortal.trainWaitingAreaTilesLength
+
+    -- Forget the old portal from globals as nothing should reference it now.
     global.portals.portals[oldPortal.id] = nil
+
+    -- Move across any open GUIs.
+    for portalPartId, portalPart in pairs(oldPortal.guiOpenedByParts) do
+        newPortal.guiOpenedByParts[portalPartId] = portalPart
+    end
 end
 
 --- A complete portal is 2 ends with some segments between. If a portal end part has segments both sides it must have the excess trimmed as the PortalComplete() logic requires portal end's with 1 used and 1 free connection.
@@ -618,7 +654,17 @@ Portal.PortalComplete = function(portal)
                 surface = endPortalPart.surface
             }
         )
+        table.insert(
+            endPortalPart.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-shadow-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
+                render_layer = global.portalGraphicsLayerOverTrain,
+                target = endPortalPart.entity_position,
+                surface = endPortalPart.surface
+            }
+        )
     end
+
     -- Add the portal segment's graphics.
     for _, portalSegment in pairs(portal.portalSegments) do
         local segmentPortalTypeData = portalSegment.typeData ---@type SegmentPortalTypeData
@@ -632,8 +678,24 @@ Portal.PortalComplete = function(portal)
                     surface = portalSegment.surface
                 }
             )
+            table.insert(
+                portalSegment.graphicRenderIds,
+                rendering.draw_sprite {
+                    sprite = "railway_tunnel-portal_graphics-portal_complete-middle-shadow-0_" .. tostring(portalSegment.entity_orientation * 100),
+                    render_layer = global.portalGraphicsLayerOverTrain,
+                    target = portalSegment.entity_position,
+                    surface = portalSegment.surface
+                }
+            )
         else
             error("unsupported segment shape: " .. segmentPortalTypeData.segmentShape)
+        end
+    end
+
+    -- Update any open GUIs on this portal as its state has now changed.
+    for _, portalPart in pairs(portal.portalParts) do
+        for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+            MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
         end
     end
 end
@@ -648,6 +710,7 @@ Portal.CheckAndHandleTunnelCompleteFromPortal = function(portal)
             if foundPortal ~= nil then
                 Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
                 MOD.Interfaces.Tunnel.CompleteTunnel({portal, foundPortal}, underground)
+                return -- Only need to find a valid tunnel once, no point checking after this.
             end
         end
     end
@@ -743,8 +806,11 @@ Portal.On_PreTunnelCompleted = function(portals)
             }
         }
 
+        -- Cache the portalEntryPosition.
+        portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = EntryEndPortalSetup.trackEntryPointFromCenter}, entryPortalEnd.entity_position)
+
         -- Cache the objects details for later use.
-        portal.leavingTrainFrontPosition = Utils.RotateOffsetAroundPosition(reverseEntryOrientation, {x = -1.5, y = 2}, entrySignalOutEntityPosition)
+        portal.leavingTrainFrontPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = EntryEndPortalSetup.leavingTrainFrontPosition}, entryPortalEnd.entity_position)
         portal.dummyLocomotivePosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}, blockedPortalEnd.entity_position)
         portal.enteringTrainUsageDetectorPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = EntryEndPortalSetup.enteringTrainUsageDetectorEntityDistance}, entryPortalEnd.entity_position)
         portal.transitionUsageDetectorPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionUsageDetectorEntityDistance}, blockedPortalEnd.entity_position)
@@ -831,8 +897,6 @@ Portal.On_PreTunnelCompleted = function(portals)
             [transitionSignalBlockingLocomotiveEntity.unit_number] = transitionSignalBlockingLocomotiveEntity
         }
 
-        --portal.portalEntryPointPosition = Utils.RotateOffsetAroundPosition(builtEntity.orientation, {x = 0, y = -math.abs(EntryEndPortalSetup.trackEntryPointFromCenter)}, portalEntity_position) -- only used by player containers and likely not suitable any more. fix when doing player containers.
-
         -- Remove the entry end's old closed graphics and add new open ones.
         for _, oldGraphicRenderId in pairs(portal.entryPortalEnd.graphicRenderIds) do
             rendering.destroy(oldGraphicRenderId)
@@ -851,7 +915,25 @@ Portal.On_PreTunnelCompleted = function(portals)
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-far-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
-                render_layer = "lower-object",
+                render_layer = global.portalGraphicsLayerUnderTrain,
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-shadow-near-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = global.portalGraphicsLayerOverTrain,
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-shadow-far-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = global.portalGraphicsLayerUnderTrain,
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
             }
@@ -923,10 +1005,6 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
 Portal.OnBuiltEntityGhost = function(event, createdEntity)
-    --[[local createdEntity = event.created_entity or event.entity
-    if not createdEntity.valid or createdEntity.type ~= "entity-ghost" or PortalEndAndSegmentEntityNames[createdEntity.ghost_name] == nil then
-        return
-    end]]
     local placer = event.robot -- Will be nil for player or script placed.
     if placer == nil and event.player_index ~= nil then
         placer = game.get_player(event.player_index)
@@ -942,11 +1020,6 @@ end
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
 Portal.OnPreMinedEntity = function(event, minedEntity)
-    -- Check its one of the entities this function wants to inspect.
-    --[[local minedEntity = event.entity
-    if not minedEntity.valid or PortalEndAndSegmentEntityNames[minedEntity.name] == nil then
-        return
-    end]]
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedPortalPart = global.portals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
     if minedPortalPart == nil then
@@ -1020,6 +1093,8 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
     -- Handle the portal object if there is one.
     local portal = removedPortalPart.portal
     if portal ~= nil then
+        -- No need to update the GUI opened lists for anything other than the removedPart as the tunnel and portal object will be destroyed and re-created as approperiate. This process will trigger their GUIs to update.
+
         -- Handle the tunnel if there is one before the portal itself. As the remove tunnel function calls back to its 2 portals and handles/removes portal fields requiring a tunnel.
         if portal.tunnel ~= nil then
             MOD.Interfaces.Tunnel.RemoveTunnel(portal.tunnel, killForce, killerCauseEntity)
@@ -1028,9 +1103,7 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Handle the portal object.
 
         -- Remove the portal's graphic parts. When the portal parts are remade in to a portal they will gain their graphics back if approperiate.
-        ---@type table<UnitNumber, PortalPart>
-        local endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments})
-        for _, portalPart in pairs(endsAndSegments) do
+        for _, portalPart in pairs(portal.portalParts) do
             for _, graphicRenderId in pairs(portalPart.graphicRenderIds) do
                 rendering.destroy(graphicRenderId)
             end
@@ -1049,15 +1122,20 @@ Portal.EntityRemoved = function(removedPortalPart, killForce, killerCauseEntity)
         -- Remove this portal part from the portals fields before we re-process the other portals parts.
         portal.portalEnds[removedPortalPart.id] = nil
         portal.portalSegments[removedPortalPart.id] = nil
+        portal.portalParts[removedPortalPart.id] = nil
 
         -- As we don't know the portal's parts makeup we will just disolve the portal and recreate new one(s) by checking each remaining portal part. This is a bit crude, but can be reviewed if UPS impactful.
-        ---@type table<Id, PortalPart>
-        endsAndSegments = Utils.TableMergeOrigionalsShallow({portal.portalEnds, portal.portalSegments}) -- Regenerate as we removed a part from the list sicne last done.
-        Portal.RecalculatePortalPartsParentPortal(endsAndSegments)
+        Portal.RecalculatePortalPartsParentPortal(portal.portalParts)
+    end
+
+    -- If this part had an open GUI then alert the GUI class that there's been a change.
+    for playerIndex in pairs(removedPortalPart.guiOpenedByPlayers) do
+        MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(removedPortalPart, playerIndex, true)
     end
 end
 
 --- Make a list of portal parts forget their portal and connections. Then recalculate the portal and connections again.
+---
 --- Useful for when breaking a portal up or removing parts from a portal.
 ---@param portalParts table<UnitNumber, PortalPart>
 Portal.RecalculatePortalPartsParentPortal = function(portalParts)
@@ -1101,6 +1179,15 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
+                render_layer = global.portalGraphicsLayerOverTrain,
+                target = portal.entryPortalEnd.entity_position,
+                surface = portal.entryPortalEnd.surface
+            }
+        )
+        table.insert(
+            portal.entryPortalEnd.graphicRenderIds,
+            rendering.draw_sprite {
+                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-shadow-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
                 render_layer = global.portalGraphicsLayerOverTrain,
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
@@ -1154,6 +1241,13 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         portal.dummyLocomotivePosition = nil
         portal.entryDirection = nil
         portal.leavingDirection = nil
+
+        -- If any part of this portal had an open GUI then alert the GUI class that there's been a change.
+        for _, portalPart in pairs(portal.guiOpenedByParts) do
+            for playerIndex in pairs(portalPart.guiOpenedByPlayers) do
+                MOD.Interfaces.PortalTunnelGui.On_PortalPartChanged(portalPart, playerIndex, false)
+            end
+        end
     end
 end
 
@@ -1161,11 +1255,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Portal.OnDiedEntity = function(event, diedEntity)
-    -- Check its one of the entities this function wants to inspect.
-    --[[local diedEntity = event.entity
-    if not diedEntity.valid or PortalEndAndSegmentEntityNames[diedEntity.name] == nil then
-        return
-    end]]
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local diedPortalPart = global.portals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
     if diedPortalPart == nil then
@@ -1179,10 +1268,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
-    --[[if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_entry_train_detector_1x1" then
-        -- Needed due to how died event handlers are all bundled togeather.
-        return
-    end]]
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1215,49 +1300,74 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
         return
     end
 
-    -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
+    -- Is a scheduled train following its schedule so check if its already reserved a tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
-        if trainIdToManagedTrain ~= nil then
-            -- This train has reserved a tunnel somewhere.
-            local managedTrain = trainIdToManagedTrain.managedTrain
-            if managedTrain.tunnel.id == portal.tunnel.id then
-                -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
+        -- Check tunnels that this train is leaving. Check first as a train leaving a tunnel should be handled before it checks if its entering a different tunnel.
+        local leavingManagedTrain = global.trainManager.leavingTrainIdToManagedTrain[train_id]
+        if leavingManagedTrain ~= nil then
+            -- This train is leaving a tunnel somewhere, so check if its this tunnel or another one and handle.
+
+            if leavingManagedTrain.tunnel.id == portal.tunnel.id then
+                -- The train is leaving this tunnel.
+
+                -- Train has been leaving the tunnel and is now trying to pass out of the tunnel's exit portal track. This is healthy activity.
+                return
+            else
+                -- The train is leaving another tunnel.
+                -- This isn't a leaving train state we want to react to, and we don't want to stop further processing (no return).
+            end
+        end
+
+        -- Check tunnels that this train is actively using (approaching, traversing).
+        local activelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[train_id]
+        if activelyUsingManagedTrain ~= nil then
+            -- This train is using a tunnel somewhere, so check if its this tunnel or another one and handle.
+
+            if activelyUsingManagedTrain.tunnel.id == portal.tunnel.id then
+                -- The train is using this tunnel.
+
+                if activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.approaching then
                     -- Train had reserved the tunnel via signals at distance and is now trying to pass in to the tunnels entry portal track. This is healthy activity.
-                    MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, managedTrain)
-                    return
-                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
-                    -- Train has been using the tunnel and is now trying to pass out of the tunnels exit portal track. This is healthy activity.
+                    MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, activelyUsingManagedTrain)
                     return
                 else
-                    error("Train is crossing a tunnel portal's threshold while not in an expected state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                    error("Train is crossing a tunnel portal's transition threshold while registered as actively using this tunnel, but not in the approaching state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                     return
                 end
             else
-                error("Train has entered one portal in automatic mode, while it has a reservation on another.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
-                return
-            end
-        else
-            -- This train hasn't reserved any tunnel.
-            if portal.tunnel.managedTrain == nil then
-                -- Portal's tunnel isn't reserved so this train can grab the portal.
-                MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
-                return
-            else
-                -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the entering train detection entity.
-                -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
+                -- The train is using another tunnel.
 
-                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
-                Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
+                -- If the train was actively using another tunnel and has just reversed. If it had reached the portal track (regardless of approaching or not) it will have been downgraded on that tunnel to just onPortalTrack.
+                if activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
+                    -- The train is flipping its active direction and current tunnel usage.
+                    MOD.Interfaces.TrainManager.EnteringTrainReversedIntoOtherTunnel(leavingManagedTrain, activelyUsingManagedTrain, train, portal)
+                    return
+                end
+
+                -- All other cases of this scenario are an error.
+                error("Train has entered one portal in automatic mode, while it is has an active usage registered for another tunnel.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                 return
             end
+        end
+
+        -- This train isn't using any tunnel.
+        if portal.tunnel.managedTrain == nil then
+            -- Portal's tunnel isn't reserved so this train can grab the portal.
+            MOD.Interfaces.TrainManager.RegisterTrainOnPortalTrack(train, portal, nil)
+            return
+        else
+            -- Portal's tunnel is already being used, so stop this train entering. Stop the new train here and restore the entering train detection entity.
+            -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
+
+            TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+            Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
+            return
         end
     end
 
     -- Train has a player in it so we assume its being actively driven. Can only detect if player input is being entered right now, not the players intention.
     if #train.passengers ~= 0 then
-        -- Future support for player driven train will expand this logic as needed. For now we just assume everything is fine.
+        -- Future support for player driven train will expand this logic as needed. This state shouldn't be reachable at present.
         error("suspected player driving train")
         return
     end
@@ -1276,7 +1386,9 @@ Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
     }
 end
 
---- Will try and place the entering train detection entity now and if not possible will keep on trying each tick until either successful or a tunnel state setting stops the attempts. Is safe to call if the entity already exists as will just abort (initally or when in per tick loop).
+--- Will try and place the entering train detection entity now and if not possible will keep on trying each tick until either successful or a tunnel state setting stops the attempts.
+---
+--- Is safe to call if the entity already exists as will just abort (initally or when in per tick loop).
 ---@param portal Portal
 ---@param retry boolean @ If to retry next tick should it not be placable.
 ---@param justplaceIt boolean @ If true the detector is built without a check first. Some weird edge cases whre the train has rammed the detector and stopped right next to it will blocks its build check, but it will work fine once just placed.
@@ -1345,10 +1457,6 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
-    --[[if not diedEntity.valid or diedEntity.name ~= "railway_tunnel-portal_transition_train_detector_1x1" then
-        -- Needed due to how died event handlers are all bundled togeather.
-        return
-    end]]
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1382,49 +1490,54 @@ Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
 
     -- Is a scheduled train following its schedule so check if its already reserved the tunnel.
     if not train.manual_mode and train.state ~= defines.train_state.no_schedule then
-        local trainIdToManagedTrain = MOD.Interfaces.TrainManager.GetTrainIdsManagedTrainDetails(train_id)
-        if trainIdToManagedTrain ~= nil then
-            -- This train has reserved a tunnel somewhere.
-            local managedTrain = trainIdToManagedTrain.managedTrain
-            if managedTrain.tunnel.id == portal.tunnel.id then
+        -- Presently we don't want to react to any scenario in relation to if the train is leaving at present either this tunnel or another.
+        -- So no need to check for a leaving train glboal at all. situation where
+
+        -- Check tunnels that this train is actively using (approaching, traversing).
+        local activelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[train_id]
+        if activelyUsingManagedTrain ~= nil then
+            -- This train has reserved a tunnel somewhere, so check if its this or another one and handle.
+
+            if activelyUsingManagedTrain.tunnel.id == portal.tunnel.id then
                 -- The train has reserved this tunnel.
-                if trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.approachingTrain then
+
+                if activelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.approaching then
                     -- Train had reserved the tunnel via signals at distance and is now ready to fully enter the tunnel.
-                    MOD.Interfaces.TrainManager.TrainEnterTunnel(managedTrain, event.tick)
+                    MOD.Interfaces.TrainManager.TrainEnterTunnel(activelyUsingManagedTrain, event.tick)
                     Portal.AddTransitionUsageDetectionEntityToPortal(portal)
                     return
-                elseif trainIdToManagedTrain.tunnelUsagePart == TunnelUsageParts.leavingTrain then
-                    error("Train has been using the tunnel and is now trying to pass backwards through the tunnel. This may be supported in future, but error for now.")
-                    return
                 else
-                    error("Train is crossing a tunnel portal's transition threshold while not in an expected state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                    error("Train is crossing a tunnel portal's transition threshold while registered as actively using this tunnel, but not in the approaching state.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                     return
                 end
             else
-                error("Train has reached the transition point of one portal, while it has a reservation on another portal.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. managedTrain.tunnel.id)
+                error("Train has reached the transition point of one portal, while it is registered as actively using another portal.\ntrainId: " .. train_id .. "\nenteredPortalId: " .. portal.id .. "\nreservedTunnelId: " .. activelyUsingManagedTrain.tunnel.id)
                 return
             end
-        else
-            -- This train hasn't reserved any tunnel.
-            if portal.tunnel.managedTrain == nil then
-                -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now.
-                error("unexpected train entering tunnel without having passed through entry detector")
-                MOD.Interfaces.TrainManager.TrainEnterTunnel(train, event.tick)
-                return
-            else
-                -- Portal's tunnel is already being used so stop this train entering. Stop the new train here and restore the transition train detection entity.
-                -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
+        end
 
-                TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
-                Portal.AddTransitionUsageDetectionEntityToPortal(portal)
-                return
+        -- This train hasn't reserved any tunnel.
+        if portal.tunnel.managedTrain == nil then
+            -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now. But is none standard as the train didn't pass through the entity detector.
+            if global.debugRelease then
+                error("unexpected train entering tunnel without having passed through entry detector")
             end
+            TunnelShared.PrintWarningAndReportToModAuthor("Train entering tunnel without having passed through entry detector. Mod will try and continue.")
+            MOD.Interfaces.TrainManager.TrainEnterTunnel(train, event.tick)
+            return
+        else
+            -- Portal's tunnel is already being used, so stop this train entering. Stop the new train here and restore the transition train detection entity.
+            -- This can be caused by the known non ideal behaviour regarding 2 trains simultaniously appraoching a tunnel from opposite ends at slow speed.
+
+            TunnelShared.StopTrainFromEnteringTunnel(train, train_id, train.carriages[1], event.tick, {"message.railway_tunnel-tunnel_in_use"})
+            Portal.AddTransitionUsageDetectionEntityToPortal(portal)
+            return
         end
     end
 
     -- Train has a player in it so we assume its being actively driven. Can only detect if player input is being entered right now, not the players intention.
     if #train.passengers ~= 0 then
-        -- Future support for player driven train will expand this logic as needed. For now we just assume everything is fine.
+        -- Future support for player driven train will expand this logic as needed. This state shouldn't be reachable at present.
         error("suspected player driving train")
         return
     end
@@ -1473,6 +1586,36 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
             portal.transitionUsageDetectorEntity.destroy()
         end
         portal.transitionUsageDetectorEntity = nil
+    end
+end
+
+--- Mark this portal part as having a GUI opened on it.
+---@param portalPart PortalPart
+---@param playerIndex Id
+---@param player LuaPlayer
+Portal.GuiOpenedOnPortalPart = function(portalPart, playerIndex, player)
+    portalPart.guiOpenedByPlayers[playerIndex] = player
+    if portalPart.portal ~= nil then
+        portalPart.portal.guiOpenedByParts[portalPart.id] = portalPart
+        if portalPart.portal.tunnel ~= nil then
+            portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = player
+        end
+    end
+end
+
+--- Mark this portal part as having a GUI closed on it.
+---@param portalPart PortalPart
+---@param playerIndex Id
+Portal.GuiClosedOnPortalPart = function(portalPart, playerIndex)
+    portalPart.guiOpenedByPlayers[playerIndex] = nil
+    if next(portalPart.guiOpenedByPlayers) == nil then
+        -- No other players have this part open so inform the portal
+        if portalPart.portal ~= nil then
+            portalPart.portal.guiOpenedByParts[portalPart.id] = nil
+            if portalPart.portal.tunnel ~= nil then
+                portalPart.portal.tunnel.guiOpenedByPlayers[playerIndex] = nil
+            end
+        end
     end
 end
 
