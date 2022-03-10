@@ -33,7 +33,8 @@ end
 
 --- Called when ever a player left clicks on an entity. We want to check if they have clicked on a portal part entity and if so call to load the GUI for it.
 ---@param event CustomInputEvent
-PortalTunnelGui.On_OpenGuiInput = function(event)
+---@param playerSelectedEntity? LuaEntity|null @ The entity the player would have clicked on. Is only provided when it's code doing the opening rather than the player actually clicking on an entity. The other details in th event object must be set correctly in this code triggered opening.
+PortalTunnelGui.On_OpenGuiInput = function(event, playerSelectedEntity)
     -- This event will fire for a number of player actions we can just entirely ignore, or for clicked entity types we don't care about.
     if event.selected_prototype == nil or event.selected_prototype.base_type ~= "entity" or event.selected_prototype.derived_type ~= "simple-entity-with-owner" then
         return
@@ -47,7 +48,9 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
     -- Is one of our portal parts so get the portal its part of and open the GUI for it.
     local playerIndex = event.player_index
     local player = game.get_player(playerIndex)
-    local portalPartId = player.selected.unit_number
+    -- If this is a code re-open of the GUI we need to pass in the entity as the player won't have it as their selected entity.
+    local selectedEntity = playerSelectedEntity or player.selected
+    local portalPartId = selectedEntity.unit_number
     local portalPart = global.portals.portalPartEntityIdToPortalPart[portalPartId]
     if portalPart == nil then
         error("no registered portal part object for clicked portal part entity")
@@ -59,7 +62,10 @@ PortalTunnelGui.On_OpenGuiInput = function(event)
     local existingLocation
     if openGuiForPortalPart then
         local existingGuiFrame = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main", "frame")
-        existingLocation = existingGuiFrame.location
+        -- Get the existing screen location assumeing the GUI frame hasn't been unexpectedly closed by another mod.
+        if existingGuiFrame.valid then
+            existingLocation = existingGuiFrame.location
+        end
         PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, openGuiForPortalPart)
     end
 
@@ -179,6 +185,13 @@ end
 ---@param playerIndex Id
 PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
     local mainFrameContentsContainer = GuiUtil.GetElementFromPlayersReferenceStorage(playerIndex, "portalTunnelGui_frame", "pt_main_contents_container", "flow")
+    --Check that the GUI element obtained from cache is valid.
+    if not mainFrameContentsContainer.valid then
+        -- Main container has been closed by something else. So tidy up and then re-open the GUI as if the player clicked on it, as this will ensure state consistency.
+        PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, portalPart)
+        PortalTunnelGui.On_OpenGuiInput({player_index = playerIndex, selected_prototype = {name = portalPart.entity.name, base_type = "entity", derived_type = portalPart.entity.type}}, portalPart.entity)
+        return
+    end
 
     -- Get the portal and tunnel variable values.
     local thisPortal = portalPart.portal
@@ -289,6 +302,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
             trainFuel_clickEnabled = false
             trainFuel_tooltip = {"gui-tooltip.railway_tunnel-pt_open_add_fuel_inventory-none"}
         elseif managedTrain.tunnelUsageState == Common.TunnelUsageState.approaching or managedTrain.tunnelUsageState == Common.TunnelUsageState.portalTrack then
+            -- This will also be triggered by a reversing train out of a tunnel. But is rare edge case and having seperate wording makes it messy and confusing for standard usage cases.
             tunnelUsageStateText = {"gui-caption.railway_tunnel-train_usage_state-entering"}
             trainGuiButton_clickEnabled = true
             trainGuiButton_tooltip = {"gui-tooltip.railway_tunnel-pt_open_train_gui-enabled"}
@@ -526,7 +540,7 @@ end
 ---@param partRemoved boolean @ If the part has been removed and thus the GUI should be closed.
 PortalTunnelGui.On_PortalPartChanged = function(portalPart, playerIndex, partRemoved)
     if partRemoved then
-        -- Part removed soclose everything.
+        -- Part removed so close everything.
         PortalTunnelGui.CloseGuiAndUpdatePortalPart(playerIndex, portalPart)
         return
     end

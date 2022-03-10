@@ -4,9 +4,9 @@ Now
 
 Bugs / Next
 -----------
-	- Check that the tunnel GUI updates correct for both tunnels in the sequential tunnel usage and reversal scenarios.
-	- Check that the tunnel GUI isn't closed on player death or teleportation.
-	- Make the GUI updates/closing handle if the GUI is closed by something else. Just accept the closure, update any GUI state data and don't error.
+    - Check its MP safe:
+        - With multiple players riding in the same and different trains.
+        - Opening and closing guis.
 
 
 Features to add/change
