@@ -1,5 +1,8 @@
 -- Use render_layer "higher-object-above" on the sprites wanted over the top of train caraiges. Has to be this specific layer to go over artillery wagon's cannons.
 -- Use render_layer "lower-object" on the sprites wanted under the train carriages, as the position of the render position is techncially closer to the player and so we need to use a lower render_layer than the carriages in order to appear behind them.
+-- Shadows are done 1 layer above each of the above.
+
+-- Graphics Note: shadows need to be 1 pixel larger on their inward facng edge than they should to ensure a consistent shadow join in game. Guess due to scaling or antialiasing.
 
 -- East Images 0.25
 data:extend(

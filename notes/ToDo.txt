@@ -1,6 +1,5 @@
 Now
 ---
-    - Portal part shadows don't quite meet up, probably just need a slight enlargement to cover 1 pixel larger each on their joining edge?
 
 
 Bugs / Next

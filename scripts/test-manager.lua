@@ -223,9 +223,9 @@ TestManager.OnStartup = function()
 
     -- If option to hide portal graphics is set then change the Portal globla setting.
     if HidePortalGraphics then
-        global.portalGraphicsLayerOverTrain = "lower-object"
+        global.portalGraphicsLayerOverTrain = 128 -- Behind main "object" layer.
     else
-        global.portalGraphicsLayerOverTrain = "higher-object-above"
+        global.portalGraphicsLayerOverTrain = 130 -- Infront of main "object" layer.
     end
 
     -- Create the global test management state data. Lua script functions can't be included in to global object.
