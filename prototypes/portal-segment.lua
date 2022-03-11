@@ -77,7 +77,7 @@ local portalSegmentStraightItem = {
     icon_size = 32,
     subgroup = "train-transport",
     order = "a[train-system]-a[rail]a",
-    stack_size = 10,
+    stack_size = 50,
     place_result = "railway_tunnel-portal_segment-straight"
 }
 

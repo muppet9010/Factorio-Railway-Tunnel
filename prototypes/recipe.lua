@@ -43,7 +43,6 @@ data:extend(
             name = "railway_tunnel-underground_segment-straight-rail_crossing",
             enabled = false,
             ingredients = {
-                {"concrete", 10},
                 {"rail", 3},
                 {"railway_tunnel-underground_segment-straight", 1}
             },

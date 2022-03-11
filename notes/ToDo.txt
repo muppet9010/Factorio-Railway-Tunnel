@@ -8,6 +8,9 @@ Bugs / Next
 
 Features to add/change
 ----------------------
+    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
+    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
+    - Support 2 tunnels crossing - Use only 2x6 pieces, but have a special 2x6 that is for underground crossing underground. It can be fast replaced with other 2x6 tunnel pieces. It must force having 3 pieces placed the full width of the tunnel to make the crossing tunnel valid. I should add the variable crossing arrows based on how many are placed next to each other ao its clear if enough have been built or not. Will also need to stop a fast replace downgrade when the second tunnel is in use and handle crossing tunnel to crossing above tracks carefully. Would need to suppport crossing N tunnels sequentially.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
         - Example edge cases:
@@ -15,16 +18,10 @@ Features to add/change
                 A: The first train leaves the portal and the tunnel is released. The entry signals would still show red entry, but the mod would believe the tunnel is free. This would allow a new manual/coasting/etc train (third) to enter the portal against the red signal and successfully reserve the tunnel as the second train is invisible to the mod. When this third train traverses it would try and be cloned on top of the second train.
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
     - Add a tips & tricks section to cover tunnel and portal construction.
-    - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
-    - Portal/Tunnel GUI Improvements:
-        - Review layout and current information presentation.
-        - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
-        - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
-        - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
-            - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
-    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
-    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
-    - Support 2 tunnels crossing - details vary - UPDATED NOTES IN DEDICATED BRANCH FOR THIS
+    - Train GUIs - multiple related QOL features:
+        - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
+        - If a player is in the trains window and clicks on a tunnel using train at present nothing happens as the train isn't openable. This is needed so the player can't set it to automatic. As a 0 non player activity UPS, and very low player activity UPS, can we detect the clicking on the train in the trains window and open the train in tunnel placeholder window. Then there is a user interaction response and when the train leaves the tunnel it can switch back to the real train GUI.
+        - on_gui_opened event will detect if a player opened a train GUI, but on_gui_closed won't trigger in some causes of a GUI being closed. So if we find a player did have a train's GUI open we will need to check its still open at the point of closing a window and opening another. This should allow very few and cheap checks rather than say checking all players opened GUIs on every train tunnel entrance/exit.
 
 
 UPS / code plans
@@ -59,6 +56,12 @@ Concept change ideas
 
 Long term feature plans
 -----------------------
+    - Portal/Tunnel GUI Improvements:
+        - Review layout and current information presentation.
+        - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
+        - Make it so that the tunnel extra features don't disappear on train state change, but instead have their clickability disabled.
+        - Catch the E & Escape key and close the GUI if its open. "toggle-menu" and "confirm-gui". Tried this previouly and aborted its inclusion with the below note, but regretting this. Think that closing it regardless of if another base game GUI is open is actually fine.
+            - Tried closing the GUI on E and Escape, but without making our GUI a primary GUI and thus it closing when an Inventory is opened its a bad user experience, so removed.
 	- Support manually driven trains:
         - When they try to enter a portal area they should be stopped dead if the tunnel is in use, as per automatic trains in trying to use a reserved tunnel.
         - If tunnel is unreserved they need to reserve it at entrance train detector and can be manually driven through using same logic as was being worked on for full mod version.
@@ -73,7 +76,8 @@ Long term feature plans
         - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but Utils.GetTrainSpeedCalculationData() locomotiveAccelerationPower doesn't account for non default max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. The current hardcoded value of 10 is for the default loco attribute value of 600kW.
         - My single train unit mod.
         - Detect any mods that have destroyed train carriages spill contents on the ground. Drop train contents on ground at tunnel portals when a tunnel is destroyed.
-        - Suppor for mods that enable vehicle grids for train carriages:
+        - Check that a player riding a train is still in the player container and that its in the expected position before we telepeort it each tick. If it's not then something has teleported the player and the player container should be destroyed if it still exists. Think my RCON streamer tools. Need to make sure the player can't move the container by driving it as this may falsly trigger this.
+        - Support for mods that enable vehicle grids for train carriages:
             Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots. At present the artillery wagons has been resolved in a simple manner by removing their ammo as will be a very rare case.
             Can give trains a movement bonus from exoskeleton legs that we currently don't account for in Utils train data generation.
             Some thoughts on this and options to resolve:
