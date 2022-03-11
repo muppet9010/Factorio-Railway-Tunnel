@@ -178,7 +178,7 @@ PortalTunnelGui.MakeGuiFrame = function(player, playerIndex, frameLocation)
                         {
                             descriptiveName = "pt_main_footer_beta",
                             type = "label",
-                            style = MuppetStyles.label.text.medium.plain,
+                            style = MuppetStyles.label.text.small.plain,
                             caption = "self"
                         }
                     }
