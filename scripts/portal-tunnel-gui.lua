@@ -48,6 +48,14 @@ PortalTunnelGui.On_OpenGuiInput = function(event, playerSelectedEntity)
     -- Is one of our portal parts so get the portal its part of and open the GUI for it.
     local playerIndex = event.player_index
     local player = game.get_player(playerIndex)
+
+    -- If the player has anything in their cursor then they aren't trying to open our protal GUI. This matches vanilla behaviour for opening entity GUIs.
+    local player_cursorStack = player.cursor_stack
+    if player_cursorStack ~= nil and player_cursorStack.valid and player_cursorStack.valid_for_read then
+        -- Cursor has something in it, we don't care what.
+        return
+    end
+
     -- If this is a code re-open of the GUI we need to pass in the entity as the player won't have it as their selected entity.
     local selectedEntity = playerSelectedEntity or player.selected
     local portalPartId = selectedEntity.unit_number

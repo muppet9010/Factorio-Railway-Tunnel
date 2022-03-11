@@ -1,10 +1,10 @@
 Now
 ---
+    - Class Position is now MapPosition.
 
 
 Bugs / Next
 -----------
-    - When using a BP or copy/cut and you start by clicking on a tunnel portal part it opens the GUI. See if we can filter these out.
 
 
 Features to add/change

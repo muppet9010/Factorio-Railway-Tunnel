@@ -86,4 +86,5 @@ So far iteration 2 of the mod has succeeded in its aim of reducing UPS usage and
 Contributors
 ============
 
-- blahfasel2000 - code contributions.
+- blahfasel2000 - code contributions to V1 of the mod.
+- justarandomgeek - creator of Factorio Mod Debug VSCode plugin.
