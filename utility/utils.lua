@@ -58,8 +58,8 @@ Utils.Are2EntitiesTheSame = function(entity1, entity2)
     end
 end
 
----@param pos1 Position
----@param pos2 Position
+---@param pos1 MapPosition
+---@param pos2 MapPosition
 ---@return boolean
 Utils.ArePositionsTheSame = function(pos1, pos2)
     if (pos1.x or pos1[1]) == (pos2.x or pos2[1]) and (pos1.y or pos1[2]) == (pos2.y or pos2[2]) then
@@ -264,7 +264,7 @@ Utils.IsTableValidPosition = function(thing)
 end
 
 ---@param thing table
----@return Position
+---@return MapPosition
 Utils.TableToProperPosition = function(thing)
     if thing.x ~= nil and thing.y ~= nil then
         if type(thing.x) == "number" and type(thing.y) == "number" then
@@ -315,7 +315,7 @@ Utils.TableToProperBoundingBox = function(thing)
     end
 end
 
----@param centrePos Position
+---@param centrePos MapPosition
 ---@param boundingBox BoundingBox
 ---@param orientation RealOrientation
 ---@return BoundingBox
@@ -350,29 +350,29 @@ Utils.ApplyBoundingBoxToPosition = function(centrePos, boundingBox, orientation)
     end
 end
 
----@param pos Position
+---@param pos MapPosition
 ---@param numDecimalPlaces uint
----@return Position
+---@return MapPosition
 Utils.RoundPosition = function(pos, numDecimalPlaces)
     return {x = Utils.RoundNumberToDecimalPlaces(pos.x, numDecimalPlaces), y = Utils.RoundNumberToDecimalPlaces(pos.y, numDecimalPlaces)}
 end
 
----@param pos Position
+---@param pos MapPosition
 ---@return ChunkPosition
 Utils.GetChunkPositionForTilePosition = function(pos)
     return {x = math_floor(pos.x / 32), y = math_floor(pos.y / 32)}
 end
 
 ---@param chunkPos ChunkPosition
----@return Position
+---@return MapPosition
 Utils.GetLeftTopTilePositionForChunkPosition = function(chunkPos)
     return {x = chunkPos.x * 32, y = chunkPos.y * 32}
 end
 
 --- Rotates an offset around position of {0,0}.
 ---@param orientation RealOrientation
----@param position Position
----@return Position
+---@param position MapPosition
+---@return MapPosition
 Utils.RotatePositionAround0 = function(orientation, position)
     -- Handle simple cardinal direction rotations.
     if orientation == 0 then
@@ -405,9 +405,9 @@ end
 
 --- Rotates an offset around a position. Combines Utils.RotatePositionAround0() and Utils.ApplyOffsetToPosition() to save UPS.
 ---@param orientation RealOrientation
----@param offset Position @ the position to be rotated by the orientation.
----@param position Position @ the position the rotated offset is applied to.
----@return Position
+---@param offset MapPosition @ the position to be rotated by the orientation.
+---@param position MapPosition @ the position the rotated offset is applied to.
+---@return MapPosition
 Utils.RotateOffsetAroundPosition = function(orientation, offset, position)
     -- Handle simple cardinal direction rotations.
     if orientation == 0 then
@@ -460,8 +460,8 @@ Utils.RotateDirectionByDirection = function(directionToRotate, referenceDirectio
     end
 end
 
----@param point1 Position
----@param point2 Position
+---@param point1 MapPosition
+---@param point2 MapPosition
 ---@return BoundingBox
 Utils.CalculateBoundingBoxFrom2Points = function(point1, point2)
     local minX, maxX, minY, maxY = nil, nil, nil, nil
@@ -516,9 +516,9 @@ Utils.CalculateBoundingBoxToIncludeAllBoundingBoxs = function(listOfBoundingBoxs
 end
 
 -- Applies an offset to a position. If you are rotating the offset first consider using Utils.RotateOffsetAroundPosition() as lower UPS than the 2 seperate function calls.
----@param position Position
----@param offset Position
----@return Position
+---@param position MapPosition
+---@param offset MapPosition
+---@return MapPosition
 Utils.ApplyOffsetToPosition = function(position, offset)
     return {
         x = position.x + offset.x,
@@ -842,8 +842,8 @@ Utils.CalculateTilesUnderPositionedBoundingBox = function(positionedBoundingBox)
 end
 
 -- Gets the distance between the 2 positions.
----@param pos1 Position
----@param pos2 Position
+---@param pos1 MapPosition
+---@param pos2 MapPosition
 ---@return number @ is inheriently a positive number.
 Utils.GetDistance = function(pos1, pos2)
     local dx = pos1.x - pos2.x
@@ -852,8 +852,8 @@ Utils.GetDistance = function(pos1, pos2)
 end
 
 -- Gets the distance between a single axis of 2 positions.
----@param pos1 Position
----@param pos2 Position
+---@param pos1 MapPosition
+---@param pos2 MapPosition
 ---@param axis Axis
 ---@return number @ is inheriently a positive number.
 Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
@@ -861,16 +861,16 @@ Utils.GetDistanceSingleAxis = function(pos1, pos2, axis)
 end
 
 -- Returns the offset for the first position in relation to the second position.
----@param newPosition Position
----@param basePosition Position
----@return Position
+---@param newPosition MapPosition
+---@param basePosition MapPosition
+---@return MapPosition
 Utils.GetOffsetForPositionFromPosition = function(newPosition, basePosition)
     return {x = newPosition.x - basePosition.x, y = newPosition.y - basePosition.y}
 end
 
 --- Get a direction heading from a start point to an end point that is a on an exact cardinal direction.
----@param startPos Position
----@param endPos Position
+---@param startPos MapPosition
+---@param endPos MapPosition
 ---@return defines.direction|int @ Returns -1 if the startPos and endPos are the same. Returns -2 if the positions not on a cardinal direction difference.
 Utils.GetCardinalDirectionHeadingToPosition = function(startPos, endPos)
     if startPos.x == endPos.x then
@@ -894,7 +894,7 @@ Utils.GetCardinalDirectionHeadingToPosition = function(startPos, endPos)
     end
 end
 
----@param position Position
+---@param position MapPosition
 ---@param boundingBox BoundingBox
 ---@param safeTiling? boolean|null @ If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
 ---@return boolean
@@ -1099,7 +1099,7 @@ Utils._TableContentsToJSON = function(targetTable, name, singleLineOutput, table
 end
 
 --- Makes a string of a position.
----@param position Position
+---@param position MapPosition
 ---@return string
 Utils.FormatPositionToString = function(position)
     return position.x .. "," .. position.y
@@ -1107,7 +1107,7 @@ end
 
 --- Makes a string of the surface Id and position to allow easy table lookup.
 ---@param surfaceId uint
----@param positionTable Position
+---@param positionTable MapPosition
 ---@return SurfacePositionString
 Utils.FormatSurfacePositionToString = function(surfaceId, positionTable)
     return surfaceId .. "_" .. positionTable.x .. "," .. positionTable.y
@@ -1116,7 +1116,7 @@ end
 --- Backwards converts a SurfacePositionString to usable data. This is ineffecient and should only be used for debugging.
 ---@param surfacePositionString SurfacePositionString
 ---@return uint surfaceIndex
----@return Position position
+---@return MapPosition position
 Utils.SurfacePositionStringToSurfaceAndPosition = function(surfacePositionString)
     local underscoreIndex = string_find(surfacePositionString, "_")
     local surfaceId = tonumber(string_sub(surfacePositionString, 1, underscoreIndex - 1))
@@ -1505,10 +1505,10 @@ Utils.GetPositionForAngledDistance = function(startingPos, distance, angle)
     return newPos
 end
 
----@param startingPos Position
+---@param startingPos MapPosition
 ---@param distance number
 ---@param orientation RealOrientation
----@return Position
+---@return MapPosition
 Utils.GetPositionForOrientationDistance = function(startingPos, distance, orientation)
     return Utils.GetPositionForAngledDistance(startingPos, distance, orientation * 360)
 end

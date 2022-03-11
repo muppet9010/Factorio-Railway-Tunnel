@@ -19,11 +19,11 @@ local Underground = {}
 ---@field id UnitNumber @ unit_number of the placed segment entity.
 ---@field entity LuaEntity
 ---@field entity_name string @ cache of the segment's entity's name.
----@field entity_position Position @ cache of the entity's position.
+---@field entity_position MapPosition @ cache of the entity's position.
 ---@field entity_direction defines.direction @ cache of the entity's direction.
 ---@field entity_orientation RealOrientation @ cache of the entity's orientation.
----@field frontInternalPosition Position @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
----@field rearInternalPosition Position  @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field frontInternalPosition MapPosition @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
+---@field rearInternalPosition MapPosition  @ used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
 ---@field frontInternalSurfacePositionString SurfacePositionString @ cache of the sement's frontInternalPosition as a SurfacePositionString.
 ---@field rearInternalSurfacePositionString SurfacePositionString @ cache of the sement's rearInternalPosition as a SurfacePositionString.
 ---@field frontExternalCheckSurfacePositionString SurfacePositionString @ cache of the front External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
@@ -72,7 +72,7 @@ local SegmentShape = {
 
 ---@class UndergroundSegmentTrackPositionOffset @ type of track and its position offset from the center of the segment when in a 0 orientation.
 ---@field trackEntityName string
----@field positionOffset Position
+---@field positionOffset MapPosition
 ---@field baseDirection defines.direction
 
 ---@type UndergroundSegmentTypeData[]

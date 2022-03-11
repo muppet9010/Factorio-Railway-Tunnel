@@ -10,7 +10,7 @@ local RollingStockTypes = Common.RollingStockTypes
 ---@class PlayerContainer
 ---@field id UnitNumber @ Unit_number of the player container entity.
 ---@field entity LuaEntity @ The player container entity the player is sitting in.
----@field entityPositionLastTick Position @ The position of the player container entity last tick. As we only ever get the old position and add the new movement too it, before applying it and caching it for the next tick.
+---@field entityPositionLastTick MapPosition @ The position of the player container entity last tick. As we only ever get the old position and add the new movement too it, before applying it and caching it for the next tick.
 ---@field playerIndex PlayerIndex
 ---@field player LuaPlayer @ The player the container is for.
 ---@field leavingCarriage LuaEntity @ The leaving train carriage entity this player will end up in.

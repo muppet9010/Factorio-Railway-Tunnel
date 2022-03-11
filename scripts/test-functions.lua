@@ -399,7 +399,7 @@ end
 ---@field facingForwards boolean
 
 --- Builds a train from a set starting position away from the "forwards" direction. Locomotives are randomly colored.
----@param firstCarriageFrontLocation Position @ The front tip of the lead carriages collision box.
+---@param firstCarriageFrontLocation MapPosition @ The front tip of the lead carriages collision box.
 ---@param carriagesDetails TestFunctions_TrainCarriageDetailsForBulding[] @ The carriages to be built, listed front to back.
 ---@param trainForwardsDirection defines.direction @ Only supports cardinal points.
 ---@param playerInCarriageNumber? uint|null
@@ -500,7 +500,7 @@ TestFunctions.GetTrainInArea = function(searchBoundingBox)
 end
 
 --- Searches the test surface for the first train found at the search position.
----@param searchPosition Position
+---@param searchPosition MapPosition
 ---@return LuaTrain
 TestFunctions.GetTrainAtPosition = function(searchPosition)
     local carriagesInInspectionArea = TestFunctions.GetTestSurface().find_entities_filtered {position = searchPosition, name = {"locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}, limit = 1}
@@ -525,7 +525,7 @@ end
 --- Handles train fuel requests and placing train carriages on rails. Any placed trains set to automatic mode in the blueprint will automatically start running. To aid train comparison the locomotives are given a random color and train wagons (cargo, fluid, artillery) have random items put in them so they are each unique.
 --- Blueprints are build as the "player" force.
 ---@param blueprintString string
----@param position Position
+---@param position MapPosition
 ---@param testName TestManager_TestName
 ---@return LuaEntity[] placedEntities @ all build entities
 ---@return TestFunctions_PlacedEntitiesByGroup placedEntitiesByGroup @ the key entities built grouped on their prototype type or prototype name.

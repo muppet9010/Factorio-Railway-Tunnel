@@ -72,7 +72,7 @@ Test.Start = function(testName)
     local _, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
     -- Get the train stops from the BP and the related rails taht we want to remove.
-    ---@typelist LuaEntity, LuaEntity, LuaEntity, Position, LuaEntity
+    ---@typelist LuaEntity, LuaEntity, LuaEntity, MapPosition, LuaEntity
     local endStop, forwardsRail, reverseRail, forwardsRailPosition, secondTrainEndStop
     for _, trainStop in pairs(placedEntitiesByGroup["train-stop"]) do
         if trainStop.backer_name == "End" then
@@ -131,7 +131,7 @@ Test.Start = function(testName)
         endStop = endStop, ---@type LuaEntity
         forwardsRail = forwardsRail, ---@type LuaEntity
         reverseRail = reverseRail, ---@type LuaEntity
-        forwardsRailPosition = forwardsRailPosition, ---@type Position
+        forwardsRailPosition = forwardsRailPosition, ---@type MapPosition
         reversedTrain = false, ---@type boolean
         reversedStateReachedTick = nil, ---@type Tick
         reversedTick = nil, ---@type Tick

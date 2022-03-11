@@ -14,7 +14,7 @@ local Events = require("utility.events")
 ---@field force LuaForce @ The force that this alert applies to.
 ---@field alertEntity LuaEntity @ The entity the alert targets.
 ---@field alertPrototypeName string
----@field alertPosition Position
+---@field alertPosition MapPosition
 ---@field alertSurface LuaSurface
 ---@field alertSignalId SignalID
 ---@field alertMessage LocalisedString

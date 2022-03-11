@@ -1,6 +1,5 @@
 Now
 ---
-    - Class Position is now MapPosition.
 
 
 Bugs / Next

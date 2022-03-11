@@ -5,7 +5,7 @@ local Logging = {}
 local Constants = require("constants")
 local Utils = require("utility.utils")
 
----@param position Position
+---@param position MapPosition
 ---@return string
 Logging.PositionToString = function(position)
     if position == nil then
@@ -210,7 +210,7 @@ end
 
 --- Writes out sequential numbers at the set position. Used as a visial debugging tool.
 ---@param targetSurface LuaSurface
----@param targetPosition LuaEntity|Position
+---@param targetPosition LuaEntity|MapPosition
 Logging.WriteOutNumberedMarker = function(targetSurface, targetPosition)
     global.numberedCount = global.numberedCount or 1
     rendering.draw_text {

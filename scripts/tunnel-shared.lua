@@ -139,7 +139,7 @@ end
 
 --- Highlights the single tiles to the placer player/force that are valid centres for an entity on the rail grid.
 ---@param placer EntityActioner
----@param position Position
+---@param position MapPosition
 ---@param surface LuaSurface
 ---@param entityName string
 ---@param ghostName string
@@ -185,7 +185,7 @@ end
 ---@param entityDoingInteraction EntityActioner
 ---@param text LocalisedString @ Text shown.
 ---@param surface LuaSurface
----@param position Position
+---@param position MapPosition
 TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
     local textAudiencePlayer, textAudienceForce = Utils.GetPlayerForceFromActioner(entityDoingInteraction)
     rendering.draw_text {text = text, surface = surface, target = position, time_to_live = 180, players = {textAudiencePlayer}, forces = {textAudienceForce}, color = {r = 1, g = 0, b = 0, a = 1}, scale_with_zoom = true}

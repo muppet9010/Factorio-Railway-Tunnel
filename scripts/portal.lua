@@ -25,25 +25,25 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field tunnel? Tunnel|null @ ref to tunnel object if this portal is part of one. Only established once this portal is part of a valid tunnel.
 ---@field portalRailEntities? table<UnitNumber, LuaEntity>|null @ the rail entities that are part of the portal. Only established once this portal is part of a valid tunnel.
 ---@field portalOtherEntities? table<UnitNumber, LuaEntity>|null @ table of the non rail entities that are part of the portal. Will be deleted before the portalRailEntities. Only established once this portal is part of a valid tunnel.
----@field portalEntryPointPosition? Position|null @ the position of the entry point to the portal. Is the middle of the rail track where they meet the portal edge. Only established once this portal is part of a valid tunnel.
+---@field portalEntryPointPosition? MapPosition|null @ the position of the entry point to the portal. Is the middle of the rail track where they meet the portal edge. Only established once this portal is part of a valid tunnel.
 ---@field enteringTrainUsageDetectorEntity? LuaEntity|null @ hidden entity on the entry point to the portal that's death signifies a train is coming on to the portal's rails. Only established once this portal is part of a valid tunnel.
----@field enteringTrainUsageDetectorPosition? Position|null @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
+---@field enteringTrainUsageDetectorPosition? MapPosition|null @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorEntity? LuaEntity|null @ hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
----@field transitionUsageDetectorPosition? Position|null @ the position of this portals transitionUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
----@field dummyLocomotivePosition? Position|null @ the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
+---@field transitionUsageDetectorPosition? MapPosition|null @ the position of this portals transitionUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
+---@field dummyLocomotivePosition? MapPosition|null @ the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
 ---@field entryDirection? defines.direction|null @ the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
 ---@field leavingDirection? defines.direction|null @ the direction a train would be heading if leaving the tunnel via this portal. Only established once this portal is part of a valid tunnel.
----@field leavingTrainFrontPosition? Position|null @ The position of the leaving train's lead carriage, 2 tiles back from the entry signal position. Only established once this portal is part of a valid tunnel.
+---@field leavingTrainFrontPosition? MapPosition|null @ The position of the leaving train's lead carriage, 2 tiles back from the entry signal position. Only established once this portal is part of a valid tunnel.
 
 ---@class PortalPart @ a generic part (entity) object making up part of a potral.
 ---@field id UnitNumber @ unit_number of the portal part entity.
 ---@field entity LuaEntity @ ref to the portal part entity.
 ---@field entity_name string @ cache of the portal part's entity's name.
----@field entity_position Position @ cache of the entity's position.
+---@field entity_position MapPosition @ cache of the entity's position.
 ---@field entity_direction defines.direction @ cache of the entity's direction.
 ---@field entity_orientation RealOrientation @ cache of the entity's orientation.
----@field frontInternalPosition Position @ our internal position to look for other parts' portalPartSurfacePositions global object entries from. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
----@field rearInternalPosition Position @ our internal position to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
+---@field frontInternalPosition MapPosition @ our internal position to look for other parts' portalPartSurfacePositions global object entries from. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
+---@field rearInternalPosition MapPosition @ our internal position to look for other parts' portalPartSurfacePositions global object entries. These are present on each connecting end of the part 0.5 tile in from its connecting center. This is to handle various shapes.
 ---@field frontInternalSurfacePositionString SurfacePositionString @ cache of the portal part's frontInternalPosition as a SurfacePositionString.
 ---@field rearInternalSurfacePositionString SurfacePositionString @ cache of the portal part's rearInternalPosition as a SurfacePositionString.
 ---@field frontExternalCheckSurfacePositionString SurfacePositionString @ cache of the front External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
@@ -79,7 +79,7 @@ local EndPortalType = {
 ---@field id UnitNumber @ unit_number of this signal.
 ---@field direction TunnelSignalDirection
 ---@field entity LuaEntity
----@field entity_position Position
+---@field entity_position MapPosition
 ---@field portal Portal
 ---@field railEntity? LuaEntity|null @ If cached the rail entity this signal is on, or null if not cached.
 ---@field railEntity_unitNumber? UnitNumber|null @ If cached the unit_number of the rail entity this signal is on, or null if not cached.
@@ -124,7 +124,7 @@ local SegmentShape = {
 
 ---@class PortalPartTrackPositionOffset @ type of track and its position offset from the center of the part when in a 0 orientation.
 ---@field trackEntityName string
----@field positionOffset Position
+---@field positionOffset MapPosition
 ---@field baseDirection defines.direction
 
 ---@type PortalPartTypeData[]

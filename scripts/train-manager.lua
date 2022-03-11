@@ -1196,10 +1196,10 @@ end
 
 --- Get the new carriage's poisition. This currently only handles straight track, but when curved track is introduced it will get more complicated.
 ---@param trainOrientation RealOrientation
----@param lastPosition Position
+---@param lastPosition MapPosition
 ---@param lastCarriageEntityName string
 ---@param nextCarriageEntityName string
----@return Position
+---@return MapPosition
 TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastPosition, lastCarriageEntityName, nextCarriageEntityName)
     local carriagesDistance = Common.CarriagePlacementDistances[nextCarriageEntityName]
     if lastCarriageEntityName ~= nil then
@@ -1211,8 +1211,8 @@ end
 --- Copy a carriage by cloning it to the new position and handle rotations.
 ---@param targetSurface LuaSurface
 ---@param refCarriage LuaEntity
----@param newPosition Position
----@param safeCarriageFlipPosition Position @ Not used until we need to support corners.
+---@param newPosition MapPosition
+---@param safeCarriageFlipPosition MapPosition @ Not used until we need to support corners.
 ---@param requiredOrientation RealOrientation @ Not used until we need to support corners.
 ---@return LuaEntity
 TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, safeCarriageFlipPosition, requiredOrientation)
@@ -1266,7 +1266,7 @@ end
 
 -- Dummy train can be used to keep the train stop reservations as it has near 0 power and so while actively moving, it will never actaully move any distance. Also can be used without a schedule to block tracks and trigger signals.
 ---@param exitPortal Portal
----@param dummyTrainPosition Position
+---@param dummyTrainPosition MapPosition
 ---@param trainSchedule TrainSchedule
 ---@param targetTrainStop LuaEntity
 ---@param skipScheduling boolean

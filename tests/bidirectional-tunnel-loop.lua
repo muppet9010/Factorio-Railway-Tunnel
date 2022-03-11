@@ -87,8 +87,8 @@ Test.Start = function(testName)
     ---@class Tests_BTL_TestScenarioBespokeData
     local testDataBespoke = {
         leavingStateshandled = 0, ---@type uint
-        northStationPositionCheck = {x = northStation.position.x - 2, y = northStation.position.y}, ---@type Position
-        southStationPositionCheck = {x = southStation.position.x + 2, y = southStation.position.y}, ---@type Position
+        northStationPositionCheck = {x = northStation.position.x - 2, y = northStation.position.y}, ---@type MapPosition
+        southStationPositionCheck = {x = southStation.position.x + 2, y = southStation.position.y}, ---@type MapPosition
         northStationTrainIds = {}, ---@type Id[]
         southStationTrainIds = {} ---@type Id[]
     }
