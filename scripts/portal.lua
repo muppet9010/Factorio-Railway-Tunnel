@@ -1005,14 +1005,13 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
 Portal.OnBuiltEntityGhost = function(event, createdEntity)
-    local placer = event.robot -- Will be nil for player or script placed.
-    if placer == nil and event.player_index ~= nil then
-        placer = game.get_player(event.player_index)
-    end
-
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
+        local placer = event.robot -- Will be nil for player or script placed.
+        if placer == nil and event.player_index ~= nil then
+            placer = game.get_player(event.player_index)
+        end
+
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
-        return
     end
 end
 
