@@ -1,5 +1,6 @@
 Now
 ---
+    - Support 2 tunnels crossing - Use only 2x6 pieces, but have a special 2x6 that is for underground crossing underground. It can be fast replaced with other 2x6 tunnel pieces. It must force having 3 pieces placed the full width of the tunnel to make the crossing tunnel valid. I should add the variable crossing arrows based on how many are placed next to each other ao its clear if enough have been built or not. Will also need to stop a fast replace downgrade when the second tunnel is in use and handle crossing tunnel to crossing above tracks carefully. Would need to suppport crossing N tunnels sequentially.
 
 
 Bugs / Next
@@ -10,7 +11,6 @@ Features to add/change
 ----------------------
     - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
-    - Support 2 tunnels crossing - Use only 2x6 pieces, but have a special 2x6 that is for underground crossing underground. It can be fast replaced with other 2x6 tunnel pieces. It must force having 3 pieces placed the full width of the tunnel to make the crossing tunnel valid. I should add the variable crossing arrows based on how many are placed next to each other ao its clear if enough have been built or not. Will also need to stop a fast replace downgrade when the second tunnel is in use and handle crossing tunnel to crossing above tracks carefully. Would need to suppport crossing N tunnels sequentially.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
         - Example edge cases:
