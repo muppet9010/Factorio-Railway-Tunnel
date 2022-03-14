@@ -5,6 +5,8 @@ Now
 
 Bugs / Next
 -----------
+    - Remove landfill as not in keeping with the base he recipes (and tech).
+    - Check craft time of tunnel parts
 
 
 Features to add/change
