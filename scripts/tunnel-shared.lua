@@ -299,7 +299,7 @@ TunnelShared.OnBuiltEntity = function(event)
         MOD.Interfaces.Portal.OnBuiltEntity(event, createdEntity, createdEntity_name)
         return
     elseif Common.UndergroundSegmentEntityNames[createdEntity_name] ~= nil then
-        MOD.Interfaces.Underground.OnBuiltEntity(event, createdEntity, createdEntity_name)
+        MOD.Interfaces.Underground.UndergroundSegmentBuilt(event, createdEntity, createdEntity_name, nil)
         return
     end
 

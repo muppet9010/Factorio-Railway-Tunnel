@@ -8,12 +8,16 @@ Now
         - Will need to stop a mining of one of the real segments supporting the fake segment if thats part of a crossing tunnel.
         - Will need to stop a fast replace downgrade when the second tunnel is in use and handle crossing tunnel to crossing above tracks carefully.
         - Would need to suppport crossing N tunnels sequentially.
+        - Add new tests for crossing tunnels: mine (vlaid, invalid, etc), destroy. Like there are for regular tunnels.
 
 
 Bugs / Next
 -----------
     - Remove landfill as not in keeping with the base he recipes (and tech).
     - Check craft time of tunnel parts
+    - Check functions called by the merged event handlers like Portal.OnBuiltEntity() as they are now redundant.
+    - Check when get placer function is called and lock it behind error state where possible. Shouldn't be needed for routine function calls.
+    - Check in tunnel shared event handlers if we've missed passing in any obtianed event entity fields, i.e. createdEntity_ghostName isn't passed in to any fucntions, do none really need it?
 
 
 Features to add/change

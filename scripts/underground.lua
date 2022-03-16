@@ -229,30 +229,21 @@ Underground.OnLoad = function()
     MOD.Interfaces.Underground.CanAnUndergroundConnectAtItsInternalPosition = Underground.CanAnUndergroundConnectAtItsInternalPosition
     MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal = Underground.CanUndergroundSegmentConnectToAPortal
     -- Merged event handler interfaces.
-    MOD.Interfaces.Underground.OnBuiltEntity = Underground.OnBuiltEntity
+    MOD.Interfaces.Underground.UndergroundSegmentBuilt = Underground.UndergroundSegmentBuilt
     MOD.Interfaces.Underground.OnBuiltEntityGhost = Underground.OnBuiltEntityGhost
     MOD.Interfaces.Underground.OnDiedEntity = Underground.OnDiedEntity
     MOD.Interfaces.Underground.OnPreMinedEntity = Underground.OnPreMinedEntity
 end
 
+--- Called when an underground segment has been built. Event fitlering is done by calling function.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
----@param createdEntity LuaEntity
----@param createdEntity_name string
-Underground.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
-    local placer = event.robot -- Will be nil for player or script placed.
-    if placer == nil and event.player_index ~= nil then
-        placer = game.get_player(event.player_index)
-    end
-    Underground.UndergroundSegmentBuilt(createdEntity, placer, createdEntity_name)
-end
-
 ---@param builtEntity LuaEntity
----@param placer? EntityActioner|null @ Populated for real
 ---@param builtEntity_name string
 ---@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity.
-Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_name, segment)
+Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
+        local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
@@ -292,6 +283,26 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
         oldFastReplacedSegment = oldFastReplacedSegmentByPosition.segment
         oldFastReplacedSegment_Standard, oldFastReplacedSegment_RailCrossing, oldFastReplacedSegment_TunnelCrossing = oldFastReplacedSegment, oldFastReplacedSegment, oldFastReplacedSegment
 
+        -- Check that this is a valid fast replacement. If its not undo its building and restore the origional segment back, then return to stop the processing of this new build.
+        if oldFastReplacedSegment.typeData.segmentType == SegmentType.railCrossing then
+            -- Check crossing rails can be safely removed.
+            for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
+                if not railCrossingTrackEntity.can_be_destroyed() then
+                    -- Put the old correct entity back and correct whats been done.
+                    local placer = Utils.GetActionerFromEvent(event)
+                    TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, surface, oldFastReplacedSegment_RailCrossing.entity_position)
+                    oldFastReplacedSegment_RailCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
+                    Underground.RestoreSegmentEntity(oldFastReplacedSegment_RailCrossing)
+                    Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing", count = 1})
+                    Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight", count = 1})
+                    return
+                end
+            end
+        elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
+        -- Check crossing tunnel can be safely removed.
+        --TODO LATER: Do after new build and mining is all sorted out.
+        end
+
         -- Claim the generic extras of the old segment,
         segment.tunnelRailEntities = oldFastReplacedSegment.tunnelRailEntities
         segment.underground = oldFastReplacedSegment.underground
@@ -302,20 +313,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
             oldFastReplacedSegment_Standard.trainBlockerEntity.destroy()
             oldFastReplacedSegment_Standard.trainBlockerEntity = nil
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.railCrossing then
-            -- Check crossing rails can be safely removed. If they can't then undo the fast replacement and stop.
-            for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
-                if not railCrossingTrackEntity.can_be_destroyed() then
-                    -- Put the old correct entity back and correct whats been done.
-                    TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, surface, oldFastReplacedSegment_RailCrossing.entity_position)
-                    oldFastReplacedSegment_RailCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
-                    Underground.RestoreSegmentEntity(oldFastReplacedSegment_RailCrossing)
-                    Utils.GetBuilderInventory(placer).remove({name = "railway_tunnel-underground_segment-straight-rail_crossing", count = 1})
-                    Utils.GetBuilderInventory(placer).insert({name = "railway_tunnel-underground_segment-straight", count = 1})
-                    return
-                end
-            end
-
-            -- Remove the old rails as all safe.
+            -- Remove the old rails.
             for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
                 railCrossingTrackEntity.destroy()
             end
@@ -342,7 +340,7 @@ Underground.UndergroundSegmentBuilt = function(builtEntity, placer, builtEntity_
             error("unsupported fast replace of new underground segment type over old underground segment type.    New built segment type: " .. segment.typeData.segmentType .. "    Old fast replaced segment type: " .. oldFastReplacedSegment.typeData.segmentType)
         end
 
-        -- Add the extras for the new part being placed.
+        -- Add the extras for the new part being placed that won;t be added as part of a fresh build of the segment type, i.e. things that depend upon a complete tunnel.
         if segment.typeData.segmentType == SegmentType.railCrossing then
             -- If the segment is part of a tunnel then it should have signals as well already. As these are usually handled as part of a tunnel creation, which may have already happened in this case.
             if segment_RailCrossing.underground ~= nil and segment_RailCrossing.underground.tunnel ~= nil then
@@ -813,11 +811,7 @@ end
 Underground.OnBuiltEntityGhost = function(event, createdEntity)
     -- If the ghost was on grid then nothing needs to be done.
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
-        local placer = event.robot -- Will be nil for player or script placed.
-        if placer == nil and event.player_index ~= nil then
-            placer = game.get_player(event.player_index)
-        end
-
+        local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
     end
 end
@@ -865,35 +859,53 @@ Underground.OnPreMinedEntity = function(event, minedEntity)
 
     -- The entity is part of a registered object so we need to check and handle its removal carefully.
 
-    -- If theres above ground crossing rails we need to check these are clear.
+    -- Segment type specific checks.
     if minedSegment.typeData.segmentType == SegmentType.railCrossing then
+        -- If there's above ground crossing rails we need to check these are clear.
         local minedSegment_RailCrossing = minedSegment ---@type RailCrossingUndergroundSegment
-        for _, railEntity in pairs(minedSegment_RailCrossing.crossingRailEntities) do
-            if not railEntity.can_be_destroyed() then
-                local miner = event.robot -- Will be nil for player mined.
-                if miner == nil and event.player_index ~= nil then
-                    miner = game.get_player(event.player_index)
-                end
-                TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
+        for _, railCrossingTrackEntity in pairs(minedSegment_RailCrossing.crossingRailEntities) do
+            if not railCrossingTrackEntity.can_be_destroyed() then
+                local miner = Utils.GetActionerFromEvent(event)
+                TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedSegment_RailCrossing.surface, minedSegment_RailCrossing.entity_position)
                 Underground.RestoreSegmentEntity(minedSegment_RailCrossing)
                 return
             end
         end
+    elseif minedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
+        -- If there's a fake tunnel crossing segment related to this real segment we need to check this. This function will check this real segment's own tunnel if present later.
+        local minedSegment_TunnelCrossing = minedSegment ---@type TunnelCrossingUndergroundSegment
+
+        -- Get a list of all fake segments this real segment indirectly and directly supports.
+        local fakeCrossingSegments = Utils.DeepCopy(minedSegment_TunnelCrossing.supportingFakeCrossingSegments)
+        if minedSegment_TunnelCrossing.directFakeCrossingSegment ~= nil then
+            fakeCrossingSegments[minedSegment_TunnelCrossing.directFakeCrossingSegment.id] = minedSegment_TunnelCrossing.directFakeCrossingSegment
+        end
+
+        -- Check each fake segment that's found.
+        for _, fakeCrossingSegment in pairs(fakeCrossingSegments) do
+            local fakeCrossingTunnelObject = fakeCrossingSegment.underground.tunnel
+            if fakeCrossingTunnelObject ~= nil then
+                -- The fake crossing segment has a tunnel that will need checking.
+                if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(fakeCrossingTunnelObject) then
+                    -- The crossing tunnel is in-use so undo the removal.
+                    local miner = Utils.GetActionerFromEvent(event)
+                    TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use"}, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
+                    Underground.RestoreSegmentEntity(minedSegment)
+                    return
+                end
+            end
+        end
     end
 
-    --TODO: have to check if there's a crossing tunnel and if there is check and respect it.
-
+    -- Generic checks before the entity can be removed.
     if minedSegment.underground.tunnel == nil then
         -- segment isn't in a tunnel so the entity can always be removed.
         Underground.EntityRemoved(minedSegment)
     else
         if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedSegment.underground.tunnel) then
-            -- Theres an in-use tunnel so undo the removal.
-            local miner = event.robot -- Will be nil for player mined.
-            if miner == nil and event.player_index ~= nil then
-                miner = game.get_player(event.player_index)
-            end
-            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
+            -- The main tunnel is in-use so undo the removal.
+            local miner = Utils.GetActionerFromEvent(event)
+            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedSegment.surface, minedSegment.entity_position)
             Underground.RestoreSegmentEntity(minedSegment)
         else
             -- Safe to mine the segment.
@@ -916,11 +928,11 @@ Underground.RestoreSegmentEntity = function(minedSegment)
     minedSegment.entity = newSegmentEntity
     minedSegment.id = newSegmentEntity.unit_number
 
-    -- Remove the old globals and add the new ones.
+    -- Remove the old globals and add the new ones as they reference by Id which will have changed.
     global.undergrounds.segments[minedSegmentEntityId] = nil
     global.undergrounds.segments[minedSegment.id] = minedSegment
 
-    -- Update the underground.
+    -- Update the underground as it references the segment via Id which will have changed.
     local underground = minedSegment.underground
     underground.segments[minedSegmentEntityId] = nil
     underground.segments[minedSegment.id] = minedSegment
@@ -928,8 +940,6 @@ Underground.RestoreSegmentEntity = function(minedSegment)
         underground.undergroundEndSegments[minedSegmentEntityId] = nil
         underground.undergroundEndSegments[minedSegment.id] = minedSegment
     end
-
-    --TODO: update any crossing tunnel.
 end
 
 -- Called by other functions when a underground segment entity is removed and thus we need to update the underground for this change.

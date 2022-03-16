@@ -1752,6 +1752,22 @@ Utils.TryInsertSimpleItems = function(simpleItemStacks, targetInventory, dropUnm
     return itemAllMoved
 end
 
+--- Get the builder/miner player/construction robot or nil if script placed.
+---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive|on_pre_player_mined_item|on_robot_pre_mined
+---@return EntityActioner placer
+Utils.GetActionerFromEvent = function(event)
+    if event.robot ~= nil then
+        -- Construction robots
+        return event.robot
+    elseif event.player_index ~= nil then
+        -- Player
+        return game.get_player(event.player_index)
+    else
+        -- Script placed
+        return nil
+    end
+end
+
 --- Get the inventory of the builder (player, bot, or god controller).
 ---@param builder EntityActioner
 Utils.GetBuilderInventory = function(builder)

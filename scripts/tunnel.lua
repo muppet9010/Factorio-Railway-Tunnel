@@ -345,10 +345,7 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
         end
     end
 
-    local placer = event.robot -- Will be nil for player or script placed.
-    if placer == nil and event.player_index ~= nil then
-        placer = game.get_player(event.player_index)
-    end
+    local placer = Utils.GetActionerFromEvent(event)
     TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
