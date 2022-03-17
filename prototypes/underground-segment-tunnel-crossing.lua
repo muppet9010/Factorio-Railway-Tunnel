@@ -117,11 +117,21 @@ local undergroundSegmentStraightTunnelCrossingTopLayer = {
     render_layer = "tile-transition"
 }
 
+-- We render this sprite orientated to the segment entity and its flat on the ground so can freely rotate as required. So it can be used for all 4 cardinal direction rotations.
+local undergroundSegmentStraightTunnelCrossing_crossingArrowLayer = {
+    type = "sprite",
+    name = "railway_tunnel-underground_segment-straight-tunnel_crossing-crossing_arrow",
+    filename = "__railway_tunnel__/graphics/entity/underground_segment-straight-tunnel_crossing/underground_segment-straight-tunnel_crossing-northsouth-crossing_tunnel_arrow.png",
+    height = 64,
+    width = 192
+}
+
 data:extend(
     {
         undergroundSegmentStraightTunnelCrossing,
         undergroundSegmentStraightTunnelCrossingRemnant,
         undergroundSegmentStraightTunnelCrossingItem,
-        undergroundSegmentStraightTunnelCrossingTopLayer
+        undergroundSegmentStraightTunnelCrossingTopLayer,
+        undergroundSegmentStraightTunnelCrossing_crossingArrowLayer
     }
 )

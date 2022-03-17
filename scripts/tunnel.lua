@@ -130,6 +130,7 @@ Tunnel.CompleteTunnel = function(portals, underground)
 
     -- Call any other modules after the tunnel object is created.
     MOD.Interfaces.Portal.On_PostTunnelCompleted(portals)
+    MOD.Interfaces.Underground.On_PostTunnelCompleted(underground)
 end
 
 ---@param tunnel Tunnel
