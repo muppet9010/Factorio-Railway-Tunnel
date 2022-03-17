@@ -283,7 +283,7 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
     local segment_Standard, segment_RailCrossing, segment_TunnelCrossing = segment, segment, segment
 
     -- Check if this is a fast replacement and if it is handle eveything special ready for standard built entity function logic later.
-    -- No global data should be registered before this as this MAY reverse the build action.
+    -- No global data should be registered in this function before the checks in the fast replace logic as this MAY reverse the build action.
     local oldFastReplacedSegmentByPosition = global.undergrounds.segmentSurfacePositions[surfacePositionString]
     ---@typelist UndergroundSegment, StandardUndergroundSegment, RailCrossingUndergroundSegment, TunnelCrossingUndergroundSegment
     local oldFastReplacedSegment, oldFastReplacedSegment_Standard, oldFastReplacedSegment_RailCrossing, oldFastReplacedSegment_TunnelCrossing
@@ -339,7 +339,10 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
             end
         end
 
-        -- Claim the generic extras of the old segment,
+        -- Checks complete and so globals can be registered after here.
+
+        -- Claim the generic state data and extras of the old segment.
+        segment.nonConnectedExternalSurfacePositions = oldFastReplacedSegment.nonConnectedExternalSurfacePositions
         segment.tunnelRailEntities = oldFastReplacedSegment.tunnelRailEntities
         segment.underground = oldFastReplacedSegment.underground
 
@@ -362,7 +365,7 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
             -- Remove the old train blocker entity.
             oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity.destroy()
 
-            -- Check the neighboring segments for other tunnel crossing type segments.
+            -- Update the neighboring segments that this tunnel crossing segment is being removed.
             Underground.TunnelCrossingSegmentBuiltOrRemoved(oldFastReplacedSegment_TunnelCrossing, false)
 
             -- Tidy up the main and crossing arrows.
@@ -375,29 +378,7 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
                 oldFastReplacedSegment_TunnelCrossing.tunnelCrossingArrowRenderId = nil
             end
         elseif segment.typeData.segmentType == oldFastReplacedSegment.typeData.segmentType then
-            -- Is a fast replace to the same type so claim the old segment's extras. As they won't be removed and recreated as wasteful.
-            fastReplacedSegmentOfSameType = true
-
-            if segment.typeData.segmentType == SegmentType.standard then
-                segment_Standard.trainBlockerEntity = oldFastReplacedSegment_Standard.trainBlockerEntity
-            elseif segment.typeData.segmentType == SegmentType.railCrossing then
-                segment_RailCrossing.crossingRailEntities = oldFastReplacedSegment_RailCrossing.crossingRailEntities
-                segment_RailCrossing.signalEntities = oldFastReplacedSegment_RailCrossing.signalEntities -- May or not be populated at the time, but this is fine in both cases.
-            elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
-                segment_TunnelCrossing.trainBlockerEntity = oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity
-                segment_TunnelCrossing.tunnelCrossingNeighbors = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingNeighbors
-                segment_TunnelCrossing.tunnelCrossingCompleted = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingCompleted
-                segment_TunnelCrossing.directFakeCrossingSegment = oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment
-                segment_TunnelCrossing.supportingFakeCrossingSegments = oldFastReplacedSegment_TunnelCrossing.supportingFakeCrossingSegments
-                for _, supportingFakeCrossingSegment in pairs(segment_TunnelCrossing.supportingFakeCrossingSegments) do
-                    supportingFakeCrossingSegment[oldFastReplacedSegment_TunnelCrossing.id] = nil
-                    supportingFakeCrossingSegment[segment_TunnelCrossing.id] = segment_TunnelCrossing
-                end
-                segment_TunnelCrossing.mainArrowRenderId = oldFastReplacedSegment_TunnelCrossing.mainArrowRenderId
-                segment_TunnelCrossing.tunnelCrossingArrowRenderId = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingArrowRenderId
-            else
-                error("Unsupported same type underground segment fast repalced over itself: " .. segment.typeData.segmentType)
-            end
+            -- Nothing to remove.
         else
             error("unsupported fast replace of new underground segment type over old underground segment type.    New built segment type: " .. segment.typeData.segmentType .. "    Old fast replaced segment type: " .. oldFastReplacedSegment.typeData.segmentType)
         end
@@ -420,11 +401,45 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
                 segment_RailCrossing.signalEntities = {}
                 Underground.BuildSignalsForSegment(segment_RailCrossing)
             end
+        elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
+            -- The hanlding for the new;y placed entity will account for any neighboring segments and arrows. So nothing to do in this specific location.
+        elseif segment.typeData.segmentType == oldFastReplacedSegment.typeData.segmentType then
+            -- Is a fast replace to the same type so just blindly claim the old segment's type extras. As they won't be removed and recreated to avoid waste.
+            fastReplacedSegmentOfSameType = true
+
+            if segment.typeData.segmentType == SegmentType.standard then
+                segment_Standard.trainBlockerEntity = oldFastReplacedSegment_Standard.trainBlockerEntity
+            elseif segment.typeData.segmentType == SegmentType.railCrossing then
+                segment_RailCrossing.crossingRailEntities = oldFastReplacedSegment_RailCrossing.crossingRailEntities
+                -- May or not be populated at the time, but this is fine in both cases.
+                segment_RailCrossing.signalEntities = oldFastReplacedSegment_RailCrossing.signalEntities
+            elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
+                segment_TunnelCrossing.trainBlockerEntity = oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity
+                segment_TunnelCrossing.tunnelCrossingNeighbors = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingNeighbors
+                segment_TunnelCrossing.tunnelCrossingCompleted = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingCompleted
+                segment_TunnelCrossing.directFakeCrossingSegment = oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment
+                segment_TunnelCrossing.supportingFakeCrossingSegments = oldFastReplacedSegment_TunnelCrossing.supportingFakeCrossingSegments
+                for _, supportingFakeCrossingSegment in pairs(segment_TunnelCrossing.supportingFakeCrossingSegments) do
+                    supportingFakeCrossingSegment[oldFastReplacedSegment_TunnelCrossing.id] = nil
+                    supportingFakeCrossingSegment[segment_TunnelCrossing.id] = segment_TunnelCrossing
+                end
+                segment_TunnelCrossing.mainArrowRenderId = oldFastReplacedSegment_TunnelCrossing.mainArrowRenderId
+                segment_TunnelCrossing.tunnelCrossingArrowRenderId = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingArrowRenderId
+            else
+                error("Unsupported same type underground segment fast repalced over itself: " .. segment.typeData.segmentType)
+            end
         end
 
         -- Handle the Underground object.
         segment.underground.segments[oldFastReplacedSegment.id] = nil
         segment.underground.segments[segment.id] = segment
+        -- Update the underground's list of end segments for any references to the old segment object.
+        for _, undergroundEndSegmentObject in pairs(segment.underground.undergroundEndSegments) do
+            -- There may be 0, 1 or 2 entries pointing to the replaced segment, so check them all.
+            if undergroundEndSegmentObject.segment.id == oldFastReplacedSegment.id then
+                undergroundEndSegmentObject.segment = segment
+            end
+        end
 
         -- Handle anything that is only present if there is a parent tunnel.
         if segment.underground.tunnel ~= nil then
@@ -467,12 +482,13 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
 
     -- Register the new segment and its position for fast replace.
     global.undergrounds.segments[segment.id] = segment
+    -- On fast replacement it overwrites the old entry as the position strings are identical.
     global.undergrounds.segmentSurfacePositions[segment.surfacePositionString] = {
         id = segment.surfacePositionString,
         segment = segment
     }
 
-    -- Register the segments surfacePositionStrings for connection reverse lookup.
+    -- Register the segments surfacePositionStrings for connection reverse lookup. On fast replacement it overwrites the old entry as the position strings are identical.
     local frontInternalSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, segment.frontInternalPosition)
     global.undergrounds.segmentInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
         id = frontInternalSurfacePositionString,
@@ -1124,7 +1140,7 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
     global.undergrounds.undergrounds[removedUnderground.id] = nil
 
     -- As we don't know the underground's segment makeup we will just disolve the underground and recreate new one(s) by checking each remaining segment. This is a bit crude, but can be reviewed if UPS impactful.
-    -- Make each underground segment forget its parent so they are all ready to re-merge in to new undergrounds later.
+    -- Make each underground segment forget its parent and relevent state data so they are all ready to re-merge in to new undergrounds later.
     for _, loopingUndergroundSegment in pairs(removedUnderground.segments) do
         loopingUndergroundSegment.underground = nil
         loopingUndergroundSegment.nonConnectedExternalSurfacePositions = {}

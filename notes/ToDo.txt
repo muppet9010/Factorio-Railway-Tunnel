@@ -1,16 +1,7 @@
 Now
 ---
     - Support 2 tunnels crossing:
-        + Use only 2x6 pieces, but have a special 2x6 that is for underground crossing underground.
-        + It can be fast replaced with other 2x6 tunnel pieces.
-        + It must force having 3 pieces placed the full width of the tunnel to make the crossing tunnel valid.
-        + It should add the variable crossing arrows based on how many are placed next to each other ao its clear if enough have been built or not.
-        + Will need to stop a mining of one of the real segments supporting the fake segment if thats part of a crossing tunnel.
-        + Will need to stop a fast replace downgrade when the second tunnel is in use and handle crossing tunnel to crossing above tracks carefully.
-        + Would need to suppport crossing N tunnels sequentially.
         - Add new tests for crossing tunnels: mine (valid, invalid, etc), destroy. Like there are for regular tunnels.
-
-        - BUG: place down the simple tunnle with 4 underground part blueprint. Remove a bottom underground and then replace the other 3 with tunnel crossing pieces. When you put the missing tunnel crossing piece in the tunnel won't complete, but it should.
 
 
 Bugs / Next
