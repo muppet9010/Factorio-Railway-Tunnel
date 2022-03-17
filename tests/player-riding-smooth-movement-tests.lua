@@ -400,6 +400,9 @@ end
 --- Any scheduled events for the test must be Removed here so they stop running. Most tests have an event every tick to check the test progress.
 ---@param testName string
 Test.Stop = function(testName)
+    -- Return the force bonuses back to default.
+    TestFunctions.GetTestForce().train_braking_force_bonus = 0
+
     TestFunctions.RemoveTestsEveryTickEvent(testName, "EveryTick", testName)
 end
 
