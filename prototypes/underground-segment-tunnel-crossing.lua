@@ -82,16 +82,16 @@ local undergroundSegmentStraightTunnelCrossingItem = {
     place_result = "railway_tunnel-underground_segment-straight-tunnel_crossing"
 }
 
-local undergroundSegmentStraightTunnelCrossingTopLayer = {
+local undergroundSegmentStraightTunnelCrossingBuiltLayer = {
     type = "simple-entity-with-owner",
-    name = "railway_tunnel-underground_segment-straight-tunnel_crossing-top_layer",
+    name = "railway_tunnel-underground_segment-straight-tunnel_crossing-built_layer",
     icon = "__railway_tunnel__/graphics/icon/underground_segment-straight-tunnel_crossing/railway_tunnel-underground_segment-straight-tunnel_crossing.png",
     icon_size = 32,
     subgroup = "railway_tunnel-other",
     collision_box = nil,
     collision_mask = {},
     selection_box = nil,
-    flags = {"not-on-map"},
+    flags = {"not-on-map", "not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable"},
     picture = {
         north = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-straight-tunnel_crossing/underground_segment-straight-tunnel_crossing-northsouth-top_layer.png",
@@ -118,6 +118,15 @@ local undergroundSegmentStraightTunnelCrossingTopLayer = {
 }
 
 -- We render this sprite orientated to the segment entity and its flat on the ground so can freely rotate as required. So it can be used for all 4 cardinal direction rotations.
+local undergroundSegmentStraightTunnelCrossing_mainArrowLayer = {
+    type = "sprite",
+    name = "railway_tunnel-underground_segment-straight-tunnel_crossing-main_arrow",
+    filename = "__railway_tunnel__/graphics/entity/underground_segment-straight-tunnel_crossing/underground_segment-straight-tunnel_crossing-northsouth-main_tunnel_arrow.png",
+    height = 64,
+    width = 192
+}
+
+-- We render this sprite orientated to the segment entity and its flat on the ground so can freely rotate as required. So it can be used for all 4 cardinal direction rotations.
 local undergroundSegmentStraightTunnelCrossing_crossingArrowLayer = {
     type = "sprite",
     name = "railway_tunnel-underground_segment-straight-tunnel_crossing-crossing_arrow",
@@ -131,7 +140,8 @@ data:extend(
         undergroundSegmentStraightTunnelCrossing,
         undergroundSegmentStraightTunnelCrossingRemnant,
         undergroundSegmentStraightTunnelCrossingItem,
-        undergroundSegmentStraightTunnelCrossingTopLayer,
+        undergroundSegmentStraightTunnelCrossingBuiltLayer,
+        undergroundSegmentStraightTunnelCrossing_mainArrowLayer,
         undergroundSegmentStraightTunnelCrossing_crossingArrowLayer
     }
 )
