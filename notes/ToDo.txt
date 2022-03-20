@@ -4,13 +4,21 @@ Now
 
 Bugs / Next
 -----------
+    - Remove landfill as not in keeping with the base he recipes (and tech).
+    - Check craft time of tunnel parts
+    - Check functions called by the merged event handlers like Portal.OnBuiltEntity() as they are now redundant.
+    - Check when get placer function is called and lock it behind error state where possible. Shouldn't be needed for routine function calls.
+    - Check in tunnel shared event handlers if we've missed passing in any obtianed event entity fields, i.e. createdEntity_ghostName isn't passed in to any fucntions, do none really need it?
+    - When trying to mine a portal or underground part continously (hold right click in editor) as a train is using the tunnel, sometimes as it leaves the portal the tunnel part will allow the mine and still destroy the train. This is due to where the portal entry detector is placed and we need to check if the entry end rail of each portal can be destroyed (no train on them).
+    - Update the underground code to use sprite renders and not entities. Update Mod Design Decisions once this is done or with the reason entities are needed (if they are). As the underground graphics will always be very simple.
+    - Add to all destroy() if script raised should be done explicitly (true/false). Where not currently provided this is false.
+    - Invalid train tests error when Test force's braking force is 1 rather than default of 0. Seems odd.
 
 
 Features to add/change
 ----------------------
     - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
-    - Support 2 tunnels crossing - Use only 2x6 pieces, but have a special 2x6 that is for underground crossing underground. It can be fast replaced with other 2x6 tunnel pieces. It must force having 3 pieces placed the full width of the tunnel to make the crossing tunnel valid. I should add the variable crossing arrows based on how many are placed next to each other ao its clear if enough have been built or not. Will also need to stop a fast replace downgrade when the second tunnel is in use and handle crossing tunnel to crossing above tracks carefully. Would need to suppport crossing N tunnels sequentially.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
         - Example edge cases:
@@ -29,7 +37,7 @@ UPS / code plans
     - Tunnel usage events being raised uses some UPS per tunnel activity? So look to only raise if a mod has requested the eventId, as without it nothing can be listening to the events anyway. The overhead of the idle checking of 0 events is non-existant.
     - Building standard rotated entities on "tunnel being completed" may be lower UPS if done via blueprint or by cloning examples on a reference surface, than currently using entity_create - test and see.
     - Look at the speed distance test and see if what still causes the slowness on long tunnel/rail test instances. Maybe cloning long distances of track/tunnel parts would help. Or does it flag slowless with large tunnel constructions and this will also affect large BP's being built?
-    - Upgrade ManagedTrain rather than calling CreateManagedTrainObject() to recreate it. Theres an OVERHAUL note against it.
+    - Review if its worth upgrading ManagedTrain rather than calling CreateManagedTrainObject() to recreate it during an upgrade in TrainManager.RegisterTrainApproachingPortalSignal(). As its wastefull currently, but if its low UPS impact it might be easier to leave as-is due to code being simplier? Although we already have code for a downgrade when a train aborts approach when on a portal track so it might be neater to have these all as 1 function ?
     - From adhoc tests around which force see's a train it looks like if we set the first carriage in the train to the rail force the player's train list doesn't include the train. If so we can set the rest of the carriages to the player's force when initially cloning the train and save having to update them all from tunnel to player force upon it starting to leave the tunnel. In worst case may have to set first and last carriage only to tunnel force just to avoid any oddness in new trains lead carriage flipping.
     - Check that finding the distance to a rail signal via changing a trains path rather than walking the rail path list has a lower overall game UPS. As I don't know think that the re-pathing UPS costs and some train UPS costs are fully accounted for in the API call costs. And I only checked API costs origionally. Raised as in the mass trains leaving tunnel UPS test the traina nd pathfinder UPS costs are very high even though the mod is low. Used in both underground train functions.
 

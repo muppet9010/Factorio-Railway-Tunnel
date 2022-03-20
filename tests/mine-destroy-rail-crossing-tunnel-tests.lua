@@ -6,17 +6,17 @@ local TestFunctions = require("scripts.test-functions")
 local Utils = require("utility.utils")
 
 -- Internal test types.
----@class Tests_MDCRTT_ActionTypes
+---@class Tests_MDRCTT_ActionTypes
 local ActionTypes = {
     mine = "mine",
     destroy = "destroy"
 }
----@class Tests_MDCRTT_SegmentsToRemove
+---@class Tests_MDRCTT_SegmentsToRemove
 local SegmentsToRemove = {
     crossingRail = "crossingRail",
     portalEnd = "portalEnd"
 }
----@class Tests_MDCRTT_BlockingTrainTypes
+---@class Tests_MDRCTT_BlockingTrainTypes
 local BlockingTrainTypes = {
     none = "none",
     onCrossingRail = "onCrossingRail"
@@ -39,7 +39,7 @@ Test.RunTime = 3600
 Test.RunLoopsMax = 0
 
 --- The test configurations are stored in this when populated by Test.GenerateTestScenarios().
----@type Tests_MDCRTT_TestScenario[]
+---@type Tests_MDRCTT_TestScenario[]
 Test.TestScenarios = {}
 
 --- Any scheduled event types for the test must be Registered here.
@@ -47,7 +47,6 @@ Test.TestScenarios = {}
 Test.OnLoad = function(testName)
     TestFunctions.RegisterTestsScheduledEventType(testName, "EveryTick", Test.EveryTick)
     Test.GenerateTestScenarios(testName)
-    TestFunctions.RegisterRecordTunnelUsageChanges(testName)
 end
 
 --- Returns the desired test name for use in display and reporting results. Should be a unique name for each iteration of the test run.
@@ -85,7 +84,7 @@ Test.Start = function(testName)
     -- Add test data for use in the EveryTick().
     local testData = TestFunctions.GetTestDataObject(testName)
     testData.testScenario = testScenario
-    ---@class Tests_MDCRTT_TestScenarioBespokeData
+    ---@class Tests_MDRCTT_TestScenarioBespokeData
     local testDataBespoke = {
         crossingTunnelSegment = crossingTunnelSegment, ---@type LuaEntity
         portalEnd = portalEnd, ---@type LuaEntity
@@ -109,8 +108,8 @@ Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(testName)
-    local testScenario = testData.testScenario ---@type Tests_MDCRTT_TestScenario
-    local testDataBespoke = testData.bespoke ---@type Tests_MDCRTT_TestScenarioBespokeData
+    local testScenario = testData.testScenario ---@type Tests_MDRCTT_TestScenario
+    local testDataBespoke = testData.bespoke ---@type Tests_MDRCTT_TestScenarioBespokeData
 
     local entityToRemove, entityPrintFriendlyName
     if testScenario.segmentToRemove == SegmentsToRemove.crossingRail then
@@ -167,9 +166,9 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out what specific instances of each type to do.
-    local actionTypesToTest  ---@type Tests_MDCRTT_ActionTypes[]
-    local blockingTrainTypesToTest  ---@type Tests_MDCRTT_BlockingTrainTypes[]
-    local segmentsToRemoveToTest  ---@type Tests_MDCRTT_SegmentsToRemove[]
+    local actionTypesToTest  ---@type Tests_MDRCTT_ActionTypes[]
+    local blockingTrainTypesToTest  ---@type Tests_MDRCTT_BlockingTrainTypes[]
+    local segmentsToRemoveToTest  ---@type Tests_MDRCTT_SegmentsToRemove[]
     if DoSpecificTests then
         -- Adhock testing option.
         actionTypesToTest = TestFunctions.ApplySpecificFilterToListByKeyName(ActionTypes, SpecificActionTypesFilter)
@@ -190,7 +189,7 @@ Test.GenerateTestScenarios = function(testName)
     for _, actionType in pairs(actionTypesToTest) do
         for _, segmentToRemove in pairs(segmentsToRemoveToTest) do
             for _, blockingTrainType in pairs(blockingTrainTypesToTest) do
-                ---@class Tests_MDCRTT_TestScenario
+                ---@class Tests_MDRCTT_TestScenario
                 local scenario = {
                     actionType = actionType,
                     segmentToRemove = segmentToRemove,

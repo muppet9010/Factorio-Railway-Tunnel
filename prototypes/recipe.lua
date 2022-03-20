@@ -48,6 +48,16 @@ data:extend(
             },
             result = "railway_tunnel-underground_segment-straight-rail_crossing",
             result_count = 1
+        },
+        {
+            type = "recipe",
+            name = "railway_tunnel-underground_segment-straight-tunnel_crossing",
+            enabled = false,
+            ingredients = {
+                {"railway_tunnel-underground_segment-straight", 2}
+            },
+            result = "railway_tunnel-underground_segment-straight-tunnel_crossing",
+            result_count = 1
         }
     }
 )

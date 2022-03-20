@@ -21,6 +21,10 @@ data:extend(
                 {
                     type = "unlock-recipe",
                     recipe = "railway_tunnel-underground_segment-straight-rail_crossing"
+                },
+                {
+                    type = "unlock-recipe",
+                    recipe = "railway_tunnel-underground_segment-straight-tunnel_crossing"
                 }
             },
             prerequisites = {"rail-signals", "landfill"},

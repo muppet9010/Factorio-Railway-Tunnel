@@ -24,7 +24,7 @@ local math_abs, math_floor, math_ceil, math_min, math_max = math.abs, math.floor
 ---@field train LuaTrain @ Ref to the train using the tunnel. This will be either the approaching/onPortalTrack train, or once entered the leaving train.
 ---@field trainId Id @ The LuaTrain.id of the train.
 ---@field trainMovingForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint. Initially populated when the train enters the portal track or is approaching. Its reset to nil once the train enters the tunnel, so that once it starts to leave the new train have have its direction correctly identified. As the new train may be facing the other direction to the entering one due to Factorio train "front" magic and as it may actually reverse back in to the tunnel at this point.
----@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal. -- OVERHAUL - not used by anything any more other than in its populating function. Remove in any final tidyup if still not used.
+---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field force LuaForce @ The force of the train carriages using the tunnel.
 ---@field trainCachedData TrainCachedData @ Ref to the cached train data. Its populated as we need them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes. This isn't directional and so if the lead carriage is needed it needs to be iterated the right way. Is in effect the currenTrain of the tunnel.
@@ -117,8 +117,7 @@ TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, en
             -- Train was entering this tunnel already.
 
             if existingActivelyUsingManagedTrain.tunnelUsageState == TunnelUsageState.portalTrack then
-                -- Train was using the portal track and has upgraded to start approaching the tunnel.
-                -- OVERHAUL - is this removal and re-creation needed, or can we just overwrite some data and let it continue. Seems quite wasteful. Note check what in CreateManagedTrainObject() is only done on traversal as we will need to include an upgrade path through the function. Review UPS cost of doing it current way as it does make code simplier to re-recreate rather than upgrade.
+                -- Train was using the portal track and has upgraded to start approaching the tunnel..
                 committedManagedTrain = existingActivelyUsingManagedTrain
                 -- Just tidy up the managedTrain's entities and its related globals before the new one overwrites it. No tunnel trip to be dealt with.
                 TrainManager.RemoveManagedTrainEntry(committedManagedTrain)

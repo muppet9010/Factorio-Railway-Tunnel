@@ -42,6 +42,7 @@ require("prototypes.mined-train-container")
 
 require("prototypes.underground-segment")
 require("prototypes.underground-segment-rail-crossing")
+require("prototypes.underground-segment-tunnel-crossing")
 
 require("prototypes.item-groups")
 require("prototypes.custom-inputs")

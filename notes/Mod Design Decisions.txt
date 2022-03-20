@@ -102,7 +102,7 @@ Portal graphics
     - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
 - The entry in/out signal graphics for the lights are currently offset away from the track so they are visible around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
 - On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
-Shadow type sprites don't render over the top of another sprite ever regardless of layer. So to make shadows inside the tunnel affect a trian leaving the tunnel they'd need to be done as a non-shadow semi-transparent dark color.
+- Shadow type sprites don't render over the top of another sprite ever regardless of layer. So to make shadows inside the tunnel affect a trian leaving the tunnel they'd need to be done as a non-shadow semi-transparent dark color.
 
 
 Processing trains per tick
@@ -141,3 +141,11 @@ Train speed calulations
 -----------------------
 
 As train speeds within a tunnel are estimated from a static air resistence, the larger the acceleration difference from entering to leaving speed the greater the excessive leaving speed. As I have to use a static air resistance value based upon the speed the train initially enters a tunnel and there is no account for the fact this air resistance should increase with speed at present. We do clamp to max trains speed so the train just gets a small acceleration bonus in the tunnel.
+
+
+Sprite render vs entity
+-----------------------
+
+At present there is a mis-match between portal's and undergrounds and adding additional graphics on top of the base entity graphics (BP and placement graphics). Portal uses sprite renders as these are newer, while underground uses entities (simple-entity-with-force) with a sprite graphics (older). I suspect it was as in the old days renders were more limited and could appear out of order (Santa mod era).
+- Both support render-layer on the sprite and allow multiple layers (images) within the sprite. And both have all layers at the same render-layer. So they appear equal.
+- Entity (simple-entity-with-owner) supports 4 orientations of sprite. Render requires a seperate prototype per orientation.

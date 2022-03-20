@@ -197,7 +197,7 @@ Portal.CreateGlobals = function()
 
     --- The layer to draw graphics at that hide the train. Debug options can lower this so that trains appear on top of it for visual inspection.
     --- Shadows don't appear over other graphics and so we can use this layer for shadows as well as long as we add the shadow render after the main image render.
-    global.portalGraphicsLayerOverTrain = 130 -- Infront of main "object" layer.
+    global.portalGraphicsLayerOverTrain = global.portalGraphicsLayerOverTrain or 130 -- Infront of main "object" layer. A testing debug may have changed this so respect any value set.
     global.portalGraphicsLayerUnderTrain = 128 -- Behind main "object" layer.
 end
 
@@ -227,10 +227,7 @@ end
 ---@param createdEntity LuaEntity
 ---@param createdEntity_name string
 Portal.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
-    local placer = event.robot -- Will be nil for player or script placed.
-    if placer == nil and event.player_index ~= nil then
-        placer = game.get_player(event.player_index)
-    end
+    local placer = Utils.GetActionerFromEvent(event)
     Portal.TunnelPortalPartBuilt(createdEntity, placer, createdEntity_name)
 end
 
@@ -1005,18 +1002,13 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
 Portal.OnBuiltEntityGhost = function(event, createdEntity)
-    local placer = event.robot -- Will be nil for player or script placed.
-    if placer == nil and event.player_index ~= nil then
-        placer = game.get_player(event.player_index)
-    end
-
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
+        local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
-        return
     end
 end
 
--- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
+-- Runs when a player mines something, but before its removed from the map. If the mine should be blocked we destroy the entity before it can be mined, causing the mine to fail. We get all the details of the entity and replace it plus show the user a message, so it appears as if e blocked the mining.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
 Portal.OnPreMinedEntity = function(event, minedEntity)
@@ -1034,11 +1026,8 @@ Portal.OnPreMinedEntity = function(event, minedEntity)
     else
         if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedPortal.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
-            local miner = event.robot -- Will be nil for player mined.
-            if miner == nil and event.player_index ~= nil then
-                miner = game.get_player(event.player_index)
-            end
-            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_in_use"}, minedEntity.surface, minedEntity.position)
+            local miner = Utils.GetActionerFromEvent(event)
+            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedEntity.surface, minedEntity.position)
             Portal.ReplacePortalPartEntity(minedPortalPart)
         else
             -- Safe to mine the part.
