@@ -77,6 +77,7 @@ local TestsToRun = {
     MineDestroyTunnelCrossingTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-crossing-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
+    CrossingTunnelPartRebuildTests = {enabled = false, testScript = require("tests/crossing-tunnel-part-rebuild-tests")},
     -- Player container tests:
     PlayerRidingTrainEjectionTests = {enabled = false, testScript = require("tests/player-riding-train-ejection-tests")},
     PlayerRidingMultipleConcurrentTrains = {enabled = false, testScript = require("tests/player-riding-multiple-concurrent-trains")},

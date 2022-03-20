@@ -1,6 +1,5 @@
 Now
 ---
-    - Make a copy of "tunnel-part-rebuild-tests" for crossing tunnel configuration as need to test the more complicated combinations. Need to make new copy and old test do all the iterations of tests as presently it just tries sequential parts. But it doesn't try sporadic parts across the list.
 
 
 Bugs / Next
