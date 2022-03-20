@@ -1,7 +1,6 @@
 Now
 ---
-    - Support 2 tunnels crossing:
-        - Add new tests for crossing tunnels: mine (valid, invalid, etc), destroy. Like there are for regular tunnels.
+    - Make a copy of "tunnel-part-rebuild-tests" for crossing tunnel configuration as need to test the more complicated combinations. Need to make new copy and old test do all the iterations of tests as presently it just tries sequential parts. But it doesn't try sporadic parts across the list.
 
 
 Bugs / Next

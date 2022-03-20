@@ -73,7 +73,8 @@ local TestsToRun = {
     InvalidTrainTests = {enabled = false, testScript = require("tests/invalid-train-tests")},
     -- Tunnel part tests:
     MineDestroyTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-tests")},
-    MineDestroyCrossingRailTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-crossing-rail-tunnel-tests")},
+    MineDestroyRailCrossingTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-rail-crossing-tunnel-tests")},
+    MineDestroyTunnelCrossingTunnelTests = {enabled = false, testScript = require("tests/mine-destroy-tunnel-crossing-tunnel-tests")},
     TrainOnPortalEdgeMineDestoryTests = {enabled = false, testScript = require("tests/train-on-portal-edge-mine-destroy-tests")},
     TunnelPartRebuildTests = {enabled = false, testScript = require("tests/tunnel-part-rebuild-tests")},
     -- Player container tests:
@@ -301,9 +302,14 @@ TestManager.ClearMap_Scheduled = function()
         player.clear_console()
     end
 
-    -- Clear all alerts for all players so nothing lingers between tests. As a by product this will remove any alerts created when clearing the map.
+    -- Clear all custom alerts (cleanly) for all players so nothing lingers between tests. As a by product this will remove any alerts that were created when destroying everything on the map.
     for _, player in pairs(game.connected_players) do
         PlayerAlerts.RemoveAllCustomAlertsFromForce(player.force)
+    end
+
+    -- Clear all vanilla alerts. This is an indiscriminate clearing and so is done after cleanly removing any custom force alerts.
+    for _, player in pairs(game.connected_players) do
+        player.remove_alert {}
     end
 
     -- Wait 1 tick so any end of tick mod events from the map clearing are raised and ignored, before we start the next test.

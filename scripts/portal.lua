@@ -1008,7 +1008,7 @@ Portal.OnBuiltEntityGhost = function(event, createdEntity)
     end
 end
 
--- Runs when a player mines something, but before its removed from the map. We can't stop the mine, but can get all the details and replace the mined item if the mining should be blocked.
+-- Runs when a player mines something, but before its removed from the map. If the mine should be blocked we destroy the entity before it can be mined, causing the mine to fail. We get all the details of the entity and replace it plus show the user a message, so it appears as if e blocked the mining.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
 Portal.OnPreMinedEntity = function(event, minedEntity)

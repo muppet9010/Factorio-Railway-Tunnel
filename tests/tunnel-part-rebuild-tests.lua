@@ -171,7 +171,7 @@ Test.EveryTick = function(event)
         entitiesToRemove[partCount] = entityToRemove
         nextPartIndex = next(PartToRemove, nextPartIndex)
         if nextPartIndex == nil then
-            -- Whe the last part index is iterated it becomes nil index, so continue at the start of the list.
+            -- When the last part index is iterated it becomes nil index, so continue at the start of the list.
             nextPartIndex = next(PartToRemove)
         end
     end
