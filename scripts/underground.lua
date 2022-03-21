@@ -239,10 +239,10 @@ Underground.OnLoad = function()
     MOD.Interfaces.Underground.CanAnUndergroundConnectAtItsInternalPosition = Underground.CanAnUndergroundConnectAtItsInternalPosition
     MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal = Underground.CanUndergroundSegmentConnectToAPortal
     -- Merged event handler interfaces.
-    MOD.Interfaces.Underground.UndergroundSegmentBuilt = Underground.UndergroundSegmentBuilt
-    MOD.Interfaces.Underground.OnBuiltEntityGhost = Underground.OnBuiltEntityGhost
-    MOD.Interfaces.Underground.OnDiedEntity = Underground.OnDiedEntity
-    MOD.Interfaces.Underground.OnPreMinedEntity = Underground.OnPreMinedEntity
+    MOD.Interfaces.Underground.OnUndergroundSegmentBuilt = Underground.OnUndergroundSegmentBuilt
+    MOD.Interfaces.Underground.OnUndergroundSegmentGhostBuilt = Underground.OnUndergroundSegmentGhostBuilt
+    MOD.Interfaces.Underground.OnUndergroundSegmentEntityDied = Underground.OnUndergroundSegmentEntityDied
+    MOD.Interfaces.Underground.OnUndergroundSegmentEntityPreMined = Underground.OnUndergroundSegmentEntityPreMined
 end
 
 --- Called when an underground segment has been built. Event fitlering is done by calling function.
@@ -250,7 +250,7 @@ end
 ---@param builtEntity LuaEntity
 ---@param builtEntity_name string
 ---@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity.
-Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
+Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
         local placer = Utils.GetActionerFromEvent(event)
@@ -937,7 +937,7 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
-Underground.OnBuiltEntityGhost = function(event, createdEntity)
+Underground.OnUndergroundSegmentGhostBuilt = function(event, createdEntity)
     -- If the ghost was on grid then nothing needs to be done.
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
         local placer = Utils.GetActionerFromEvent(event)
@@ -974,7 +974,7 @@ end
 -- Runs when a player mines something, but before its removed from the map. If the mine should be blocked we destroy the entity before it can be mined, causing the mine to fail. We get all the details of the entity and replace it plus show the user a message, so it appears as if e blocked the mining.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
-Underground.OnPreMinedEntity = function(event, minedEntity)
+Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedSegment = global.undergrounds.segments[minedEntity.unit_number]
     if minedSegment == nil then
@@ -1251,10 +1251,10 @@ Underground.TunnelCrossingSegment_CrossingTunnelChanged = function(tunnelCrossin
     end
 end
 
--- Triggered when a monitored entity type is killed.
+-- Triggered when an underground segment entity is killed.
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
-Underground.OnDiedEntity = function(event, diedEntity)
+Underground.OnUndergroundSegmentEntityDied = function(event, diedEntity)
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local segment = global.undergrounds.segments[diedEntity.unit_number]
     if segment == nil then

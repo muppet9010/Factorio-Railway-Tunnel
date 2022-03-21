@@ -4,9 +4,6 @@ Now
 
 Bugs / Next
 -----------
-    - Check functions called by the merged event handlers like Portal.OnBuiltEntity() as they are now redundant.
-    - Check when get placer function is called and lock it behind error state where possible. Shouldn't be needed for routine function calls.
-    - Check in tunnel shared event handlers if we've missed passing in any obtained event entity fields, i.e. createdEntity_ghostName isn't passed in to any fucntions, do none really not need it?
     - When trying to mine a portal or underground part continously (hold right click in editor) as a train is using the tunnel, sometimes as it leaves the portal the tunnel part will allow the mine and still destroy the train. This is due to where the portal entry detector is placed and we need to check if the entry end rail of each portal can be destroyed (no train on them).
     - Update the underground code to use sprite renders and not entities. Update Mod Design Decisions once this is done or with the reason entities are needed (if they are). As the underground graphics will always be very simple.
     - Invalid train tests error when Test force's braking force is 1 rather than default of 0. Seems odd.

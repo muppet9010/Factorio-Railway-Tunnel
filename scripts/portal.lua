@@ -213,31 +213,25 @@ Portal.OnLoad = function()
     MOD.Interfaces.Portal.GuiClosedOnPortalPart = Portal.GuiClosedOnPortalPart
 
     -- Merged event handler interfaces.
-    MOD.Interfaces.Portal.OnBuiltEntity = Portal.OnBuiltEntity
-    MOD.Interfaces.Portal.OnBuiltEntityGhost = Portal.OnBuiltEntityGhost
-    MOD.Interfaces.Portal.OnDiedEntity = Portal.OnDiedEntity
-    MOD.Interfaces.Portal.OnDiedEntityPortalEntryTrainDetector = Portal.OnDiedEntityPortalEntryTrainDetector
-    MOD.Interfaces.Portal.OnDiedEntityPortalTransitionTrainDetector = Portal.OnDiedEntityPortalTransitionTrainDetector
-    MOD.Interfaces.Portal.OnPreMinedEntity = Portal.OnPreMinedEntity
+    MOD.Interfaces.Portal.OnTunnelPortalPartEntityBuilt = Portal.OnTunnelPortalPartEntityBuilt
+    MOD.Interfaces.Portal.OnTunnelPortalPartGhostBuilt = Portal.OnTunnelPortalPartGhostBuilt
+    MOD.Interfaces.Portal.OnPortalPartEntityDied = Portal.OnPortalPartEntityDied
+    MOD.Interfaces.Portal.OnPortalEntryTrainDetectorEntityDied = Portal.OnPortalEntryTrainDetectorEntityDied
+    MOD.Interfaces.Portal.OnPortalTransitionTrainDetectorEntityDied = Portal.OnPortalTransitionTrainDetectorEntityDied
+    MOD.Interfaces.Portal.OnPortalPartEntityPreMined = Portal.OnPortalPartEntityPreMined
 
     EventScheduler.RegisterScheduledEventType("Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled", Portal.TryCreateEnteringTrainUsageDetectionEntityAtPosition_Scheduled)
 end
 
+--- A real tunnel portal part was built.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
----@param createdEntity LuaEntity
----@param createdEntity_name string
-Portal.OnBuiltEntity = function(event, createdEntity, createdEntity_name)
-    local placer = Utils.GetActionerFromEvent(event)
-    Portal.TunnelPortalPartBuilt(createdEntity, placer, createdEntity_name)
-end
-
 ---@param builtEntity LuaEntity
----@param placer EntityActioner
 ---@param builtEntity_name string
 ---@return boolean
-Portal.TunnelPortalPartBuilt = function(builtEntity, placer, builtEntity_name)
+Portal.OnTunnelPortalPartEntityBuilt = function(event, builtEntity, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
+        local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
@@ -1001,7 +995,7 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
-Portal.OnBuiltEntityGhost = function(event, createdEntity)
+Portal.OnTunnelPortalPartGhostBuilt = function(event, createdEntity)
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
         local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
@@ -1011,7 +1005,7 @@ end
 -- Runs when a player mines something, but before its removed from the map. If the mine should be blocked we destroy the entity before it can be mined, causing the mine to fail. We get all the details of the entity and replace it plus show the user a message, so it appears as if e blocked the mining.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 ---@param minedEntity LuaEntity
-Portal.OnPreMinedEntity = function(event, minedEntity)
+Portal.OnPortalPartEntityPreMined = function(event, minedEntity)
     -- Check its a successfully built entity. As invalid placements mine the entity and so they don't have a global entry.
     local minedPortalPart = global.portals.portalPartEntityIdToPortalPart[minedEntity.unit_number]
     if minedPortalPart == nil then
@@ -1240,10 +1234,10 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
     end
 end
 
--- Triggered when a monitored entity type is killed.
+-- Triggered when a portal part entity is killed.
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
-Portal.OnDiedEntity = function(event, diedEntity)
+Portal.OnPortalPartEntityDied = function(event, diedEntity)
     -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
     local diedPortalPart = global.portals.portalPartEntityIdToPortalPart[diedEntity.unit_number]
     if diedPortalPart == nil then
@@ -1256,7 +1250,7 @@ end
 -- Occurs when a train tries to pass through the border of a portal, when entering and exiting.
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
-Portal.OnDiedEntityPortalEntryTrainDetector = function(event, diedEntity)
+Portal.OnPortalEntryTrainDetectorEntityDied = function(event, diedEntity)
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.enteringTrainUsageDetectorEntityIdToPortal[diedEntity_unitNumber]
@@ -1445,7 +1439,7 @@ end
 -- Occurs when a train passes through the transition point of a portal when fully entering the tunnel.
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
-Portal.OnDiedEntityPortalTransitionTrainDetector = function(event, diedEntity)
+Portal.OnPortalTransitionTrainDetectorEntityDied = function(event, diedEntity)
     local diedEntity_unitNumber = diedEntity.unit_number
     -- Tidy up the blocker reference as in all cases it has been removed.
     local portal = global.portals.transitionUsageDetectorEntityIdToPortal[diedEntity_unitNumber]

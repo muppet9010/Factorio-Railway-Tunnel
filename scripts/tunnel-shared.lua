@@ -290,29 +290,29 @@ TunnelShared.OnBuiltEntity = function(event)
 
     local createdEntity_type = createdEntity.type
     if Common.RollingStockTypes[createdEntity_type] ~= nil then
-        MOD.Interfaces.Tunnel.OnBuiltEntity(event, createdEntity, createdEntity_type)
+        MOD.Interfaces.Tunnel.OnTrainCarriageEntityBuilt(event, createdEntity)
         return
     end
 
     local createdEntity_name = createdEntity.name
     if Common.PortalEndAndSegmentEntityNames[createdEntity_name] ~= nil then
-        MOD.Interfaces.Portal.OnBuiltEntity(event, createdEntity, createdEntity_name)
+        MOD.Interfaces.Portal.OnTunnelPortalPartEntityBuilt(event, createdEntity, createdEntity_name)
         return
     elseif Common.UndergroundSegmentEntityNames[createdEntity_name] ~= nil then
-        MOD.Interfaces.Underground.UndergroundSegmentBuilt(event, createdEntity, createdEntity_name, nil)
+        MOD.Interfaces.Underground.OnUndergroundSegmentBuilt(event, createdEntity, createdEntity_name, nil)
         return
     end
 
     if createdEntity_type == "entity-ghost" then
         local createdEntity_ghostName = createdEntity.ghost_name
         if Common.PortalEndAndSegmentEntityNames[createdEntity_ghostName] ~= nil then
-            MOD.Interfaces.Portal.OnBuiltEntityGhost(event, createdEntity)
+            MOD.Interfaces.Portal.OnTunnelPortalPartGhostBuilt(event, createdEntity)
             return
         elseif Common.UndergroundSegmentEntityNames[createdEntity_ghostName] ~= nil then
-            MOD.Interfaces.Underground.OnBuiltEntityGhost(event, createdEntity)
+            MOD.Interfaces.Underground.OnUndergroundSegmentGhostBuilt(event, createdEntity)
             return
         elseif Common.RollingStockTypes[createdEntity_ghostName] ~= nil then
-            MOD.Interfaces.Tunnel.OnBuiltEntity(event, createdEntity, createdEntity_type)
+            MOD.Interfaces.Tunnel.OnTrainCarriageGhostBuilt(event, createdEntity, createdEntity_ghostName)
             return
         end
     end
@@ -339,16 +339,16 @@ TunnelShared.OnDiedEntity = function(event)
 
     local diedEntity_name = diedEntity.name
     if diedEntity_name == "railway_tunnel-portal_entry_train_detector_1x1" then
-        MOD.Interfaces.Portal.OnDiedEntityPortalEntryTrainDetector(event, diedEntity)
+        MOD.Interfaces.Portal.OnPortalEntryTrainDetectorEntityDied(event, diedEntity)
         return
     elseif diedEntity_name == "railway_tunnel-portal_transition_train_detector_1x1" then
-        MOD.Interfaces.Portal.OnDiedEntityPortalTransitionTrainDetector(event, diedEntity)
+        MOD.Interfaces.Portal.OnPortalTransitionTrainDetectorEntityDied(event, diedEntity)
         return
     elseif Common.PortalEndAndSegmentEntityNames[diedEntity_name] ~= nil then
-        MOD.Interfaces.Portal.OnDiedEntity(event, diedEntity)
+        MOD.Interfaces.Portal.OnPortalPartEntityDied(event, diedEntity)
         return
     elseif Common.UndergroundSegmentEntityNames[diedEntity_name] ~= nil then
-        MOD.Interfaces.Underground.OnDiedEntity(event, diedEntity)
+        MOD.Interfaces.Underground.OnUndergroundSegmentEntityDied(event, diedEntity)
         return
     end
 
@@ -368,10 +368,10 @@ TunnelShared.OnPreMinedEntity = function(event)
 
     local minedEntity_name = minedEntity.name
     if Common.PortalEndAndSegmentEntityNames[minedEntity_name] ~= nil then
-        MOD.Interfaces.Portal.OnPreMinedEntity(event, minedEntity)
+        MOD.Interfaces.Portal.OnPortalPartEntityPreMined(event, minedEntity)
         return
     elseif Common.UndergroundSegmentEntityNames[minedEntity_name] ~= nil then
-        MOD.Interfaces.Underground.OnPreMinedEntity(event, minedEntity)
+        MOD.Interfaces.Underground.OnUndergroundSegmentEntityPreMined(event, minedEntity)
         return
     end
 

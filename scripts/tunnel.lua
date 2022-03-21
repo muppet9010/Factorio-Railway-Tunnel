@@ -50,7 +50,8 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
     MOD.Interfaces.Tunnel.CanTrainFitInTunnel = Tunnel.CanTrainFitInTunnel
     -- Merged event handler interfaces.
-    MOD.Interfaces.Tunnel.OnBuiltEntity = Tunnel.OnBuiltEntity
+    MOD.Interfaces.Tunnel.OnTrainCarriageEntityBuilt = Tunnel.OnTrainCarriageEntityBuilt
+    MOD.Interfaces.Tunnel.OnTrainCarriageGhostBuilt = Tunnel.OnTrainCarriageGhostBuilt
 end
 
 -- Needed so we detect when a train is targetting the transition signal of a tunnel and has a path reserved to it. Naturally the train would start to slow down at this point, but we want to control it instead.
@@ -273,56 +274,74 @@ Tunnel.Remote_GetTunnelDetailsForEntityUnitNumber = function(entityUnitNumber)
     return nil
 end
 
--- Checks for any train carriages (real or ghost) being built on the portal or tunnel segments.
+-- Checks for any real train carriages being built on the portal or tunnel segments.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
-Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
-    if createdEntity_type ~= "entity-ghost" then
-        -- Is a real entity so check it approperiately.
-        local train = createdEntity.train
+---@param createdEntity LuaEntity
+Tunnel.OnTrainCarriageEntityBuilt = function(event, createdEntity)
+    local train = createdEntity.train
 
-        local createdEntity_unitNumber = createdEntity.unit_number
-        -- Look at the train and work out where the placed wagon fits in it. Then check the approperiate ends of the train's rails.
-        local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
-        if train.front_stock.unit_number == createdEntity_unitNumber then
-            trainFrontStockIsPlacedEntity = true
+    local createdEntity_unitNumber = createdEntity.unit_number
+    -- Look at the train and work out where the placed wagon fits in it. Then check the approperiate ends of the train's rails.
+    local trainFrontStockIsPlacedEntity, trainBackStockIsPlacedEntity = false, false
+    if train.front_stock.unit_number == createdEntity_unitNumber then
+        trainFrontStockIsPlacedEntity = true
+    end
+    if train.back_stock.unit_number == createdEntity_unitNumber then
+        trainBackStockIsPlacedEntity = true
+    end
+    if trainFrontStockIsPlacedEntity and trainBackStockIsPlacedEntity then
+        -- Both ends of the train is this carriage so its a train of 1.
+        if TunnelRailEntityNames[train.front_rail.name] == nil and TunnelRailEntityNames[train.back_rail.name] == nil then
+            -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
+            return
         end
-        if train.back_stock.unit_number == createdEntity_unitNumber then
-            trainBackStockIsPlacedEntity = true
+    elseif trainFrontStockIsPlacedEntity then
+        -- Placed carriage is front of train
+        if TunnelRailEntityNames[train.front_rail.name] == nil then
+            -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
+            return
         end
-        if trainFrontStockIsPlacedEntity and trainBackStockIsPlacedEntity then
-            -- Both ends of the train is this carriage so its a train of 1.
-            if TunnelRailEntityNames[train.front_rail.name] == nil and TunnelRailEntityNames[train.back_rail.name] == nil then
-                -- If train (single carriage) doesn't have a tunnel rail at either end of it then its not on a tunnel, so ignore it.
-                return
-            end
-        elseif trainFrontStockIsPlacedEntity then
-            -- Placed carriage is front of train
-            if TunnelRailEntityNames[train.front_rail.name] == nil then
-                -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
-                return
-            end
-        elseif trainBackStockIsPlacedEntity then
-            -- Placed carriage is rear of train
-            if TunnelRailEntityNames[train.back_rail.name] == nil then
-                -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
-                return
-            end
-        else
-            -- Placed carriage is part of an existing train that isn't managed for tunnel usage. The placed carriage isn't on either end of the train so no need to check it.
+    elseif trainBackStockIsPlacedEntity then
+        -- Placed carriage is rear of train
+        if TunnelRailEntityNames[train.back_rail.name] == nil then
+            -- Ignore if train doesn't have a tunnel rail at the end the carriage was just placed at. We assume the other end is fine.
             return
         end
     else
-        -- Is a ghost so check it approperiately. This isn't perfect, but if it misses an invalid case the real entity being placed will catch it. Nicer to warn the player at the ghost stage however.
+        -- Placed carriage is part of an existing train that isn't managed for tunnel usage. The placed carriage isn't on either end of the train so no need to check it.
+        return
+    end
 
-        -- Known limitation that you can't place a single carriage ghost on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
+    local placer = Utils.GetActionerFromEvent(event)
+    TunnelShared.UndoInvalidPlacement(createdEntity, placer, true, false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
+end
 
-        -- Have to check what rails are at the approximate ends of the ghost carriage.
-        local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
-        local carriageLengthFromCenter, surface, tunnelRailFound = Common.CarriagePlacementDistances[createdEntity.ghost_name], createdEntity.surface, false
-        local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
-        local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
-        -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
-        for _, railEntity in pairs(frontRailsFound) do
+-- Checks for any ghost train carriages being built on the portal or tunnel segments.
+---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
+---@param createdEntity LuaEntity
+---@param createdEntity_ghostName string
+Tunnel.OnTrainCarriageGhostBuilt = function(event, createdEntity, createdEntity_ghostName)
+    -- Is a ghost so check it approperiately. This isn't perfect, but if it misses an invalid case the real entity being placed will catch it. Nicer to warn the player at the ghost stage however.
+
+    -- Known limitation that you can't place a single carriage ghost on a tunnel crossing segment in most positions as this detects the tunnel rails underneath the regular rails. Edge case and just slightly over protective.
+
+    -- Have to check what rails are at the approximate ends of the ghost carriage.
+    local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
+    local carriageLengthFromCenter, surface, tunnelRailFound = Common.CarriagePlacementDistances[createdEntity_ghostName], createdEntity.surface, false
+    local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
+    local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
+    -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
+    for _, railEntity in pairs(frontRailsFound) do
+        if TunnelRailEntityNames[railEntity.name] ~= nil then
+            tunnelRailFound = true
+        else
+            tunnelRailFound = false
+            break
+        end
+    end
+    if not tunnelRailFound then
+        local backRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = backRailPosition}
+        for _, railEntity in pairs(backRailsFound) do
             if TunnelRailEntityNames[railEntity.name] ~= nil then
                 tunnelRailFound = true
             else
@@ -330,24 +349,13 @@ Tunnel.OnBuiltEntity = function(event, createdEntity, createdEntity_type)
                 break
             end
         end
-        if not tunnelRailFound then
-            local backRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = backRailPosition}
-            for _, railEntity in pairs(backRailsFound) do
-                if TunnelRailEntityNames[railEntity.name] ~= nil then
-                    tunnelRailFound = true
-                else
-                    tunnelRailFound = false
-                    break
-                end
-            end
-        end
-        if not tunnelRailFound then
-            return
-        end
+    end
+    if not tunnelRailFound then
+        return
     end
 
     local placer = Utils.GetActionerFromEvent(event)
-    TunnelShared.UndoInvalidPlacement(createdEntity, placer, createdEntity_type ~= "entity-ghost", false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
+    TunnelShared.UndoInvalidPlacement(createdEntity, placer, false, false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
 -- Triggered when a player rotates a monitored entity type. This should only be possible in Editor mode as we make all parts un-rotatable to regular players.
