@@ -294,7 +294,7 @@ TestManager.ClearMap_Scheduled = function()
     -- Remove any trains first and then everything else, to avoid triggering tunnel removal destroying trains alerts.
     for _, entityTypeFilter in pairs({{"cargo-wagon", "locomotive", "fluid-wagon"}, {}}) do
         for _, entity in pairs(global.testManager.testSurface.find_entities_filtered({name = entityTypeFilter})) do
-            entity.destroy({raise_destroy = true})
+            entity.destroy {raise_destroy = true}
         end
     end
 

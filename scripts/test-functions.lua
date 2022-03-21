@@ -592,7 +592,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
                 fuelProxy.proxy_target.insert({name = item, count = count})
             end
         end
-        fuelProxy.destroy()
+        fuelProxy.destroy {raise_destroy = false}
     end
 
     TestFunctions.MakeCarriagesUnique(placedEntitiesByType["locomotive"], placedEntitiesByType["cargo-wagon"], placedEntitiesByType["fluid-wagon"], placedEntitiesByType["artillery-wagon"])

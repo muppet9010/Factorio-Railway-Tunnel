@@ -281,7 +281,7 @@ end
 -- Remove the player container and its globals.
 ---@param playerContainer PlayerContainer
 PlayerContainer.RemovePlayerContainer = function(playerContainer)
-    playerContainer.entity.destroy()
+    playerContainer.entity.destroy {raise_destroy = false}
     global.playerContainers.playerIdToPlayerContainer[playerContainer.playerIndex] = nil
     local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[playerContainer.managedTrain.id]
     if thisTrainsPlayerContainers ~= nil then

@@ -349,21 +349,21 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
         -- Remove the extras for the old part being replaced.
         if oldFastReplacedSegment.typeData.segmentType == SegmentType.standard then
             -- Remove the old train blocker entity.
-            oldFastReplacedSegment_Standard.trainBlockerEntity.destroy()
+            oldFastReplacedSegment_Standard.trainBlockerEntity.destroy {raise_destroy = false}
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.railCrossing then
             -- Remove the old rails.
             for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
-                railCrossingTrackEntity.destroy()
+                railCrossingTrackEntity.destroy {raise_destroy = false}
             end
             -- Remove the old crossing track signals if there were any (as only added when part of a tunnel).
             if oldFastReplacedSegment_RailCrossing.signalEntities ~= nil then
                 for _, crossingRailSignal in pairs(oldFastReplacedSegment_RailCrossing.signalEntities) do
-                    crossingRailSignal.destroy()
+                    crossingRailSignal.destroy {raise_destroy = false}
                 end
             end
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
             -- Remove the old train blocker entity.
-            oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity.destroy()
+            oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity.destroy {raise_destroy = false}
 
             -- Update the neighboring segments that this tunnel crossing segment is being removed.
             Underground.TunnelCrossingSegmentBuiltOrRemoved(oldFastReplacedSegment_TunnelCrossing, false)
@@ -390,7 +390,7 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
         else
             -- Different segment type so remove the old one if it exists, with the new one bein created as part of regular segment creation later.
             if oldFastReplacedSegment.builtLayerEntity ~= nil then
-                oldFastReplacedSegment.builtLayerEntity.destroy()
+                oldFastReplacedSegment.builtLayerEntity.destroy {raise_destroy = false}
             end
         end
 
@@ -447,7 +447,7 @@ Underground.UndergroundSegmentBuilt = function(event, builtEntity, builtEntity_n
             if not fastReplacedSegmentOfSameType then
                 -- Remove the old top layer.
                 if oldFastReplacedSegment.topLayerEntity ~= nil and oldFastReplacedSegment.topLayerEntity.valid then
-                    oldFastReplacedSegment.topLayerEntity.destroy()
+                    oldFastReplacedSegment.topLayerEntity.destroy {raise_destroy = false}
                 end
 
                 -- Create the top layer entity that has the desired graphics on it.
@@ -1049,7 +1049,7 @@ Underground.RestoreSegmentEntity = function(minedSegment)
     -- Destroy the old entity after caching its values.
     local minedSegmentEntity = minedSegment.entity
     local minedSegmentEntity_lastUser, minedSegmentEntityId = minedSegmentEntity.last_user, minedSegment.id
-    minedSegmentEntity.destroy() -- Destroy it so it can't be mined.
+    minedSegmentEntity.destroy {raise_destroy = false} -- Destroy it so it can't be mined.
 
     -- Create the new entity and update the old segment object with it.
     local newSegmentEntity = minedSegment.surface.create_entity {name = minedSegment.entity_name, position = minedSegment.entity_position, direction = minedSegment.entity_direction, force = minedSegment.force, player = minedSegmentEntity_lastUser, raise_built = false, create_build_effect_smoke = false}
@@ -1087,20 +1087,20 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
 
     -- Remove a built layer entity if it exists.
     if removedSegment.builtLayerEntity ~= nil then
-        removedSegment.builtLayerEntity.destroy()
+        removedSegment.builtLayerEntity.destroy {raise_destroy = false}
     end
 
     -- The standard extras the object had created without needing to be part of a tunnel need removing.
     if removedSegment.typeData.segmentType == SegmentType.standard then
         local removedSegment_Standard = removedSegment ---@type StandardUndergroundSegment
-        removedSegment_Standard.trainBlockerEntity.destroy()
+        removedSegment_Standard.trainBlockerEntity.destroy {raise_destroy = false}
     elseif removedSegment.typeData.segmentType == SegmentType.railCrossing then
         -- Remove anything on the crossing rails and the rails. If this function has been reached any mining checks have already happened.
         local removedSegment_RailCrossing = removedSegment ---@type RailCrossingUndergroundSegment
         for _, crossingRailEntity in pairs(removedSegment_RailCrossing.crossingRailEntities) do
             if crossingRailEntity.valid then
                 Utils.DestroyCarriagesOnRailEntity(crossingRailEntity, killForce, killerCauseEntity, removedSegment_RailCrossing.surface)
-                if not crossingRailEntity.destroy() then
+                if not crossingRailEntity.destroy {raise_destroy = false} then
                     error("removedSegment.crossingRailEntities rail failed to be removed")
                 end
             end
@@ -1109,7 +1109,7 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
         local removedSegment_TunnelCrossing = removedSegment ---@type TunnelCrossingUndergroundSegment
 
         -- Remove the train blocker.
-        removedSegment_TunnelCrossing.trainBlockerEntity.destroy()
+        removedSegment_TunnelCrossing.trainBlockerEntity.destroy {raise_destroy = false}
 
         -- Check the neighboring segments for other tunnel crossing type segments.
         Underground.TunnelCrossingSegmentBuiltOrRemoved(removedSegment_TunnelCrossing, false)
@@ -1160,7 +1160,7 @@ Underground.On_TunnelRemoved = function(underground)
     for _, segment in pairs(underground.segments) do
         for _, railEntity in pairs(segment.tunnelRailEntities) do
             if railEntity.valid then
-                railEntity.destroy()
+                railEntity.destroy {raise_destroy = false}
             end
         end
         segment.tunnelRailEntities = nil
@@ -1169,7 +1169,7 @@ Underground.On_TunnelRemoved = function(underground)
             local segment_RailCrossing = segment ---@type RailCrossingUndergroundSegment
             for _, signalEntity in pairs(segment_RailCrossing.signalEntities) do
                 if signalEntity.valid then
-                    signalEntity.destroy()
+                    signalEntity.destroy {raise_destroy = false}
                 end
             end
             segment_RailCrossing.signalEntities = nil
@@ -1184,7 +1184,7 @@ Underground.On_TunnelRemoved = function(underground)
         end
 
         if segment.topLayerEntity ~= nil and segment.topLayerEntity.valid then
-            segment.topLayerEntity.destroy()
+            segment.topLayerEntity.destroy {raise_destroy = false}
         end
         segment.topLayerEntity = nil
     end

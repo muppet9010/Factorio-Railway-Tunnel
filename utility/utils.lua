@@ -144,7 +144,7 @@ Utils.KillAllObjectsInArea = function(surface, positionedBoundingBox, killerEnti
                 entity.die(killerForce)
             end
         else
-            entity.destroy({dp_cliff_correction = true, raise_destroy = true})
+            entity.destroy {do_cliff_correction = true, raise_destroy = true}
         end
     end
 end
@@ -156,7 +156,7 @@ end
 ---@param entitiesExcluded? LuaEntity[]|null
 Utils.DestroyAllKillableObjectsInArea = function(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, collisionBoxOnlyEntities, onlyForceAffected, true, true, entitiesExcluded)) do
-        entity.destroy({dp_cliff_correction = true, raise_destroy = true})
+        entity.destroy {do_cliff_correction = true, raise_destroy = true}
     end
 end
 
@@ -166,7 +166,7 @@ end
 ---@param entitiesExcluded? LuaEntity[]|null
 Utils.DestroyAllObjectsInArea = function(surface, positionedBoundingBox, onlyForceAffected, entitiesExcluded)
     for k, entity in pairs(Utils.ReturnAllObjectsInArea(surface, positionedBoundingBox, false, onlyForceAffected, false, false, entitiesExcluded)) do
-        entity.destroy({dp_cliff_correction = true, raise_destroy = true})
+        entity.destroy {do_cliff_correction = true, raise_destroy = true}
     end
 end
 

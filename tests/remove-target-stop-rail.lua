@@ -215,10 +215,10 @@ Test.EveryTick = function(event)
         if removeFirstTarget then
             -- Is the state we are wanting to act upon.
             if testScenario.targetType == TargetTypes.trainStop then
-                testDataBespoke.stationRemove.destroy()
+                testDataBespoke.stationRemove.destroy {raise_destroy = false}
                 game.print("Removed target schedule station.")
             elseif testScenario.targetType == TargetTypes.rail then
-                testDataBespoke.stationRemove.connected_rail.destroy()
+                testDataBespoke.stationRemove.connected_rail.destroy {raise_destroy = false}
                 game.print("Removed target schedule rail.")
             else
                 error("Unsupported testScenario.targetType: " .. testScenario.targetType)

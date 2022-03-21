@@ -112,7 +112,7 @@ Test.EveryTick = function(event)
 
         -- Stop the waiting train and remove the tunnel train so it doesn't block any test actions.
         testDataBespoke.waitingTrain.manual_mode = true
-        tunnelUsageChanges.train.carriages[1].destroy()
+        tunnelUsageChanges.train.carriages[1].destroy {raise_destroy = false}
         testDataBespoke.testPrepared = true
         return
     end

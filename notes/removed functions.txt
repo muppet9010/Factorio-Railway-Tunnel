@@ -69,7 +69,7 @@ TrainManagerStateFuncs.AddCarriageToLeavingTrain = function(managedTrain, nextSo
     -- Remove the pushing loco if present before the next carriage is placed.
     local hadPushingLoco = managedTrain.leavingTrainPushingLoco ~= nil
     if managedTrain.leavingTrainPushingLoco ~= nil then
-        managedTrain.leavingTrainPushingLoco.destroy()
+        managedTrain.leavingTrainPushingLoco.destroy {raise_destroy = false}
         managedTrain.leavingTrainPushingLoco = nil
     end
 
@@ -263,7 +263,7 @@ TrainManagerFuncs.CopyCarriage = function(targetSurface, refCarriage, newPositio
     end
 
     if haveToFlipCarriage then
-        tempCarriage.destroy()
+        tempCarriage.destroy {raise_destroy = false}
     end
     if placedCarriage.orientation ~= requiredOrientation then
         error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
@@ -369,12 +369,12 @@ TrainManagerFuncs.RemoveAnyPushingLocosFromTrain = function(train)
     local safeTrainCarriage = train.back_stock -- An entity to hold on to so we can get the train if we have to delete a carriage and the train ref becomes invalid.
     local aPushingLocoWasRemoved = false
     if train.front_stock.name == pushingLocoEntityName then
-        train.front_stock.destroy()
+        train.front_stock.destroy {raise_destroy = false}
         train = safeTrainCarriage.train
         aPushingLocoWasRemoved = true
     end
     if train.back_stock.name == pushingLocoEntityName then
-        train.back_stock.destroy()
+        train.back_stock.destroy {raise_destroy = false}
         aPushingLocoWasRemoved = true
     end
     return aPushingLocoWasRemoved

@@ -1042,7 +1042,7 @@ Portal.ReplacePortalPartEntity = function(minedPortalPart)
     -- Destroy the old entity after caching its values.
     local oldPortalPartEntity = minedPortalPart.entity
     local oldPortalPartEntity_lastUser, oldPortalPartId = oldPortalPartEntity.last_user, minedPortalPart.id
-    oldPortalPartEntity.destroy()
+    oldPortalPartEntity.destroy {raise_destroy = false}
 
     -- Create the new entity and update the old portal part object with it.
     local newPortalPartEntity = minedPortalPart.surface.create_entity {name = minedPortalPart.entity_name, position = minedPortalPart.entity_position, direction = minedPortalPart.entity_direction, force = minedPortalPart.force, player = oldPortalPartEntity_lastUser}
@@ -1186,14 +1186,14 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
         -- Remove the tunnel related entities of this portal.
         for _, otherEntity in pairs(portal.portalOtherEntities) do
             if otherEntity.valid then
-                otherEntity.destroy()
+                otherEntity.destroy {raise_destroy = false}
             end
         end
         portal.portalOtherEntities = nil
         for _, railEntity in pairs(portal.portalRailEntities) do
             if railEntity.valid then
                 Utils.DestroyCarriagesOnRailEntity(railEntity, killForce, killerCauseEntity, portal.surface)
-                if not railEntity.destroy() then
+                if not railEntity.destroy {raise_destroy = false} then
                     error("portal.portalRailEntities rail failed to be removed")
                 end
             end
@@ -1202,14 +1202,14 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
 
         for _, entrySignal in pairs(portal.entrySignals) do
             if entrySignal.entity.valid then
-                entrySignal.entity.destroy()
+                entrySignal.entity.destroy {raise_destroy = false}
             end
         end
         portal.entrySignals = nil
         for _, transitionSignal in pairs(portal.transitionSignals) do
             if transitionSignal.entity.valid then
                 MOD.Interfaces.Tunnel.DeregisterTransitionSignal(transitionSignal)
-                transitionSignal.entity.destroy()
+                transitionSignal.entity.destroy {raise_destroy = false}
             end
         end
         portal.transitionSignals = nil
@@ -1436,7 +1436,7 @@ Portal.RemoveEnteringTrainUsageDetectionEntityFromPortal = function(portal)
     if portal.enteringTrainUsageDetectorEntity ~= nil then
         if portal.enteringTrainUsageDetectorEntity.valid then
             global.portals.enteringTrainUsageDetectorEntityIdToPortal[portal.enteringTrainUsageDetectorEntity.unit_number] = nil
-            portal.enteringTrainUsageDetectorEntity.destroy()
+            portal.enteringTrainUsageDetectorEntity.destroy {raise_destroy = false}
         end
         portal.enteringTrainUsageDetectorEntity = nil
     end
@@ -1572,7 +1572,7 @@ Portal.RemoveTransitionUsageDetectionEntityFromPortal = function(portal)
     if portal.transitionUsageDetectorEntity ~= nil then
         if portal.transitionUsageDetectorEntity.valid then
             global.portals.transitionUsageDetectorEntityIdToPortal[portal.transitionUsageDetectorEntity.unit_number] = nil
-            portal.transitionUsageDetectorEntity.destroy()
+            portal.transitionUsageDetectorEntity.destroy {raise_destroy = false}
         end
         portal.transitionUsageDetectorEntity = nil
     end

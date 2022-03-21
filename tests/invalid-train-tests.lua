@@ -219,7 +219,7 @@ Test.EveryTick = function(event)
         else
             carriageIndex = 2
         end
-        tunnelUsageChanges.train.carriages[carriageIndex].destroy()
+        tunnelUsageChanges.train.carriages[carriageIndex].destroy {raise_destroy = false}
         if tunnelUsageChanges.train.valid then
             TestFunctions.TestFailed(testName, "carriage not removed when expected")
             return

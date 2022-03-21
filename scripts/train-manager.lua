@@ -1255,7 +1255,7 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, sa
     end
 
     --[[if haveToFlipCarriage then
-        tempCarriage.destroy()
+        tempCarriage.destroy {raise_destroy = false}
     end
     if placedCarriage.orientation ~= requiredOrientation then
         error("placed underground carriage isn't correct orientation.\nrequiredOrientation: " .. tostring(requiredOrientation) .. "\nplacedCarriage.orientation: " .. tostring(placedCarriage.orientation) .. "\nrefCarriage.orientation: " .. tostring(refCarriage.orientation))
@@ -1305,7 +1305,7 @@ end
 TrainManager.DestroyDummyTrain = function(managedTrain)
     -- Dummy trains are never passed between trainManagerEntries, so don't have to check the global trainIdToManagedTrain's managedTrain id.
     if managedTrain.dummyTrainCarriage ~= nil and managedTrain.dummyTrainCarriage.valid then
-        managedTrain.dummyTrainCarriage.destroy()
+        managedTrain.dummyTrainCarriage.destroy {raise_destroy = false}
     end
     managedTrain.dummyTrainCarriage = nil
 end

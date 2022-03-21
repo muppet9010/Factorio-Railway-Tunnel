@@ -80,10 +80,10 @@ Test.Start = function(testName)
         elseif trainStop.backer_name == "ForwardRail" then
             forwardsRail = trainStop.connected_rail
             forwardsRailPosition = forwardsRail.position
-            trainStop.destroy()
+            trainStop.destroy {raise_destroy = false}
         elseif trainStop.backer_name == "ReverseRail" then
             reverseRail = trainStop.connected_rail
-            trainStop.destroy()
+            trainStop.destroy {raise_destroy = false}
         elseif trainStop.backer_name == "SecondTrain_End" then
             secondTrainEndStop = trainStop
         end
@@ -212,7 +212,7 @@ Test.EveryTick = function(event)
 
         if doReversalNow then
             testDataBespoke.reversedTrain = true
-            testDataBespoke.forwardsRail.destroy()
+            testDataBespoke.forwardsRail.destroy {raise_destroy = false}
             testDataBespoke.reversedTick = event.tick
         end
 
@@ -240,7 +240,7 @@ Test.EveryTick = function(event)
 
             if resumeForwardsPathNow then
                 testDataBespoke.resumedTrain = true
-                testDataBespoke.reverseRail.destroy()
+                testDataBespoke.reverseRail.destroy {raise_destroy = false}
                 TestFunctions.GetTestSurface().create_entity {name = "straight-rail", position = testDataBespoke.forwardsRailPosition, direction = defines.direction.east, force = TestFunctions.GetTestForce(), raise_built = false, create_build_effect_smoke = false}
             end
 

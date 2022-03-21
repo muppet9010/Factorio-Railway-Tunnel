@@ -261,7 +261,7 @@ GuiUtil.DestroyElementInPlayersReferenceStorage = function(playerIndex, storeNam
     local elementName = GuiUtil.GenerateGuiElementName(elementName, elementType)
     if global.GUIUtilPlayerElementReferenceStorage ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName] ~= nil then
         if global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].valid then
-            global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].destroy()
+            global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].destroy {raise_destroy = false}
         end
         global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName] = nil
     end
@@ -278,7 +278,7 @@ GuiUtil.DestroyPlayersReferenceStorage = function(playerIndex, storeName)
         for _, store in pairs(global.GUIUtilPlayerElementReferenceStorage[playerIndex]) do
             for _, element in pairs(store) do
                 if element.valid then
-                    element.destroy()
+                    element.destroy {raise_destroy = false}
                 end
             end
         end
@@ -289,7 +289,7 @@ GuiUtil.DestroyPlayersReferenceStorage = function(playerIndex, storeName)
         end
         for _, element in pairs(global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName]) do
             if element.valid then
-                element.destroy()
+                element.destroy {raise_destroy = false}
             end
         end
         global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName] = nil

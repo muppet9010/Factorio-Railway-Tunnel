@@ -94,7 +94,7 @@ Test.DestroyBlockingWagon = function(event)
     game.print("train stopped at blocking wagon signal")
     testDataBespoke.blockingWagonReached = true
 
-    testDataBespoke.blockingWagon.destroy()
+    testDataBespoke.blockingWagon.destroy {raise_destroy = false}
 end
 
 ---@param event UtilityScheduledEvent_CallbackObject

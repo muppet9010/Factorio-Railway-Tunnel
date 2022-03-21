@@ -576,11 +576,11 @@ Test.EveryTick_Reverse = function(event)
 
             if testScenario.reverseBehaviour == ReverseBehaviour.noPath or testScenario.reverseBehaviour == ReverseBehaviour.reverseDifferentStation then
                 if testDataBespoke.endStation.valid then
-                    testDataBespoke.endStation.destroy()
+                    testDataBespoke.endStation.destroy {raise_destroy = false}
                 end
             elseif testScenario.reverseBehaviour == ReverseBehaviour.reverseSameStation then
                 if testDataBespoke.firstLeavingRailEntity.valid then
-                    testDataBespoke.firstLeavingRailEntity.destroy()
+                    testDataBespoke.firstLeavingRailEntity.destroy {raise_destroy = false}
                 end
             else
                 error("unsupported testScenario.reverseBehaviour: " .. testScenario.reverseBehaviour)
