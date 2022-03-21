@@ -27,9 +27,9 @@ data:extend(
                     recipe = "railway_tunnel-underground_segment-straight-tunnel_crossing"
                 }
             },
-            prerequisites = {"rail-signals", "landfill"},
+            prerequisites = {"rail-signals", "concrete"},
             unit = {
-                count = 100,
+                count = 200,
                 ingredients = {
                     {"automation-science-pack", 1},
                     {"logistic-science-pack", 1}

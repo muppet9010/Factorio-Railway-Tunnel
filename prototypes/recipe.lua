@@ -10,6 +10,7 @@ data:extend(
                 {"rail", 3},
                 {"rail-signal", 2}
             },
+            energy_required = 10,
             result = "railway_tunnel-portal_end",
             result_count = 1
         },
@@ -22,6 +23,7 @@ data:extend(
                 {"steel-plate", 10},
                 {"rail", 1}
             },
+            energy_required = 5,
             result = "railway_tunnel-portal_segment-straight",
             result_count = 1
         },
@@ -32,9 +34,9 @@ data:extend(
             ingredients = {
                 {"concrete", 10},
                 {"steel-plate", 10},
-                {"rail", 1},
-                {"landfill", 6}
+                {"rail", 1}
             },
+            energy_required = 5,
             result = "railway_tunnel-underground_segment-straight",
             result_count = 1
         },
@@ -46,6 +48,7 @@ data:extend(
                 {"rail", 3},
                 {"railway_tunnel-underground_segment-straight", 1}
             },
+            energy_required = 5,
             result = "railway_tunnel-underground_segment-straight-rail_crossing",
             result_count = 1
         },
@@ -56,6 +59,7 @@ data:extend(
             ingredients = {
                 {"railway_tunnel-underground_segment-straight", 2}
             },
+            energy_required = 5,
             result = "railway_tunnel-underground_segment-straight-tunnel_crossing",
             result_count = 1
         }
