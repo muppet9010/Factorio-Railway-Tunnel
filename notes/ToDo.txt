@@ -1,11 +1,22 @@
 Now
 ---
+    - Invalid train tests error when Test force's braking force is 1 rather than default of 0.
+        - Is due to where exactly the leaving train is stopped leaving the portal tracks. As there is 1 tile where the stopped leaving train will not be triggering the tunnel's signals, but will be close enough that a second train coming through the tunnel will connect to it.
+        - Also means that players could be in the origional carriage and connect/disconnect their train from the one using the tunnel.
+        - Options:
+            - If the blocking locomotive was also used as the dummy locomotive then we can move the transition signals 2 tiles further in to the bloced portal and everything else can also move further in. Giving us the space we need. It would require the blocking loco to have its force and path changed each start and end of transition, but would save on the dummy entity creation. Also should allow slightly more flexibility in the graphics for open entrance area and you could see the train pulling forwards to the end of the portal far nicer. SEEMS THE BEST OPTION.
+            - Make all tunnels need to support the carriages full connection distance; so a single carriage is 7 tiles (rather than 6), 2 is 14 (same), 3 is 21 (rather than 20). Would mean I could move the front of all trains back 1 tile as there'd always be 1 spare tile in the portals train length allowance, whereas at present its sometimes there and not, thus the train has to be further forward. Also makes documenting tunnel size simplier as becomes just train carriages connected length, rather than size plus connection size when connected. SEEMS SECOND BETS OPTION.
+            - Remove the middle rail from the leaving portal, place the leaving train and then rebuild the rail. Would have to do this for every tunnel usage or do a check for a train on the end rail?
+            - Make the portal end part 2 tiles longer so that there is enough spare room within it. This would also lower some of the other tight space requirementsa across the portal.
+            - Ignore the issue as very edge case.
+        - Can't move the current leaving train back any further as then its rear would hit the transition detector, and that can't move any further back as otherwise cargo-wagnons won't trigger it at the rail signals (small hitboxes than locomotives).
+        - Changes would need some updates to hard coded tunnel distances and remaining rail within portal for leaving trains. But shouldn't be anything too major.
+        - Record in to design decisions outcome and update other inline notes across the portal and other files as required.
 
 
 Bugs / Next
 -----------
     - Update the underground code to use sprite renders and not entities. Update Mod Design Decisions once this is done or with the reason entities are needed (if they are). As the underground graphics will always be very simple.
-    - Invalid train tests error when Test force's braking force is 1 rather than default of 0. Seems odd.
 
 
 Features to add/change
