@@ -47,7 +47,7 @@ Tunnel.OnLoad = function()
     MOD.Interfaces.Tunnel.TrainReservedTunnel = Tunnel.TrainReservedTunnel
     MOD.Interfaces.Tunnel.TrainFinishedEnteringTunnel = Tunnel.TrainFinishedEnteringTunnel
     MOD.Interfaces.Tunnel.TrainReleasedTunnel = Tunnel.TrainReleasedTunnel
-    MOD.Interfaces.Tunnel.GetTunnelsUsageEntry = Tunnel.GetTunnelsUsageEntry
+    MOD.Interfaces.Tunnel.AreTunnelsPartsInUse = Tunnel.AreTunnelsPartsInUse
     MOD.Interfaces.Tunnel.CanTrainFitInTunnel = Tunnel.CanTrainFitInTunnel
     -- Merged event handler interfaces.
     MOD.Interfaces.Tunnel.OnTrainCarriageEntityBuilt = Tunnel.OnTrainCarriageEntityBuilt
@@ -173,11 +173,25 @@ Tunnel.TrainReleasedTunnel = function(managedTrain)
     end
 end
 
+-- Checks if any of the tunnel parts are in use. This includes using the tunnel states (approaching, onPortalTrack, leaving, etc) or if the portal's rails have a train on them.
 ---@param tunnelToCheck Tunnel
----@return ManagedTrain
-Tunnel.GetTunnelsUsageEntry = function(tunnelToCheck)
-    -- Just checks if the tunnel is in use, i.e. if another train can start to use it or not.
-    return tunnelToCheck.managedTrain
+---@return boolean
+Tunnel.AreTunnelsPartsInUse = function(tunnelToCheck)
+    -- Check if tunnel in use due to state.
+    if tunnelToCheck.managedTrain ~= nil then
+        return true
+    end
+
+    -- Check if tunnel's portal's entry end's outside rails are occupied. As a train can be beyond the entry train detector and still be on these rails.
+    for _, portal in pairs(tunnelToCheck.portals) do
+        if not portal.entrySignals[Common.TunnelSignalDirection.outSignal].railEntity.can_be_destroyed() then
+            -- A train is on the end rail.
+            return true
+        end
+    end
+
+    -- Nothing found so tunnel must be fully free.
+    return false
 end
 
 ---@class RemoteTunnelDetails @ used by remote interface calls only.

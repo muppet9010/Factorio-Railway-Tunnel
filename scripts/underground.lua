@@ -314,7 +314,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
             -- Check crossing tunnel can be safely removed.
 
-            -- Get a list of all fake segments this real segment indirectly and directly supports.
+            -- Get a list of all fake segments this real segment indirectly and directly supports. It can support multiple fake segments at once, although due to their size more than one can't be used in a crossing tunel at once.
             local fakeCrossingSegments = Utils.DeepCopy(oldFastReplacedSegment_TunnelCrossing.supportingFakeCrossingSegments)
             if oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment ~= nil then
                 fakeCrossingSegments[oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment.id] = oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment
@@ -325,7 +325,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                 local fakeCrossingTunnelObject = fakeCrossingSegment.underground.tunnel
                 if fakeCrossingTunnelObject ~= nil then
                     -- The fake crossing segment has a tunnel that will need checking.
-                    if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(fakeCrossingTunnelObject) then
+                    if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(fakeCrossingTunnelObject) then
                         -- The crossing tunnel is in-use so undo the removal.
                         local placer = Utils.GetActionerFromEvent(event)
                         TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_tunnel_fast_replace_blocked_as_in_use"}, oldFastReplacedSegment_TunnelCrossing.surface, oldFastReplacedSegment_TunnelCrossing.entity_position)
@@ -1004,7 +1004,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
         -- If there's a fake tunnel crossing segment related to this real segment we need to check this. This function will check this real segment's own tunnel if present later.
         local minedSegment_TunnelCrossing = minedSegment ---@type TunnelCrossingUndergroundSegment
 
-        -- Get a list of all fake segments this real segment indirectly and directly supports.
+        -- Get a list of all fake segments this real segment indirectly and directly supports. It can support multiple fake segments at once, although due to their size more than one can't be used in a crossing tunel at once.
         local fakeCrossingSegments = Utils.DeepCopy(minedSegment_TunnelCrossing.supportingFakeCrossingSegments)
         if minedSegment_TunnelCrossing.directFakeCrossingSegment ~= nil then
             fakeCrossingSegments[minedSegment_TunnelCrossing.directFakeCrossingSegment.id] = minedSegment_TunnelCrossing.directFakeCrossingSegment
@@ -1015,7 +1015,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
             local fakeCrossingTunnelObject = fakeCrossingSegment.underground.tunnel
             if fakeCrossingTunnelObject ~= nil then
                 -- The fake crossing segment has a tunnel that will need checking.
-                if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(fakeCrossingTunnelObject) then
+                if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(fakeCrossingTunnelObject) then
                     -- The crossing tunnel is in-use so undo the removal.
                     local miner = Utils.GetActionerFromEvent(event)
                     TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use"}, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
@@ -1031,7 +1031,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
         -- segment isn't in a tunnel so the entity can always be removed.
         Underground.EntityRemoved(minedSegment)
     else
-        if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedSegment.underground.tunnel) then
+        if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(minedSegment.underground.tunnel) then
             -- The main tunnel is in-use so undo the removal.
             local miner = Utils.GetActionerFromEvent(event)
             TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedSegment.surface, minedSegment.entity_position)

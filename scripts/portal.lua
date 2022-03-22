@@ -81,8 +81,8 @@ local EndPortalType = {
 ---@field entity LuaEntity
 ---@field entity_position MapPosition
 ---@field portal Portal
----@field railEntity? LuaEntity|null @ If cached the rail entity this signal is on, or null if not cached.
----@field railEntity_unitNumber? UnitNumber|null @ If cached the unit_number of the rail entity this signal is on, or null if not cached.
+---@field railEntity LuaEntity @ The rail entity this signal is on.
+---@field railEntity_unitNumber UnitNumber @ The unit_number of the rail entity this signal is on.
 
 ---@class PortalTransitionSignal : PortalSignal
 
@@ -778,13 +778,16 @@ Portal.On_PreTunnelCompleted = function(portals)
             direction = entryDirection
         }
         local entrySignalOutEntity_railEntity = entrySignalOutEntity.get_connected_rails()[1]
+        local entrySignalOutEntity_railEntity_unitNumber = entrySignalOutEntity_railEntity.unit_number
         portal.entrySignals = {
             [TunnelSignalDirection.inSignal] = {
                 id = entrySignalInEntity.unit_number,
                 entity = entrySignalInEntity,
                 entity_position = entrySignalInEntityPosition,
                 portal = portal,
-                direction = TunnelSignalDirection.inSignal
+                direction = TunnelSignalDirection.inSignal,
+                railEntity = entrySignalOutEntity_railEntity,
+                railEntity_unitNumber = entrySignalOutEntity_railEntity_unitNumber
             },
             [TunnelSignalDirection.outSignal] = {
                 id = entrySignalOutEntity.unit_number,
@@ -793,7 +796,7 @@ Portal.On_PreTunnelCompleted = function(portals)
                 portal = portal,
                 direction = TunnelSignalDirection.outSignal,
                 railEntity = entrySignalOutEntity_railEntity,
-                railEntity_unitNumber = entrySignalOutEntity_railEntity.unit_number
+                railEntity_unitNumber = entrySignalOutEntity_railEntity_unitNumber
             }
         }
 
@@ -950,10 +953,10 @@ Portal.BuildRailForPortalsParts = function(portal)
         portal.portalRailEntities[placedRail.unit_number] = placedRail
     end
 
-    --Will populate during the internal function.
+    -- Will populate during the internal function.
     portal.portalRailEntities = {}
 
-    -- Force the entry portal to have on-map rails.
+    -- Force the entry portal to have on-map rails, rather than the part generic ones.
     for _, tracksPositionOffset in pairs(portal.entryPortalEnd.typeData.tracksPositionOffset) do
         PlaceRail(portal.entryPortalEnd, tracksPositionOffset, "railway_tunnel-portal_rail-on_map")
     end
@@ -1018,7 +1021,7 @@ Portal.OnPortalPartEntityPreMined = function(event, minedEntity)
         -- Part isn't in a portal so the entity can always be removed.
         Portal.EntityRemoved(minedPortalPart)
     else
-        if MOD.Interfaces.Tunnel.GetTunnelsUsageEntry(minedPortal.tunnel) then
+        if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(minedPortal.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
             local miner = Utils.GetActionerFromEvent(event)
             TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedEntity.surface, minedEntity.position)
