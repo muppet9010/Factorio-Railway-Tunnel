@@ -175,15 +175,15 @@ local EntryEndPortalSetup = {
     trackEntryPointFromCenter = 3, -- The border of the portal on the entry side.
     entrySignalsDistance = 1.5, -- Keep this a tile away from the edge so that we don't have to worry about if there are signals directly outside of the portal tiles (as signals can't be adjacant).
     enteringTrainUsageDetectorEntityDistance = 1.95, -- Detector on the entry side of the portal. Its positioned so that a train entering the tunnel doesn't hit it until its passed the entry signal and a leaving train won't hit it when waiting at the exit signals. Its placed on the outside of the entry signals so that when a train is blocked/stopped from entering a portal upon contact with it, a seperate train that arrives in that portal from traversing the tunnel from the opposite direction doesn't connect to te stopped train. Also makes sure the entry signals don't trigger for the blocked train. It can't trigger for trains that pull right up to the entry signal, although these are on the portal tracks. It also must be blocked by a leaving Train when the entry signals change and the mod starts to try and replace this, we don't want it placed between the leaving trains carriages and re-triggering. This is less UPS effecient for the train leaving ongoing than being positioned further inwards, but that let the edge cases of 2 trains listed above for blocked trains connect and would have required more complicated pre tunnel part mining logic as the train could be on portal tracks and not using the tunnel thus got destroyed). Note: this value can not be changed without full testing as a 0.1 change will likely break some behaviour.
-    leavingTrainFrontPosition = -1 -- Has to balance being far enough back so the graphics that are often 0.5 longer than the collision box don't pertrude, but not so far back that on a single loco and 3 portal parts the carriage hits the transition train detector. Currently the collision box start is 1 tile back from the opening.
+    leavingTrainFrontPosition = -3 -- Has to balance being far enough back so the graphics that are often 0.5 longer than the collision box don't pertrude, but not so far back that on a single loco and 3 portal parts the carriage hits the transition train detector. Train graphics can protude even further when the trains leaving a tunnel heading south due to the tunnel's height and lack of a solid graphic at its front.
 }
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
 local BlockingEndPortalSetup = {
-    transitionUsageDetectorEntityDistance = 4.5, -- Some rail carriages have shorter collision boxes than others. Found 4.3 needed over 4.1 to safely trigger on cargo wagons before they stop before the transition signal, as they're smaller than locomotives. 4.5 is still safe for trains entering and leaving.
-    transitionSignalsDistance = 2.5,
-    transitionSignalBlockingLocomotiveDistance = -0.9, -- As far away from entry end as possible, but can't stick out beyond the blockedInvisibleSignal as otherwise will affect tunnel track block.
-    blockedInvisibleSignalsDistance = -1.5 -- Keep this a tile away from the edge so that we don't have to worry about any signals in tunnel segments (as signals can't be adjacant).
+    transitionUsageDetectorEntityDistance = 2.5, -- Some rail carriages have shorter collision boxes than others. Found 2.3 needed over 2.1 to safely trigger on cargo wagons before they stop before the transition signal, as they're smaller than locomotives. 2.5 is still safe for trains entering and leaving.
+    transitionSignalsDistance = 0.5,
+    transitionSignalBlockingLocomotiveDistance = -1.3, -- As far away from entry end as possible, but can't stick out beyond the end of the tunnels collision box as otherwise affects things moving past.
+    blockedInvisibleSignalsDistance = -2.5 -- This is on the edge so signals on an adjacant crossing have to be on the inside of the tunnel or not present. This tightness is required to make the transition signals be so far in to the blocked end.
 }
 
 Portal.CreateGlobals = function()
@@ -754,7 +754,6 @@ Portal.On_PreTunnelCompleted = function(portals)
         local reverseEntryDirection = Utils.LoopDirectionValue(entryDirection + 4)
         portal.entryDirection, portal.leavingDirection = entryDirection, reverseEntryDirection
         local entryOrientation = entryDirection / 8
-        local reverseEntryOrientation = Utils.LoopFloatValueWithinRangeMaxExclusive(entryOrientation + 0.5, 0, 1)
         local surface, force = portal.surface, portal.force
 
         Portal.BuildRailForPortalsParts(portal)
@@ -880,7 +879,7 @@ Portal.On_PreTunnelCompleted = function(portals)
                 {
                     rail = surface.find_entities_filtered {
                         name = Common.TunnelRailEntityNames,
-                        position = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance + 3}, blockedPortalEnd.entity_position),
+                        position = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionSignalBlockingLocomotiveDistance + 2}, blockedPortalEnd.entity_position),
                         limit = 1
                     }[1]
                 }

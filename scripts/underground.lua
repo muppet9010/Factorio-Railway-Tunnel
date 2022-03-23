@@ -925,9 +925,11 @@ end
 --- Builds crossing rail signals for the segment and caches them to the segment
 ---@param segment_RailCrossing RailCrossingUndergroundSegment
 Underground.BuildSignalsForSegment = function(segment_RailCrossing)
+    -- TODO: can't place these signals if they are going to be on the outside end of this tunnel as the last segment. In this case they're also not needed. They default to south/east, so if this is the south/east most segment then don't add any. Alternatively we only need them added between other rail crossing segments, not between rail crossing segments and portals or just other underground segments, so a tunnel with a signle rail crossing segment needs no extra signals. Considering fast replace it will be easiest if there is a simple logic that can be blindly aplied on a per crossing segment basis.
     for _, orientationModifier in pairs({0, 4}) do
         local signalDirection = Utils.LoopDirectionValue(segment_RailCrossing.entity_direction + orientationModifier)
         local orientation = signalDirection / 8
+        -- They snap to be on the east/south side of this segment as we try to build them on its center line and Factorio defaults to positive x/y over negative x/y.
         local position = Utils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, segment_RailCrossing.entity_position)
         local placedSignal = segment_RailCrossing.surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment_RailCrossing.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
         segment_RailCrossing.signalEntities[placedSignal.unit_number] = placedSignal
