@@ -30,7 +30,9 @@ local EventScheduler = require("utility.event-scheduler")
 ---@field enteringTrainUsageDetectorPosition? MapPosition|null @ the position of this portals enteringTrainUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorEntity? LuaEntity|null @ hidden entity on the transition point of the portal track that's death signifies a train has reached the entering tunnel stage. Only established once this portal is part of a valid tunnel.
 ---@field transitionUsageDetectorPosition? MapPosition|null @ the position of this portals transitionUsageDetectorEntity. Only established once this portal is part of a valid tunnel.
----@field dummyLocomotivePosition? MapPosition|null @ the position where the dummy locomotive should be plaed for this portal. Only established once this portal is part of a valid tunnel.
+---@field transitionSignalBlockingEntity LuaEntity @ The carriage entity that is closing the transition signal on this portal.
+---@field transitionSignalBlockingTrain LuaTrain @ The train that is closing the transition signal on this portal.
+---@field transitionSignalBlockingTrainSchedule TrainSchedule @ The schedule the blocking train should be set to when just pathing in its own portal.
 ---@field entryDirection? defines.direction|null @ the direction a train would be heading if it was entering this portal. So the entry signals are at the rear of this direction. Only established once this portal is part of a valid tunnel.
 ---@field leavingDirection? defines.direction|null @ the direction a train would be heading if leaving the tunnel via this portal. Only established once this portal is part of a valid tunnel.
 ---@field leavingTrainFrontPosition? MapPosition|null @ The position of the leaving train's lead carriage, 2 tiles back from the entry signal position. Only established once this portal is part of a valid tunnel.
@@ -178,7 +180,6 @@ local EntryEndPortalSetup = {
 
 -- Distances are from blocking end portal position in the Portal.entryDirection direction.
 local BlockingEndPortalSetup = {
-    dummyLocomotiveDistance = 2.2, -- as far back in to the end portal without touching the blocking locomotive.
     transitionUsageDetectorEntityDistance = 4.5, -- Some rail carriages have shorter collision boxes than others. Found 4.3 needed over 4.1 to safely trigger on cargo wagons before they stop before the transition signal, as they're smaller than locomotives. 4.5 is still safe for trains entering and leaving.
     transitionSignalsDistance = 2.5,
     transitionSignalBlockingLocomotiveDistance = -0.9, -- As far away from entry end as possible, but can't stick out beyond the blockedInvisibleSignal as otherwise will affect tunnel track block.
@@ -805,7 +806,6 @@ Portal.On_PreTunnelCompleted = function(portals)
 
         -- Cache the objects details for later use.
         portal.leavingTrainFrontPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = EntryEndPortalSetup.leavingTrainFrontPosition}, entryPortalEnd.entity_position)
-        portal.dummyLocomotivePosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.dummyLocomotiveDistance}, blockedPortalEnd.entity_position)
         portal.enteringTrainUsageDetectorPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = EntryEndPortalSetup.enteringTrainUsageDetectorEntityDistance}, entryPortalEnd.entity_position)
         portal.transitionUsageDetectorPosition = Utils.RotateOffsetAroundPosition(entryOrientation, {x = 0, y = BlockingEndPortalSetup.transitionUsageDetectorEntityDistance}, blockedPortalEnd.entity_position)
 
@@ -871,7 +871,10 @@ Portal.On_PreTunnelCompleted = function(portals)
             force = global.force.tunnelForce,
             direction = reverseEntryDirection
         }
-        transitionSignalBlockingLocomotiveEntity.train.schedule = {
+        portal.transitionSignalBlockingEntity = transitionSignalBlockingLocomotiveEntity
+        local transitionSignalBlockingLocomotiveEntity_train = transitionSignalBlockingLocomotiveEntity.train
+        portal.transitionSignalBlockingTrain = transitionSignalBlockingLocomotiveEntity_train
+        local transitionSignalBlockingLocomotiveEntityTrainSchedule = {
             current = 1,
             records = {
                 {
@@ -883,7 +886,9 @@ Portal.On_PreTunnelCompleted = function(portals)
                 }
             }
         }
-        transitionSignalBlockingLocomotiveEntity.train.manual_mode = false
+        transitionSignalBlockingLocomotiveEntity_train.schedule = transitionSignalBlockingLocomotiveEntityTrainSchedule
+        portal.transitionSignalBlockingTrainSchedule = transitionSignalBlockingLocomotiveEntityTrainSchedule
+        transitionSignalBlockingLocomotiveEntity_train.manual_mode = false
         transitionSignalBlockingLocomotiveEntity.destructible = false
         portal.portalOtherEntities = {
             [blockedInvisibleSignalInEntity.unit_number] = blockedInvisibleSignalInEntity,
@@ -1224,7 +1229,6 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
 
         -- Clear the portal's tunnel related state data.
         portal.portalEntryPointPosition = nil
-        portal.dummyLocomotivePosition = nil
         portal.entryDirection = nil
         portal.leavingDirection = nil
 
@@ -1504,7 +1508,7 @@ Portal.OnPortalTransitionTrainDetectorEntityDied = function(event, diedEntity)
 
         -- This train hasn't reserved any tunnel.
         if portal.tunnel.managedTrain == nil then
-            -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now. But is none standard as the train didn't pass through the entity detector.
+            -- Portal's tunnel isn't reserved so this train can just use the tunnel to commit now. But is non-standard as the train didn't pass through the entity detector.
             if global.debugRelease then
                 error("unexpected train entering tunnel without having passed through entry detector")
             end
