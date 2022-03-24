@@ -1,5 +1,14 @@
 Now
 ---
+    - Fix old graphics arrows to be centered on their image and to be an even width. As presently can't line them up right when rotated to other entity graphics.
+
+    - Allow corners and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.
+        - Need to try and ensure thats its obvious from the arrows that 2 curves can't be directly connected. Included in description already.
+        - Theres 8 orientations of the curved rail and I will need the same for all my curved pieces. So will need to link to the 2 "Flip" controls to change my entity type between 2 curved portal parts, but both must be built and mined by the same so no weirdness during player building and blueprinting.
+        - At present concept the BP and bots can build the 2 entities from 1 item fine, but smart-pipette from both returns the regular. Mod will need to react to the smart-pipette and return the correct item to cursor after loading regular count from inventory. This seems the only downside from current concept and all other BP, bot construction and mining just works.
+        - Player Container position will need expanding to handle corners in tunnel.
+        - Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
+        - Flip horizontal and vertical also rotates in some cases and not others. Map out carefully. Main rail orientations are based upon rotating aroud the same entity (regular or flipped).
 
 
 Bugs / Next
@@ -8,7 +17,6 @@ Bugs / Next
 
 Features to add/change
 ----------------------
-    - Allow corners and diagonals with the tunnel pieces as its just an abstract length to have traversal time calculated for now. Player Container position will need expanding to handle corners in tunnel. Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
@@ -54,7 +62,7 @@ Long term feature plans
         - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
         - If a player is in the trains window and clicks on a tunnel using train at present nothing happens as the train isn't openable. This is needed so the player can't set it to automatic. As a 0 non player activity UPS, and very low player activity UPS, can we detect the clicking on the train in the trains window and open the train in tunnel placeholder window. Then there is a user interaction response and when the train leaves the tunnel it can switch back to the real train GUI.
         - on_gui_opened event will detect if a player opened a train GUI, but on_gui_closed won't trigger in some causes of a GUI being closed. So if we find a player did have a train's GUI open we will need to check its still open at the point of closing a window and opening another. This should allow very few and cheap checks rather than say checking all players opened GUIs on every train tunnel entrance/exit.
-    - If placing a blueprint and a tunnel part is off grid can we show the valid centers of the blueprint and not of every part in it. As at present its impossible to tell how off the blueprint it. Simple user solution is to include a rail piece in the BP and then it will auto snap to rail grid.
+    - If placing a blueprint and a tunnel part in it is off grid can we show the valid centers of the blueprint and not of every tunnel part in it. As at present its impossible to tell where the blueprint should be correctly placed due to the numerous valid locations being shown for every tunnel part. Simple user solution in short term is to include a rail piece in the BP and then it will auto snap to rail grid.
     - Portal/Tunnel GUI Improvements:
         - Review layout and current information presentation.
         - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.
@@ -104,7 +112,7 @@ Feature Ideas
     - Tunnel sections shouldn't collide with cliffs, but rail crossing sections should. Also check if cliff reshaping from adjacent cliff removal would destroy tunnels going under them or cause the cliffs to vanish as they can't reshape.
     - Look at if tunnel segments (not rail crossing ones) can be built under water. Should be same placement entity, just a differnet graphics entity on top to show the tunnel on the lake bed. If possible have to work out transition point.
     - Request for big power poles to be able to be placed on tunnel entrances to keep tunnels like rail block blurprints (MOJO style). Maybe including big power poles at both ends of the tunnel portal and in the middle with red & green wires between them? Would need to expose wire connection points though. Or have power and red/green wires transmitted through tunnels with just a connection on the entrance of each portal?
-    - Diagonal tunnel crossings. Would have to be a 8 long tunnel section to get the track to clear the 6 wide tunnel. If the collision box of the crossing was made 0.5~ in from each edge then rails diagonal rails should be placable up to the edge of it. The width doesn't prevent close and spaced double diagonal tracks from being built over a tunnel. Technically some existing entities on the edge would overlap with the mod placed rails, however this is unavoidable to let the player build diagonal rails up to the crossing.
+    - Diagonal above ground rail crossing horizotnal/vertical tunnel. Would have to be a 8 long tunnel section to get the track to clear the 6 wide tunnel. If the collision box of the crossing was made 0.5~ in from each edge then rails diagonal rails should be placable up to the edge of it. The width doesn't prevent close and spaced double diagonal tracks from being built over a tunnel. Technically some existing entities on the edge would overlap with the mod placed rails, however this is unavoidable to let the player build diagonal rails up to the crossing.
 
 
 Known Limitations
