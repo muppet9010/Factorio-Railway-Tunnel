@@ -466,7 +466,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
             -- Exit signal is closed so train will be stopping at the end of the portal
 
             -- So its stopping distance is the remainder of the tunnel.
-            managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 1 -- The leaving train has 1 tile to the end of the portal.
+            managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 3 -- The leaving train has 3 tiles to the end of the portal.
             managedTrain.playerTrain_brakingEntityId = nil
         else
             -- Exit signal is open so check in to the rail network beyond.
@@ -493,7 +493,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                 -- Train has no where to go, so will be pulling up to the end of the station.
 
                 -- So its stopping distance is the remainder of the tunnel.
-                managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 1 -- The leaving train has 1 tile to the end of the portal.
+                managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_traversalDistanceRemaining + 3 -- The leaving train has 3 tiles to the end of the portal.
                 managedTrain.playerTrain_brakingEntityId = nil
             elseif leavingTrain_state == defines.train_state.arrive_station then
                 -- Train has to brake for station/rail target within next tick.
@@ -511,7 +511,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                     managedTrain.playerTrain_stoppingDistance = leavingTrain_path.total_distance + managedTrain.playerTrain_traversalDistanceRemaining
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(leavingTrain_path_rails[#leavingTrain_path_rails].type) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
-                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 1 -- The leaving train has 1 tile to the end of the portal.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
                 end
             elseif leavingTrain_state == defines.train_state.arrive_signal then
                 -- Train needs to be braking for this signal.
@@ -527,7 +527,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                     managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain, managedTrain.targetTrainStop) + managedTrain.playerTrain_traversalDistanceRemaining
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
-                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 1 -- The leaving train has 1 tile to the end of the portal.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
                 end
             end
 
@@ -679,8 +679,8 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                     enteringTrainLeadCarriage_name = managedTrain.trainCachedData.carriagesCachedData[#managedTrain.trainCachedData.carriagesCachedData].prototypeName
                 end
 
-                -- The stopping distance is the carriages size plus the 1 tile the carriage can brake over.
-                stoppingPointDistance = ((Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name]) * 2) + 1
+                -- The stopping distance is the carriages size plus the 3 tiles the carriage can brake over within the portal.
+                stoppingPointDistance = ((Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name]) * 2) + 3
             else
                 scheduleFutureArrival = false
             end

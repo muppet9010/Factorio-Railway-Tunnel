@@ -1,6 +1,5 @@
 Now
 ---
-    - Tunnel distance/speed calcualtions are now off somewhere as leaving duration speedtests fail with a bigger variance. Suspect the leaving distance of rail has some hard coded values that need updating still, as I recall just doing the tunnel length ones during entering tunnel function.
     - Portal graphics can have their roof reduced by 2 tiles in all rotations from current. At present the south exit roof is 1 tile longer than others, so reduce south by 2 and all others by 1 so they are all rotationally equal again.
     - Record in to design decisions outcome and update other inline notes across the portal and other files as required. Theres now a 1 tile leeway for vanilla trains beyond the max carriage connection distance of a carriage leaving the tunnel when it first doesn;t trigger the tunnel signals and where the elad carriage of a second train is placed. So no way they can incorrectly connect in too 1 train any more. Was only possible when the first leaving train stopped just on the signal border as the enttry train detector is expected to be removed during this first train's leaving.
 
