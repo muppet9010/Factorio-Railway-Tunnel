@@ -41,7 +41,12 @@
 ---@diagnostic disable-line Alias for nil value. Workaround for EmmyLua not handling nil in multi type lists correctly.
 ---@class null
 ---
----@class SurfacePositionString @ the entities surface and position as a string: "surfaceId_x,y"
+---@class SurfacePositionString @ A surface and position as a string: "surfaceId_x,y"
+---
+---@class SurfacePositionObject @ A surface and position data object.
+---@field surfaceId uint
+---@field position MapPosition
+---@field surfacePositionString SurfacePositionString
 ---
 ---@alias True boolean
 ---@alias False boolean

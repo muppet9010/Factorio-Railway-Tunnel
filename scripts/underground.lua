@@ -398,6 +398,13 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
         if segment.typeData.segmentType == SegmentType.railCrossing then
             -- If the segment is part of a tunnel then it should have signals as well already. As these are usually handled as part of a tunnel creation, which may have already happened in this case.
             if segment_RailCrossing.underground ~= nil and segment_RailCrossing.underground.tunnel ~= nil then
+                -- This needs some segment data that will be generated later in the process early. So duplicated for now as this is an edge case.
+                -- CODE NOTE: A future complete re-factor of these functions may remove the need for this, but its a complicated logic circle.
+                segment_RailCrossing.frontInternalPosition = Utils.RotateOffsetAroundPosition(segment_RailCrossing.entity_orientation, segment_RailCrossing.typeData.frontInternalPositionOffset, segment_RailCrossing.entity_position)
+                segment_RailCrossing.rearInternalPosition = Utils.RotateOffsetAroundPosition(segment_RailCrossing.entity_orientation, segment_RailCrossing.typeData.rearInternalPositionOffset, segment_RailCrossing.entity_position)
+                segment_RailCrossing.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment_RailCrossing.surface_index, Utils.RotateOffsetAroundPosition(segment_RailCrossing.entity_orientation, {x = 0, y = -1}, segment_RailCrossing.frontInternalPosition))
+                segment_RailCrossing.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment_RailCrossing.surface_index, Utils.RotateOffsetAroundPosition(segment_RailCrossing.entity_orientation, {x = 0, y = 1}, segment_RailCrossing.rearInternalPosition))
+
                 segment_RailCrossing.signalEntities = {}
                 Underground.BuildSignalsForSegment(segment_RailCrossing)
             end
@@ -663,6 +670,7 @@ Underground.UpdateUndergroundsForNewSegment = function(segment)
     local underground = segment.underground
     underground.undergroundEndSegments = {}
     for _, thisSegment in pairs(underground.segments) do
+        -- This checking method handles if the segment is one end of the underground or is both ends (recorded twice).
         for _, externalConnectableSurfacePosition in pairs(thisSegment.nonConnectedExternalSurfacePositions) do
             ---@type UndergroundEndSegmentObject
             local UndergroundEndSegmentObject = {
@@ -922,10 +930,41 @@ Underground.BuildUndergroundRailForSegment = function(segment)
     end
 end
 
---- Builds crossing rail signals for the segment and caches them to the segment
+--- Builds crossing rail signals for the segment and caches them to the segment. Only called if this segment is part of a valid tunnel.
 ---@param segment_RailCrossing RailCrossingUndergroundSegment
 Underground.BuildSignalsForSegment = function(segment_RailCrossing)
-    -- TODO: can't place these signals if they are going to be on the outside end of this tunnel as the last segment. In this case they're also not needed. They default to south/east, so if this is the south/east most segment then don't add any. Alternatively we only need them added between other rail crossing segments, not between rail crossing segments and portals or just other underground segments, so a tunnel with a signle rail crossing segment needs no extra signals. Considering fast replace it will be easiest if there is a simple logic that can be blindly aplied on a per crossing segment basis.
+    -- Check if we should skip building signals for this segment. This only happens when its the end segment in an underground and is on the east/south end, as its signals would clash with the portals signals and are un-required.
+    local firstNonConnectedExternalSurfacePosition = next(segment_RailCrossing.nonConnectedExternalSurfacePositions)
+    if firstNonConnectedExternalSurfacePosition ~= nil then
+        -- Theres a non-connected end of this segment so it must be at the end of an underground and thus requires checking.
+
+        -- As a segments own orientation has no bearing on its end of an underground work out which end it is by comparing its 2 positions.
+        -- CODE NOTE: The use of Utils to back convert string to position is wasteful, but this will not be frequently called and saves having to re-engineer the whole position string code stack to make this information available here and a lot of extra runtime data updates to allow it.
+        ---@typelist MapPosition, MapPosition
+        local tunnelEndPosition, tunnelInnerPosition
+        if segment_RailCrossing.frontExternalCheckSurfacePositionString == firstNonConnectedExternalSurfacePosition then
+            _, tunnelEndPosition = Utils.SurfacePositionStringToSurfaceAndPosition(segment_RailCrossing.frontExternalCheckSurfacePositionString)
+            _, tunnelInnerPosition = Utils.SurfacePositionStringToSurfaceAndPosition(segment_RailCrossing.rearExternalCheckSurfacePositionString)
+        else
+            _, tunnelEndPosition = Utils.SurfacePositionStringToSurfaceAndPosition(segment_RailCrossing.rearExternalCheckSurfacePositionString)
+            _, tunnelInnerPosition = Utils.SurfacePositionStringToSurfaceAndPosition(segment_RailCrossing.frontExternalCheckSurfacePositionString)
+        end
+
+        if segment_RailCrossing.entity_orientation == 0 or segment_RailCrossing.entity_orientation == 0.5 then
+            -- North/South segment.
+            if tunnelEndPosition.y > tunnelInnerPosition.y then
+                -- The non conencted end is south, so this is at the south end of the underground.
+                return
+            end
+        else
+            -- East/West segment.
+            if tunnelEndPosition.x > tunnelInnerPosition.x then
+                -- The non connected end is east, so this is at the east end of the underground.
+                return
+            end
+        end
+    end
+
     for _, orientationModifier in pairs({0, 4}) do
         local signalDirection = Utils.LoopDirectionValue(segment_RailCrossing.entity_direction + orientationModifier)
         local orientation = signalDirection / 8
