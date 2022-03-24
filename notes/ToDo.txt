@@ -4,7 +4,6 @@ Now
 
 Bugs / Next
 -----------
-    - Update the underground code to use sprite renders and not entities. Update Mod Design Decisions once this is done or with the reason entities are needed (if they are). As the underground graphics will always be very simple.
 
 
 Features to add/change
@@ -18,10 +17,6 @@ Features to add/change
                 A: The first train leaves the portal and the tunnel is released. The entry signals would still show red entry, but the mod would believe the tunnel is free. This would allow a new manual/coasting/etc train (third) to enter the portal against the red signal and successfully reserve the tunnel as the second train is invisible to the mod. When this third train traverses it would try and be cloned on top of the second train.
                 B: When the first train goes to leave its exit portal it finds its forwards path is lost, but has a reverse path back through the tunnel. As it is the current reserver of the tunnel it is allowed through its transition point. This first train would try and place on top of the stopped second train.
     - Add a tips & tricks section to cover tunnel and portal construction.
-    - Train GUIs - multiple related QOL features:
-        - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
-        - If a player is in the trains window and clicks on a tunnel using train at present nothing happens as the train isn't openable. This is needed so the player can't set it to automatic. As a 0 non player activity UPS, and very low player activity UPS, can we detect the clicking on the train in the trains window and open the train in tunnel placeholder window. Then there is a user interaction response and when the train leaves the tunnel it can switch back to the real train GUI.
-        - on_gui_opened event will detect if a player opened a train GUI, but on_gui_closed won't trigger in some causes of a GUI being closed. So if we find a player did have a train's GUI open we will need to check its still open at the point of closing a window and opening another. This should allow very few and cheap checks rather than say checking all players opened GUIs on every train tunnel entrance/exit.
 
 
 UPS / code plans
@@ -37,8 +32,7 @@ UPS / code plans
 Concept change ideas
 --------------------
     - Dummy train changes - MUST BE DONE IN OWN BRANCH TO ENABLE ROLLBACK:
-        - Don't create and manage a dummy train, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
-        - Would it be viable to keep the dummy train permanently and just change its force, plus top up fuel. Rather than create it each time. Need to ensure it never can move. Would take the role of the blocking train as well. Would it be an advantage?
+        - Don't manage the dummy train raole on the blocking locomotive, but add a carriage to the cloned train that has max speed of 0 (or max friction force and weight). This should mean the real train can replace the dummy train. This would mean that the leaving train uses fuel for the duration of the tunnel trip and so has to have this monitored and refilled to get it out of the tunnel, or have an option when a player opens the tunnel GUI that if a train is in it and run out of fuel, an inventory slot is available and anything put in it will be put in the loco's of the currently using train. This fuel issue is very much an edge case.
         - Using the real train would resolve the artillery and espcially the roboport mod issue in a very effecient manner.
         - Keeping the real train running at 0 speed would remove the impact the currently stopped leaving train currently has on the path finder weightings.
     - Commit train to use tunnel upon triggering portal entry train detector.
@@ -56,6 +50,11 @@ Concept change ideas
 
 Long term feature plans
 -----------------------
+    - Train GUIs - multiple related QOL features:
+        - If a player has a train GUI open and the train enters a tunnel can we open a placeholder GUI that says the train has entered a tunnel. Then when the train leaves the tunnel re-open the new Train GUI for that player. If they close the placeholder GUI then don't open the new GUI.
+        - If a player is in the trains window and clicks on a tunnel using train at present nothing happens as the train isn't openable. This is needed so the player can't set it to automatic. As a 0 non player activity UPS, and very low player activity UPS, can we detect the clicking on the train in the trains window and open the train in tunnel placeholder window. Then there is a user interaction response and when the train leaves the tunnel it can switch back to the real train GUI.
+        - on_gui_opened event will detect if a player opened a train GUI, but on_gui_closed won't trigger in some causes of a GUI being closed. So if we find a player did have a train's GUI open we will need to check its still open at the point of closing a window and opening another. This should allow very few and cheap checks rather than say checking all players opened GUIs on every train tunnel entrance/exit.
+    - If placing a blueprint and a tunnel part is off grid can we show the valid centers of the blueprint and not of every part in it. As at present its impossible to tell how off the blueprint it. Simple user solution is to include a rail piece in the BP and then it will auto snap to rail grid.
     - Portal/Tunnel GUI Improvements:
         - Review layout and current information presentation.
         - Possible to add an ETA time and a way to nicely handle the delays in train leaving if rail is blocked and it has to slow down while in the tunnel.

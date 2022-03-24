@@ -150,6 +150,8 @@ As train speeds within a tunnel are estimated from a static air resistence, the 
 Sprite render vs entity
 -----------------------
 
-At present there is a mis-match between portal's and undergrounds and adding additional graphics on top of the base entity graphics (BP and placement graphics). Portal uses sprite renders as these are newer, while underground uses entities (simple-entity-with-force) with a sprite graphics (older). I suspect it was as in the old days renders were more limited and could appear out of order (Santa mod era).
-- Both support render-layer on the sprite and allow multiple layers (images) within the sprite. And both have all layers at the same render-layer. So they appear equal.
-- Entity (simple-entity-with-owner) supports 4 orientations of sprite. Render requires a seperate prototype per orientation.
+At present there is a mix of using entities and renders for adding additional graphics to portals and undergrounds on top of their core entity graphics. Portal uses sprite renders, while underground uses entities (simple-entity-with-force) with a sprite graphics. Differences noted so far:
+    - Both support render-layer on the sprite and allow multiple layers (images) within the sprite. And both have all layers at the same render-layer. So they appear equal for usage in multi layered scenarios.
+    - Entity (simple-entity-with-owner) supports 4 orientations of sprite. Render requires a seperate prototype per orientation. So entity is easier to code with as you can just match the graphical entity orientation to the real entity orientation and it will be correct, while renders require careful sprite selection by name of orientation.
+    - Entity creation is around 3 times the cost of creating renders, but they aren't changed often and are a one off UPS hit at tunnel creation/removal.
+Not sure which one is best and so haven't standardised on one yet.

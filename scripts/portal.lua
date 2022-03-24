@@ -197,7 +197,6 @@ Portal.CreateGlobals = function()
     global.portals.portalTunnelInternalConnectionSurfacePositionStrings = global.portals.portalTunnelInternalConnectionSurfacePositionStrings or {} ---@type table<SurfacePositionString, PortalTunnelConnectionSurfacePositionObject> @ a lookup for portal by internal position string for trying to connect to an underground.
 
     --- The layer to draw graphics at that hide the train. Debug options can lower this so that trains appear on top of it for visual inspection.
-    --- Shadows don't appear over other graphics and so we can use this layer for shadows as well as long as we add the shadow render after the main image render.
     global.portalGraphicsLayerOverTrain = global.portalGraphicsLayerOverTrain or 130 -- Infront of main "object" layer. A testing debug may have changed this so respect any value set.
     global.portalGraphicsLayerUnderTrain = 128 -- Behind main "object" layer.
 end
@@ -646,15 +645,6 @@ Portal.PortalComplete = function(portal)
                 surface = endPortalPart.surface
             }
         )
-        table.insert(
-            endPortalPart.graphicRenderIds,
-            rendering.draw_sprite {
-                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-shadow-0_" .. tostring(endPortalPart.portalFacingOrientation * 100),
-                render_layer = global.portalGraphicsLayerOverTrain,
-                target = endPortalPart.entity_position,
-                surface = endPortalPart.surface
-            }
-        )
     end
 
     -- Add the portal segment's graphics.
@@ -665,15 +655,6 @@ Portal.PortalComplete = function(portal)
                 portalSegment.graphicRenderIds,
                 rendering.draw_sprite {
                     sprite = "railway_tunnel-portal_graphics-portal_complete-middle-0_" .. tostring(portalSegment.entity_orientation * 100),
-                    render_layer = global.portalGraphicsLayerOverTrain,
-                    target = portalSegment.entity_position,
-                    surface = portalSegment.surface
-                }
-            )
-            table.insert(
-                portalSegment.graphicRenderIds,
-                rendering.draw_sprite {
-                    sprite = "railway_tunnel-portal_graphics-portal_complete-middle-shadow-0_" .. tostring(portalSegment.entity_orientation * 100),
                     render_layer = global.portalGraphicsLayerOverTrain,
                     target = portalSegment.entity_position,
                     surface = portalSegment.surface
@@ -918,24 +899,6 @@ Portal.On_PreTunnelCompleted = function(portals)
                 surface = portal.entryPortalEnd.surface
             }
         )
-        table.insert(
-            portal.entryPortalEnd.graphicRenderIds,
-            rendering.draw_sprite {
-                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-shadow-near-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
-                render_layer = global.portalGraphicsLayerOverTrain,
-                target = portal.entryPortalEnd.entity_position,
-                surface = portal.entryPortalEnd.surface
-            }
-        )
-        table.insert(
-            portal.entryPortalEnd.graphicRenderIds,
-            rendering.draw_sprite {
-                sprite = "railway_tunnel-portal_graphics-portal_complete-open_end-shadow-far-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
-                render_layer = global.portalGraphicsLayerUnderTrain,
-                target = portal.entryPortalEnd.entity_position,
-                surface = portal.entryPortalEnd.surface
-            }
-        )
     end
 
     portals[1].entrySignals[TunnelSignalDirection.inSignal].entity.connect_neighbour {wire = defines.wire_type.red, target_entity = portals[2].entrySignals[TunnelSignalDirection.inSignal].entity}
@@ -1169,15 +1132,6 @@ Portal.On_TunnelRemoved = function(portals, killForce, killerCauseEntity)
             portal.entryPortalEnd.graphicRenderIds,
             rendering.draw_sprite {
                 sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
-                render_layer = global.portalGraphicsLayerOverTrain,
-                target = portal.entryPortalEnd.entity_position,
-                surface = portal.entryPortalEnd.surface
-            }
-        )
-        table.insert(
-            portal.entryPortalEnd.graphicRenderIds,
-            rendering.draw_sprite {
-                sprite = "railway_tunnel-portal_graphics-portal_complete-closed_end-shadow-0_" .. tostring(portal.entryPortalEnd.portalFacingOrientation * 100),
                 render_layer = global.portalGraphicsLayerOverTrain,
                 target = portal.entryPortalEnd.entity_position,
                 surface = portal.entryPortalEnd.surface
