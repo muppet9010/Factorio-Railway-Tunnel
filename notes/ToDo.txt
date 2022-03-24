@@ -1,7 +1,5 @@
 Now
 ---
-    - Portal graphics can have their roof reduced by 2 tiles in all rotations from current. At present the south exit roof is 1 tile longer than others, so reduce south by 2 and all others by 1 so they are all rotationally equal again.
-    - Record in to design decisions outcome and update other inline notes across the portal and other files as required. Theres now a 1 tile leeway for vanilla trains beyond the max carriage connection distance of a carriage leaving the tunnel when it first doesn;t trigger the tunnel signals and where the elad carriage of a second train is placed. So no way they can incorrectly connect in too 1 train any more. Was only possible when the first leaving train stopped just on the signal border as the enttry train detector is expected to be removed during this first train's leaving.
 
 
 Bugs / Next
@@ -97,6 +95,8 @@ Long term feature plans
     - Make graphics a little smoother:
         - Review portal structure and make ground be something different to structure and have a soft edge.
         - Also make unique signal light for both ends so the visual appears next to the track right on the edge of the portal, rather than offset away like present.
+        - Update portal graphics to new greater open space allowed at entry end of portal (3 to 5 tiles).
+        - Bake in the shadows to the main graphics as the render's/entity sprites don't affect each other. In a south facing entry it's extra apparent the tunnels own shadows aren't being applied to the tunnels sprite.
 
 
 Feature Ideas
