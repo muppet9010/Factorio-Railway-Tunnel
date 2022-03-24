@@ -36,7 +36,6 @@ require("prototypes.portal-end")
 require("prototypes.portal-segment")
 require("prototypes.portal-graphics")
 require("prototypes.tunnel-portal-blocking-locomotive")
-require("prototypes.tunnel-exit-dummy-locomotive")
 require("prototypes.tunnel-fuel-chest")
 require("prototypes.mined-train-container")
 

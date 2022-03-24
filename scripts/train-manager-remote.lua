@@ -97,7 +97,6 @@ end
 ---@return table<string, string> @ Entity names.
 TrainManagerRemote.GetTemporaryCarriageNames = function()
     return {
-        ["railway_tunnel-tunnel_exit_dummy_locomotive"] = "railway_tunnel-tunnel_exit_dummy_locomotive",
         ["railway_tunnel-tunnel_portal_blocking_locomotive"] = "railway_tunnel-tunnel_portal_blocking_locomotive"
     }
 end

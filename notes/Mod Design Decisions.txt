@@ -87,22 +87,24 @@ Notes on this area:
 Portal part design
 ------------------
 
-The internal and external end of each portal needs to support having a rail singal 1 tile in. This is so that signals can be placed freely by the player outside of the portal, and for adjacent tunnel segment signals which are on the near portal side for one of the tunnel's 2 portals. This required the ends of portals to be atleast a 2 tile straight rail length and ruled out curved portal ends. Using the special larger end pieces that don't count towards max supported train length seemed more natural for the player, than forcing a short straight at each end and subtracting 12 tiles from the portal's total supported length.
+- The external end of each portal needs to have its rail singal 1 tile in. This is so that signals can be placed freely by the player outside of the portal. This required the ends of portals to be atleast a 2 tile straight rail length and ruled out curved portal ends. Using the special larger end pieces that don't count towards max supported train length seemed more natural for the player, than forcing a short straight at each end and subtracting 12 tiles from the portal's total supported length.
+- The tunnel's internal Portal end (blocked end) has rail signals on the outer tile and so adjacent underground segment signals can not be on this edge of the underground segment. This was done so that we could free up an internal portal rail and not have to enlarge the portal ends. Does require more compplicated logic in the undergroud segment types that need to put signals on them for above ground crossing rails.
+- Entry end of a portal needs suprising amount of room before the front of the leaving train can be placed. As while the entry detctor entity stops an externall approaching train from getting close to the portal, a leaving train could stop very close and a second train use the tunnel and be cloned too close. Theres now a 1 tile leeway for vanilla trains beyond the max carriage connection distance of an initial carriage leaving the tunnel when it has gone just far enough to not trigger the tunnel signals, and where the lead carriage of a second train using the tunnel is cloned too. So no way they can incorrectly connect in too 1 train any more. Was only possible when the first leaving train stopped just on the signal border as the enttry train detector is expected to be removed during this first train's leaving. This is why the trains are cloned 5 tiles back from the entry portal external border.
 
 
 Portal graphics
 ---------------
 
-- The front 3 tiles of the portal area floor can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. This distance just fits in the train without its rear hitting the transition usage detector entity at the back of the portal ( <=0.5 padding). Note that when the open end of the portal is facing the player the tunnel roof is pushed back due to its height.
+- The front 5 tiles of the portal can be open graphics and show the train when its leaving. With further back needing to be covered to hide the train graphics while the train is traversing the tunnel. Note that when the open end of the portal is facing the player the tunnel roof is pushed back due to its height and so this orientation should dictate the roofs size; with east/west rotation dictating the solid side wall requirements. Current temporary graphics are to an old spec of only having 3 tiles of open space at the end of the portal.
 - A portal will have a base graphic under regular entity graphics, i.e. the visible rails. A portal with no tunnel should have closed end graphics on both ends, a portal with a tunnel should have open end graphics on the entry end of each portal. Above ground portal graphics parts:
     - Closed end - the graphic rendered in front of the train carriage graphics.
     - Open end - with 2 parts:
         - Front part - the graphic rendered in front of the train carriage graphics.
         - Rear part - the graphic rendered behind the train carriage graphics.
     - Middle - the high part over the whole length of the tunnel and rendered in front of the train carriage graphics.
-- The entry in/out signal graphics for the lights are currently offset away from the track so they are visible around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back.
-- On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now. Should be fixed by proper graphics having a custom signal on a pole for the entry signals.
-- Shadow type sprites don't render over the top of another sprite ever regardless of layer. So to make shadows inside the tunnel affect a trian leaving the tunnel they'd need to be done as a non-shadow semi-transparent dark color.
+- The entry in/out signal graphics for the lights are currently offset away from the track so they are visible around the portal open end portal graphics. The signal IN entity of 1 portal is the same orientation as the other portal's OUT signal entity, so they can only be offset towards the edge of the portal tiles and not moved towards the portals front/back. There's a TODO to make the lights be unique and can then be rotated to be at the entry end of the portal graphics to look more natural. Long term aim was to have lights on a pole or similar.
+- On a horizontal tunnel the open portal's top signals weren't visible around the tunnel graphic when the roof length is the same as a vertical tunnel. I cut the roof back a tile on it to resolve for now.
+- Shadow type sprites don't render over the top of another sprite ever regardless of layer. So to make shadows inside the tunnel affect a trian leaving the tunnel they'd need to be done as a non-shadow semi-transparent dark color. Also means the shadow of the tunnel darkening its own graphics need to be baked in to the main graphics (currently it's not).
 
 
 Processing trains per tick
@@ -123,6 +125,8 @@ Automatic tests not done
 ------------------------
 
 - Gui Tests: At present there are no automatic GUI tests. This is due to the module being largely isolated from the rest of the mod and its train complexities. Once the version 2 GUI is done and its finalised then tests can be added. For manual testing the key risk area is the change of portalPart state and train state not triggering the GUIs to update. The fuel distribution and train mining features should be testable on their own at present, but low priority.
+- Certain design decisions don't have a test for:
+    - Gap size where the leaving train front carriage starts from the furthest back a leaving train;s rear carraige could be and not trigger the tunnels signals. As the leaving trains projects a surprising distance in to the portal tracks and the second trian when cloned used to attach to it.
 
 
 Player riding train

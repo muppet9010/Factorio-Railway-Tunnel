@@ -1121,8 +1121,8 @@ Utils.SurfacePositionStringToSurfaceAndPosition = function(surfacePositionString
     local underscoreIndex = string_find(surfacePositionString, "_")
     local surfaceId = tonumber(string_sub(surfacePositionString, 1, underscoreIndex - 1))
     local commaIndex = string_find(surfacePositionString, ",")
-    local positionX = string_sub(surfacePositionString, underscoreIndex + 1, commaIndex - 1)
-    local positionY = string_sub(surfacePositionString, commaIndex + 1, string_len(surfacePositionString))
+    local positionX = tonumber(string_sub(surfacePositionString, underscoreIndex + 1, commaIndex - 1))
+    local positionY = tonumber(string_sub(surfacePositionString, commaIndex + 1, string_len(surfacePositionString)))
     return surfaceId, {x = positionX, y = positionY}
 end
 

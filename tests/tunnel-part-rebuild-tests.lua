@@ -23,7 +23,6 @@ local PartToRemove = {
     portal_exit_outerEnd = "portal_exit_outerEnd"
 }
 -- Will remove the targetted PartToRemove and then the subsequent defined number of parts when iterating the list.
---TODO: update to use sequence like crossing tunnel test.
 ---@class Tests_TPRT_NumberSequenceOfPartsToRemove
 local NumberSequenceOfPartsToRemove = {
     one = "one",
