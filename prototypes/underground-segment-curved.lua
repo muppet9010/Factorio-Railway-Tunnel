@@ -62,7 +62,8 @@ local undergroundSegmentCurvedRegularItem = {
     subgroup = "train-transport",
     order = "a[train-system]-a[rail]e",
     stack_size = 50,
-    place_result = "railway_tunnel-underground_segment-curved-regular"
+    place_result = "railway_tunnel-underground_segment-curved-regular",
+    flags = {} -- Copy adds to it.
 }
 
 local undergroundSegmentCurvedRegularTopLayer = {
@@ -181,6 +182,7 @@ undergroundSegmentCurvedFlippedItem.place_result = "railway_tunnel-underground_s
 undergroundSegmentCurvedFlippedItem.order = "a[train-system]-a[rail]f"
 undergroundSegmentCurvedFlippedItem.localised_name = {"item-name.railway_tunnel-underground_segment-curved-flipped"}
 undergroundSegmentCurvedFlippedItem.localised_description = {"item-description.railway_tunnel-underground_segment-curved-flipped"}
+table.insert(undergroundSegmentCurvedFlippedItem.flags, "only-in-cursor")
 
 local undergroundSegmentCurvedFlippedTopLayer = Utils.DeepCopy(undergroundSegmentCurvedRegularTopLayer)
 undergroundSegmentCurvedFlippedTopLayer.name = "railway_tunnel-underground_segment-curved-flipped-top_layer"

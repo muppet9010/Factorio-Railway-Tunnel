@@ -243,9 +243,6 @@ Underground.OnLoad = function()
     MOD.Interfaces.Underground.OnUndergroundSegmentGhostBuilt = Underground.OnUndergroundSegmentGhostBuilt
     MOD.Interfaces.Underground.OnUndergroundSegmentEntityDied = Underground.OnUndergroundSegmentEntityDied
     MOD.Interfaces.Underground.OnUndergroundSegmentEntityPreMined = Underground.OnUndergroundSegmentEntityPreMined
-
-    Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_horizontal", "Underground.OnFlipBlueprintHorizontalInput", Underground.OnFlipBlueprintHorizontalInput)
-    Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_vertical", "Underground.OnFlipBlueprintVerticalInput", Underground.OnFlipBlueprintVerticalInput)
 end
 
 --- Called when an underground segment has been built. Event fitlering is done by calling function.
@@ -1306,52 +1303,6 @@ Underground.OnUndergroundSegmentEntityDied = function(event, diedEntity)
     end
 
     Underground.EntityRemoved(segment, event.force, event.cause)
-end
-
---- Called when a player presses the F key to try and horizontally flip something (blueprint or curved rail in vanilla).
----
---- We only react if its a item in cursor trying to be changed and not a built entity of any type.
----@param event CustomInputEvent
-Underground.OnFlipBlueprintHorizontalInput = function(event)
-    -- Only an item in the cursor is relevent for item swapping.
-    if event.selected_prototype == nil or event.selected_prototype.base_type ~= "item" then
-        return
-    end
-
-    local oldItemName = event.selected_prototype.name
-    local newItemName, swappingToFakeItem
-    if oldItemName == "railway_tunnel-underground_segment-curved-regular" then
-        newItemName = "railway_tunnel-underground_segment-curved-flipped"
-        swappingToFakeItem = true
-    elseif oldItemName == "railway_tunnel-underground_segment-curved-flipped" then
-        newItemName = "railway_tunnel-underground_segment-curved-regular"
-        swappingToFakeItem = false
-    else
-        -- Not one of the items we are tracking.
-        return
-    end
-
-    -- Change item in cursor to the other item.
-    -- TODO: I think the real item should be returned to the inventory and a temporary (cursor only) item given. Then when each is built (not ghosted) remove 1 from the temporary cursor stack and the real stack in inventory. As we don't change the real stack item type in inventory we avoid all other complications (filtered inventory, logistic requests, etc).
-
-    local player = game.get_player(event.player_index)
-    if swappingToFakeItem then
-        -- Going from real item to flipped fake item.
-
-        -- Get the current direction of the real item.
-        local direction = player.cursor_stack
-
-        -- Return the real item to the inventory.
-        player.clear_cursor()
-    else
-        --blah
-    end
-end
-
---- Called when a player presses the G key to try and vertically flip something (blueprint or curved rail in vanilla).
----@param event CustomInputEvent
-Underground.OnFlipBlueprintVerticalInput = function(event)
-    --TODO
 end
 
 return Underground

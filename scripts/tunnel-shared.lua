@@ -80,6 +80,10 @@ TunnelShared.OnLoad = function()
     -------------------------------------------------------------------------------------
     -- END Shared event handlers
     -------------------------------------------------------------------------------------
+
+    Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_horizontal", "TunnelShared.OnFlipBlueprintHorizontalInput", TunnelShared.OnFlipBlueprintHorizontalInput)
+    Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_vertical", "TunnelShared.OnFlipBlueprintVerticalInput", TunnelShared.OnFlipBlueprintVerticalInput)
+    Events.RegisterHandlerCustomInput("railway_tunnel-smart_pipette", "TunnelShared.OnSmartPipetteInput", TunnelShared.OnSmartPipetteInput)
 end
 
 ---@param builtEntity LuaEntity
@@ -387,6 +391,124 @@ TunnelShared.PrintWarningAndReportToModAuthor = function(text)
         text = text .. "."
     end
     game.print("WARNING: " .. text .. " Please report to mod author.", Colors.red)
+end
+
+--- Called when a player presses the F key to try and horizontally flip something (blueprint or curved rail in vanilla). Runs before the game handles the event and does its action based on what event(s) are bound to the key.
+---
+--- Horizontal flip is a straight swap between regular and flipped entities, no rotations required.
+--- We only react if it's an item of one of the curved tunnel parts (not hovering over an entity). Or its a blueprint that contains a curved tunnel part.
+---@param event CustomInputEvent
+TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
+    -- TODO: these functions will be used by both underground and portal curved parts as same logic for all.
+
+    -- Always react to the player pressing the button and check if an approperiate item is in the cursor. If its not then nothing is done.
+    -- Code Node: Doing it purely by player cursor rather than by the event's selected prototype data means if a curved part is in the cursor and the player has their cursor on an entity (selected) then we still flip the item in the cursor.
+    local player = game.get_player(event.player_index)
+    local itemInHand = player.cursor_stack
+    -- If theres nothing in the players cursor then nothing to do.
+    if not itemInHand.valid_for_read then
+        return
+    end
+    local itemInHandName = itemInHand.name
+
+    -- If its a Blueprint item then handle specially.
+    if itemInHandName == "blueprint" then
+        local bpContents = itemInHand.cost_to_build
+
+        -- Check for curved undergrounds and if found handle them.
+        if bpContents["railway_tunnel-underground_segment-curved-regular"] ~= nil or bpContents["railway_tunnel-underground_segment-curved-flipped"] ~= nil then
+            -- Loop over each entity in the BP and update any curved tunnel parts to the other flipped type.
+            local bpEntities = itemInHand.get_blueprint_entities()
+            for _, blueprintEntity in pairs(bpEntities) do
+                local blueprintEntity_name = blueprintEntity.name
+                if blueprintEntity_name == "railway_tunnel-underground_segment-curved-regular" then
+                    blueprintEntity.name = "railway_tunnel-underground_segment-curved-flipped"
+                elseif blueprintEntity_name == "railway_tunnel-underground_segment-curved-flipped" then
+                    blueprintEntity.name = "railway_tunnel-underground_segment-curved-regular"
+                end
+            end
+
+            -- Write back the BP contents.
+            itemInHand.set_blueprint_entities(bpEntities)
+        end
+
+        -- No further processing of blueprints is required.
+        return
+    end
+
+    -- Change item in cursor to the other item.
+    -- TODO: this will support curved portal parts in the future.
+    local newPartName, realToFakeChange
+    if itemInHandName == "railway_tunnel-underground_segment-curved-regular" then
+        newPartName = "railway_tunnel-underground_segment-curved-flipped"
+        realToFakeChange = true
+    elseif itemInHandName == "railway_tunnel-underground_segment-curved-flipped" then
+        newPartName = "railway_tunnel-underground_segment-curved-regular"
+        realToFakeChange = false
+    else
+        -- Not a cursor item we need to handle.
+        return
+    end
+
+    -- Handle the curved underground part item.
+    if realToFakeChange then
+        -- Going from real item to flipped fake item.
+
+        -- TODO: need to start tracking building real entities with this cursor stack and updating the real inventory accordingly. Also when the item in hand runs out we should check if there is another stack we should "fake up". If the player has their inventory filled/emptied by others we also need to bleed this in to the stack in hand count. Maybe I should just have a per tick event thats triggered for the duration of the item in the cursor as a simple initial solution. As very few players will have this active at any time and I can check the players invenotry in a simple way then.
+
+        -- Return the real item to the inventory. means theres no "hand" icon in the inventory from this point on as the item in cursor will never be returned there.
+        player.clear_cursor()
+
+        -- Set the fake item to the cursor at the correct starting count.
+        itemInHand.set_stack({name = newPartName, count = player.get_item_count(itemInHandName)})
+    else
+        -- Going back to real item from flipped fake item.
+
+        -- Discard the fake item (its destroyed automatically on releae from cursor).
+        player.clear_cursor()
+
+        -- Set a real item stack to the cursor from the player's inventory.
+        local regularItemStack, regularItemStackIndex = player.get_inventory(defines.inventory.character_main).find_item_stack(newPartName)
+        itemInHand.swap_stack(regularItemStack)
+        player.hand_location = {inventory = defines.inventory.character_main, slot = regularItemStackIndex}
+    end
+end
+
+--TODO
+---@param event CustomInputEvent
+TunnelShared.OnFlipBlueprintVerticalInput = function(event)
+    --TODO
+end
+
+--- Called when a player presses the Q key to use the smart pipette. Runs before the game handles the event and does its action based on what event(s) are bound to the key.
+---
+--- We only react if its a flipped curved tunnel part as it will give the regular item (wrong) by default.
+---@param event CustomInputEvent
+TunnelShared.OnSmartPipetteInput = function(event)
+    --TODO: will need to include flipped curved portal parts as well as underground parts.
+
+    -- Only need to react if the player's cursor has selected an entity when the key is pressed.
+    if event.selected_prototype.base_type ~= "entity" or event.selected_prototype.name ~= "railway_tunnel-underground_segment-curved-flipped" then
+        return
+    end
+
+    local player = game.get_player(event.player_index)
+    local itemInHand = player.cursor_stack
+    -- If there's an item in the cursor then do nothing, as this is how vanilla smart pipette works.
+    if itemInHand.valid_for_read then
+        return
+    end
+
+    -- Get the real item we will count in the players inventory.
+    local realItemName
+    if event.selected_prototype.name == "railway_tunnel-underground_segment-curved-flipped" then
+        realItemName = "railway_tunnel-underground_segment-curved-regular"
+    end
+
+    -- Set the fake item to the cursor at the correct starting count.
+    -- TODO: we need to do a 0 tick schedule so that our action happens after the base game does its smart pipette action, as otherwise our change is overwritten by the game.
+    itemInHand.set_stack({name = "rail", count = player.get_item_count(realItemName)})
+    --TODO: need to start the item count tracking.
 end
 
 return TunnelShared

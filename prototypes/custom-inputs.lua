@@ -23,8 +23,7 @@ data:extend(
             name = "railway_tunnel-flip_blueprint_horizontal",
             key_sequence = "",
             linked_game_control = "flip-blueprint-horizontal",
-            action = "lua",
-            include_selected_prototype = true
+            action = "lua"
         },
         -- Press the flip blueprint vertically key (G).
         {
@@ -32,8 +31,7 @@ data:extend(
             name = "railway_tunnel-flip_blueprint_vertical",
             key_sequence = "",
             linked_game_control = "flip-blueprint-vertical",
-            action = "lua",
-            include_selected_prototype = true
+            action = "lua"
         },
         -- Use the smart-pipette (Q).
         {

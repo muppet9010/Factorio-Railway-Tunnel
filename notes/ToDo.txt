@@ -1,6 +1,6 @@
 Now
 ---
-    - Fix old graphics arrows to be centered on their image and to be an even width. As presently can't line them up right when rotated to other entity graphics.
+    - Fix old graphics arrows to be centered on their image and to be an even width. As presently can't line them up right when rotated to other entity graphics. Do for both underground and portal parts.
 
     - Allow corners and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.
         - Need to try and ensure thats its obvious from the arrows that 2 curves can't be directly connected. Included in description already.
@@ -11,13 +11,21 @@ Now
         - Flip horizontal and vertical also rotates in some cases and not others. Map out carefully. Main rail orientations are based upon rotating aroud the same entity (regular or flipped).
 
 
+    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
+        - Player riding will need to handle the portal parts being potentially curves just like the underground parts will also have to handle.
+
+
+    Known limitations from having to make a fake 8 way rotatable entity with approperiate collision boxes:
+        - When flipping a BP with curved tunnel parts the on-hover preview of the BP item will be messed up. As it always shows as regular view (non flipped or rotated), but on flip we have to swap the curved tunnel parts and thus it looks wrong in regular view. When previewed on the game surface it will be correct and if flipped again it will look correct on the preview. As we are changing the BP item in hand for this it will go back in to game/personal BP library and books with this item preview distortion.
+        - If the player tries to do anything with the flipped fake item other than build/ghost it, it will silently fail. Examples include: use it to set a filter, drop the cursor item on the ground or in to an inventory (player/chest). Will need an indication on the item image and some text warning on the main item.
+
+
 Bugs / Next
 -----------
 
 
 Features to add/change
 ----------------------
-    - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
     - Even with the entry train detectors its still possible in rare edge cases for a train to try and traverse a tunnel on to an already present trains position. Would need to handle trains arriving on top of one another and destroying one another when placed.
         - If this is done then some of the preliminary checks at entrance detection could possibly be removed and when manual trains are introduced this will be a necessity.
         - Example edge cases:
