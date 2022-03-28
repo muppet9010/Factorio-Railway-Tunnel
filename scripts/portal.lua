@@ -1325,7 +1325,9 @@ Portal.OnPortalEntryTrainDetectorEntityDied = function(event, diedEntity)
         time_to_live = 300,
         forces = {portal.force},
         color = {r = 1, g = 0, b = 0, a = 1},
-        scale_with_zoom = true
+        scale_with_zoom = true,
+        alignment = "center",
+        vertical_alignment = "bottom"
     }
 end
 
@@ -1495,7 +1497,9 @@ Portal.OnPortalTransitionTrainDetectorEntityDied = function(event, diedEntity)
         time_to_live = 180,
         forces = {portal.force},
         color = {r = 1, g = 0, b = 0, a = 1},
-        scale_with_zoom = true
+        scale_with_zoom = true,
+        alignment = "center",
+        vertical_alignment = "bottom"
     }
 end
 

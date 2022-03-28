@@ -183,6 +183,7 @@ undergroundSegmentCurvedFlippedItem.order = "a[train-system]-a[rail]f"
 undergroundSegmentCurvedFlippedItem.localised_name = {"item-name.railway_tunnel-underground_segment-curved-flipped"}
 undergroundSegmentCurvedFlippedItem.localised_description = {"item-description.railway_tunnel-underground_segment-curved-flipped"}
 table.insert(undergroundSegmentCurvedFlippedItem.flags, "only-in-cursor")
+table.insert(undergroundSegmentCurvedFlippedItem.flags, "hidden") -- Not in filter lists.
 
 local undergroundSegmentCurvedFlippedTopLayer = Utils.DeepCopy(undergroundSegmentCurvedRegularTopLayer)
 undergroundSegmentCurvedFlippedTopLayer.name = "railway_tunnel-underground_segment-curved-flipped-top_layer"

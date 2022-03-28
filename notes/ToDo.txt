@@ -16,12 +16,13 @@ Now
 
 
     Known limitations from having to make a fake 8 way rotatable entity with approperiate collision boxes:
-        - When flipping a BP with curved tunnel parts the on-hover preview of the BP item will be messed up. As it always shows as regular view (non flipped or rotated), but on flip we have to swap the curved tunnel parts and thus it looks wrong in regular view. When previewed on the game surface it will be correct and if flipped again it will look correct on the preview. As we are changing the BP item in hand for this it will go back in to game/personal BP library and books with this item preview distortion.
+        - When flipping a BP with curved tunnel parts the BP item in hand for that player won't be correct. A red warning message is shwon to the player telling them to flip it back as I can't find a way to prevent the flip. The real BP isn't affected and if the player reloads the game it will also correct the BPs state (flip it back).
         - If the player tries to do anything with the flipped fake item other than build/ghost it, it will silently fail. Examples include: use it to set a filter, drop the cursor item on the ground or in to an inventory (player/chest). Will need an indication on the item image and some text warning on the main item.
 
 
 Bugs / Next
 -----------
+    - Add the "bad/no" sound that you get for invalid actions for when we show the negative messages to players/undo something they did.
 
 
 Features to add/change

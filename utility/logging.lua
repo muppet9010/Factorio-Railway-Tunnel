@@ -218,7 +218,9 @@ Logging.WriteOutNumberedMarker = function(targetSurface, targetPosition)
         surface = targetSurface,
         target = targetPosition,
         color = {r = 1, g = 0, b = 0, a = 1},
-        scale_with_zoom = true
+        scale_with_zoom = true,
+        alignment = "center",
+        vertical_alignment = "bottom"
     }
     global.numberedCount = global.numberedCount + 1
 end
