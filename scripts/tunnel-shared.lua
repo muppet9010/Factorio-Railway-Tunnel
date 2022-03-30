@@ -6,6 +6,18 @@ local Events = require("utility.events")
 local Common = require("scripts.common")
 local TunnelShared = {}
 
+---@class PlayersCurvedPartTracking
+---@field playerId Id
+---@field player LuaPlayer
+---@field realItemInInventoryName string
+---@field fakeItemInCursorName string
+---@field cursorCount uint
+
+TunnelShared.CreateGlobals = function()
+    global.tunnelShared = global.tunnelShared or {}
+    global.tunnelShared.playersCurvedPartTracking = global.tunnelShared.playersCurvedPartTracking or {} ---@type table<Id, PlayersCurvedPartTracking>
+end
+
 TunnelShared.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelShared.SetTrainToManual_Scheduled", TunnelShared.SetTrainToManual_Scheduled)
     EventScheduler.RegisterScheduledEventType("TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled)
@@ -42,6 +54,8 @@ TunnelShared.OnLoad = function()
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
     Events.RegisterHandlerEvent(defines.events.script_raised_built, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
     Events.RegisterHandlerEvent(defines.events.script_raised_revive, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
+
+    Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, {{filter = "name", name = "railway_tunnel-underground_segment-curved-flipped"}}) --TODO
 
     -- OnDiedEntity type events
     ----------------------------
@@ -85,6 +99,7 @@ TunnelShared.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_vertical", "TunnelShared.OnFlipBlueprintVerticalInput", TunnelShared.OnFlipBlueprintVerticalInput)
     EventScheduler.RegisterScheduledEventType("TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled)
     Events.RegisterHandlerCustomInput("railway_tunnel-smart_pipette", "TunnelShared.OnSmartPipetteInput", TunnelShared.OnSmartPipetteInput)
+    EventScheduler.RegisterScheduledEventType("TunnelShared.OnSmartPipetteInput_DelayedAction", TunnelShared.OnSmartPipetteInput_DelayedAction)
 end
 
 ---@param builtEntity LuaEntity
@@ -303,8 +318,9 @@ TunnelShared.OnBuiltEntity = function(event)
         return
     end
 
-    -- A built entity can only meet one of these modules conditions. Ordered in lowest UPS cost overall.
-    -- Means we don't have to check if its still valid between handler functions called.
+    -- A built entity can only meet one of these below modules conditions. Ordered in lowest UPS cost to check if module condition is met.
+    -- As only one function is ever going to be called we don't have to check if objects are still valid between the below checks and handler functions called.
+    -- Does the real entities first and then ghosts.
 
     local createdEntity_type = createdEntity.type
     if Common.RollingStockTypes[createdEntity_type] ~= nil then
@@ -313,6 +329,12 @@ TunnelShared.OnBuiltEntity = function(event)
     end
 
     local createdEntity_name = createdEntity.name
+    if Common.CurvedTunnelPartNameFakeToReal[createdEntity_name] ~= nil and event.player_index ~= nil then
+        -- A fake curved tunnel part was just build by a player. This is an edge case as here we do allow calling multiple functions, but this function will never lead to anything becoming invalid.
+        --- Ignores if a robot or script built it.
+        TunnelShared.FakeCurvedTunnelPartBuild(event, createdEntity_name)
+        return --TODO
+    end
     if Common.PortalEndAndSegmentEntityNames[createdEntity_name] ~= nil then
         MOD.Interfaces.Portal.OnTunnelPortalPartEntityBuilt(event, createdEntity, createdEntity_name)
         return
@@ -413,190 +435,297 @@ end
 --- We only react if it's an item of one of the curved tunnel parts (not hovering over an entity). Or its a blueprint that contains a curved tunnel part.
 ---@param event CustomInputEvent
 TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
-    -- TODO: these functions will be used by both underground and portal curved parts as same logic for all. So add in portal curve part names when made.
-
     -- Always react to the player pressing the button and check if an approperiate item is in the cursor. If its not then nothing is done.
     -- CODE DEV: Doing it purely by player cursor rather than by the event's selected prototype data means if a curved part is in the cursor and the player has their cursor on an entity (selected) then we still flip the item in the cursor.
-    local player = game.get_player(event.player_index)
-    local itemInHand = player.cursor_stack
-    -- If theres nothing in the players cursor then nothing to do.
-    if not itemInHand.valid_for_read then
-        return
-    end
-    local itemInHandName = itemInHand.name
 
-    -- If it's a Blueprint item then handle specially.
+    local player = game.get_player(event.player_index)
+
+    -- Check what's in the players cursor.
+    local itemInHand = player.cursor_stack
+    local ghostItemInHand, itemInHandName
+    if not itemInHand.valid_for_read then
+        -- No real item in hand, check for a ghost in cursor.
+        ghostItemInHand = player.cursor_ghost
+
+        -- Check if theres an item prototype as a ghost in hand.
+        if ghostItemInHand == nil then
+            -- Theres nothing in the players cursor so nothing to do.
+            return
+        end
+
+        itemInHandName = ghostItemInHand.name
+    else
+        -- There is a real item in hand.
+        itemInHandName = itemInHand.name
+    end
+
+    -- If it's a Blueprint item then handle specially (will never be a ghost type).
     if itemInHandName == "blueprint" then
         local bpContents = itemInHand.cost_to_build
 
         -- Check for curved undergrounds and if found handle them.
-        if bpContents["railway_tunnel-underground_segment-curved-regular"] ~= nil or bpContents["railway_tunnel-underground_segment-curved-flipped"] ~= nil then
-            -- I can't find a way to deal with flipping bluepritns with curved rails in them or blocking it, so just show a message for now.
-            -- CODE DEV: would have to handle the current player (non game state) of the BP having been flipped, but the game state of the BP not being flipped. So can't win with changing the BP entities between regular/flipped. If I change the cursor in hand in this event the origional BP is remebered locally as still having been flipped, thus breaking it. I can't consume this event as I can't trigger a players local BP flip via API. I also can't add an non flippable entity to the BP at this point as the flip has already been approved. Only way to stop is to have the base type of this entity as one that can't be flipped, which looks to be either something with a 2 fluid boxes or and off center fluid box (i.e. chemical plant), or a mining drill with an off center output (like burner mining drill).
-            rendering.draw_text(
-                {
-                    text = {"message.railway_tunnel-blueprint_with_curved_tunnel_part_warning-1"},
-                    surface = player.surface,
-                    target = event.cursor_position,
-                    color = Colors.red,
-                    time_to_live = 900,
-                    scale_with_zoom = true,
-                    alignment = "center",
-                    vertical_alignment = "bottom"
-                }
-            )
-            rendering.draw_text(
-                {
-                    text = {"message.railway_tunnel-blueprint_with_curved_tunnel_part_warning-2"},
-                    surface = player.surface,
-                    target = event.cursor_position,
-                    color = Colors.red,
-                    time_to_live = 900,
-                    scale_with_zoom = true,
-                    alignment = "center",
-                    vertical_alignment = "top"
-                }
-            )
+        for curvedTunnelPartName in pairs(Common.CurvedTunnelPartNames) do
+            if bpContents[curvedTunnelPartName] ~= nil then
+                -- I can't find a way to deal with flipping bluepritst with curved rails in them or blocking it, so just show a message for now.
+                -- CODE DEV: would have to handle the current player (non game state) of the BP having been flipped, but the game state of the BP not being flipped. So can't win with changing the BP entities between regular/flipped. If I change the cursor in hand in this event the origional BP is remebered locally as still having been flipped, thus breaking it. I can't consume this event as I can't trigger a players local BP flip via API. I also can't add an non flippable entity to the BP at this point as the flip has already been approved. Only way to stop is to have the base type of this entity as one that can't be flipped, which looks to be either something with a 2 fluid boxes or an off center fluid box (i.e. chemical plant), or a mining drill with an off center output (like burner mining drill).
+                rendering.draw_text(
+                    {
+                        text = {"message.railway_tunnel-blueprint_with_curved_tunnel_part_warning-1"},
+                        surface = player.surface,
+                        target = event.cursor_position,
+                        color = Colors.red,
+                        time_to_live = 900,
+                        scale_with_zoom = true,
+                        alignment = "center",
+                        vertical_alignment = "bottom"
+                    }
+                )
+                rendering.draw_text(
+                    {
+                        text = {"message.railway_tunnel-blueprint_with_curved_tunnel_part_warning-2"},
+                        surface = player.surface,
+                        target = event.cursor_position,
+                        color = Colors.red,
+                        time_to_live = 900,
+                        scale_with_zoom = true,
+                        alignment = "center",
+                        vertical_alignment = "top"
+                    }
+                )
+                -- Once one is found and the message shown no more checking is required.
+                return
+            end
         end
 
         -- No further processing of blueprints is required.
         return
     end
 
-    -- Change item in cursor to the other item.
+    -- Check that is an item we care about and if so get its other item name.
     local newPartName, realToFakeChange
-    if itemInHandName == "railway_tunnel-underground_segment-curved-regular" then
-        newPartName = "railway_tunnel-underground_segment-curved-flipped"
+    newPartName = Common.CurvedTunnelPartNameRealToFake[itemInHandName]
+    if newPartName ~= nil then
         realToFakeChange = true
-    elseif itemInHandName == "railway_tunnel-underground_segment-curved-flipped" then
-        newPartName = "railway_tunnel-underground_segment-curved-regular"
-        realToFakeChange = false
     else
-        -- Not a cursor item we need to handle.
+        newPartName = Common.CurvedTunnelPartNameFakeToReal[itemInHandName]
+        if newPartName ~= nil then
+            realToFakeChange = false
+        else
+            -- Not a cursor item we need to handle.
+            return
+        end
+    end
+
+    -- Handle an actual (non ghost) curved underground part item.
+    if ghostItemInHand == nil then
+        if realToFakeChange then
+            -- Going from real item to flipped fake item.
+            TunnelShared.SwapCursorFromRealCurvedTunnelPartToFakeCurvedTunnelPart(player, itemInHandName, newPartName, itemInHand, event.tick, event.player_index)
+        else
+            -- Going back to real item from flipped fake item.
+
+            -- Cancel any traking of real item to fake item for this player.
+            TunnelShared.CancelTrackingPlayersRealCurvedTunnelPartToFakeCurvedTunnelPartItemCount(event.player_index, event.tick)
+
+            -- Discard the fake item (its destroyed automatically on releae from cursor).
+            player.clear_cursor()
+
+            -- Set a real item stack to the cursor from the player's inventory.
+            local regularItemStack, regularItemStackIndex = player.get_inventory(defines.inventory.character_main).find_item_stack(newPartName)
+            itemInHand.swap_stack(regularItemStack)
+            player.hand_location = {inventory = defines.inventory.character_main, slot = regularItemStackIndex}
+        end
         return
     end
 
-    -- Handle the curved underground part item.
-    if realToFakeChange then
-        -- Going from real item to flipped fake item.
-
-        -- Return the real item to the inventory. means theres no "hand" icon in the inventory from this point on as the item in cursor will never be returned there.
-        player.clear_cursor()
-
-        -- Set the fake item to the cursor at the correct starting count.
-        itemInHand.set_stack({name = newPartName, count = player.get_item_count(itemInHandName)})
-
-        -- Start tracking the players inventory count of the real item to the fake item in the player's cursor.
-        ---@class TrackingPlayersRealToFakeItemCount_Scheduled_Data
-        local data = {
-            player = player,
-            realItemInInventoryName = itemInHandName, ---@string
-            fakeItemInCursorName = newPartName, ---@string
-            cursorCount = itemInHand.count -- Get once set as this will account for the max stack size.
-        }
-        EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", event.player_index, data)
-    else
-        -- Going back to real item from flipped fake item.
-
-        -- Cancel any traking of real item to fake item for this player.
-        TunnelShared.CancelTrackingPlayersRealToFakeItemCount(event.player_index, event.tick)
-
-        -- Discard the fake item (its destroyed automatically on releae from cursor).
-        player.clear_cursor()
-
-        -- Set a real item stack to the cursor from the player's inventory.
-        local regularItemStack, regularItemStackIndex = player.get_inventory(defines.inventory.character_main).find_item_stack(newPartName)
-        itemInHand.swap_stack(regularItemStack)
-        player.hand_location = {inventory = defines.inventory.character_main, slot = regularItemStackIndex}
-    end
+    -- Must be a ghost item in players cursor.
+    player.cursor_ghost = newPartName
 end
 
---TODO: don't think can use if we can't rotate players cursor. If so have the key either do nothing or call the horizontal flip. Still need to show the BP message however.
+--- Called when a player presses the G key to try and vertically flip something (blueprint or curved rail in vanilla). Runs before the game handles the event and does its action based on what event(s) are bound to the key.
+---
+--- Can't do the flip and reverse rotation on an item in cursor as can't rotate players cursor. So calls the horizontal flip function to still change between the regular and flipped items and to ensure if its a BP in hand that the failed flip message is shown.
+--- Does mean that the can not disconnect rolling stock message is shown by the game in some cases, but this keeps the logic simple and players would generally use the main flip anyways (F) as next to rotate (R).
 ---@param event CustomInputEvent
 TunnelShared.OnFlipBlueprintVerticalInput = function(event)
-    --TODO
+    TunnelShared.OnFlipBlueprintHorizontalInput(event)
 end
 
---@class TrackingPlayersRealToFakeItemCount_Scheduled_Data
---@field player LuaPlayer
---@field realItemInInventoryName string
---@field fakeItemInCursorName string
---@field cursorCount uint
+--- Swap from a real curved tunnel part to a fake curved tunnel part. Handles if there is an actual item or a ghost in the cursor.
+---@param player LuaPlayer
+---@param realItemInInventoryName string
+---@param fakeItemInCursorName string
+---@param playerCursorStack LuaItemStack
+---@param currentTick Tick
+---@param playerId Id
+TunnelShared.SwapCursorFromRealCurvedTunnelPartToFakeCurvedTunnelPart = function(player, realItemInInventoryName, fakeItemInCursorName, playerCursorStack, currentTick, playerId)
+    -- Return the real item to the inventory. means theres no "hand" icon in the inventory from this point on as the item in cursor will never be returned there.
+    player.clear_cursor()
 
---- Called every tick to update the fake cursor item count with the real count from the players inventory.
+    -- Set the fake item to the cursor at the correct starting count.
+    local realItemCountInInventory = player.get_item_count(realItemInInventoryName)
+    if realItemCountInInventory == 0 then
+        -- Theres none of this item in the inventory so set the cursor to be a ghost item and stop processing.
+        player.cursor_ghost = fakeItemInCursorName
+        return
+    end
+    playerCursorStack.set_stack({name = fakeItemInCursorName, count = realItemCountInInventory})
+
+    --- Start tracking a fake item in the cursor to the real item in a player's inventory.
+    ---@type PlayersCurvedPartTracking
+    local playersCurvedPartTrackingData = {
+        playerId = playerId,
+        player = player,
+        realItemInInventoryName = realItemInInventoryName,
+        fakeItemInCursorName = fakeItemInCursorName,
+        cursorCount = playerCursorStack.count -- Get once set as this will account for the max stack size.
+    }
+    if global.tunnelShared.playersCurvedPartTracking[playerId] ~= nil then
+        error("Starting to track player's curved rail inventory when its already being tracked.")
+    end
+    global.tunnelShared.playersCurvedPartTracking[playerId] = playersCurvedPartTrackingData
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerId)
+end
+
+--- Called every tick to update the fake cursor item count with the real count from the players inventory. This is to catch any non player building actions that lead to a reducution in the item in the player's inventory.
 ---@param event UtilityScheduledEvent_CallbackObject
 TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     -- CODE NOTE: Does a simple code solution of just checking the players inventory every tick rather than trying to track every way the count could be reduced. Not convinced I could track every reduction method and the length and player count this will be active for should be very low at any given time.
 
-    -- TODO: still need to track when player builds one of these fake entities as in this case the cursor count reduces to 0 and thus becomes empty. This appears the same as if the cursor was changed to another item within this function. So the build event needs to reduce 1 real from inventory, with this function just catching any unexepcted count changes and updating both directions. Means that the count data for a player will need to be a global as both locations need to be able to update it.
-
-    local data = event.data ---@type TrackingPlayersRealToFakeItemCount_Scheduled_Data
-    local player = event.data.player ---@type LuaPlayer
-    local player_cursor = player.cursor_stack
+    local playersCurvedPartTrackingData = global.tunnelShared.playersCurvedPartTracking[event.instanceId]
+    local player_cursorStack = playersCurvedPartTrackingData.player.cursor_stack
     -- Check nothing has changed that means we no longer need to do the update.
-    if not player_cursor.valid_for_read or player_cursor.name ~= data.fakeItemInCursorName then
-        TunnelShared.CancelTrackingPlayersRealToFakeItemCount(event.instanceId, event.tick)
+    -- Note: when the last ite is palced this code would not detect it as the cursor would have been changed to empty. This is caught by the dedicated on entity built.
+    if not player_cursorStack.valid_for_read or player_cursorStack.name ~= playersCurvedPartTrackingData.fakeItemInCursorName then
+        TunnelShared.CancelTrackingPlayersRealCurvedTunnelPartToFakeCurvedTunnelPartItemCount(event.instanceId, event.tick)
         return
     end
 
-    local playerMainInventory = player.get_inventory(defines.inventory.character_main)
+    local playerMainInventory = playersCurvedPartTrackingData.player.get_inventory(defines.inventory.character_main)
 
-    -- Remove any placed entities from the inventory.
-    local currentCursorCount = player_cursor.count
-    if currentCursorCount < data.cursorCount then
-        playerMainInventory.remove({name = data.realItemInInventoryName, count = data.cursorCount - currentCursorCount})
-        data.cursorCount = currentCursorCount
+    -- Remove any removed cursor item count from from the inventories items. This could be as built via script or some other way the fake item has been removed from the players cursor without the player doing a manual building action. Is edge case protection.
+    local currentCursorCount = player_cursorStack.count
+    if currentCursorCount < playersCurvedPartTrackingData.cursorCount then
+        playerMainInventory.remove({name = playersCurvedPartTrackingData.realItemInInventoryName, count = playersCurvedPartTrackingData.cursorCount - currentCursorCount})
+        playersCurvedPartTrackingData.cursorCount = currentCursorCount
     end
 
     -- Check the inventory current count and update to cursor.
-    local currentInventoryCount = playerMainInventory.get_item_count(data.realItemInInventoryName)
+    local currentInventoryCount = playerMainInventory.get_item_count(playersCurvedPartTrackingData.realItemInInventoryName)
     if currentInventoryCount > 0 then
         -- Still count in the inventory so update the cursor and schedule a check next tick.
-        player_cursor.count = currentInventoryCount
-        data.cursorCount = player_cursor.count -- Get once set as this will account for the max stack size.
-        EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", event.instanceId, data)
+        player_cursorStack.count = currentInventoryCount
+        playersCurvedPartTrackingData.cursorCount = player_cursorStack.count -- Get once set as this will account for the max stack size.
+        EventScheduler.ScheduleEventOnce(event.tick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", event.instanceId)
     else
         -- None left in inventory so remove cursor item and just don't add another check.
-        player_cursor.clear()
+        player_cursorStack.clear()
     end
 end
 
---- Called to stop tracking a player's real to fake item count.
+--- Called when a fake curved tunnel part is built by a player.
+--- This function is not allowed to invalidate any game or cached object within its current calling logic.
+---@param event on_built_entity
+---@param createdEntity_name string
+TunnelShared.FakeCurvedTunnelPartBuild = function(event, createdEntity_name)
+    -- Check that the part built is being tracked for that player.
+    local playersCurvedPartTrackingData = global.tunnelShared.playersCurvedPartTracking[event.player_index]
+    if playersCurvedPartTrackingData == nil then
+        -- If the player is not in the character mode then they can instant build blueprints which is outside of the standard handling.
+        local player = game.get_player(event.player_index)
+        if player.controller_type ~= defines.controllers.character then
+            -- Player is in a special mode placing a blueprint with instant blueprint enabled. This mode in Factorio doesn't use items from the players inventory and so nothing needs to be done in this situation.
+            -- This can sometimes have a readable cursor stack and sometimes not, for an unknown reasons; so can't check it.
+            return
+        else
+            -- Player is in normal character mode so this state should be unreachable.
+            error("Player " .. event.player_index .. " built a fake curved (flipped) tunnel part, but they aren't being monitored for any.")
+        end
+    end
+    if createdEntity_name ~= playersCurvedPartTrackingData.fakeItemInCursorName then
+        error("Player " .. event.player_index .. " built a " .. createdEntity_name .. ", but they are being monitored for a " .. playersCurvedPartTrackingData.fakeItemInCursorName)
+    end
+
+    local player_cursorStack = playersCurvedPartTrackingData.player.cursor_stack
+    if player_cursorStack.valid_for_read then
+        -- Theres still some count in the cursor so handle it.
+        local currentCursorCount = player_cursorStack.count
+        if currentCursorCount < playersCurvedPartTrackingData.cursorCount then
+            local playerMainInventory = playersCurvedPartTrackingData.player.get_inventory(defines.inventory.character_main)
+            playerMainInventory.remove({name = playersCurvedPartTrackingData.realItemInInventoryName, count = playersCurvedPartTrackingData.cursorCount - currentCursorCount})
+            playersCurvedPartTrackingData.cursorCount = currentCursorCount
+        else
+            error("Player " .. event.player_index .. " built a " .. createdEntity_name .. ", but their cursor count is NOT less than their last known count.")
+        end
+    else
+        -- The cursor is presently empty and so the last item was just built.
+        local playerMainInventory = playersCurvedPartTrackingData.player.get_inventory(defines.inventory.character_main)
+        playerMainInventory.remove({name = playersCurvedPartTrackingData.realItemInInventoryName, count = 1})
+        TunnelShared.CancelTrackingPlayersRealCurvedTunnelPartToFakeCurvedTunnelPartItemCount(event.player_index, event.tick)
+    end
+end
+
+--- Called to stop tracking a player's real curved tunnel part to fake curved tunnel part item count.
 ---@param playerIndex Id
 ---@param currentTick Tick
-TunnelShared.CancelTrackingPlayersRealToFakeItemCount = function(playerIndex, currentTick)
+TunnelShared.CancelTrackingPlayersRealCurvedTunnelPartToFakeCurvedTunnelPartItemCount = function(playerIndex, currentTick)
+    global.tunnelShared.playersCurvedPartTracking[playerIndex] = nil
     EventScheduler.RemoveScheduledOnceEvents("TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerIndex, currentTick)
 end
 
 --- Called when a player presses the Q key to use the smart pipette. Runs before the game handles the event and does its action based on what event(s) are bound to the key.
 ---
---- We only react if its a flipped curved tunnel part as it will give the regular item (wrong) by default.
+--- We only react if its a flipped curved tunnel part being selected as it will give the regular item (non-flipped) by default, so we need to change it to the right item/ghost.
 ---@param event CustomInputEvent
 TunnelShared.OnSmartPipetteInput = function(event)
-    --TODO: will need to include flipped curved portal parts as well as underground parts.
-
     -- Only need to react if the player's cursor has selected an entity when the key is pressed.
-    if event.selected_prototype == nil or event.selected_prototype.base_type ~= "entity" or event.selected_prototype.name ~= "railway_tunnel-underground_segment-curved-flipped" then
+    if event.selected_prototype == nil or event.selected_prototype.base_type ~= "entity" then
         return
     end
 
-    local player = game.get_player(event.player_index)
+    -- Only react if its one of our parts (entity or ghost) with a fake item to build it.
+    local selectedEntityName = event.selected_prototype.name
+    local player  ---@type LuaPlayer
+    local realItemName = Common.CurvedTunnelPartNameFakeToReal[selectedEntityName]
+    if realItemName == nil then
+        if selectedEntityName == "entity-ghost" then
+            player = game.get_player(event.player_index)
+            selectedEntityName = player.selected.ghost_name
+            realItemName = Common.CurvedTunnelPartNameFakeToReal[selectedEntityName]
+            if realItemName == nil then
+                -- Not a ghost type we need to react too.
+                return
+            end
+        else
+            -- Not an entity we need to react too.
+            return
+        end
+    end
+
+    player = player or game.get_player(event.player_index) -- Player may have bene populated already in some cases.
     local itemInHand = player.cursor_stack
-    -- If there's an item in the cursor then do nothing, as this is how vanilla smart pipette works.
-    if itemInHand.valid_for_read then
+    -- If there's an item or ghost in the cursor then do nothing, as this is how vanilla smart pipette works.
+    if itemInHand.valid_for_read or player.cursor_ghost ~= nil then
         return
     end
 
-    -- Get the real item we will count in the players inventory.
-    local realItemName
-    if event.selected_prototype.name == "railway_tunnel-underground_segment-curved-flipped" then
-        realItemName = "railway_tunnel-underground_segment-curved-regular"
-    end
+    -- Schedule the rest of the process to occur after the base Factorio action has completed. Otherwise this base action overwrites whatever we do here.
+    ---@class OnSmartPipetteInput_DelayedAction_Data
+    local data = {
+        player = player,
+        selectedEntityName = selectedEntityName, ---@string
+        realItemInInventoryName = realItemName, ---@string
+        playerCursorStack = itemInHand
+    }
+    EventScheduler.ScheduleEventOnce(-1, "TunnelShared.OnSmartPipetteInput_DelayedAction", event.player_index, data)
+end
 
-    -- Set the fake item to the cursor at the correct starting count.
-    -- TODO: we need to do a 0 tick schedule so that our action happens after the base game does its smart pipette action, as otherwise our change is overwritten by the game.
-    itemInHand.set_stack({name = "rail", count = player.get_item_count(realItemName)})
-    --TODO: need to start the item count tracking.
+--- Delayed until after the base Factorio action has been completed. Called using a 0 tick scheduled event.
+---@param event UtilityScheduledEvent_CallbackObject
+TunnelShared.OnSmartPipetteInput_DelayedAction = function(event)
+    local data = event.data ---@type OnSmartPipetteInput_DelayedAction_Data
+
+    TunnelShared.SwapCursorFromRealCurvedTunnelPartToFakeCurvedTunnelPart(data.player, data.realItemInInventoryName, data.selectedEntityName, data.playerCursorStack, event.tick, event.instanceId)
 end
 
 return TunnelShared

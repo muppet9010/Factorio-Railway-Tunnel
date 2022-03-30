@@ -5,10 +5,19 @@ local Common = {}
 -- Make the entity lists.
 ---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
 Common.PortalEndEntityNames = {["railway_tunnel-portal_end"] = "railway_tunnel-portal_end"}
-Common.PortalSegmentEntityNames = {["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight"}
+Common.PortalSegmentEntityNames = {["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight", ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-regular", ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-flipped"}
 Common.UndergroundSegmentEntityNames = {["railway_tunnel-underground_segment-straight"] = "railway_tunnel-underground_segment-straight", ["railway_tunnel-underground_segment-straight-rail_crossing"] = "railway_tunnel-underground_segment-straight-rail_crossing", ["railway_tunnel-underground_segment-straight-tunnel_crossing"] = "railway_tunnel-underground_segment-straight-tunnel_crossing"}
+--, ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-regular", ["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-flipped"} --TODO
 Common.PortalEndAndSegmentEntityNames = Utils.TableMergeCopies({Common.PortalEndEntityNames, Common.PortalSegmentEntityNames}) ---@type table<string, string>
 Common.UndergroundSegmentAndAllPortalEntityNames = Utils.TableMergeCopies({Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames}) ---@type table<string, string>
+Common.CurvedTunnelPartNameRealToFake = {["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-flipped", ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-flipped"}
+Common.CurvedTunnelPartNameFakeToReal = {["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-regular", ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-regular"}
+Common.CurvedTunnelPartNames = {
+    ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-regular",
+    ["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-flipped",
+    ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-regular",
+    ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-flipped"
+}
 
 ---@class TunnelRailEntityNames
 Common.TunnelRailEntityNames = {

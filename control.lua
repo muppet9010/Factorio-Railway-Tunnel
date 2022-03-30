@@ -21,6 +21,7 @@ local function CreateGlobals()
 
     TrainCachedData.CreateGlobals()
     Force.CreateGlobals()
+    TunnelShared.CreateGlobals()
     TrainManager.CreateGlobals()
     TrainManagerRemote.CreateGlobals()
     PlayerContainer.CreateGlobals()

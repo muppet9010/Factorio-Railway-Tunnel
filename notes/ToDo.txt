@@ -4,11 +4,14 @@ Now
 
     - Allow corners and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.
         - Need to try and ensure thats its obvious from the arrows that 2 curves can't be directly connected. Included in description already.
-        - Theres 8 orientations of the curved rail and I will need the same for all my curved pieces. So will need to link to the 2 "Flip" controls to change my entity type between 2 curved portal parts, but both must be built and mined by the same so no weirdness during player building and blueprinting.
-        - At present concept the BP and bots can build the 2 entities from 1 item fine, but smart-pipette from both returns the regular. Mod will need to react to the smart-pipette and return the correct item to cursor after loading regular count from inventory. This seems the only downside from current concept and all other BP, bot construction and mining just works.
+        + Theres 8 orientations of the curved rail and I will need the same for all my curved pieces. So will need to link to the 2 "Flip" controls to change my entity type between 2 curved portal parts, but both must be built and mined by the same so no weirdness during player building and blueprinting.
+        + At present concept the BP and bots can build the 2 entities from 1 item fine, but smart-pipette from both returns the regular. Mod will need to react to the smart-pipette and return the correct item to cursor after loading regular count from inventory. This seems the only downside from current concept and all other BP, bot construction and mining just works.
+        + Ghosts handled: Ghost item in hand being flipped, when smart pipette used on a real entity and have none in inventory are handled (gives ghsot item), smart pipette on a ghost entity.
+        -+ BP flipping is handled (warned against) as simpiest current approach. Believe changing to use either something with a 2 fluid boxes or an off center fluid box (i.e. chemical plant), or a mining drill with an off center output (like burner mining drill).
         - Player Container position will need expanding to handle corners in tunnel.
         - Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
-        - Flip horizontal and vertical also rotates in some cases and not others. Map out carefully. Main rail orientations are based upon rotating aroud the same entity (regular or flipped).
+        - Currently the different orientations of the entity are centered differently (on the rail grid). Do we want to center this as an offset to the rail grid? Would make it easier to build with I think, but more logic required for its placement? Maybe see how diagonal and corners end up and decide from there.
+        - Make the Fake item have a big F on item icon. Also give it a different description listing how its special.
 
 
     - Allow corners and diagonals with the portal pieces. Will make train placement harder, but the portal entities are being designed with this potential functionality in mind.
@@ -17,7 +20,7 @@ Now
 
     Known limitations from having to make a fake 8 way rotatable entity with approperiate collision boxes:
         - When flipping a BP with curved tunnel parts the BP item in hand for that player won't be correct. A red warning message is shwon to the player telling them to flip it back as I can't find a way to prevent the flip. The real BP isn't affected and if the player reloads the game it will also correct the BPs state (flip it back).
-        - If the player tries to do anything with the flipped fake item other than build/ghost it, it will silently fail. Examples include: use it to set a filter, drop the cursor item on the ground or in to an inventory (player/chest). Will need an indication on the item image and some text warning on the main item.
+        - If the player tries to do anything with the flipped fake item other than build/ghost it, it will silently fail. Examples include: use it to set a filter, drop the cursor item on the ground or in to an inventory (player/chest). Will have an indication on the item image and some text warning on the main item.
 
 
 Bugs / Next
