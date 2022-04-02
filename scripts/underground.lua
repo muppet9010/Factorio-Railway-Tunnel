@@ -79,8 +79,8 @@ local Underground = {}
 ---@field tunnelTopLayerEntityName? string|null @ The entity to place when the tunnel is complete to show the desired completed graphics layer.
 ---@field tilesLength int @ How many tiles this underground is long.
 ---@field undergroundTracksPositionOffset UndergroundSegmentTrackPositionOffset[] @ The type of underground track and its position offset from the center of the segment when in a 0 orientation.
----@field frontInternalPositionOffset MapPosition @ Front internal position as an offset from the segments center when orientated north.
----@field rearInternalPositionOffset MapPosition @ Rear internal position as an offset from the segments center when orientated north.
+---@field frontInternalPositionOffset MapPosition @ Front internal position as an offset from the segments center when orientated north. Is -.5 tiles inside the entities border.
+---@field rearInternalPositionOffset MapPosition @ Rear internal position as an offset from the segments center when orientated north. Is -.5 tiles inside the entities border.
 
 ---@class StandardUndergroundSegmentTypeData:UndergroundSegmentTypeData @ Standard specific type data.
 
@@ -95,8 +95,8 @@ local Underground = {}
 local SegmentShape = {
     straight = "straight", -- Short straight piece for horizontal and vertical.
     diagonal = "diagonal", -- Short diagonal piece.
-    curveStart = "curveStart", -- The start of a curve, so between Straight and Diagonal.
-    curveInner = "curveInner" -- The inner part of a curve that connects 2 curveStart's togeather to make a 90 degree corner.
+    curve = "curve", -- The start of a curve, so between Straight and Diagonal.
+    corner = "corner" -- The inner part of a curve that connects 2 curve's togeather to make a 90 degree corner.
 }
 
 ---@class UndergroundSegmentType @ The type of the segment part.
@@ -124,7 +124,7 @@ local SegmentTypeData = {
         tilesLength = 2,
         undergroundTracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             }
@@ -159,7 +159,7 @@ local SegmentTypeData = {
         tilesLength = 2,
         undergroundTracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             }
@@ -177,7 +177,7 @@ local SegmentTypeData = {
         tilesLength = 2,
         undergroundTracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             }
@@ -195,23 +195,126 @@ local SegmentTypeData = {
         tilesLength = 6,
         undergroundTracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = -2},
                 baseDirection = defines.direction.north
             },
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             },
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 2},
                 baseDirection = defines.direction.north
             }
         },
         frontInternalPositionOffset = {x = 0, y = -2.5},
         rearInternalPositionOffset = {x = 0, y = 2.5}
+    },
+    ---@type UndergroundSegmentTypeData
+    ["railway_tunnel-underground_segment-curved-regular"] = {
+        name = "railway_tunnel-underground_segment-curved-regular",
+        segmentShape = SegmentShape.curve,
+        segmentType = SegmentType.standard,
+        tunnelBuiltLayerEntityName = nil,
+        tunnelTopLayerEntityName = "railway_tunnel-underground_segment-curved-regular-top_layer",
+        tilesLength = Utils.GetRailEntityLength("curved-rail", defines.direction.north) - Utils.GetRailEntityLength("straight-rail", defines.direction.northeast), -- Length is a full curved rail length minus 1 diagonal rail piece. As at each end of a diognal series 1 rail piece will be ignored by the curve rail placement. In a 1 diagonal part tunnel there are no diagonal rails used in the pathing.
+        undergroundTracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-curved-on_map_tunnel",
+                positionOffset = {x = -1, y = -1},
+                baseDirection = defines.direction.north
+            }
+        },
+        frontInternalPositionOffset = {x = -2, y = -2.5},
+        rearInternalPositionOffset = {x = 0, y = 2.5}
+    },
+    ---@type UndergroundSegmentTypeData
+    -- This is a copy of the regular curved segment, but some values are flipped. Same type of special considerations however.
+    ["railway_tunnel-underground_segment-curved-flipped"] = {
+        name = "railway_tunnel-underground_segment-curved-flipped",
+        segmentShape = SegmentShape.curve,
+        segmentType = SegmentType.standard,
+        tunnelBuiltLayerEntityName = nil,
+        tunnelTopLayerEntityName = "railway_tunnel-underground_segment-curved-flipped-top_layer",
+        tilesLength = Utils.GetRailEntityLength("curved-rail", defines.direction.north),
+        undergroundTracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-curved-on_map_tunnel",
+                positionOffset = {x = 1, y = -1},
+                baseDirection = defines.direction.northeast
+            }
+        },
+        frontInternalPositionOffset = {x = 2, y = -2.5},
+        rearInternalPositionOffset = {x = 0, y = 2.5}
+    },
+    ---@type UndergroundSegmentTypeData
+    ["railway_tunnel-underground_segment-diagonal-regular"] = {
+        name = "railway_tunnel-underground_segment-diagonal-regular",
+        segmentShape = SegmentShape.diagonal,
+        segmentType = SegmentType.standard,
+        tunnelBuiltLayerEntityName = nil,
+        tunnelTopLayerEntityName = "railway_tunnel-underground_segment-diagonal-regular-top_layer",
+        tilesLength = 2 * Utils.GetRailEntityLength("straight-rail", defines.direction.northeast),
+        undergroundTracksPositionOffset = {
+            -- The end real rail of each line of diagonal tunnel parts will overlap in to the real curves, but this won't make them invalid, and avoids extra build time logic to remove pointless tracks.
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
+                positionOffset = {x = -2, y = 0},
+                baseDirection = defines.direction.northeast
+            },
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
+                positionOffset = {x = 0, y = 0},
+                baseDirection = defines.direction.southwest
+            }
+        },
+        frontInternalPositionOffset = {x = -2, y = -0.5},
+        rearInternalPositionOffset = {x = 0, y = 0.5}
+    },
+    ---@type UndergroundSegmentTypeData
+    ["railway_tunnel-underground_segment-diagonal-flipped"] = {
+        name = "railway_tunnel-underground_segment-diagonal-flipped",
+        segmentShape = SegmentShape.diagonal,
+        segmentType = SegmentType.standard,
+        tunnelBuiltLayerEntityName = nil,
+        tunnelTopLayerEntityName = "railway_tunnel-underground_segment-diagonal-flipped-top_layer",
+        tilesLength = 2 * Utils.GetRailEntityLength("straight-rail", defines.direction.northeast),
+        undergroundTracksPositionOffset = {
+            -- The end real rail of each line of diagonal tunnel parts will overlap in to the real curves, but this won't make them invalid, and avoids extra build time logic to remove pointless tracks.
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
+                positionOffset = {x = 0, y = 0},
+                baseDirection = defines.direction.northwest
+            },
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
+                positionOffset = {x = -2, y = 0},
+                baseDirection = defines.direction.southeast
+            }
+        },
+        frontInternalPositionOffset = {x = 0, y = -0.5},
+        rearInternalPositionOffset = {x = -2, y = 0.5}
+    },
+    ---@type UndergroundSegmentTypeData
+    ["railway_tunnel-underground_segment-corner"] = {
+        name = "railway_tunnel-underground_segment-corner",
+        segmentShape = SegmentShape.corner,
+        segmentType = SegmentType.standard,
+        tunnelBuiltLayerEntityName = nil,
+        tunnelTopLayerEntityName = "railway_tunnel-underground_segment-corner-top_layer",
+        tilesLength = 3 * Utils.GetRailEntityLength("straight-rail", defines.direction.northeast), -- Length is the actual diagonal rail plus 1 diagonal rail length for each curve part that connects to it. As the curve part's length is 1 diagonal short due to how it interacts with the diagonal parts.
+        undergroundTracksPositionOffset = {
+            {
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
+                positionOffset = {x = 2, y = -2},
+                baseDirection = defines.direction.southwest
+            }
+        },
+        frontInternalPositionOffset = {x = 0, y = -2.5},
+        rearInternalPositionOffset = {x = 2.5, y = 0}
     }
 }
 
@@ -484,8 +587,15 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     segment.frontInternalPosition = Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.frontInternalPositionOffset, segment.entity_position)
     segment.rearInternalPosition = Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.rearInternalPositionOffset, segment.entity_position)
     -- The External Check position is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
-    segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = -1}, segment.frontInternalPosition))
-    segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = 1}, segment.rearInternalPosition))
+    if segment.typeData.segmentShape == SegmentShape.straight or segment.typeData.segmentShape == SegmentShape.curve or segment.typeData.segmentShape == SegmentShape.diagonal then
+        -- Most of the shapes have their external connection points inline with the orientaton of the part (forwards/backwards).
+        segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = -1}, segment.frontInternalPosition))
+        segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = 1}, segment.rearInternalPosition)) -- Opposite to the front.
+    elseif segment.typeData.segmentShape == SegmentShape.corner then
+        -- Corners are an oddity as while the front connection is inline with the entity orientation, the rear is at 90 degrees.
+        segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = -1}, segment.frontInternalPosition))
+        segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 1, y = 0}, segment.rearInternalPosition)) -- At 90 degrees to the front.
+    end
 
     -- Register the new segment and its position for fast replace.
     global.undergrounds.segments[segment.id] = segment
@@ -592,6 +702,7 @@ Underground.UpdateUndergroundsForNewSegment = function(segment)
     ) do
         -- Look in the global internal position string list for any segment that is where our external check position is.
         local foundSegmentPositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
+        -- TODO: check that we aren't connecting in an unsupported fashion, i.e. 2 curves directly or a diagonal directly to a straight.
         -- If a underground reference at this position is found next to this one add this segment to its/new underground.
         if foundSegmentPositionObject ~= nil then
             local connectedSegment = foundSegmentPositionObject.segment
@@ -833,6 +944,7 @@ end
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param underground Underground
 Underground.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
+    -- TODO: make sure we don't connect from an un-suppported end part to a portal, i.e. a diagonal or corner can never connect to a portal. Will need to ensure the reverse check from theportal's viewpoint also checks for this.
     local portals, endPortalParts = {}, {}
     for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
         local portal, endPortalPart = MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition(UndergroundEndSegmentObject.externalConnectableSurfacePosition)

@@ -12,7 +12,7 @@ local undergroundSegmentCurvedRegular = {
     collision_box = {{-4.9, -2.9}, {2.9, 2.9}},
     collision_mask = {"item-layer", "object-layer", "water-tile"},
     selection_box = {{-4.9, -2.9}, {2.9, 2.9}},
-    max_health = 1000,
+    max_health = 3000,
     resistances = data.raw["wall"]["stone-wall"].resistances,
     flags = {"player-creation", "not-on-map"},
     picture = {
@@ -63,7 +63,7 @@ local undergroundSegmentCurvedRegularItem = {
     order = "a[train-system]-a[rail]e",
     stack_size = 50,
     place_result = "railway_tunnel-underground_segment-curved-regular",
-    flags = {} -- Copy adds to it.
+    flags = {} -- Fake copy adds to it.
 }
 
 local undergroundSegmentCurvedRegularTopLayer = {
@@ -105,7 +105,6 @@ local undergroundSegmentCurvedRegularTopLayer = {
     render_layer = "tile-transition"
 }
 
---TODO: needs some sort of rotation shifting as our real entity isn'd equal sized when rotated.
 local undergroundSegmentCurvedRegularRemnant = {
     type = "corpse",
     name = "railway_tunnel-underground_segment-curved-regular-remnant",
@@ -121,10 +120,10 @@ local undergroundSegmentCurvedRegularRemnant = {
     final_render_layer = "remnants",
     remove_on_tile_placement = false,
     animation = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-remnant.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-regular-remnant.png",
         line_length = 1,
-        width = 256,
-        height = 256,
+        width = 320,
+        height = 320,
         frame_count = 1,
         direction_count = 4
     }
@@ -132,11 +131,11 @@ local undergroundSegmentCurvedRegularRemnant = {
 
 -- Second set of 4 rotations entity.
 
--- The minining of the flipped curve intentionally gives the regular curve item as we want the player to only ever have the regular item in their inventory.
+-- The minining of the flipped part intentionally gives the regular part item as we want the player to only ever have the regular item in their inventory.
 local undergroundSegmentCurvedFlipped = Utils.DeepCopy(undergroundSegmentCurvedRegular)
 undergroundSegmentCurvedFlipped.name = "railway_tunnel-underground_segment-curved-flipped"
 undergroundSegmentCurvedFlipped.placeable_by = {
-    -- The order seems irrelevent in which is returned by Q (smart-pipette) as the item's place_result seems to take priority and thus gives regular curve. Can react to the smart-pipette action and give the correct item via script.
+    -- The order seems irrelevent in which is returned by Q (smart-pipette) as the item's place_result seems to take priority and thus gives regular part. Can react to the smart-pipette action and give the correct item via script.
     {
         item = "railway_tunnel-underground_segment-curved-flipped",
         count = 1
@@ -179,7 +178,8 @@ undergroundSegmentCurvedFlipped.corpse = "railway_tunnel-underground_segment-cur
 local undergroundSegmentCurvedFlippedItem = Utils.DeepCopy(undergroundSegmentCurvedRegularItem)
 undergroundSegmentCurvedFlippedItem.name = "railway_tunnel-underground_segment-curved-flipped"
 undergroundSegmentCurvedFlippedItem.place_result = "railway_tunnel-underground_segment-curved-flipped"
-undergroundSegmentCurvedFlippedItem.order = "a[train-system]-a[rail]f"
+undergroundSegmentCurvedFlippedItem.subgroup = "railway_tunnel-other"
+undergroundSegmentCurvedFlippedItem.order = "a[train-system]-a[rail]e"
 undergroundSegmentCurvedFlippedItem.localised_name = {"item-name.railway_tunnel-underground_segment-curved-flipped"}
 undergroundSegmentCurvedFlippedItem.localised_description = {"item-description.railway_tunnel-underground_segment-curved-flipped"}
 table.insert(undergroundSegmentCurvedFlippedItem.flags, "only-in-cursor")
@@ -214,9 +214,9 @@ undergroundSegmentCurvedFlippedTopLayer.picture = {
     }
 }
 
---TODO: probably needs own copy of animation and rotation based shifting?
 local undergroundSegmentCurvedFlippedRemnant = Utils.DeepCopy(undergroundSegmentCurvedRegularRemnant)
 undergroundSegmentCurvedFlippedRemnant.name = "railway_tunnel-underground_segment-curved-flipped-remnant"
+undergroundSegmentCurvedFlippedRemnant.animation.filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-flipped-remnant.png"
 
 data:extend(
     {

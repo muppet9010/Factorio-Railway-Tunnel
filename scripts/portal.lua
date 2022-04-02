@@ -109,8 +109,8 @@ local PortalPartType = {
 local SegmentShape = {
     straight = "straight", -- Short straight piece for horizontal and vertical.
     diagonal = "diagonal", -- Short diagonal piece.
-    curveStart = "curveStart", -- The start of a curve, so between Straight and Diagonal.
-    curveInner = "curveInner" -- The inner part of a curve that connects 2 curveStart's togeather to make a 90 degree corner.
+    curve = "curve", -- The start of a curve, so between Straight and Diagonal.
+    corner = "corner" -- The inner part of a curve that connects 2 curve's togeather to make a 90 degree corner.
 }
 
 ---@class PortalPartTypeData
@@ -138,17 +138,17 @@ local PortalTypeData = {
         trainWaitingAreaTilesLength = 0,
         tracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = -2},
                 baseDirection = defines.direction.north
             },
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             },
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 2},
                 baseDirection = defines.direction.north
             }
@@ -162,7 +162,7 @@ local PortalTypeData = {
         trainWaitingAreaTilesLength = 2,
         tracksPositionOffset = {
             {
-                trackEntityName = "railway_tunnel-invisible_rail-on_map_tunnel",
+                trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
                 positionOffset = {x = 0, y = 0},
                 baseDirection = defines.direction.north
             }

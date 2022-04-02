@@ -10,13 +10,13 @@ local MakeEmptyRailImages = function()
     }
 end
 
-local invisibleRailBase = {
+local invisibleStraightRailBase = {
     type = "straight-rail",
     icon = "__base__/graphics/icons/rail.png",
     icon_size = 64,
     icon_mipmaps = 4,
     subgroup = "railway_tunnel-hidden_rails",
-    flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable"},
+    flags = {"not-repairable", "not-blueprintable", "not-deconstructable", "no-copy-paste", "not-upgradable", "building-direction-8-way"},
     selectable_in_game = false,
     collision_mask = {"rail-layer"}, -- Just collide with other rails.
     pictures = {
@@ -47,19 +47,23 @@ local invisibleRailBase = {
     }
 }
 
--- Not used currently.
-local invisibleRailNotOnMap = Utils.DeepCopy(invisibleRailBase)
-invisibleRailNotOnMap.name = "railway_tunnel-invisible_rail-not_on_map"
-table.insert(invisibleRailNotOnMap.flags, "not-on-map")
+-- Used for the non-entry parts of tunnel portals and for underground tunnel tracks.
+local invisibleStraightRailOnMapTunnel = Utils.DeepCopy(invisibleStraightRailBase)
+invisibleStraightRailOnMapTunnel.name = "railway_tunnel-invisible_rail-straight-on_map_tunnel"
+invisibleStraightRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
 
--- Used for the End section of tunnel portals and for underground tunnel tracks.
-local invisibleRailOnMapTunnel = Utils.DeepCopy(invisibleRailBase)
-invisibleRailOnMapTunnel.name = "railway_tunnel-invisible_rail-on_map_tunnel"
-invisibleRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
+local invisibleCurvedRailBase = Utils.DeepCopy(invisibleStraightRailBase)
+invisibleCurvedRailBase.type = "curved-rail"
+invisibleCurvedRailBase.icon = "__base__/graphics/icons/curved-rail.png"
+
+-- Used for the non-entry parts of tunnel portals and for underground tunnel tracks.
+local invisibleCurvedRailOnMapTunnel = Utils.DeepCopy(invisibleCurvedRailBase)
+invisibleCurvedRailOnMapTunnel.name = "railway_tunnel-invisible_rail-curved-on_map_tunnel"
+invisibleCurvedRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
 
 data:extend(
     {
-        invisibleRailNotOnMap,
-        invisibleRailOnMapTunnel
+        invisibleStraightRailOnMapTunnel,
+        invisibleCurvedRailOnMapTunnel
     }
 )

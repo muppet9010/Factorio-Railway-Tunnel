@@ -1,22 +1,43 @@
 local Utils = require("utility.utils")
-local PrototypeAttributes = require("utility.prototype-attributes")
 local Common = {}
 
 -- Make the entity lists.
 ---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
 Common.PortalEndEntityNames = {["railway_tunnel-portal_end"] = "railway_tunnel-portal_end"}
-Common.PortalSegmentEntityNames = {["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight", ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-regular", ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-flipped"}
-Common.UndergroundSegmentEntityNames = {["railway_tunnel-underground_segment-straight"] = "railway_tunnel-underground_segment-straight", ["railway_tunnel-underground_segment-straight-rail_crossing"] = "railway_tunnel-underground_segment-straight-rail_crossing", ["railway_tunnel-underground_segment-straight-tunnel_crossing"] = "railway_tunnel-underground_segment-straight-tunnel_crossing"}
---, ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-regular", ["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-flipped"} --TODO
+Common.PortalSegmentEntityNames = {
+    ["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight",
+    ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-regular",
+    ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-flipped"
+}
+Common.UndergroundSegmentEntityNames = {
+    ["railway_tunnel-underground_segment-straight"] = "railway_tunnel-underground_segment-straight",
+    ["railway_tunnel-underground_segment-straight-rail_crossing"] = "railway_tunnel-underground_segment-straight-rail_crossing",
+    ["railway_tunnel-underground_segment-straight-tunnel_crossing"] = "railway_tunnel-underground_segment-straight-tunnel_crossing",
+    ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-regular",
+    ["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-flipped",
+    ["railway_tunnel-underground_segment-diagonal-regular"] = "railway_tunnel-underground_segment-diagonal-regular",
+    ["railway_tunnel-underground_segment-diagonal-flipped"] = "railway_tunnel-underground_segment-diagonal-flipped",
+    ["railway_tunnel-underground_segment-corner"] = "railway_tunnel-underground_segment-corner"
+}
 Common.PortalEndAndSegmentEntityNames = Utils.TableMergeCopies({Common.PortalEndEntityNames, Common.PortalSegmentEntityNames}) ---@type table<string, string>
 Common.UndergroundSegmentAndAllPortalEntityNames = Utils.TableMergeCopies({Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames}) ---@type table<string, string>
-Common.CurvedTunnelPartNameRealToFake = {["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-flipped", ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-flipped"}
-Common.CurvedTunnelPartNameFakeToReal = {["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-regular", ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-regular"}
-Common.CurvedTunnelPartNames = {
+Common.RealTunnelPartNameToFakeTunnelPartName = {
+    ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-flipped",
+    ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-flipped",
+    ["railway_tunnel-underground_segment-diagonal-regular"] = "railway_tunnel-underground_segment-diagonal-flipped"
+}
+Common.FakeTunnelPartNameToRealTunnelPartName = {
+    ["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-regular",
+    ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-regular",
+    ["railway_tunnel-underground_segment-diagonal-flipped"] = "railway_tunnel-underground_segment-diagonal-regular"
+}
+Common.FakeAndRealTunnelPartNames = {
     ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-regular",
     ["railway_tunnel-underground_segment-curved-flipped"] = "railway_tunnel-underground_segment-curved-flipped",
     ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-regular",
-    ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-flipped"
+    ["railway_tunnel-portal_segment-curved-flipped"] = "railway_tunnel-portal_segment-curved-flipped",
+    ["railway_tunnel-underground_segment-diagonal-regular"] = "railway_tunnel-underground_segment-diagonal-regular",
+    ["railway_tunnel-underground_segment-diagonal-flipped"] = "railway_tunnel-underground_segment-diagonal-flipped"
 }
 
 ---@class TunnelRailEntityNames
@@ -25,8 +46,8 @@ Common.TunnelRailEntityNames = {
     ["railway_tunnel-portal_rail-on_map"] = "railway_tunnel-portal_rail-on_map",
     ["railway_tunnel-internal_rail-not_on_map"] = "railway_tunnel-internal_rail-not_on_map",
     ["railway_tunnel-internal_rail-on_map_tunnel"] = "railway_tunnel-internal_rail-on_map_tunnel",
-    ["railway_tunnel-invisible_rail-not_on_map"] = "railway_tunnel-invisible_rail-not_on_map",
-    ["railway_tunnel-invisible_rail-on_map_tunnel"] = "railway_tunnel-invisible_rail-on_map_tunnel"
+    ["railway_tunnel-invisible_rail-straight-on_map_tunnel"] = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
+    ["railway_tunnel-invisible_rail-curved-on_map_tunnel"] = "railway_tunnel-invisible_rail-curved-on_map_tunnel"
 }
 
 ---@class RollingStockTypes

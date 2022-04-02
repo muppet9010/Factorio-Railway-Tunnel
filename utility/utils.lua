@@ -2104,15 +2104,23 @@ Utils.GetLocomotivesCurrentFuelPrototype = function(locomotive)
     return nil
 end
 
----@param railEntityType string @ Prototype name.
----@return double
-Utils.GetRailEntityLength = function(railEntityType)
-    if railEntityType == "straight-rail" then
-        return 2
-    elseif railEntityType == "curved-rail" then
-        return 7.842081225095
+--- Gets the length of a rail entity.
+---@param entityType string
+---@param entityDirection defines.direction
+---@return double railLength
+Utils.GetRailEntityLength = function(entityType, entityDirection)
+    if entityType == "straight-rail" then
+        if entityDirection == defines.direction.north or entityDirection == defines.direction.east or entityDirection == defines.direction.south or entityDirection == defines.direction.west then
+            -- Cardinal direction rail.
+            return 2
+        else
+            -- Diagonal rail.
+            return 1.415
+        end
     else
-        error("not valid rail type: " .. railEntityType)
+        -- Curved rail.
+        -- Old value worked out somehow was: 7.842081225095, but new value is based on a train's path length reported in the game.
+        return 7.84
     end
 end
 

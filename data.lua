@@ -43,6 +43,8 @@ require("prototypes.underground-segment-straight")
 require("prototypes.underground-segment-straight-rail-crossing")
 require("prototypes.underground-segment-straight-tunnel-crossing")
 require("prototypes.underground-segment-curved")
+require("prototypes.underground-segment-diagonal")
+require("prototypes.underground-segment-corner")
 
 require("prototypes.item-groups")
 require("prototypes.custom-inputs")

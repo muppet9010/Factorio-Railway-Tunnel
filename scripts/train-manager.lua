@@ -509,7 +509,8 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                     local leavingTrain_path = leavingTrain.path
                     local leavingTrain_path_rails = leavingTrain_path.rails
                     managedTrain.playerTrain_stoppingDistance = leavingTrain_path.total_distance + managedTrain.playerTrain_traversalDistanceRemaining
-                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(leavingTrain_path_rails[#leavingTrain_path_rails].type) -- Remove the last rail's length as we want to stop before this.
+                    local lastRail = leavingTrain_path_rails[#leavingTrain_path_rails]
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.Utils.GetRailEntityLength(lastRail.type, lastRail.direction) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
                 end
@@ -525,7 +526,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
 
                     local signalRail = leavingTrain_signal.get_connected_rails()[1]
                     managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain, managedTrain.targetTrainStop) + managedTrain.playerTrain_traversalDistanceRemaining
-                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.Utils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
                 end
@@ -653,7 +654,8 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 local train_path = train.path
                 local train_path_rails = train_path.rails
                 stoppingPointDistance = train_path.total_distance
-                stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(train_path_rails[#train_path_rails].type) -- Remove the last rail's length as we want to stop before this.
+                local lastRail = train_path_rails[#train_path_rails]
+                stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(lastRail.type, lastRail.direction) -- Remove the last rail's length as we want to stop before this.
                 scheduleFutureArrival = true
             end
         end
@@ -713,7 +715,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 -- Work out the stopping distance for the train.
                 local signalRail = train_signal.get_connected_rails()[1]
                 stoppingPointDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train, managedTrain.targetTrainStop)
-                stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(signalRail.type) -- Remove the last rail's length as we want to stop before this.
+                stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
 
                 -- Restore the train to its origional state from the path distance function.
                 TrainManager.SetTrainToAuto(managedTrain.train, managedTrain.targetTrainStop)
