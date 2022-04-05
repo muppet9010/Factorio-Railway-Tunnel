@@ -9,9 +9,9 @@ local undergroundSegmentCurvedRegular = {
     icon_size = 32,
     localised_name = {"item-name.railway_tunnel-underground_segment-curved"},
     localised_description = {"item-description.railway_tunnel-underground_segment-curved"},
-    collision_box = {{-4.9, -2.9}, {2.9, 2.9}},
+    collision_box = {{-3.9, -2.9}, {3.9, 2.9}},
     collision_mask = {"item-layer", "object-layer", "water-tile"},
-    selection_box = {{-4.9, -2.9}, {2.9, 2.9}},
+    selection_box = {{-3.9, -2.9}, {3.9, 2.9}},
     max_health = 3000,
     resistances = data.raw["wall"]["stone-wall"].resistances,
     flags = {"player-creation", "not-on-map"},
@@ -19,26 +19,22 @@ local undergroundSegmentCurvedRegular = {
         north = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-regular-north.png",
             height = 192,
-            width = 256,
-            shift = {-1, 0}
+            width = 256
         },
         east = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-regular-east.png",
             height = 256,
-            width = 192,
-            shift = {0, -1}
+            width = 192
         },
         south = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-regular-south.png",
             height = 192,
-            width = 256,
-            shift = {1, 0}
+            width = 256
         },
         west = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-regular-west.png",
             height = 256,
-            width = 192,
-            shift = {0, 1}
+            width = 192
         }
     },
     render_layer = "ground-tile",
@@ -51,7 +47,7 @@ local undergroundSegmentCurvedRegular = {
         item = "railway_tunnel-underground_segment-curved-regular",
         count = 1
     },
-    corpse = "railway_tunnel-underground_segment-curved-regular-remnant"
+    corpse = "railway_tunnel-underground_segment-curved-remnant"
 }
 
 local undergroundSegmentCurvedRegularItem = {
@@ -80,34 +76,30 @@ local undergroundSegmentCurvedRegularTopLayer = {
         north = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-northsouth.png",
             height = 192,
-            width = 256,
-            shift = {-1, 0}
+            width = 256
         },
         east = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-eastwest.png",
             height = 256,
-            width = 192,
-            shift = {0, -1}
+            width = 192
         },
         south = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-northsouth.png",
             height = 192,
-            width = 256,
-            shift = {1, 0}
+            width = 256
         },
         west = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-eastwest.png",
             height = 256,
-            width = 192,
-            shift = {0, 1}
+            width = 192
         }
     },
     render_layer = "tile-transition"
 }
 
-local undergroundSegmentCurvedRegularRemnant = {
+local undergroundSegmentCurvedRemnant = {
     type = "corpse",
-    name = "railway_tunnel-underground_segment-curved-regular-remnant",
+    name = "railway_tunnel-underground_segment-curved-remnant",
     icon = undergroundSegmentCurvedRegular.icon,
     icon_size = undergroundSegmentCurvedRegular.icon_size,
     icon_mipmaps = undergroundSegmentCurvedRegular.icon_mipmaps,
@@ -120,10 +112,10 @@ local undergroundSegmentCurvedRegularRemnant = {
     final_render_layer = "remnants",
     remove_on_tile_placement = false,
     animation = {
-        filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-regular-remnant.png",
+        filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-remnant.png",
         line_length = 1,
-        width = 320,
-        height = 320,
+        width = 256,
+        height = 256,
         frame_count = 1,
         direction_count = 4
     }
@@ -149,31 +141,24 @@ undergroundSegmentCurvedFlipped.picture = {
     north = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-flipped-north.png",
         height = 192,
-        width = 256,
-        shift = {1, 0}
+        width = 256
     },
     east = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-flipped-east.png",
         height = 256,
-        width = 192,
-        shift = {0, 1}
+        width = 192
     },
     south = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-flipped-south.png",
         height = 192,
-        width = 256,
-        shift = {-1, 0}
+        width = 256
     },
     west = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-flipped-west.png",
         height = 256,
-        width = 192,
-        shift = {0, -1}
+        width = 192
     }
 }
-undergroundSegmentCurvedFlipped.collision_box = {{-2.9, -2.9}, {4.9, 2.9}}
-undergroundSegmentCurvedFlipped.selection_box = {{-2.9, -2.9}, {4.9, 2.9}}
-undergroundSegmentCurvedFlipped.corpse = "railway_tunnel-underground_segment-curved-flipped-remnant"
 
 local undergroundSegmentCurvedFlippedItem = Utils.DeepCopy(undergroundSegmentCurvedRegularItem)
 undergroundSegmentCurvedFlippedItem.name = "railway_tunnel-underground_segment-curved-flipped"
@@ -191,42 +176,33 @@ undergroundSegmentCurvedFlippedTopLayer.picture = {
     north = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-northsouth.png",
         height = 192,
-        width = 256,
-        shift = {1, 0}
+        width = 256
     },
     east = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-eastwest.png",
         height = 256,
-        width = 192,
-        shift = {0, 1}
+        width = 192
     },
     south = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-northsouth.png",
         height = 192,
-        width = 256,
-        shift = {-1, 0}
+        width = 256
     },
     west = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-top_layer-eastwest.png",
         height = 256,
-        width = 192,
-        shift = {0, -1}
+        width = 192
     }
 }
-
-local undergroundSegmentCurvedFlippedRemnant = Utils.DeepCopy(undergroundSegmentCurvedRegularRemnant)
-undergroundSegmentCurvedFlippedRemnant.name = "railway_tunnel-underground_segment-curved-flipped-remnant"
-undergroundSegmentCurvedFlippedRemnant.animation.filename = "__railway_tunnel__/graphics/entity/underground_segment-curved/underground_segment-curved-flipped-remnant.png"
 
 data:extend(
     {
         undergroundSegmentCurvedRegular,
         undergroundSegmentCurvedRegularItem,
         undergroundSegmentCurvedRegularTopLayer,
-        undergroundSegmentCurvedRegularRemnant,
+        undergroundSegmentCurvedRemnant,
         undergroundSegmentCurvedFlipped,
         undergroundSegmentCurvedFlippedItem,
-        undergroundSegmentCurvedFlippedTopLayer,
-        undergroundSegmentCurvedFlippedRemnant
+        undergroundSegmentCurvedFlippedTopLayer
     }
 )

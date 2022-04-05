@@ -7,7 +7,6 @@ Now
         -+ BP flipping is handled (warned against) as simpiest current approach. Believe changing to use either something with a 2 fluid boxes or an off center fluid box (i.e. chemical plant), or a mining drill with an off center output (like burner mining drill).
         - Player Container position will need expanding to handle corners in tunnel.
         - Also would open the door to portals not being aligned, i.e. a U shape. Identify UPS impact when having to place cloned carriages and flipping them.
-        - Currently the different orientations of the entity are centered differently (on the rail grid). Do we want to center this as an offset to the rail grid? Would make it easier to build with I think, but more logic required for its placement? Maybe see how diagonal and corners end up and decide from there. If we keep this then document in design decisions.
         - Make the Fake item have a big F on item icon. Also give it a different description listing how its special.
         - Document (readme and design decisions) that the use of Flip to change between non straight tunnel parts is to make it clear when the cursor item is going to change and the limitations on filtering and BP with the parts. If I allowed rotating between the parts it might seem more seemless, but it would also make the negatives more suprising when they occur.
 

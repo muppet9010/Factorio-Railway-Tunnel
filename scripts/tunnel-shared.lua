@@ -100,14 +100,42 @@ TunnelShared.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelShared.OnSmartPipetteInput_DelayedAction", TunnelShared.OnSmartPipetteInput_DelayedAction)
 end
 
+--- Checks if an entity is on the rail grid based on its type. As some entities are centered off rail grid.
 ---@param builtEntity LuaEntity
+---@param entityType string @ The entity or ghost type.
 ---@return boolean
-TunnelShared.IsPlacementOnRailGrid = function(builtEntity)
+TunnelShared.IsPlacementOnRailGrid = function(builtEntity, entityType)
     local builtEntity_position = builtEntity.position
-    if builtEntity_position.x % 2 == 0 or builtEntity_position.y % 2 == 0 then
-        return false
+
+    if Common.RailGridCenteredTunnelParts[entityType] ~= nil then
+        -- Should be placed on the rail grid.
+        if builtEntity_position.x % 2 == 0 or builtEntity_position.y % 2 == 0 then
+            return false
+        else
+            return true
+        end
     else
-        return true
+        -- Is built off the rail grid so the connection points are on the grid.
+
+        -- Get the grid requirements for the direction of the entity. Both the curved and diagonal parts have the same requirements.
+        local xOnGrid, yOnGrid
+        local builtEntity_direction = builtEntity.direction
+        if builtEntity_direction == defines.direction.north or builtEntity_direction == defines.direction.south then
+            xOnGrid = false
+            yOnGrid = true
+        else
+            xOnGrid = true
+            yOnGrid = false
+        end
+
+        -- Check if the on grid placement matches expected.
+        if builtEntity_position.x % 2 == 0 ~= not xOnGrid then
+            return false
+        elseif builtEntity_position.y % 2 == 0 ~= not yOnGrid then
+            return false
+        else
+            return true
+        end
     end
 end
 
@@ -155,7 +183,7 @@ TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highligh
     end
 end
 
---- Highlights the single tiles to the placer player/force that are valid centres for an entity on the rail grid.
+--- Highlights the single tiles to the placer player/force that are valid centres for an entity on the rail grid based on the tunnel part being built (as some are built partially off grid).
 ---@param placer EntityActioner
 ---@param position MapPosition
 ---@param surface LuaSurface
@@ -164,26 +192,62 @@ end
 ---@param direction defines.direction @ Direction of the entity trying to be placed.
 TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
     local highlightAudiencePlayer, highlightAudienceForce = Utils.GetPlayerForceFromActioner(placer)
+
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
     local minX, maxX, minY, maxY
-    if position.x % 2 == 1 then
-        --Correct X position.
-        minX = position.x
-        maxX = position.x
+    if Common.RailGridCenteredTunnelParts[ghostName or entityName] ~= nil then
+        -- Should be placed on the rail grid.
+        if position.x % 2 == 1 then
+            -- Already on the correct X position.
+            minX = position.x
+            maxX = position.x
+        else
+            -- Was on the wrong X position.
+            minX = position.x - 1
+            maxX = position.x + 1
+        end
+        if position.y % 2 == 1 then
+            -- Already on the correct Y position.
+            minY = position.y
+            maxY = position.y
+        else
+            -- Was on the wrong Y position.
+            minY = position.y - 1
+            maxY = position.y + 1
+        end
     else
-        -- Wrong X position.
-        minX = position.x - 1
-        maxX = position.x + 1
+        -- Should be placed off the rail grid on the axis perpendicular to the direction.
+        -- Get the grid requirements for the direction of the entity. Both the curved and diagonal parts have the same requirements.
+        local xOnGrid, yOnGrid
+        if direction == defines.direction.north or direction == defines.direction.south then
+            xOnGrid = false
+            yOnGrid = true
+        else
+            xOnGrid = true
+            yOnGrid = false
+        end
+
+        if position.x % 2 == 1 == xOnGrid then
+            -- Already on the correct X position.
+            minX = position.x
+            maxX = position.x
+        else
+            -- Was on the wrong X position.
+            minX = position.x - 1
+            maxX = position.x + 1
+        end
+        if position.y % 2 == 1 == yOnGrid then
+            -- Already on the correct Y position.
+            minY = position.y
+            maxY = position.y
+        else
+            -- Was on the wrong Y position.
+            minY = position.y - 1
+            maxY = position.y + 1
+        end
     end
-    if position.y % 2 == 1 then
-        --Correct Y position.
-        minY = position.y
-        maxY = position.y
-    else
-        -- Wrong Y position.
-        minY = position.y - 1
-        maxY = position.y + 1
-    end
+
+    -- Draw the highlight boxes to the player/force.
     local validHighlightSprite, invalidHighlightSprite = "railway_tunnel-valid_placement_highlight", "railway_tunnel-invalid_placement_highlight"
     for x = minX, maxX, 2 do
         for y = minY, maxY, 2 do
@@ -342,10 +406,10 @@ TunnelShared.OnBuiltEntity = function(event)
     if createdEntity_type == "entity-ghost" then
         local createdEntity_ghostName = createdEntity.ghost_name
         if Common.PortalEndAndSegmentEntityNames[createdEntity_ghostName] ~= nil then
-            MOD.Interfaces.Portal.OnTunnelPortalPartGhostBuilt(event, createdEntity)
+            MOD.Interfaces.Portal.OnTunnelPortalPartGhostBuilt(event, createdEntity, createdEntity_ghostName)
             return
         elseif Common.UndergroundSegmentEntityNames[createdEntity_ghostName] ~= nil then
-            MOD.Interfaces.Underground.OnUndergroundSegmentGhostBuilt(event, createdEntity)
+            MOD.Interfaces.Underground.OnUndergroundSegmentGhostBuilt(event, createdEntity, createdEntity_ghostName)
             return
         elseif Common.RollingStockTypes[createdEntity_ghostName] ~= nil then
             MOD.Interfaces.Tunnel.OnTrainCarriageGhostBuilt(event, createdEntity, createdEntity_ghostName)

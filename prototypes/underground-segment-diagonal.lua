@@ -7,9 +7,9 @@ local undergroundSegmentDiagonalRegular = {
     icon_size = 32,
     localised_name = {"item-name.railway_tunnel-underground_segment-diagonal"},
     localised_description = {"item-description.railway_tunnel-underground_segment-diagonal"},
-    collision_box = {{-4.9, -0.9}, {2.9, 0.9}},
+    collision_box = {{-3.9, -0.9}, {3.9, 0.9}},
     collision_mask = {"item-layer", "object-layer", "water-tile"},
-    selection_box = {{-4.9, -0.9}, {2.9, 0.9}},
+    selection_box = {{-3.9, -0.9}, {3.9, 0.9}},
     max_health = 1000,
     resistances = data.raw["wall"]["stone-wall"].resistances,
     flags = {"player-creation", "not-on-map"},
@@ -18,26 +18,22 @@ local undergroundSegmentDiagonalRegular = {
         north = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-south.png",
             height = 64,
-            width = 256,
-            shift = {x = -1, y = 0}
+            width = 256
         },
         east = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-west.png",
             height = 256,
-            width = 64,
-            shift = {x = 0, y = -1}
+            width = 64
         },
         south = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-south.png",
             height = 64,
-            width = 256,
-            shift = {x = 1, y = 0}
+            width = 256
         },
         west = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-west.png",
             height = 256,
-            width = 64,
-            shift = {x = 0, y = 1}
+            width = 64
         }
     },
     render_layer = "ground-tile",
@@ -69,8 +65,8 @@ local undergroundSegmentDiagonalRemnant = {
     animation = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-remnant.png",
         line_length = 1,
-        width = 320,
-        height = 320,
+        width = 256,
+        height = 256,
         frame_count = 1,
         direction_count = 4
     }
@@ -102,26 +98,22 @@ local undergroundSegmentDiagonalRegularTopLayer = {
         north = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-northsouth-top_layer.png",
             height = 64,
-            width = 256,
-            shift = {x = -1, y = 0}
+            width = 256
         },
         east = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-eastwest-top_layer.png",
             height = 256,
-            width = 64,
-            shift = {x = 0, y = -1}
+            width = 64
         },
         south = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-northsouth-top_layer.png",
             height = 64,
-            width = 256,
-            shift = {x = 1, y = 0}
+            width = 256
         },
         west = {
             filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-eastwest-top_layer.png",
             height = 256,
-            width = 64,
-            shift = {x = 0, y = 1}
+            width = 64
         }
     },
     render_layer = "tile-transition"
@@ -148,30 +140,24 @@ undergroundSegmentDiagonalFlipped.picture = {
     north = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-north.png",
         height = 64,
-        width = 256,
-        shift = {x = -1, y = 0}
+        width = 256
     },
     east = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-east.png",
         height = 256,
-        width = 64,
-        shift = {x = 0, y = -1}
+        width = 64
     },
     south = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-north.png",
         height = 64,
-        width = 256,
-        shift = {x = 1, y = 0}
+        width = 256
     },
     west = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-east.png",
         height = 256,
-        width = 64,
-        shift = {x = 0, y = 1}
+        width = 64
     }
 }
-undergroundSegmentDiagonalFlipped.collision_box = {{-4.9, -0.9}, {2.9, 0.9}}
-undergroundSegmentDiagonalFlipped.selection_box = {{-4.9, -0.9}, {2.9, 0.9}}
 
 local undergroundSegmentDiagonalFlippedItem = Utils.DeepCopy(undergroundSegmentDiagonalRegularItem)
 undergroundSegmentDiagonalFlippedItem.name = "railway_tunnel-underground_segment-diagonal-flipped"
@@ -189,26 +175,22 @@ undergroundSegmentDiagonalFlippedTopLayer.picture = {
     north = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-northsouth-top_layer.png",
         height = 64,
-        width = 256,
-        shift = {x = -1, y = 0}
+        width = 256
     },
     east = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-eastwest-top_layer.png",
         height = 256,
-        width = 64,
-        shift = {x = 0, y = -1}
+        width = 64
     },
     south = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-northsouth-top_layer.png",
         height = 64,
-        width = 256,
-        shift = {x = 1, y = 0}
+        width = 256
     },
     west = {
         filename = "__railway_tunnel__/graphics/entity/underground_segment-diagonal/underground_segment-diagonal-eastwest-top_layer.png",
         height = 256,
-        width = 64,
-        shift = {x = 0, y = 1}
+        width = 64
     }
 }
 

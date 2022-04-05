@@ -230,7 +230,7 @@ end
 ---@return boolean
 Portal.OnTunnelPortalPartEntityBuilt = function(event, builtEntity, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
-    if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
+    if not TunnelShared.IsPlacementOnRailGrid(builtEntity, builtEntity_name) then
         local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
@@ -965,8 +965,9 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
-Portal.OnTunnelPortalPartGhostBuilt = function(event, createdEntity)
-    if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
+---@param ghostName string
+Portal.OnTunnelPortalPartGhostBuilt = function(event, createdEntity, ghostName)
+    if not TunnelShared.IsPlacementOnRailGrid(createdEntity, ghostName) then
         local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
     end

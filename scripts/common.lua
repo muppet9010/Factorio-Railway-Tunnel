@@ -39,6 +39,14 @@ Common.FakeAndRealTunnelPartNames = {
     ["railway_tunnel-underground_segment-diagonal-regular"] = "railway_tunnel-underground_segment-diagonal-regular",
     ["railway_tunnel-underground_segment-diagonal-flipped"] = "railway_tunnel-underground_segment-diagonal-flipped"
 }
+Common.RailGridCenteredTunnelParts = {
+    ["railway_tunnel-portal_end"] = "railway_tunnel-portal_end",
+    ["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight",
+    ["railway_tunnel-underground_segment-straight"] = "railway_tunnel-underground_segment-straight",
+    ["railway_tunnel-underground_segment-straight-rail_crossing"] = "railway_tunnel-underground_segment-straight-rail_crossing",
+    ["railway_tunnel-underground_segment-straight-tunnel_crossing"] = "railway_tunnel-underground_segment-straight-tunnel_crossing",
+    ["railway_tunnel-underground_segment-corner"] = "railway_tunnel-underground_segment-corner"
+}
 
 ---@class TunnelRailEntityNames
 Common.TunnelRailEntityNames = {

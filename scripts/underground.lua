@@ -224,12 +224,12 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-curved-on_map_tunnel",
-                positionOffset = {x = -1, y = -1},
+                positionOffset = {x = 0, y = -1},
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = -2, y = -2.5},
-        rearInternalPositionOffset = {x = 0, y = 2.5}
+        frontInternalPositionOffset = {x = -1, y = -2.5},
+        rearInternalPositionOffset = {x = 1, y = 2.5}
     },
     ---@type UndergroundSegmentTypeData
     -- This is a copy of the regular curved segment, but some values are flipped. Same type of special considerations however.
@@ -243,12 +243,12 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-curved-on_map_tunnel",
-                positionOffset = {x = 1, y = -1},
+                positionOffset = {x = 0, y = -1},
                 baseDirection = defines.direction.northeast
             }
         },
-        frontInternalPositionOffset = {x = 2, y = -2.5},
-        rearInternalPositionOffset = {x = 0, y = 2.5}
+        frontInternalPositionOffset = {x = 1, y = -2.5},
+        rearInternalPositionOffset = {x = -1, y = 2.5}
     },
     ---@type UndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-diagonal-regular"] = {
@@ -262,17 +262,17 @@ local SegmentTypeData = {
             -- The end real rail of each line of diagonal tunnel parts will overlap in to the real curves, but this won't make them invalid, and avoids extra build time logic to remove pointless tracks.
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = -2, y = 0},
+                positionOffset = {x = -1, y = 0},
                 baseDirection = defines.direction.northeast
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = {x = 1, y = 0},
                 baseDirection = defines.direction.southwest
             }
         },
-        frontInternalPositionOffset = {x = -2, y = -0.5},
-        rearInternalPositionOffset = {x = 0, y = 0.5}
+        frontInternalPositionOffset = {x = -1, y = -0.5},
+        rearInternalPositionOffset = {x = 1, y = 0.5}
     },
     ---@type UndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-diagonal-flipped"] = {
@@ -286,17 +286,17 @@ local SegmentTypeData = {
             -- The end real rail of each line of diagonal tunnel parts will overlap in to the real curves, but this won't make them invalid, and avoids extra build time logic to remove pointless tracks.
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = {x = 1, y = 0},
                 baseDirection = defines.direction.northwest
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = -2, y = 0},
+                positionOffset = {x = -1, y = 0},
                 baseDirection = defines.direction.southeast
             }
         },
-        frontInternalPositionOffset = {x = 0, y = -0.5},
-        rearInternalPositionOffset = {x = -2, y = 0.5}
+        frontInternalPositionOffset = {x = 1, y = -0.5},
+        rearInternalPositionOffset = {x = -1, y = 0.5}
     },
     ---@type UndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-corner"] = {
@@ -355,7 +355,7 @@ end
 ---@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity.
 Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
-    if not TunnelShared.IsPlacementOnRailGrid(builtEntity) then
+    if not TunnelShared.IsPlacementOnRailGrid(builtEntity, builtEntity_name) then
         local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
@@ -596,6 +596,10 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
         segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = -1}, segment.frontInternalPosition))
         segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 1, y = 0}, segment.rearInternalPosition)) -- At 90 degrees to the front.
     end
+
+    -- TODO: show the internal connection points
+    --rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.frontInternalPosition, surface = segment.surface}
+    --rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.rearInternalPosition, surface = segment.surface}
 
     -- Register the new segment and its position for fast replace.
     global.undergrounds.segments[segment.id] = segment
@@ -1090,9 +1094,10 @@ end
 -- If the built entity was a ghost of an underground segment then check it is on the rail grid.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built
 ---@param createdEntity LuaEntity
-Underground.OnUndergroundSegmentGhostBuilt = function(event, createdEntity)
+---@param ghostName string
+Underground.OnUndergroundSegmentGhostBuilt = function(event, createdEntity, ghostName)
     -- If the ghost was on grid then nothing needs to be done.
-    if not TunnelShared.IsPlacementOnRailGrid(createdEntity) then
+    if not TunnelShared.IsPlacementOnRailGrid(createdEntity, ghostName) then
         local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
     end
