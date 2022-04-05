@@ -70,6 +70,10 @@ local Underground = {}
 ---@class SegmentSurfacePosition
 ---@field id SurfacePositionString
 ---@field segment UndergroundSegment
+---@field segmentsConnectionFacing SegmentSurfacePositionFacing @ Where on the segment this surface position is for.
+
+---@class SegmentSurfacePositionFacing
+local SegmentSurfacePositionFacing = {["front"] = "front", ["rear"] = "rear", ["center"] = "center"}
 
 ---@class UndergroundSegmentTypeData @ Generic underground segment type data.
 ---@field name string
@@ -95,8 +99,8 @@ local Underground = {}
 local SegmentShape = {
     straight = "straight", -- Short straight piece for horizontal and vertical.
     diagonal = "diagonal", -- Short diagonal piece.
-    curve = "curve", -- The start of a curve, so between Straight and Diagonal.
-    corner = "corner" -- The inner part of a curve that connects 2 curve's togeather to make a 90 degree corner.
+    curved = "curved", -- The start of a curve, so between Straight and Diagonal.
+    corner = "corner" -- The inner part of a curve that connects 2 curved's togeather to make a 90 degree corner.
 }
 
 ---@class UndergroundSegmentType @ The type of the segment part.
@@ -216,7 +220,7 @@ local SegmentTypeData = {
     ---@type UndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-curved-regular"] = {
         name = "railway_tunnel-underground_segment-curved-regular",
-        segmentShape = SegmentShape.curve,
+        segmentShape = SegmentShape.curved,
         segmentType = SegmentType.standard,
         tunnelBuiltLayerEntityName = nil,
         tunnelTopLayerEntityName = "railway_tunnel-underground_segment-curved-regular-top_layer",
@@ -228,14 +232,14 @@ local SegmentTypeData = {
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = -1, y = -2.5},
-        rearInternalPositionOffset = {x = 1, y = 2.5}
+        frontInternalPositionOffset = {x = -1, y = -2.5}, -- Diagonal connection
+        rearInternalPositionOffset = {x = 1, y = 2.5} -- Straight connection
     },
     ---@type UndergroundSegmentTypeData
     -- This is a copy of the regular curved segment, but some values are flipped. Same type of special considerations however.
     ["railway_tunnel-underground_segment-curved-flipped"] = {
         name = "railway_tunnel-underground_segment-curved-flipped",
-        segmentShape = SegmentShape.curve,
+        segmentShape = SegmentShape.curved,
         segmentType = SegmentType.standard,
         tunnelBuiltLayerEntityName = nil,
         tunnelTopLayerEntityName = "railway_tunnel-underground_segment-curved-flipped-top_layer",
@@ -247,8 +251,8 @@ local SegmentTypeData = {
                 baseDirection = defines.direction.northeast
             }
         },
-        frontInternalPositionOffset = {x = 1, y = -2.5},
-        rearInternalPositionOffset = {x = -1, y = 2.5}
+        frontInternalPositionOffset = {x = 1, y = -2.5}, -- Diagonal connection
+        rearInternalPositionOffset = {x = -1, y = 2.5} -- Straight connection
     },
     ---@type UndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-diagonal-regular"] = {
@@ -355,8 +359,8 @@ end
 ---@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity.
 Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
+    local placer = Utils.GetActionerFromEvent(event)
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity, builtEntity_name) then
-        local placer = Utils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
@@ -405,7 +409,6 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
             for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
                 if not railCrossingTrackEntity.can_be_destroyed() then
                     -- Put the old correct entity back and correct whats been done.
-                    local placer = Utils.GetActionerFromEvent(event)
                     TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, surface, oldFastReplacedSegment_RailCrossing.entity_position)
                     oldFastReplacedSegment_RailCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
                     Underground.RestoreSegmentEntity(oldFastReplacedSegment_RailCrossing)
@@ -430,7 +433,6 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                     -- The fake crossing segment has a tunnel that will need checking.
                     if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(fakeCrossingTunnelObject) then
                         -- The crossing tunnel is in-use so undo the removal.
-                        local placer = Utils.GetActionerFromEvent(event)
                         TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_tunnel_fast_replace_blocked_as_in_use"}, oldFastReplacedSegment_TunnelCrossing.surface, oldFastReplacedSegment_TunnelCrossing.entity_position)
                         oldFastReplacedSegment_TunnelCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
                         Underground.RestoreSegmentEntity(oldFastReplacedSegment_TunnelCrossing)
@@ -572,14 +574,15 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
     end
 
     -- Process the object created for the entity.
-    Underground.ProcessNewUndergroundSegmentObject(segment, oldFastReplacedSegment, fastReplacedSegmentOfSameType)
+    Underground.ProcessNewUndergroundSegmentObject(segment, oldFastReplacedSegment, fastReplacedSegmentOfSameType, placer)
 end
 
 --- Called to process a segment object once it has been created.
 ---@param segment UndergroundSegment
 ---@param oldFastReplacedSegment? UndergroundSegment|null @ The old segment that has just been fast replaced over IF a fast replacement has occured. If no fast replacement has occured then it's nil.
 ---@param fastReplacedSegmentOfSameType? boolean|null @ If a fast replacement has occured if it is the same segment type or not. If no fast replacement has occured then it's nil.
-Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplacedSegment, fastReplacedSegmentOfSameType)
+---@param placer EntityActioner|null @ Can be nil if nothing new was built.
+Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplacedSegment, fastReplacedSegmentOfSameType, placer)
     ---@typelist StandardUndergroundSegment, RailCrossingUndergroundSegment, TunnelCrossingUndergroundSegment
     local segment_Standard, segment_RailCrossing, segment_TunnelCrossing = segment, segment, segment
 
@@ -587,7 +590,7 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     segment.frontInternalPosition = Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.frontInternalPositionOffset, segment.entity_position)
     segment.rearInternalPosition = Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.rearInternalPositionOffset, segment.entity_position)
     -- The External Check position is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
-    if segment.typeData.segmentShape == SegmentShape.straight or segment.typeData.segmentShape == SegmentShape.curve or segment.typeData.segmentShape == SegmentShape.diagonal then
+    if segment.typeData.segmentShape == SegmentShape.straight or segment.typeData.segmentShape == SegmentShape.curved or segment.typeData.segmentShape == SegmentShape.diagonal then
         -- Most of the shapes have their external connection points inline with the orientaton of the part (forwards/backwards).
         segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = -1}, segment.frontInternalPosition))
         segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, {x = 0, y = 1}, segment.rearInternalPosition)) -- Opposite to the front.
@@ -598,28 +601,31 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     end
 
     -- TODO: show the internal connection points
-    --rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.frontInternalPosition, surface = segment.surface}
-    --rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.rearInternalPosition, surface = segment.surface}
+    rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.frontInternalPosition, surface = segment.surface}
+    rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.rearInternalPosition, surface = segment.surface}
 
     -- Register the new segment and its position for fast replace.
     global.undergrounds.segments[segment.id] = segment
     -- On fast replacement it overwrites the old entry as the position strings are identical.
     global.undergrounds.segmentSurfacePositions[segment.surfacePositionString] = {
         id = segment.surfacePositionString,
-        segment = segment
+        segment = segment,
+        segmentsConnectionFacing = SegmentSurfacePositionFacing.center
     }
 
     -- Register the segments surfacePositionStrings for connection reverse lookup. On fast replacement it overwrites the old entry as the position strings are identical.
     local frontInternalSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, segment.frontInternalPosition)
     global.undergrounds.segmentInternalConnectionSurfacePositionStrings[frontInternalSurfacePositionString] = {
         id = frontInternalSurfacePositionString,
-        segment = segment
+        segment = segment,
+        segmentsConnectionFacing = SegmentSurfacePositionFacing.front
     }
     segment.frontInternalSurfacePositionString = frontInternalSurfacePositionString
     local rearInternalSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, segment.rearInternalPosition)
     global.undergrounds.segmentInternalConnectionSurfacePositionStrings[rearInternalSurfacePositionString] = {
         id = rearInternalSurfacePositionString,
-        segment = segment
+        segment = segment,
+        segmentsConnectionFacing = SegmentSurfacePositionFacing.rear
     }
     segment.rearInternalSurfacePositionString = rearInternalSurfacePositionString
 
@@ -667,7 +673,7 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     -- Do post activities based on if new segment or fast replacemet.
     if oldFastReplacedSegment == nil then
         -- New segments check if they complete the tunnel and handle approperiately.
-        Underground.UpdateUndergroundsForNewSegment(segment)
+        Underground.UpdateUndergroundsForNewSegment(segment, placer)
         Underground.CheckAndHandleTunnelCompleteFromUnderground(segment.underground)
 
         -- Update the main and crossing arrows as required. Must be done after underground neighbors are processed.
@@ -688,17 +694,18 @@ end
 
 --- Check if this segment is next to another segment on either/both sides. If it is create/add to an underground object for them.
 ---@param segment UndergroundSegment
-Underground.UpdateUndergroundsForNewSegment = function(segment)
+---@param placer EntityActioner|null @ Can be nil if nothing new was built.
+Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
     local firstComplictedConnectedSegment, secondComplictedConnectedSegment = nil, nil
 
     -- Check for a connected viable segment in both directions from our segment.
-    for _, checkDetails in pairs(
+    for facing, checkDetails in pairs(
         {
-            {
+            ["front"] = {
                 internalCheckSurfacePositionString = segment.frontInternalSurfacePositionString,
                 externalCheckSurfacePositionString = segment.frontExternalCheckSurfacePositionString
             },
-            {
+            ["rear"] = {
                 internalCheckSurfacePositionString = segment.rearInternalSurfacePositionString,
                 externalCheckSurfacePositionString = segment.rearExternalCheckSurfacePositionString
             }
@@ -706,11 +713,93 @@ Underground.UpdateUndergroundsForNewSegment = function(segment)
     ) do
         -- Look in the global internal position string list for any segment that is where our external check position is.
         local foundSegmentPositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
-        -- TODO: check that we aren't connecting in an unsupported fashion, i.e. 2 curves directly or a diagonal directly to a straight.
-        -- If a underground reference at this position is found next to this one add this segment to its/new underground.
-        if foundSegmentPositionObject ~= nil then
-            local connectedSegment = foundSegmentPositionObject.segment
 
+        -- Check that the 2 segments can directly connect based on their types, regular/flipped and directions.
+        local connectedSegment  ---@type UndergroundSegment
+        if foundSegmentPositionObject ~= nil then
+            connectedSegment = foundSegmentPositionObject.segment
+            local invalidConnectionMessageType, invalidThisSegmentEndType, invalidConnectedSegmentEndType
+
+            -- Due to the granularity (small size) of parts the connection points between almost any 2 can be made to connect, but many of them shouldn't connect as we couldn't build rail tracks within them.
+            -- TODO: we need to check that the directions are compatible, as a diagonal can be placed in reverse to a curve and they will connect, but be invalid. Regular to flipped look to be an issue in some of these cases.
+            if segment.typeData.segmentShape == SegmentShape.straight then
+                if connectedSegment.typeData.segmentShape == SegmentShape.diagonal or connectedSegment.typeData.segmentShape == SegmentShape.corner then
+                    invalidConnectionMessageType = "message.railway_tunnel-tunnel_parts_cant_connect_due_to_type"
+                elseif connectedSegment.typeData.segmentShape == SegmentShape.curved then
+                    -- Straight can only connect to the straight connection on the curve part (rear).
+                    if foundSegmentPositionObject.segmentsConnectionFacing == SegmentSurfacePositionFacing.front then
+                        invalidConnectionMessageType = "message.railway_tunnel-tunnel_part_cant_connect_to_wrong_end"
+                        invalidConnectedSegmentEndType = "message.railway_tunnel-diagonal"
+                    end
+                end
+            elseif segment.typeData.segmentShape == SegmentShape.curved then
+                -- Curves have different connection allowed lists for their front (diagonal) and back (straight).
+                if facing == "front" then
+                    -- Diagonal end.
+                    if connectedSegment.typeData.segmentShape == SegmentShape.straight or connectedSegment.typeData.segmentShape == SegmentShape.curved then
+                        invalidConnectionMessageType = "message.railway_tunnel-tunnel_part_cant_connect_with_wrong_end"
+                        invalidThisSegmentEndType = "message.railway_tunnel-diagonal"
+                    end
+                else
+                    -- Facing rear = Straight end.
+                    if connectedSegment.typeData.segmentShape == SegmentShape.diagonal or connectedSegment.typeData.segmentShape == SegmentShape.corner then
+                        invalidConnectionMessageType = "message.railway_tunnel-tunnel_part_cant_connect_with_wrong_end"
+                        invalidThisSegmentEndType = "message.railway_tunnel-straight"
+                    elseif connectedSegment.typeData.segmentShape == SegmentShape.curved then
+                        -- The straight end can't connect to another curved underground's diagonal end.
+                        if foundSegmentPositionObject.segmentsConnectionFacing == SegmentSurfacePositionFacing.front then
+                            invalidConnectionMessageType = "message.railway_tunnel-tunnel_part_cant_connect_with_wrong_end_to_wrong_end"
+                            invalidThisSegmentEndType = "message.railway_tunnel-straight"
+                            invalidConnectedSegmentEndType = "message.railway_tunnel-diagonal"
+                        end
+                    end
+                end
+            elseif segment.typeData.segmentShape == SegmentShape.diagonal then
+                if connectedSegment.typeData.segmentShape == SegmentShape.straight then
+                    invalidConnectionMessageType = "message.railway_tunnel-tunnel_parts_cant_connect_due_to_type"
+                elseif connectedSegment.typeData.segmentShape == SegmentShape.curved then
+                    -- A diagonal can connect to a curve's diagonal (front) end, but not it's straight (rear) end.
+                    if foundSegmentPositionObject.segmentsConnectionFacing == SegmentSurfacePositionFacing.rear then
+                        invalidConnectionMessageType = "message.railway_tunnel-tunnel_part_cant_connect_to_wrong_end"
+                        invalidConnectedSegmentEndType = "message.railway_tunnel-straight"
+                    end
+                end
+            elseif segment.typeData.segmentShape == SegmentShape.corner then
+                if connectedSegment.typeData.segmentShape == SegmentShape.straight or connectedSegment.typeData.segmentShape == SegmentShape.corner then
+                    invalidConnectionMessageType = "message.railway_tunnel-tunnel_parts_cant_connect_due_to_type"
+                elseif connectedSegment.typeData.segmentShape == SegmentShape.curved then
+                    -- A corner can connect to a curve's diagonal (front) end, but not it's straight (rear) end.
+                    if foundSegmentPositionObject.segmentsConnectionFacing == SegmentSurfacePositionFacing.rear then
+                        invalidConnectionMessageType = "message.railway_tunnel-tunnel_part_cant_connect_to_wrong_end"
+                        invalidConnectedSegmentEndType = "message.railway_tunnel-straight"
+                    end
+                end
+            end
+
+            -- If the connection shouldn't be made mark it as not connected and show the user a message on screen.
+            if invalidConnectionMessageType ~= nil then
+                local _, position = Utils.SurfacePositionStringToSurfaceAndPosition(checkDetails.internalCheckSurfacePositionString) -- Very rarely called so no harm in it being less effecient. Saves on bigger chanegs to whole data structure just for error message.
+                local thisEntityDescription = {"", {"message.railway_tunnel-" .. segment.typeData.segmentShape}, " ", {"message.railway_tunnel-segment"}}
+                local connectedEntityDescription = {"", {"message.railway_tunnel-" .. connectedSegment.typeData.segmentShape}, " ", {"message.railway_tunnel-segment"}}
+                local message
+                if invalidConnectionMessageType == "message.railway_tunnel-tunnel_parts_cant_connect_due_to_type" then
+                    message = {invalidConnectionMessageType, thisEntityDescription, connectedEntityDescription}
+                elseif invalidConnectionMessageType == "message.railway_tunnel-tunnel_part_cant_connect_to_wrong_end" then
+                    message = {invalidConnectionMessageType, thisEntityDescription, {invalidConnectedSegmentEndType}, connectedEntityDescription}
+                elseif invalidConnectionMessageType == "message.railway_tunnel-tunnel_part_cant_connect_with_wrong_end" then
+                    message = {invalidConnectionMessageType, thisEntityDescription, {invalidThisSegmentEndType}, connectedEntityDescription}
+                elseif invalidConnectionMessageType == "message.railway_tunnel-tunnel_part_cant_connect_with_wrong_end_to_wrong_end" then
+                    message = {invalidConnectionMessageType, thisEntityDescription, {invalidThisSegmentEndType}, connectedEntityDescription, {invalidConnectedSegmentEndType}}
+                end
+                TunnelShared.EntityErrorMessage(placer, message, segment.surface, position)
+
+                -- Clear the found connected part so its the code behaves like nothing valid was found.
+                connectedSegment = nil
+            end
+        end
+
+        -- If a underground reference at this position is found next to this one add this segment to its/new underground.
+        if connectedSegment ~= nil then
             -- Valid underground to create connection too, just work out how to handle this. Note some scenarios are not handled in this loop.
             if segment.underground and connectedSegment.underground == nil then
                 -- We have a underground and they don't, so add them to our underground.
@@ -902,7 +991,7 @@ Underground.TunnelCrossingSegment_OnCompletedTunnel = function(thisTunnelCrossin
     }
 
     -- Process the newly crated fake segment so it joins to its neighbors just like any other segment.
-    Underground.ProcessNewUndergroundSegmentObject(fakeSegment, nil, nil)
+    Underground.ProcessNewUndergroundSegmentObject(fakeSegment, nil, nil, nil)
 end
 
 --- Called when a real tunnel crossing has just been broken. Removes the fake crossing segment.
@@ -1305,7 +1394,7 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
     end
     -- Loop over each underground segment and add them back in to whatever underground they reform.
     for _, loopingUndergroundSegment in pairs(removedUnderground.segments) do
-        Underground.UpdateUndergroundsForNewSegment(loopingUndergroundSegment)
+        Underground.UpdateUndergroundsForNewSegment(loopingUndergroundSegment, nil)
     end
 end
 

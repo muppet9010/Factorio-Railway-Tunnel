@@ -109,8 +109,8 @@ local PortalPartType = {
 local SegmentShape = {
     straight = "straight", -- Short straight piece for horizontal and vertical.
     diagonal = "diagonal", -- Short diagonal piece.
-    curve = "curve", -- The start of a curve, so between Straight and Diagonal.
-    corner = "corner" -- The inner part of a curve that connects 2 curve's togeather to make a 90 degree corner.
+    curved = "curved", -- The start of a curve, so between Straight and Diagonal.
+    corner = "corner" -- The inner part of a curve that connects 2 curved's togeather to make a 90 degree corner.
 }
 
 ---@class PortalPartTypeData
