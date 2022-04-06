@@ -162,6 +162,11 @@ undergroundSegmentCurvedFlipped.picture = {
 
 local undergroundSegmentCurvedFlippedItem = Utils.DeepCopy(undergroundSegmentCurvedRegularItem)
 undergroundSegmentCurvedFlippedItem.name = "railway_tunnel-underground_segment-curved-flipped"
+undergroundSegmentCurvedFlippedItem.icon = nil
+undergroundSegmentCurvedFlippedItem.icons = {
+    {icon = undergroundSegmentCurvedRegularItem.icon},
+    {icon = "__railway_tunnel__/graphics/icon/flipped_f_letter/railway_tunnel-flipped_f_letter.png"}
+}
 undergroundSegmentCurvedFlippedItem.place_result = "railway_tunnel-underground_segment-curved-flipped"
 undergroundSegmentCurvedFlippedItem.subgroup = "railway_tunnel-other"
 undergroundSegmentCurvedFlippedItem.order = "a[train-system]-a[rail]e"

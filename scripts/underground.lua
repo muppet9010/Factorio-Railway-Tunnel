@@ -625,12 +625,15 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.rearExternalPositionOffset, segment.entity_position))
 
     -- TODO: show the internal connection points
+    --[[
     rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.frontInternalPosition, surface = segment.surface}
     rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.rearInternalPosition, surface = segment.surface}
     local _, frontExternalCheckSurfacePosition = Utils.SurfacePositionStringToSurfaceAndPosition(segment.frontExternalCheckSurfacePositionString)
     rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.125, filled = true, target = frontExternalCheckSurfacePosition, surface = segment.surface}
     local _, rearExternalCheckSurfacePosition = Utils.SurfacePositionStringToSurfaceAndPosition(segment.rearExternalCheckSurfacePositionString)
     rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.125, filled = true, target = rearExternalCheckSurfacePosition, surface = segment.surface}
+    ]]
+    --
 
     -- Register the new segment and its position for fast replace.
     global.undergrounds.segments[segment.id] = segment
@@ -1028,7 +1031,6 @@ end
 -- Checks if the tunnel is complete and if it is triggers the tunnel complete code.
 ---@param underground Underground
 Underground.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
-    -- TODO: make sure we don't connect from an un-suppported end part to a portal, i.e. a diagonal or corner can never connect to a portal. Will need to ensure the reverse check from theportal's viewpoint also checks for this.
     local portals, endPortalParts = {}, {}
     for _, UndergroundEndSegmentObject in pairs(underground.undergroundEndSegments) do
         local portal, endPortalPart = MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition(UndergroundEndSegmentObject.externalConnectableSurfacePosition)

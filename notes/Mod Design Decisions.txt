@@ -16,10 +16,12 @@ Construction bot:
     Bot fast replace entity: on_built_entity
 
 
+
 Ghost placement of fast replacement and rotations
 -------------------------------------------------
 
 A player can fast replace an entity over itself with a different rotation if it supports fast replacement, but a ghost placed over an entity using fast replacement with a different rotation is set back to the original rotation.
+
 
 
 Tunnel part connections
@@ -29,11 +31,13 @@ Portal and Underground parts connect within their own groups using connection po
 For a tunnel there must be an underground between 2 complete portals. As otherwise separating the portal parts from each other is a pain and why would you ever want a 0 length tunnel.
 
 
+
 Portal has tracks only with tunnel
 ----------------------------------
 
 The new design is that a portal without a tunnel has no tracks or other elements. This reduces entity creation during building and makes things simpler. This does mean that when a tunnel is destroyed all tracks for the underground and portal are removed, killing any trains on either (rare case in real game). Also, to mine part of a tunnel (portal or underground) the entire tunnel tracks must be clear, otherwise the mine should fail.
 In the past there was a separation between portals and undergrounds in terms of tracks, but this made things more complicated for no real world value.
+
 
 
 Events
@@ -42,16 +46,19 @@ Events
 - Use of on_pre_player_mined_item over on_player_mined_entity for portal and underground mining detection and undo logic. This is an historic decision and both events support entity type filtering. Appears to have been done as with the pre event in invalid removal situations we can destroy the old entity when we replace it. This destroying of the old entity prevents it being mined and so any mod reacting to the standard mined_entity event won't know about the attempt we blocked and undid. An alternative previously considered was to make the entities non minable while the tunnel was in use, but this is a lot of API calls on every tunnel usage.
 
 
+
 Train detector usage
 --------------------
 
 Using entities that are killed by a train reaching a certain point allows us to not track distances each tick, thus being significantly lower in UPS overall. They also trigger when the train reaches that exact spot, meaning no overrun is possible before we have reviewed the situation and taken the desired action. This results in no need for padding within the portal for fast moving trains and should let us support infinitely fast trains.
 
 
+
 Death event detection
 ---------------------
 
 At present we don't subscribe to any commonly named prototype death events, only our custom ones. And so I don't believe that using the specific entity instance death event would save any UPS, LuaBootstrap.register_on_entity_destroyed.
+
 
 
 Train leaving tunnel
@@ -61,6 +68,7 @@ Train leaving tunnel
 - A train that can't leave at full speed will have its expected leaving speed recalculated and the time to traverse the tunnel set to fully account for this. This means while a train enters the tunnel at full speed regardless of the rail network state on the other side the total duration and leaving speed of using the tunnel will correct this.
 
 
+
 Train with no fuel
 ------------------
 
@@ -68,6 +76,7 @@ Train with no fuel
 - This does mean a train with no fuel that starts approaching will accelerate towards the tunnel.
 - The leaving train will depart at the expected speed and traversing time of a fueled train.
 - This will generally resolve the issue of trying to re-fuel a train sitting in a portal, as with this approach frequently the train will escape the portal and thus be easily accessible.
+
 
 
 Traversing train not on player force
@@ -84,12 +93,14 @@ Notes on this area:
     - Once a graphic layer is put above the portals and has a selection option for the portal/tunnel player GUI then the train carriages on the portal will no longer be selectable.
 
 
+
 Portal part design
 ------------------
 
-- The external end of each portal needs to have its rail singal 1 tile in. This is so that signals can be placed freely by the player outside of the portal. This required the ends of portals to be atleast a 2 tile straight rail length and ruled out curved portal ends. Using the special larger end pieces that don't count towards max supported train length seemed more natural for the player, than forcing a short straight at each end and subtracting 12 tiles from the portal's total supported length.
+- The external end of each portal needs to have its rail signal 1 tile in. This is so that signals can be placed freely by the player outside of the portal. This required the ends of portals to be atleast a 2 tile straight rail length and ruled out curved portal ends. Using the special larger end pieces that don't count towards max supported train length seemed more natural for the player, than forcing a short straight at each end and subtracting 12 tiles from the portal's total supported length.
 - The tunnel's internal Portal end (blocked end) has rail signals on the outer tile and so adjacent underground segment signals can not be on this edge of the underground segment. This was done so that we could free up an internal portal rail and not have to enlarge the portal ends. Does require more compplicated logic in the undergroud segment types that need to put signals on them for above ground crossing rails.
 - Entry end of a portal needs suprising amount of room before the front of the leaving train can be placed. As while the entry detctor entity stops an externall approaching train from getting close to the portal, a leaving train could stop very close and a second train use the tunnel and be cloned too close. Theres now a 1 tile leeway for vanilla trains beyond the max carriage connection distance of an initial carriage leaving the tunnel when it has gone just far enough to not trigger the tunnel signals, and where the lead carriage of a second train using the tunnel is cloned too. So no way they can incorrectly connect in too 1 train any more. Was only possible when the first leaving train stopped just on the signal border as the enttry train detector is expected to be removed during this first train's leaving. This is why the trains are cloned 5 tiles back from the entry portal external border.
+
 
 
 Portal graphics
@@ -107,6 +118,20 @@ Portal graphics
 - Shadow type sprites don't render over the top of another sprite ever regardless of layer. So to make shadows inside the tunnel affect a trian leaving the tunnel they'd need to be done as a non-shadow semi-transparent dark color. Also means the shadow of the tunnel darkening its own graphics need to be baked in to the main graphics (currently it's not).
 
 
+
+Flipped portal part and underground segments
+--------------------------------------------
+
+The flipped diagonal and curve portal parts and underground segments design has the below notes:
+    - Blueprint flipping - At present I show a message to the player warning them when they flip the blueprint, rather than using an entity type that would hard block the flipping:
+        - The message tells them to flip it back to correct it, or to place the blueprint and then manaully fix the messed up parts. This allows for players to flip blueprints if they really want to manually fix them up afterwards, while semi protecting me from bug complaints.
+        - The only way to stop the game allowing flipping a blueprint of these parts would be to make the parts be an "assembling-machine" entity type with an off center fluid box. I would have to make it non-openable so the player can't interact with it and use various flags and prototype settings to suppress most negative aspects of it. Leaving the unavoidable downsides of:
+            - When the entity is hovered over it has a pipe connection graphic (blue arrow).
+            - When the entity is hoeverd over it shows assembly machine type attributes in the top right.
+            - The fluidbox connection must be outside of the entities collision box so pipes could be connected to it. I can set it as an output fluid box to avoid it taking in fluid, and put it where the part would connect to other parts to further reduce the chance of a player building a pipe in the "bad" adjacant spot.
+
+
+
 Processing trains per tick
 --------------------------
 
@@ -114,11 +139,13 @@ Explored delaying the TrainManager per tick functions (TrainApproachingOngoing, 
 The TrainApproachingOngoing function for setting speed seems less risky to delay as it would just make entering speed less stable, but when tested on a big train and 10 second initial delay it could cause the entering train to double call its signal reservation, flagging the risks involved.
 
 
+
 Train entry detector
 --------------------
 
 The train entry detector is intended to prevent *most* invalid tunnel uses while the train is outside of the portal and thus easiest for players to resolve. With the future introduction of manual train driving and other features this protection will likely be weakened. An example of when it won't detect a bad train is if a second train tails a first train into the same portal.
 As it isn't guaranteed to block all bad train usage an undesirable state must be handled by the active elements of the tunnel's usage (transition detectors and traversing train cloning process).
+
 
 
 Automatic tests not done
@@ -129,10 +156,12 @@ Automatic tests not done
     - Gap size where the leaving train front carriage starts from the furthest back a leaving train;s rear carraige could be and not trigger the tunnels signals. As the leaving trains projects a surprising distance in to the portal tracks and the second trian when cloned used to attach to it.
 
 
+
 Player riding train
 -------------------
 
 - In vanilla Factorio a player's screen position when riding in a vanilla train carriage is always 1 tick behind the trains position. This has to be accounted for when comparing players and their vehicles positions on the screen.
+
 
 
 Train tunnel usage
@@ -141,17 +170,19 @@ Train tunnel usage
 A train can be leaving a tunnel and start to use (approaching, onPortalTrack) another tunnel. But it can not be either leaving 2 tunnels at the same time or using 2 tunnels at once. The portal length of >= to train length prevents a train from physically being able to utilise 2 tunnels for the same action state.
 
 
+
 Train speed calulations
 -----------------------
 
 As train speeds within a tunnel are estimated from a static air resistence, the larger the acceleration difference from entering to leaving speed the greater the excessive leaving speed. As I have to use a static air resistance value based upon the speed the train initially enters a tunnel and there is no account for the fact this air resistance should increase with speed at present. We do clamp to max trains speed so the train just gets a small acceleration bonus in the tunnel.
 
 
+
 Sprite render vs entity
 -----------------------
 
 At present there is a mix of using entities and renders for adding additional graphics to portals and undergrounds on top of their core entity graphics. Portal uses sprite renders, while underground uses entities (simple-entity-with-force) with a sprite graphics. Differences noted so far:
-    - Both support render-layer on the sprite and allow multiple layers (images) within the sprite. And both have all layers at the same render-layer. So they appear equal for usage in multi layered scenarios.
+    - Both support render-layer on the sprite and allow multiple layers (images) within the sprite. And both have all layers at the same render-layer. So they appear equal for usage in multi layered scenarios. Rendering does allow changing the render_layer at run time, allowing for the debug feature of putting portal graphics behind trains, rather in front of them, otherwise this would have to be a start-up setting.
     - Entity (simple-entity-with-owner) supports 4 orientations of sprite. Render requires a seperate prototype per orientation. So entity is easier to code with as you can just match the graphical entity orientation to the real entity orientation and it will be correct, while renders require careful sprite selection by name of orientation.
     - Entity creation is around 3 times the cost of creating renders, but they aren't changed often and are a one off UPS hit at tunnel creation/removal.
 Not sure which one is best and so haven't standardised on one yet.

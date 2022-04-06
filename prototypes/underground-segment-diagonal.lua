@@ -161,6 +161,11 @@ undergroundSegmentDiagonalFlipped.picture = {
 
 local undergroundSegmentDiagonalFlippedItem = Utils.DeepCopy(undergroundSegmentDiagonalRegularItem)
 undergroundSegmentDiagonalFlippedItem.name = "railway_tunnel-underground_segment-diagonal-flipped"
+undergroundSegmentDiagonalFlippedItem.icon = nil
+undergroundSegmentDiagonalFlippedItem.icons = {
+    {icon = undergroundSegmentDiagonalRegularItem.icon},
+    {icon = "__railway_tunnel__/graphics/icon/flipped_f_letter/railway_tunnel-flipped_f_letter.png"}
+}
 undergroundSegmentDiagonalFlippedItem.place_result = "railway_tunnel-underground_segment-diagonal-flipped"
 undergroundSegmentDiagonalFlippedItem.subgroup = "railway_tunnel-other"
 undergroundSegmentDiagonalFlippedItem.order = "a[train-system]-a[rail]f"
