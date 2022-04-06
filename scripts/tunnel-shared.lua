@@ -535,6 +535,7 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
                         target = event.cursor_position,
                         color = Colors.red,
                         time_to_live = 900,
+                        players = {player},
                         scale_with_zoom = true,
                         alignment = "center",
                         vertical_alignment = "bottom"
@@ -547,6 +548,7 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
                         target = event.cursor_position,
                         color = Colors.red,
                         time_to_live = 900,
+                        players = {player},
                         scale_with_zoom = true,
                         alignment = "center",
                         vertical_alignment = "top"
@@ -641,6 +643,7 @@ TunnelShared.SwapCursorFromRealTunnelPartToFakeTunnelPart = function(player, rea
         cursorCount = playerCursorStack.count -- Get once set as this will account for the max stack size.
     }
     if global.tunnelShared.playersFakePartTracking[playerId] ~= nil then
+        --TODO: some edge case in editor we are tracking inventory and not stopping?
         error("Starting to track player's inventory for fake/real tunnel parts when its already being tracked.")
     end
     global.tunnelShared.playersFakePartTracking[playerId] = playersFakePartTrackingData

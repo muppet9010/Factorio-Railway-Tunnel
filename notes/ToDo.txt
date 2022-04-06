@@ -1,7 +1,5 @@
 Now
 ---
-    - Maybe having the internal and external checking position of diagonal ends should be at an angle and not a cardinal direction. This might make things only connect on their correct direction and not require inspeciton to detect invalid zig-zagging (TODO).
-
     - Allow corners and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.
         + Theres 8 orientations of the curved rail and I will need the same for all my curved pieces. So will need to link to the 2 "Flip" controls to change my entity type between 2 curved portal parts, but both must be built and mined by the same so no weirdness during player building and blueprinting.
         + At present concept the BP and bots can build the 2 entities from 1 item fine, but smart-pipette from both returns the regular. Mod will need to react to the smart-pipette and return the correct item to cursor after loading regular count from inventory. This seems the only downside from current concept and all other BP, bot construction and mining just works.
