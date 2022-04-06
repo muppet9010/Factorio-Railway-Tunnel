@@ -32,15 +32,6 @@ data:extend(
             key_sequence = "",
             linked_game_control = "flip-blueprint-vertical",
             action = "lua"
-        },
-        -- Use the smart-pipette (Q).
-        {
-            type = "custom-input",
-            name = "railway_tunnel-smart_pipette",
-            key_sequence = "",
-            linked_game_control = "smart-pipette",
-            action = "lua",
-            include_selected_prototype = true
         }
     }
 )

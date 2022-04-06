@@ -96,8 +96,7 @@ TunnelShared.OnLoad = function()
     Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_horizontal", "TunnelShared.OnFlipBlueprintHorizontalInput", TunnelShared.OnFlipBlueprintHorizontalInput)
     Events.RegisterHandlerCustomInput("railway_tunnel-flip_blueprint_vertical", "TunnelShared.OnFlipBlueprintVerticalInput", TunnelShared.OnFlipBlueprintVerticalInput)
     EventScheduler.RegisterScheduledEventType("TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled)
-    Events.RegisterHandlerCustomInput("railway_tunnel-smart_pipette", "TunnelShared.OnSmartPipetteInput", TunnelShared.OnSmartPipetteInput)
-    EventScheduler.RegisterScheduledEventType("TunnelShared.OnSmartPipetteInput_DelayedAction", TunnelShared.OnSmartPipetteInput_DelayedAction)
+    Events.RegisterHandlerEvent(defines.events.on_player_pipette, "TunnelShared.OnSmartPipette", TunnelShared.OnSmartPipette)
 end
 
 --- Checks if an entity is on the rail grid based on its type. As some entities are centered off rail grid.
@@ -642,12 +641,11 @@ TunnelShared.SwapCursorFromRealTunnelPartToFakeTunnelPart = function(player, rea
         fakeItemInCursorName = fakeItemInCursorName,
         cursorCount = playerCursorStack.count -- Get once set as this will account for the max stack size.
     }
-    if global.tunnelShared.playersFakePartTracking[playerId] ~= nil then
-        --TODO: some edge case in editor we are tracking inventory and not stopping?
-        error("Starting to track player's inventory for fake/real tunnel parts when its already being tracked.")
+    -- If theres no schedule already for this player then schedule it. 2 swaps can be done in the same tick when the game is paused, but they may be for different items. So we always replace the old ones data, but don't schedule a new event as it would be a duplicate for the player Id.
+    if global.tunnelShared.playersFakePartTracking[playerId] == nil then
+        EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerId)
     end
     global.tunnelShared.playersFakePartTracking[playerId] = playersFakePartTrackingData
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerId)
 end
 
 --- Called every tick to update the fake cursor item count with the real count from the players inventory. This is to catch any non player building actions that lead to a reducution in the item in the player's inventory.
@@ -683,6 +681,7 @@ TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     else
         -- None left in inventory so remove cursor item and just don't add another check.
         player_cursorStack.clear()
+        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.instanceId, event.tick)
     end
 end
 
@@ -728,32 +727,32 @@ TunnelShared.FakeTunnelPartBuiltByPlayer = function(event, createdEntity_name)
     end
 end
 
---- Called to stop tracking a player's real  tunnel part to fake tunnel part item count.
+--- Called to stop tracking a player's real tunnel part to fake tunnel part item count.
 ---@param playerIndex Id
 ---@param currentTick Tick
 TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount = function(playerIndex, currentTick)
     global.tunnelShared.playersFakePartTracking[playerIndex] = nil
-    EventScheduler.RemoveScheduledOnceEvents("TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerIndex, currentTick)
+    EventScheduler.RemoveScheduledOnceEvents("TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerIndex)
 end
 
---- Called when a player presses the Q key to use the smart pipette. Runs before the game handles the event and does its action based on what event(s) are bound to the key.
+--- Called when a player triggers the smart pipette functionality (not just every time the key is pressed). Runs after the game handles the event in its default way.
 ---
 --- We only react if its a flipped fake/real tunnel part being selected as it will give the regular item (non-flipped) by default, so we need to change it to the right item/ghost.
----@param event CustomInputEvent
-TunnelShared.OnSmartPipetteInput = function(event)
-    -- Only need to react if the player's cursor has selected an entity when the key is pressed.
-    if event.selected_prototype == nil or event.selected_prototype.base_type ~= "entity" then
+---@param event on_player_pipette
+TunnelShared.OnSmartPipette = function(event)
+    local player = game.get_player(event.player_index) ---@type LuaPlayer
+    local selectedEntity = player.selected
+    if selectedEntity == nil then
         return
     end
 
     -- Only react if its one of our parts (entity or ghost) with a fake item to build it.
-    local selectedEntityName = event.selected_prototype.name
-    local player  ---@type LuaPlayer
+    local selectedEntityName = selectedEntity.name
     local realItemName = Common.FakeTunnelPartNameToRealTunnelPartName[selectedEntityName]
     if realItemName == nil then
         if selectedEntityName == "entity-ghost" then
             player = game.get_player(event.player_index)
-            selectedEntityName = player.selected.ghost_name
+            selectedEntityName = selectedEntity.ghost_name
             realItemName = Common.FakeTunnelPartNameToRealTunnelPartName[selectedEntityName]
             if realItemName == nil then
                 -- Not a ghost type we need to react too.
@@ -765,30 +764,8 @@ TunnelShared.OnSmartPipetteInput = function(event)
         end
     end
 
-    player = player or game.get_player(event.player_index) -- Player may have bene populated already in some cases.
-    local itemInHand = player.cursor_stack
-    -- If there's an item or ghost in the cursor then do nothing, as this is how vanilla smart pipette works.
-    if itemInHand.valid_for_read or player.cursor_ghost ~= nil then
-        return
-    end
-
-    -- Schedule the rest of the process to occur after the base Factorio action has completed. Otherwise this base action overwrites whatever we do here.
-    ---@class OnSmartPipetteInput_DelayedAction_Data
-    local data = {
-        player = player,
-        selectedEntityName = selectedEntityName, ---@string
-        realItemInInventoryName = realItemName, ---@string
-        playerCursorStack = itemInHand
-    }
-    EventScheduler.ScheduleEventOnce(-1, "TunnelShared.OnSmartPipetteInput_DelayedAction", event.player_index, data)
-end
-
---- Delayed until after the base Factorio action has been completed. Called using a 0 tick scheduled event.
----@param event UtilityScheduledEvent_CallbackObject
-TunnelShared.OnSmartPipetteInput_DelayedAction = function(event)
-    local data = event.data ---@type OnSmartPipetteInput_DelayedAction_Data
-
-    TunnelShared.SwapCursorFromRealTunnelPartToFakeTunnelPart(data.player, data.realItemInInventoryName, data.selectedEntityName, data.playerCursorStack, event.tick, event.instanceId)
+    -- Set the cursor to the desired item.
+    TunnelShared.SwapCursorFromRealTunnelPartToFakeTunnelPart(player, realItemName, selectedEntityName, player.cursor_stack, event.tick, event.player_index)
 end
 
 return TunnelShared
