@@ -624,7 +624,7 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     segment.frontExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.frontExternalPositionOffset, segment.entity_position))
     segment.rearExternalCheckSurfacePositionString = Utils.FormatSurfacePositionToString(segment.surface_index, Utils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.rearExternalPositionOffset, segment.entity_position))
 
-    -- TODO: show the internal connection points
+    -- TODO - TESTING - show the internal connection points
     --[[
     rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.frontInternalPosition, surface = segment.surface}
     rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.rearInternalPosition, surface = segment.surface}

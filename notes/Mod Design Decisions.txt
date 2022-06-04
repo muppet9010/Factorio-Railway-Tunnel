@@ -122,13 +122,19 @@ Portal graphics
 Flipped portal part and underground segments
 --------------------------------------------
 
-The flipped diagonal and curve portal parts and underground segments design has the below notes:
+The flipped diagonal and curve portal parts and underground segments design has the below notes (not corner parts, they are simple):
     - Blueprint flipping - At present I show a message to the player warning them when they flip the blueprint, rather than using an entity type that would hard block the flipping:
         - The message tells them to flip it back to correct it, or to place the blueprint and then manaully fix the messed up parts. This allows for players to flip blueprints if they really want to manually fix them up afterwards, while semi protecting me from bug complaints.
         - The only way to stop the game allowing flipping a blueprint of these parts would be to make the parts be an "assembling-machine" entity type with an off center fluid box. I would have to make it non-openable so the player can't interact with it and use various flags and prototype settings to suppress most negative aspects of it. Leaving the unavoidable downsides of:
             - When the entity is hovered over it has a pipe connection graphic (blue arrow).
             - When the entity is hoeverd over it shows assembly machine type attributes in the top right.
             - The fluidbox connection must be outside of the entities collision box so pipes could be connected to it. I can set it as an output fluid box to avoid it taking in fluid, and put it where the part would connect to other parts to further reduce the chance of a player building a pipe in the "bad" adjacant spot.
+    - Used flip blueprint button on non straight tunnel parts to change between the regular and flipped parts to make it clear when the cursor item is going to change and the limitations on filtering and BP with the parts. If I allowed rotating between all the parts by script magic it might seem more seemless to the player, but it would also make the negatives be more of a surprise to the player when they occured:
+        - BP's not flippable.
+        - Could be issues rotating BP's ?
+        - How to handle if the flipped item in player hand/inventory was dropped or otherwise interacted with by other mods as it wouldn't be the standard item, but the player wouldn't realise it was special. At present its always returned to the real item as the flipped item can only exist in hand.
+        - Filtering of inventories or other places with the 2 different types (regualr & filtered) of tunnel parts, but this not being one part was hidden from the player.
+    - If the player tries to do anything with the flipped fake item other than build/ghost it, it will silently fail. Examples include: use it to set a filter, drop the cursor item on the ground or in to an inventory (player/chest). Will have an indication on the item image and some text warning on the main item.
 
 
 

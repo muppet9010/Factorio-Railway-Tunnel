@@ -1,21 +1,22 @@
 Now
 ---
-    - Allow corners and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.
+    - Open all of the files and fix any warnings from the increased accuracy of new EmmyLua and LuaCheck. Do as own commit.
+
+    + Allow corners, curves and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.
         + Theres 8 orientations of the curved rail and I will need the same for all my curved pieces. So will need to link to the 2 "Flip" controls to change my entity type between 2 curved portal parts, but both must be built and mined by the same so no weirdness during player building and blueprinting.
         + At present concept the BP and bots can build the 2 entities from 1 item fine, but smart-pipette from both returns the regular. Mod will need to react to the smart-pipette and return the correct item to cursor after loading regular count from inventory. This seems the only downside from current concept and all other BP, bot construction and mining just works.
         + Ghosts handled: Ghost item in hand being flipped, when smart pipette used on a real entity and have none in inventory are handled (gives ghsot item), smart pipette on a ghost entity.
         + BP flipping is handled (warned against) as simpiest current approach. With players able to use this to then fix up a flipped BP if they so desire.
-        - Document (readme and design decisions) that the use of Flip to change between non straight tunnel parts is to make it clear when the cursor item is going to change and the limitations on filtering and BP with the parts. The flipped entities are needed so that a blueprint can be rotated correctly. If I allowed rotating between the parts it might seem more seemless, but it would also make the negatives more suprising when they occur.
 
-    - Allow corners and diagonals with the portal pieces, same as undergroud segments.
+    - Allow corners, curves and diagonals with the portal pieces, same as undergroud segments. Just use ground placeholder graphics for now.
 
-    - Train cloning to an exit portal when it enters will need to account for the shape of each portal part and may involve flipping all/some carriages.
-    - Portals need to support not being aligned, i.e. a U shape or at 90 degrees. Any current logic that just assumes they are striaght.
-    - Player Container position will need expanding to handle corners in tunnel and portal parts.
+    - Script logic changes: needed for underground and/or portal corners:
+        - Train cloning to an exit portal when it enters will need to account for the shape of each portal part and may involve flipping all/some carriages.
+        - Portals need to support not being aligned, i.e. a U shape or at 90 degrees. Any current logic that just assumes they are straight.
+        - Player Container position will need expanding to handle corners in tunnel and portal parts.
 
-    Known limitations from having to make a fake 8 way rotatable entity with approperiate collision boxes:
-        - When flipping a BP with curved tunnel parts the BP item in hand for that player won't be correct. A red warning message is shwon to the player telling them to flip it back or manually fix it. As I can't find a way to prevent the flip. The real BP isn't affected and if the player reloads the game it will also correct the BPs state (flip it back).
-        - If the player tries to do anything with the flipped fake item other than build/ghost it, it will silently fail. Examples include: use it to set a filter, drop the cursor item on the ground or in to an inventory (player/chest). Will have an indication on the item image and some text warning on the main item.
+    - Make temporary graphics for the corner and diagonal portal pieces.
+
 
 
 Bugs / Next
