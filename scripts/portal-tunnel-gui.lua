@@ -483,7 +483,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
                                             {
                                                 descriptiveName = "pt_open_add_fuel_inventory",
                                                 type = "button",
-                                                style = MuppetStyles.button.text.medium.paddingSides,
+                                                style = MuppetStyles.button.medium.paddingSides,
                                                 caption = "self",
                                                 tooltip = trainFuel_tooltip,
                                                 registerClick = {actionName = "PortalTunnelGui.On_OpenAddFuelInventoryClicked"},
@@ -493,7 +493,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
                                                 descriptiveName = "pt_toggle_mine_tunnel_train_gui",
                                                 type = "button",
                                                 storeName = "portalTunnelGui_contents",
-                                                style = MuppetStyles.button.text.medium.paddingSides,
+                                                style = MuppetStyles.button.medium.paddingSides,
                                                 caption = {"gui-caption.railway_tunnel-pt_toggle_mine_tunnel_train_gui-show"},
                                                 tooltip = "self",
                                                 registerClick = {actionName = "PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked"}
@@ -767,7 +767,7 @@ PortalTunnelGui.On_ToggleMineTunnelTrainGuiClicked = function(event)
                                         descriptiveName = "pt_mine_tunnel_train_button",
                                         type = "button",
                                         storeName = "portalTunnelGui_mineTrain",
-                                        style = MuppetStyles.button.text.medium.plain,
+                                        style = MuppetStyles.button.medium.plain,
                                         styling = {left_margin = 30},
                                         caption = "self",
                                         tooltip = {"gui-tooltip.railway_tunnel-pt_mine_tunnel_train_button-disabled"},
