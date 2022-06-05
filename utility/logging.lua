@@ -3,7 +3,8 @@
 
 local Logging = {}
 local Constants = require("constants")
-local Utils = require("utility.utils")
+local StringUtils = require("utility.string-utils")
+local TableUtils = require("utility.table-utils")
 
 ---@param position MapPosition
 ---@return string
@@ -110,7 +111,7 @@ Logging.RunFunctionAndCatchErrors = function(functionRef, ...)
         AddLineToContents("")
         AddLineToContents("Function call arguments:")
         for index, arg in pairs(args) do
-            AddLineToContents(Utils.TableContentsToJSON(Logging.PrintThingsDetails(arg), index))
+            AddLineToContents(TableUtils.TableContentsToJSON(Logging.PrintThingsDetails(arg), index))
         end
 
         game.write_file(logFileName, contents, false) -- Wipe file if it exists from before.
@@ -228,7 +229,7 @@ end
 --- Writes out sequential numbers at the SurfacePositionString. Used as a visial debugging tool.
 ---@param targetSurfacePositionString SurfacePositionString
 Logging.WriteOutNumberedMarkerForSurfacePositionString = function(targetSurfacePositionString)
-    local tempSurfaceId, tempPos = Utils.SurfacePositionStringToSurfaceAndPosition(targetSurfacePositionString)
+    local tempSurfaceId, tempPos = StringUtils.SurfacePositionStringToSurfaceAndPosition(targetSurfacePositionString)
     Logging.WriteOutNumberedMarker(tempSurfaceId, tempPos)
 end
 

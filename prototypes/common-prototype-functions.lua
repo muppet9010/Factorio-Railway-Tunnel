@@ -1,4 +1,4 @@
-local Utils = require("utility.utils")
+local PrototypeUtils = require("utility.prototype-utils")
 local CommonPrototypeFunctions = {}
 
 CommonPrototypeFunctions.GetBlankAnimations = function(rotations)
@@ -26,7 +26,7 @@ end
 CommonPrototypeFunctions.GetBlankCircuitConnectorSprites = function(rotations)
     local sprites = {}
     for _ = 1, rotations do
-        table.insert(sprites, {led_red = Utils.EmptyRotatedSprite(), led_green = Utils.EmptyRotatedSprite(), led_blue = Utils.EmptyRotatedSprite(), led_light = {type = "basic", intensity = 0, size = 0}})
+        table.insert(sprites, {led_red = PrototypeUtils.EmptyRotatedSprite(), led_green = PrototypeUtils.EmptyRotatedSprite(), led_blue = PrototypeUtils.EmptyRotatedSprite(), led_light = {type = "basic", intensity = 0, size = 0}})
     end
     return sprites
 end

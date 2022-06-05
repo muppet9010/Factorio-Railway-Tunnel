@@ -3,7 +3,7 @@
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
 local Common = require("scripts.common")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 ---@class Tests_BTL_TrainCompositions
 local TrainCompositions = {
@@ -132,11 +132,11 @@ Test.EveryTick = function(event)
         if testDataBespoke.leavingStateshandled >= loopCountNeeded then
             -- Check if the required number of trains went through the 2 stations.
             -- We have to do one more tunnel usage than stations reached as we start and end with a tunnel usage, rather than a station visit.
-            if Utils.GetTableNonNilLength(testDataBespoke.northStationTrainIds) ~= math.floor(loopCountNeeded / 2) then
+            if TableUtils.GetTableNonNilLength(testDataBespoke.northStationTrainIds) ~= math.floor(loopCountNeeded / 2) then
                 TestFunctions.TestFailed(testName, "train dodn't go through the north station the required count")
                 return
             end
-            if Utils.GetTableNonNilLength(testDataBespoke.southStationTrainIds) ~= math.floor(loopCountNeeded / 2) then
+            if TableUtils.GetTableNonNilLength(testDataBespoke.southStationTrainIds) ~= math.floor(loopCountNeeded / 2) then
                 TestFunctions.TestFailed(testName, "train dodn't go through the south station the required count")
                 return
             end

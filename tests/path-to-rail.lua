@@ -2,7 +2,8 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local PositionUtils = require("utility.position-utils")
+local TableUtils = require("utility.table-utils")
 
 Test.RunTime = 1800
 
@@ -19,7 +20,7 @@ Test.Start = function(testName)
 
     -- Get the end rails.
     local farWestRail, farEastRail
-    for _, railEntity in pairs(Utils.GetTableValueWithInnerKeyValue(builtEntities, "name", "straight-rail", true, false)) do
+    for _, railEntity in pairs(TableUtils.GetTableValueWithInnerKeyValue(builtEntities, "name", "straight-rail", true, false)) do
         if farWestRail == nil or railEntity.position.x < farWestRail.position.x then
             farWestRail = railEntity
         end
@@ -63,8 +64,8 @@ Test.EveryTick = function(event)
     local testData = TestFunctions.GetTestDataObject(event.instanceId)
     local testDataBespoke = testData.bespoke ---@type Tests_PTR_TestScenarioBespokeData
 
-    local westTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
-    local eastTrain = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+    local westTrain = TestFunctions.GetTrainAtPosition(PositionUtils.ApplyOffsetToPosition(testDataBespoke.farWestRail.position, {x = 2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
+    local eastTrain = TestFunctions.GetTrainAtPosition(PositionUtils.ApplyOffsetToPosition(testDataBespoke.farEastRail.position, {x = -2, y = 0})) -- Loco's don't pull up to center of rail position, so look inwards slightly.
 
     if westTrain ~= nil and not testDataBespoke.farWestRailReached then
         local currentTrainSnapshot = TestFunctions.GetSnapshotOfTrain(westTrain, 0.75)

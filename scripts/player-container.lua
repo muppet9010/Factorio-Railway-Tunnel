@@ -2,7 +2,8 @@
 
 local PlayerContainer = {}
 local Events = require("utility.events")
-local Utils = require("utility.utils")
+local PositionUtils = require("utility.position-utils")
+local DirectionUtils = require("utility.direction-utils")
 local EventScheduler = require("utility.event-scheduler")
 local Common = require("scripts.common")
 local RollingStockTypes = Common.RollingStockTypes
@@ -151,7 +152,7 @@ PlayerContainer.PlayerLeaveTunnelVehicle = function(playerIndex, player, portalP
         -- Riding in a player container so can do lookup on tunnel its using.
         local managedTrain = playerContainer.managedTrain
         local player_position = player.position
-        if Utils.GetDistance(managedTrain.entrancePortal.portalEntryPointPosition, player_position) < Utils.GetDistance(managedTrain.exitPortal.portalEntryPointPosition, player_position) then
+        if PositionUtils.GetDistance(managedTrain.entrancePortal.portalEntryPointPosition, player_position) < PositionUtils.GetDistance(managedTrain.exitPortal.portalEntryPointPosition, player_position) then
             portalObject = managedTrain.entrancePortal
         else
             portalObject = managedTrain.exitPortal
@@ -232,11 +233,11 @@ PlayerContainer.MoveATrainsPlayerContainers = function(managedTrain, speedAbs)
     -- Update any player containers for this specific train.
 
     -- Just works for straight tunnels at present. This could in theory be cached, but once we add in curves it can't be and will be low concurrent calls per tick.
-    local positionMovement = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = -speedAbs})
+    local positionMovement = PositionUtils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = -speedAbs})
 
     local thisTrainsPlayerContainers = global.playerContainers.trainManageEntriesPlayerContainers[managedTrain.id]
     for _, playerContainer in pairs(thisTrainsPlayerContainers) do
-        local playerContainerNewPosition = Utils.ApplyOffsetToPosition(playerContainer.entityPositionLastTick, positionMovement)
+        local playerContainerNewPosition = PositionUtils.ApplyOffsetToPosition(playerContainer.entityPositionLastTick, positionMovement)
         playerContainer.entity.teleport(playerContainerNewPosition)
         playerContainer.entityPositionLastTick = playerContainerNewPosition
     end
@@ -269,7 +270,7 @@ PlayerContainer.TransferPlayersFromContainersToLeavingCarriages = function(manag
                 end
             end
             if viewJumpedBackwards then
-                error("Players view jumped backwards for train heading " .. Utils.DirectionValueToName[managedTrain.trainTravelDirection])
+                error("Players view jumped backwards for train heading " .. DirectionUtils.DirectionValueToName[managedTrain.trainTravelDirection])
             end
         end
 

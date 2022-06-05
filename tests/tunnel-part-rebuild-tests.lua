@@ -4,7 +4,7 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 ---@class Tests_TPRT_PartToRemove
 local PartToRemove = {
@@ -83,7 +83,7 @@ Test.Start = function(testName)
     local portal_exit_innerEnd = placedEntitiesByGroup["railway_tunnel-portal_end"][2]
     local portal_entrance_innerEnd = placedEntitiesByGroup["railway_tunnel-portal_end"][3]
     local portal_entrance_outerEnd = placedEntitiesByGroup["railway_tunnel-portal_end"][4]
-    local portalSegments = Utils.GetTableValueWithInnerKeyValue(allPlacedEntities, "name", "railway_tunnel-portal_segment-straight", true, false)
+    local portalSegments = TableUtils.GetTableValueWithInnerKeyValue(allPlacedEntities, "name", "railway_tunnel-portal_segment-straight", true, false)
     local portal_exit_outerSegment = portalSegments[1]
     local portal_exit_middleSegment = portalSegments[3]
     local portal_exit_innerSegment = portalSegments[5]

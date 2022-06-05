@@ -1,4 +1,4 @@
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 local undergroundSegmentDiagonalRegular = {
     type = "simple-entity-with-owner",
@@ -123,7 +123,7 @@ local undergroundSegmentDiagonalRegularTopLayer = {
 
 -- The minining of the flipped part intentionally gives the regular part item as we want the player to only ever have the regular item in their inventory.
 
-local undergroundSegmentDiagonalFlipped = Utils.DeepCopy(undergroundSegmentDiagonalRegular)
+local undergroundSegmentDiagonalFlipped = TableUtils.DeepCopy(undergroundSegmentDiagonalRegular)
 undergroundSegmentDiagonalFlipped.name = "railway_tunnel-underground_segment-diagonal-flipped"
 undergroundSegmentDiagonalFlipped.placeable_by = {
     -- The order seems irrelevent in which is returned by Q (smart-pipette) as the item's place_result seems to take priority and thus gives regular part. Can react to the smart-pipette action and give the correct item via script.
@@ -159,7 +159,7 @@ undergroundSegmentDiagonalFlipped.picture = {
     }
 }
 
-local undergroundSegmentDiagonalFlippedItem = Utils.DeepCopy(undergroundSegmentDiagonalRegularItem)
+local undergroundSegmentDiagonalFlippedItem = TableUtils.DeepCopy(undergroundSegmentDiagonalRegularItem)
 undergroundSegmentDiagonalFlippedItem.name = "railway_tunnel-underground_segment-diagonal-flipped"
 undergroundSegmentDiagonalFlippedItem.icon = nil
 undergroundSegmentDiagonalFlippedItem.icons = {
@@ -174,7 +174,7 @@ undergroundSegmentDiagonalFlippedItem.localised_description = {"item-description
 table.insert(undergroundSegmentDiagonalFlippedItem.flags, "only-in-cursor")
 table.insert(undergroundSegmentDiagonalFlippedItem.flags, "hidden") -- Not in filter lists.
 
-local undergroundSegmentDiagonalFlippedTopLayer = Utils.DeepCopy(undergroundSegmentDiagonalRegularTopLayer)
+local undergroundSegmentDiagonalFlippedTopLayer = TableUtils.DeepCopy(undergroundSegmentDiagonalRegularTopLayer)
 undergroundSegmentDiagonalFlippedTopLayer.name = "railway_tunnel-underground_segment-diagonal-flipped-top_layer"
 undergroundSegmentDiagonalFlippedTopLayer.picture = {
     north = {

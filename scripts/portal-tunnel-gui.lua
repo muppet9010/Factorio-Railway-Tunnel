@@ -1,6 +1,8 @@
 local Events = require("utility.events")
 local EventScheduler = require("utility.event-scheduler")
-local Utils = require("utility.utils")
+local InventoryUtils = require("utility.inventory-utils")
+local TrainUtils = require("utility.train-utils")
+local DirectionUtils = require("utility.direction-utils")
 local GuiUtil = require("utility.gui-util")
 local GuiActionsClick = require("utility.gui-actions-click")
 local GuiActionsChecked = require("utility.gui-actions-checked")
@@ -286,14 +288,14 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
         local portal1, portal2 = thisPortal.tunnel.portals[1], thisPortal.tunnel.portals[2]
         if portal1.leavingDirection == defines.direction.north or portal1.leavingDirection == defines.direction.west then
             portalA = portal1
-            portalAOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal1.leavingDirection] .. "-capital"}
+            portalAOrientationText = {"gui-caption.railway_tunnel-" .. DirectionUtils.DirectionValueToName[portal1.leavingDirection] .. "-capital"}
             portalB = portal2
-            portalBOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal2.leavingDirection] .. "-capital"}
+            portalBOrientationText = {"gui-caption.railway_tunnel-" .. DirectionUtils.DirectionValueToName[portal2.leavingDirection] .. "-capital"}
         else
             portalA = portal2
-            portalAOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal2.leavingDirection] .. "-capital"}
+            portalAOrientationText = {"gui-caption.railway_tunnel-" .. DirectionUtils.DirectionValueToName[portal2.leavingDirection] .. "-capital"}
             portalB = portal1
-            portalBOrientationText = {"gui-caption.railway_tunnel-" .. Utils.DirectionValueToName[portal1.leavingDirection] .. "-capital"}
+            portalBOrientationText = {"gui-caption.railway_tunnel-" .. DirectionUtils.DirectionValueToName[portal1.leavingDirection] .. "-capital"}
         end
         if thisPortal.id == portalA.id then
             portalASelectedText = {"gui-caption.railway_tunnel-selected-capital-brackets"}
@@ -647,7 +649,7 @@ PortalTunnelGui.Scheduled_TrackTrainFuelChestGui = function(event)
                     if burner ~= nil then
                         local burnerInventory = burner.inventory
                         if burnerInventory ~= nil then
-                            local _, someFuelTaken = Utils.TryMoveInventoriesLuaItemStacks(fuelChestInventory, burnerInventory, false, thisLocoRatio)
+                            local _, someFuelTaken = InventoryUtils.TryMoveInventoriesLuaItemStacks(fuelChestInventory, burnerInventory, false, thisLocoRatio)
                             if someFuelTaken then
                                 locoCountTakingFuel = locoCountTakingFuel + 1
                             end
@@ -684,7 +686,7 @@ PortalTunnelGui.RemoveTrainFuelChest = function(fuelChest, player)
     local fuelChest_inventory = fuelChest.get_inventory(defines.inventory.chest)
     if not fuelChest_inventory.is_empty() then
         if playerInventory ~= nil then
-            Utils.TryMoveInventoriesLuaItemStacks(fuelChest_inventory, playerInventory, true, 1)
+            InventoryUtils.TryMoveInventoriesLuaItemStacks(fuelChest_inventory, playerInventory, true, 1)
         elseif fuelChest_inventory ~= nil then
             for index = 1, #fuelChest_inventory do
                 local itemStack = fuelChest_inventory[index]
@@ -825,7 +827,7 @@ PortalTunnelGui.On_MineTunnelTrainsClicked = function(event)
     -- Mine all of the carriages that are on each portal in to the container.
     for _, portal in pairs(thisPortal.tunnel.portals) do
         for _, railEntity in pairs(portal.portalRailEntities) do
-            Utils.MineCarriagesOnRailEntity(railEntity, portal.surface, false, minedTrainContainer_inventory, true)
+            TrainUtils.MineCarriagesOnRailEntity(railEntity, portal.surface, false, minedTrainContainer_inventory, true)
         end
     end
 

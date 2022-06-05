@@ -4,7 +4,8 @@ local TunnelShared = require("scripts.tunnel-shared")
 local Common = require("scripts.common")
 local TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
 --local RollingStockTypes = Common.RollingStockTypes
-local Utils = require("utility.utils")
+local MiscUtils = require("utility.misc-utils")
+local PositionUtils = require("utility.position-utils")
 
 ---@class Tunnel @ the tunnel object that managed trains can pass through.
 ---@field id Id @ unqiue id of the tunnel.
@@ -326,7 +327,7 @@ Tunnel.OnTrainCarriageEntityBuilt = function(event, createdEntity)
         return
     end
 
-    local placer = Utils.GetActionerFromEvent(event)
+    local placer = MiscUtils.GetActionerFromEvent(event)
     TunnelShared.UndoInvalidPlacement(createdEntity, placer, true, false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
@@ -342,7 +343,7 @@ Tunnel.OnTrainCarriageGhostBuilt = function(event, createdEntity, createdEntity_
     -- Have to check what rails are at the approximate ends of the ghost carriage.
     local createdEntity_position, createdEntity_orientation = createdEntity.position, createdEntity.orientation
     local carriageLengthFromCenter, surface, tunnelRailFound = Common.CarriagePlacementDistances[createdEntity_ghostName], createdEntity.surface, false
-    local frontRailPosition, backRailPosition = Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), Utils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
+    local frontRailPosition, backRailPosition = PositionUtils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation), PositionUtils.GetPositionForOrientationDistance(createdEntity_position, carriageLengthFromCenter, createdEntity_orientation - 0.5)
     local frontRailsFound = surface.find_entities_filtered {type = {"straight-rail", "curved-rail"}, position = frontRailPosition}
     -- Check the rails found both ends individaully: if theres a regular rail then ignore any tunnel rails, otherwise flag any tunnel rails.
     for _, railEntity in pairs(frontRailsFound) do
@@ -368,7 +369,7 @@ Tunnel.OnTrainCarriageGhostBuilt = function(event, createdEntity, createdEntity_
         return
     end
 
-    local placer = Utils.GetActionerFromEvent(event)
+    local placer = MiscUtils.GetActionerFromEvent(event)
     TunnelShared.UndoInvalidPlacement(createdEntity, placer, false, false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 

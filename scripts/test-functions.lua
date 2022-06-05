@@ -1,5 +1,7 @@
 local TestFunctions = {}
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
+local PositionUtils = require("utility.position-utils")
+local DirectionUtils = require("utility.direction-utils")
 local EventScheduler = require("utility.event-scheduler")
 local Events = require("utility.events")
 local Colors = require("utility.colors")
@@ -171,12 +173,12 @@ end
 ---@param filterList? table|null
 ---@return table filteredCopyOfTable
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
-    if Utils.IsTableEmpty(fullList) then
+    if TableUtils.IsTableEmpty(fullList) then
         error("empty/nil list provided to TestFunctions.ApplySpecificFilterToListByKeyName()")
     end
     local listToTest
-    if Utils.IsTableEmpty(filterList) then
-        listToTest = Utils.DeepCopy(fullList)
+    if TableUtils.IsTableEmpty(filterList) then
+        listToTest = TableUtils.DeepCopy(fullList)
     else
         listToTest = {}
         for _, entry in pairs(filterList) do
@@ -191,7 +193,7 @@ TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList
             end
         end
     end
-    if Utils.IsTableEmpty(listToTest) then
+    if TableUtils.IsTableEmpty(listToTest) then
         error("blank list output from TestFunctions.ApplySpecificFilterToListByKeyName(). Check input arguments.")
     end
     return listToTest
@@ -411,12 +413,12 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
     local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
     local placementPosition = firstCarriageFrontLocation
     local locomotivesBuilt, cargoWagonsBuilt = {}, {}
-    local trainReverseDirection = Utils.LoopDirectionValue(trainForwardsDirection + 4)
+    local trainReverseDirection = DirectionUtils.LoopDirectionValue(trainForwardsDirection + 4)
     local trainForwardsOrientation = trainForwardsDirection / 8
     for carriageNumber, carriageDetails in pairs(carriagesDetails) do
-        local carriageEndPositionOffset = Utils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.CarriagePlacementDistances[carriageDetails.prototypeName]})
+        local carriageEndPositionOffset = PositionUtils.RotatePositionAround0(trainForwardsOrientation, {x = 0, y = Common.CarriagePlacementDistances[carriageDetails.prototypeName]})
         -- Move placement position on by the front distance of the carriage to be placed, prior to its placement.
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
+        placementPosition = PositionUtils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
         local carriageBuildDirection
         if carriageDetails.facingForwards then
             carriageBuildDirection = trainForwardsDirection
@@ -426,7 +428,7 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
         placedCarriage = surface.create_entity {name = carriageDetails.prototypeName, position = placementPosition, direction = carriageBuildDirection, force = force, raise_built = false, create_build_effect_smoke = false}
         local placedCarriage_type = placedCarriage.type
         -- Move placement position on by the back distance of the carriage thats just been placed. Then ready for the next carriage and its unique distance.
-        placementPosition = Utils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
+        placementPosition = PositionUtils.ApplyOffsetToPosition(placementPosition, carriageEndPositionOffset)
 
         -- Store what we built by type for use later.
         if placedCarriage_type == "locomotive" then
@@ -441,7 +443,7 @@ TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails
         if placedCarriage_type == "locomotive" and locomotiveFuel ~= nil then
             local thisLocomotivesFuel
             if placedCarriage.burner.currently_burning == nil then
-                thisLocomotivesFuel = Utils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
+                thisLocomotivesFuel = TableUtils.DeepCopy(locomotiveFuel) -- Copy it before reducing it as it may be a shared table.
                 local fuelItem = game.item_prototypes[thisLocomotivesFuel.name]
                 placedCarriage.burner.currently_burning = fuelItem
                 placedCarriage.burner.remaining_burning_fuel = fuelItem.fuel_value -- Have to set in this case otherwise it ends up as a value of 0 and the fuel is instantly used up.
@@ -530,7 +532,7 @@ end
 ---@return LuaEntity[] placedEntities @ all build entities
 ---@return TestFunctions_PlacedEntitiesByGroup placedEntitiesByGroup @ the key entities built grouped on their prototype type or prototype name.
 TestFunctions.BuildBlueprintFromString = function(blueprintString, position, testName)
-    -- This is the lists of entity types that will be unique tracked and returned for easy accessing by test functions. Adding low instance types per BP is fine if multiple test needs them, but anything thats in a BP in high quantity (ie. rail) should be obtained within the test by Utils.GetTableValueWithInnerKeyValue() and may be lower UPS.
+    -- This is the lists of entity types that will be unique tracked and returned for easy accessing by test functions. Adding low instance types per BP is fine if multiple test needs them, but anything thats in a BP in high quantity (ie. rail) should be obtained within the test by TableUtils.GetTableValueWithInnerKeyValue() and may be lower UPS.
     ---@type table<string, LuaEntity[]>
     local placedEntitiesByType = {["locomotive"] = {}, ["cargo-wagon"] = {}, ["fluid-wagon"] = {}, ["artillery-wagon"] = {}, ["train-stop"] = {}}
     -- This is the entity types that will have their name checked against the placedEntitiesByName list. As most entity types don't need checking for inclusion in the list. Key is the entity type and value is if it should be checked. Defaults to not checked if not included in the list.
@@ -548,7 +550,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
     if itemStack.import_stack(blueprintString) ~= 0 then
         error("Error importing blueprint string for test: " .. testName)
     end
-    if Utils.IsTableEmpty(itemStack.cost_to_build) then
+    if TableUtils.IsTableEmpty(itemStack.cost_to_build) then
         error("Blank blueprint used in test: " .. testName)
     end
 
@@ -597,7 +599,7 @@ TestFunctions.BuildBlueprintFromString = function(blueprintString, position, tes
 
     TestFunctions.MakeCarriagesUnique(placedEntitiesByType["locomotive"], placedEntitiesByType["cargo-wagon"], placedEntitiesByType["fluid-wagon"], placedEntitiesByType["artillery-wagon"])
 
-    return placedEntities, Utils.TableMergeCopies({placedEntitiesByType, placedEntitiesByName})
+    return placedEntities, TableUtils.TableMergeCopies({placedEntitiesByType, placedEntitiesByName})
 end
 
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
@@ -611,7 +613,7 @@ TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWago
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
     if locomotives ~= nil then
         local color, colorId, secondaryColorsRemaining
-        local primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
+        local primaryColorsRemaining = TableUtils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
         local currentColorRange, colorLoops = primaryColorsRemaining, 0
         for _, carriage in pairs(locomotives) do
             carriage.train.manual_mode = false
@@ -622,12 +624,12 @@ TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWago
             if #currentColorRange == 0 then
                 if secondaryColorsRemaining == nil then
                     -- Secondary colors not initialised so get them and switch to them.
-                    secondaryColorsRemaining = Utils.DeepCopy(TestFunctions.SecondaryLocomotiveColors)
+                    secondaryColorsRemaining = TableUtils.DeepCopy(TestFunctions.SecondaryLocomotiveColors)
                     currentColorRange = secondaryColorsRemaining
                 else
                     -- Second colors have all been used up so repopulate the primary and clear the secondary in case later use needs them.
                     secondaryColorsRemaining = nil
-                    primaryColorsRemaining = Utils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
+                    primaryColorsRemaining = TableUtils.DeepCopy(TestFunctions.PrimaryLocomotiveColors)
                     currentColorRange = primaryColorsRemaining
                     colorLoops = colorLoops + 1
                 end
@@ -683,7 +685,7 @@ TestFunctions.WriteTestScenariosToFile = function(testName, testScenarios)
     end
 
     -- Add the headers.
-    local logText = "#, " .. Utils.TableValueToCommaString(keysToRecord) .. "\r\n"
+    local logText = "#, " .. TableUtils.TableValueToCommaString(keysToRecord) .. "\r\n"
     -- Add the test's keys.
     local value
     for testIndex, test in pairs(testScenarios) do

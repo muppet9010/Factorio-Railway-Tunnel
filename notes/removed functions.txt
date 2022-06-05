@@ -29,7 +29,7 @@ end
 ---@return LuaEntity, LuaEntity
 TrainManagerStateFuncs.CreateFirstCarriageForLeavingTrain = function(managedTrain)
     local undergroundLeadCarriage = TrainManagerFuncs.GetLeadingCarriageOfTrain(managedTrain.undergroundTrain, managedTrain.undergroundTrainForwards)
-    local placementPosition = Utils.ApplyOffsetToPosition(undergroundLeadCarriage.position, managedTrain.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
+    local placementPosition = PositionUtils.ApplyOffsetToPosition(undergroundLeadCarriage.position, managedTrain.tunnel.undergroundTunnel.surfaceOffsetFromUnderground)
     local placedCarriage = undergroundLeadCarriage.clone {position = placementPosition, surface = managedTrain.surface, create_build_effect_smoke = false}
     if placedCarriage == nil then
         error("failed to clone carriage:" .. "\nsurface name: " .. managedTrain.surface.name .. "\nposition: " .. Logging.PositionToString(placementPosition) .. "\nsource carriage unit_number: " .. undergroundLeadCarriage.unit_number)
@@ -148,7 +148,7 @@ TrainManagerStateFuncs.CreateUndergroundTrainObject = function(managedTrain)
         undergroundTrain.speed = -1 * enteringTrainSpeed
     end
 
-    managedTrain.undergroundLeavingportalEntryPointPosition = Utils.ApplyOffsetToPosition(managedTrain.exitPortal.portalEntryPointPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
+    managedTrain.undergroundLeavingportalEntryPointPosition = PositionUtils.ApplyOffsetToPosition(managedTrain.exitPortal.portalEntryPointPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
 end
 
 ---@param managedTrain ManagedTrain
@@ -158,12 +158,12 @@ TrainManagerStateFuncs.GetUndergroundFirstWagonPosition = function(managedTrain)
     local firstCarriageDistanceFromPortalTransitionSignalsRail = TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget(managedTrain.enteringTrain, managedTrain.entrancePortalEntryTransitionSignal.entity, managedTrain.enteringTrainForwards)
 
     -- Apply the straight line distance to the above portal's transition signal's rail. Account for the distance being from rail edge, rather than rail center (but rail is always straight in portal so easy).
-    local firstCarriageOffsetFromTransitionSignalsRail = Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalTransitionSignalsRail})
-    local signalsRailEdgePosition = Utils.ApplyOffsetToPosition(managedTrain.entrancePortalEntryTransitionSignal.entity.get_connected_rails()[1].position, Utils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
-    local firstCarriageAbovegroundPosition = Utils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromTransitionSignalsRail)
+    local firstCarriageOffsetFromTransitionSignalsRail = PositionUtils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = firstCarriageDistanceFromPortalTransitionSignalsRail})
+    local signalsRailEdgePosition = PositionUtils.ApplyOffsetToPosition(managedTrain.entrancePortalEntryTransitionSignal.entity.get_connected_rails()[1].position, PositionUtils.RotatePositionAround0(managedTrain.trainTravelOrientation, {x = 0, y = 1})) -- Theres only ever 1 rail connected to the signal as its in the portal. + 1 for the difference in signals rail edge and its center position.
+    local firstCarriageAbovegroundPosition = PositionUtils.ApplyOffsetToPosition(signalsRailEdgePosition, firstCarriageOffsetFromTransitionSignalsRail)
 
     -- Get the underground position for this above ground spot.
-    local firstCarriageUndergroundPosition = Utils.ApplyOffsetToPosition(firstCarriageAbovegroundPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
+    local firstCarriageUndergroundPosition = PositionUtils.ApplyOffsetToPosition(firstCarriageAbovegroundPosition, managedTrain.tunnel.undergroundTunnel.undergroundOffsetFromSurface)
     return firstCarriageUndergroundPosition
 end
 
@@ -198,9 +198,9 @@ TrainManagerStateFuncs.CopyEnteringTrainUnderground = function(managedTrain, fir
         if currentSourceTrainCarriageIndex ~= minCarriageIndex then
             -- The first carriage in the train doesn't need incrementing.
             nextCarriagePosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(managedTrain.trainTravelOrientation, placedCarriage, refCarriage.name)
-            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, placedCarriage.name, refCarriage.name, 20))
+            safeCarriageFlipPosition = PositionUtils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, placedCarriage.name, refCarriage.name, 20))
         else
-            safeCarriageFlipPosition = Utils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
+            safeCarriageFlipPosition = PositionUtils.ApplyOffsetToPosition(nextCarriagePosition, TrainManagerFuncs.GetNextCarriagePlacementOffset(managedTrain.trainTravelOrientation, refCarriage.name, refCarriage.name, 20))
         end
 
         placedCarriage = TrainManagerFuncs.CopyCarriage(targetSurface, refCarriage, nextCarriagePosition, safeCarriageFlipPosition, carriageOrientation)
@@ -218,7 +218,7 @@ end
 TrainManagerFuncs.GetNextCarriagePlacementOffset = function(trainOrientation, lastCarriageEntityName, nextCarriageEntityName, extraDistance)
     extraDistance = extraDistance or 0
     local carriagesDistance = Common.GetCarriagePlacementDistance(lastCarriageEntityName) + Common.GetCarriagePlacementDistance(nextCarriageEntityName)
-    return Utils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
+    return PositionUtils.RotatePositionAround0(trainOrientation, {x = 0, y = carriagesDistance + extraDistance})
 end
 
 
@@ -301,7 +301,7 @@ end
 TrainManagerFuncs.AddPushingLocoToAfterCarriage = function(lastCarriage, trainOrientation)
     local pushingLocoEntityName = "railway_tunnel-tunnel_portal_pushing_locomotive"
     local pushingLocoPlacementPosition = TrainManagerFuncs.GetNextCarriagePlacementPosition(trainOrientation, lastCarriage, pushingLocoEntityName)
-    local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = pushingLocoEntityName, position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = Utils.OrientationToDirection(trainOrientation)}
+    local pushingLocomotiveEntity = lastCarriage.surface.create_entity {name = pushingLocoEntityName, position = pushingLocoPlacementPosition, force = lastCarriage.force, direction = DirectionUtils.OrientationToDirection(trainOrientation)}
     pushingLocomotiveEntity.destructible = false
     return pushingLocomotiveEntity
 end
@@ -469,7 +469,7 @@ TrainManager.HandleLeavingTrainStoppingAtSignalSchedule = function(managedTrain,
         elseif managedTrain.undergroundTrainSetsSpeed then
             -- Is the same stopping target as last tick, so check if the leaving train is close to the stopping target and give it speed control if so.
             local leadCarriage = TrainManagerFuncs.GetLeadingCarriageOfTrain(leavingTrain, managedTrain.leavingTrainForwards)
-            local leadCarriageDistanceFromStoppingEntity = Utils.GetDistance(leadCarriage.position, managedTrainStoppingTargetEntityAttribute.position)
+            local leadCarriageDistanceFromStoppingEntity = PositionUtils.GetDistance(leadCarriage.position, managedTrainStoppingTargetEntityAttribute.position)
             local leavingTrainCloseToStoppingEntityDistance = Common.GetCarriagePlacementDistance(leadCarriage.name) + 4 -- This is the length of the leading carriage plus 4 tiles leaway so the speed handover isn't too abrupt. May be a bit abrupt if leaving train is lacking loco's to carriages though, compared to full underground train.
             if leadCarriageDistanceFromStoppingEntity < leavingTrainCloseToStoppingEntityDistance then
                 managedTrain.undergroundTrainSetsSpeed = false
@@ -534,9 +534,9 @@ TrainManagerFuncs.GetForwardPositionFromCurrentForDistance = function(undergroun
     else
         error("TrainManagerFuncs.GetForwardPositionFromCurrentForDistance() doesn't support 0 speed underground train.\nundergroundTrain id: " .. undergroundTrain.id)
     end
-    return Utils.ApplyOffsetToPosition(
+    return PositionUtils.ApplyOffsetToPosition(
         leadCarriage.position,
-        Utils.RotatePositionAround0(
+        PositionUtils.RotatePositionAround0(
             undergroundTrainOrientation,
             {
                 x = 0,
@@ -575,8 +575,8 @@ TrainManager.ReverseManagedTrainTunnelTrip = function(oldManagedTrain)
     newManagedTrain.undergroundTrain = oldManagedTrain.undergroundTrain
     newManagedTrain.undergroundTrain.manual_mode = false -- Start the underground train running if it was stopped.
 
-    newManagedTrain.trainTravelDirection = Utils.LoopDirectionValue(oldManagedTrain.trainTravelDirection + 4)
-    newManagedTrain.trainTravelOrientation = Utils.DirectionToOrientation(newManagedTrain.trainTravelDirection)
+    newManagedTrain.trainTravelDirection = DirectionUtils.LoopDirectionValue(oldManagedTrain.trainTravelDirection + 4)
+    newManagedTrain.trainTravelOrientation = DirectionUtils.DirectionToOrientation(newManagedTrain.trainTravelDirection)
     newManagedTrain.targetTrainStop = oldManagedTrain.targetTrainStop
 
     newManagedTrain.leavingTrainExpectedBadState = false
@@ -842,7 +842,7 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support targetEntity type: " .. targetEntityType)
     end
-    local targetRailUnitNumberAsKeys = Utils.TableInnerValueToKey(targetRails, "unit_number")
+    local targetRailUnitNumberAsKeys = TableUtils.TableInnerValueToKey(targetRails, "unit_number")
 
     -- Measure the distance from the train to the target entity. Ignores trains exact position and just deals with the tracks. The first rail isn't included here as we get the remaining part of the rail's distance later in function.
     local distance, trainPathRails = 0, train.path.rails
@@ -863,14 +863,14 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget = function(train, target
     if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
     elseif lastCarriageSpeed < 0 then
-        leadCarriageForwardOrientation = Utils.LoopOrientationValue(leadCarriage.orientation + 0.5)
+        leadCarriageForwardOrientation = DirectionUtils.LoopOrientationValue(leadCarriage.orientation + 0.5)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end
-    local firstRailLeadCarriageUsedPosition = Utils.RotateOffsetAroundPosition(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)}, leadCarriage.position)
+    local firstRailLeadCarriageUsedPosition = PositionUtils.RotateOffsetAroundPosition(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)}, leadCarriage.position)
     local firstRail = trainPathRails[1]
     local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
-    local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
+    local distanceRemainingOnRail = PositionUtils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
     if firstRail.type == "curved-rail" then
         distanceRemainingOnRail = distanceRemainingOnRail * 1.0663824640154573798004974128959 -- Rough conversion for the straight line distance (7.3539105243401) to curved arc distance (7.842081225095).
     end
@@ -896,14 +896,14 @@ TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTargetStation = function(train,
     if lastCarriageSpeed > 0 then
         leadCarriageForwardOrientation = leadCarriage.orientation
     elseif lastCarriageSpeed < 0 then
-        leadCarriageForwardOrientation = Utils.LoopOrientationValue(leadCarriage.orientation + 0.5)
+        leadCarriageForwardOrientation = DirectionUtils.LoopOrientationValue(leadCarriage.orientation + 0.5)
     else
         error("TrainManagerFuncs.GetTrackDistanceBetweenTrainAndTarget() doesn't support 0 speed train\ntrain id: " .. train.id)
     end
-    local firstRailLeadCarriageUsedPosition = Utils.RotateOffsetAroundPosition(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)}, leadCarriage.position)
+    local firstRailLeadCarriageUsedPosition = PositionUtils.RotateOffsetAroundPosition(leadCarriageForwardOrientation, {x = 0, y = 0 - TrainManagerFuncs.GetCarriageJointDistance(leadCarriage.name)}, leadCarriage.position)
     local firstRail = trainPath.rails[trainPath.current]
     local firstRailFarEndPosition = TrainManagerFuncs.GetRailFarEndPosition(firstRail, leadCarriageForwardOrientation)
-    local distanceRemainingOnRail = Utils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
+    local distanceRemainingOnRail = PositionUtils.GetDistance(firstRailLeadCarriageUsedPosition, firstRailFarEndPosition)
     if firstRail.type == "curved-rail" then
         distanceRemainingOnRail = distanceRemainingOnRail * 1.0663824640154573798004974128959 -- Rough conversion for the straight line distance (7.3539105243401) to curved arc distance (7.842081225095).
     end
@@ -921,7 +921,7 @@ end
 TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientation)
     local railFarEndPosition
     if railEntity.type == "straight-rail" then
-        railFarEndPosition = Utils.RotateOffsetAroundPosition(railEntity.position, Utils.RotatePositionAround0(forwardsOrientation, {x = 0, y = -1}))
+        railFarEndPosition = PositionUtils.RotateOffsetAroundPosition(railEntity.position, PositionUtils.RotatePositionAround0(forwardsOrientation, {x = 0, y = -1}))
     elseif railEntity.type == "curved-rail" then
         -- Curved end offset position based on that a diagonal straight rail is 2 long and this sets where the curved end points must be.
         local directionDetails = {
@@ -987,10 +987,10 @@ TrainManagerFuncs.GetRailFarEndPosition = function(railEntity, forwardsOrientati
 
         -- Mark on map end of rail locations for debugging.
         --rendering.draw_circle {color = {0, 0, 1, 1}, radius = 0.1, filled = true, target = railEntity, surface = railEntity.surface}
-        --rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.1, filled = true, target = Utils.ApplyOffsetToPosition(railEntity.position, thisTrackDirectionDetails.straightEndOffset), surface = railEntity.surface}
-        --rendering.draw_circle {color = {1, 0, 0, 1}, radius = 0.1, filled = true, target = Utils.ApplyOffsetToPosition(railEntity.position, thisTrackDirectionDetails.curvedEndOffset), surface = railEntity.surface}
+        --rendering.draw_circle {color = {0, 1, 0, 1}, radius = 0.1, filled = true, target = PositionUtils.ApplyOffsetToPosition(railEntity.position, thisTrackDirectionDetails.straightEndOffset), surface = railEntity.surface}
+        --rendering.draw_circle {color = {1, 0, 0, 1}, radius = 0.1, filled = true, target = PositionUtils.ApplyOffsetToPosition(railEntity.position, thisTrackDirectionDetails.curvedEndOffset), surface = railEntity.surface}
 
-        railFarEndPosition = Utils.ApplyOffsetToPosition(railEntity.position, endoffset)
+        railFarEndPosition = PositionUtils.ApplyOffsetToPosition(railEntity.position, endoffset)
     else
         error("not valid rail type: " .. railEntity.type)
     end

@@ -12,7 +12,10 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local TrainUtils = require("utility.train-utils")
+local PositionUtils = require("utility.position-utils")
+local MathUtils = require("utility.math-utils")
+local DirectionUtils = require("utility.direction-utils")
 local Common = require("scripts.common")
 
 ---@type table<string, TestFunctions_TrainSpecifiction> @ The key is generally the train specification composition text string with the speed if set.
@@ -145,7 +148,7 @@ Test.Start = function(testName)
         trainData_currentPosition.x = trainData_currentPosition.x + 1
     end
     local trainData_train = TestFunctions.BuildTrain({x = 2, y = trainDataY}, testScenario.trainCarriageDetails, defines.direction.west, nil, 0.001, trainFuel)
-    local trainData = Utils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, nil, trainData_train.carriages)
+    local trainData = TrainUtils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, nil, trainData_train.carriages)
 
     -- Get the train data worked out as its added in a messy way as we need the train data during setup.
     local trainStartXPos, tunnelTrain, aboveTrain  -- Populated during rail building time.
@@ -172,7 +175,7 @@ Test.Start = function(testName)
     local railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 5
     if testScenario.startingSpeed ~= StartingSpeed.none then
         -- Add extra starting distance to cover the trains starting speed's braking distance. So that the trains don't start the test braking into or using the tunnel.
-        local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, startingSpeedValue, 0, 0)
+        local _, stoppingDistance = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, startingSpeedValue, 0, 0)
         railCountEntranceEndOfPortal = railCountEntranceEndOfPortal + math.ceil(stoppingDistance / 2)
     end
 
@@ -181,7 +184,7 @@ Test.Start = function(testName)
     local railCountLeavingEndOfPortal
     if testScenario.leavingTrackCondition == LeavingTrackCondition.clear then
         -- This is excessive still as many trains won't be going at max speed when leaving, but I don't know how to simply work out leaving speed from test starting data only.
-        local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
+        local _, stoppingDistance = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
         -- The +10 is so the train stop is safely beyond braking distance when leaving the tunnel.
         railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10
     elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
@@ -203,36 +206,36 @@ Test.Start = function(testName)
     -- Set the currentXPos before and after placing each entity, so its left on the entity border between them. This means nothing special is needed between entity types.
     local tunnelEndStation, aboveEndStation, currentPos, offset
     for orientationCount, baseOrientaton in pairs({0.25, 0.75}) do
-        local baseDirection = Utils.OrientationToDirection(baseOrientaton)
+        local baseDirection = DirectionUtils.OrientationToDirection(baseOrientaton)
         currentPos = {x = centerX, y = tunnelTrackY}
 
         -- Place the underground segments.
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         for i = 1, tunnelSegments / 2 do
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
             testSurface.create_entity {name = "railway_tunnel-underground_segment-straight", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Place the blocked end portal part.
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -3})
-        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -3})
+        currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         testSurface.create_entity {name = "railway_tunnel-portal_end", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
-        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
 
         -- Place the portal segments.
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         for i = 1, portalSegments do
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
             testSurface.create_entity {name = "railway_tunnel-portal_segment-straight", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Place the entry end portal part.
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -3})
-        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -3})
+        currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         testSurface.create_entity {name = "railway_tunnel-portal_end", position = currentPos, direction = baseDirection, force = testForce, raise_built = true, create_build_effect_smoke = false}
-        currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+        currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
 
         -- Store the specific X position on the exit side of the track for these 2 possible placements.
         if orientationCount == 2 then
@@ -241,7 +244,7 @@ Test.Start = function(testName)
         end
 
         -- Place the track to the required distance
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         local railCountToBuild
         if orientationCount == 1 then
             railCountToBuild = railCountEntranceEndOfPortal
@@ -249,9 +252,9 @@ Test.Start = function(testName)
             railCountToBuild = railCountLeavingEndOfPortal
         end
         for i = 1, railCountToBuild do
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
             testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Build the tunnel train on the entrance track as needed to calculate exit track length on next loop of the FOR.
@@ -274,8 +277,8 @@ Test.Start = function(testName)
                 -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
                 railStopPosition = currentPos
             end
-            offset = Utils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
-            tunnelEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(railStopPosition, offset), direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
+            offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
+            tunnelEndStation = testSurface.create_entity {name = "train-stop", position = PositionUtils.ApplyOffsetToPosition(railStopPosition, offset), direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
             tunnelEndStation.backer_name = "End"
         end
     end
@@ -283,7 +286,7 @@ Test.Start = function(testName)
     -- Place the Above Track's various standard parts, starting in middle of underground and going towards train, then in middle going towards end.
     -- Set the currentXPos before and after placing each entity, so its left on the entity border between them. This means nothing special is needed between entity types.
     for orientationCount, baseOrientaton in pairs({0.25, 0.75}) do
-        local baseDirection = Utils.OrientationToDirection(baseOrientaton)
+        local baseDirection = DirectionUtils.OrientationToDirection(baseOrientaton)
         currentPos = {x = centerX, y = aboveTrackY}
 
         local portalEndRailLength = 3
@@ -296,11 +299,11 @@ Test.Start = function(testName)
         end
 
         -- Place the track up to the required distance up to the portal entry signal points.
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         for i = 1, railCountPreExitPortalEntrySignal do
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
             testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Place the exit portal entry signals as some tests require it.
@@ -310,11 +313,11 @@ Test.Start = function(testName)
         end
 
         -- Place the track after the portal entry signal points.
-        offset = Utils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
+        offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 0, y = -1})
         for i = 1, railCountPostExitPortalEntrySignal do
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
             testSurface.create_entity {name = "straight-rail", position = currentPos, direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
-            currentPos = Utils.ApplyOffsetToPosition(currentPos, offset)
+            currentPos = PositionUtils.ApplyOffsetToPosition(currentPos, offset)
         end
 
         -- Build the train.
@@ -333,8 +336,8 @@ Test.Start = function(testName)
                 -- Don't change the currentPosition, just built the rail stop to the side of the middle of the last rail.
                 railStopPosition = currentPos
             end
-            offset = Utils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
-            aboveEndStation = testSurface.create_entity {name = "train-stop", position = Utils.ApplyOffsetToPosition(railStopPosition, offset), direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
+            offset = PositionUtils.RotatePositionAround0(baseOrientaton, {x = 2, y = 1})
+            aboveEndStation = testSurface.create_entity {name = "train-stop", position = PositionUtils.ApplyOffsetToPosition(railStopPosition, offset), direction = baseDirection, force = testForce, raise_built = false, create_build_effect_smoke = false}
             aboveEndStation.backer_name = "End"
         end
     end
@@ -465,7 +468,7 @@ Test.EveryTick = function(event)
             -- For the other test types compare the train time differences.
             local tunnelTrainTime = testDataBespoke.tunnelTrainStoppedTick - testDataBespoke.testStartedTick
             local aboveTrainTime = testDataBespoke.aboveTrainStoppedTick - testDataBespoke.testStartedTick
-            local variancePercentage = Utils.RoundNumberToDecimalPlaces(((tunnelTrainTime / aboveTrainTime) - 1) * 100, 0)
+            local variancePercentage = MathUtils.RoundNumberToDecimalPlaces(((tunnelTrainTime / aboveTrainTime) - 1) * 100, 0)
 
             -- Record the variance, with positive number being tunnel train slower than regular track train.
             game.print("variation precentage: " .. tostring(variancePercentage) .. "%")

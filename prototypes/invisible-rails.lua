@@ -1,12 +1,13 @@
-local Utils = require("utility.utils")
+local PrototypeUtils = require("utility.prototype-utils")
+local TableUtils = require("utility.table-utils")
 local CommonPrototypeFunctions = require("prototypes.common-prototype-functions")
 
 local MakeEmptyRailImages = function()
     return {
-        metals = Utils.EmptyRotatedSprite(),
-        backplates = Utils.EmptyRotatedSprite(),
-        ties = Utils.EmptyRotatedSprite(),
-        stone_path = Utils.EmptyRotatedSprite()
+        metals = PrototypeUtils.EmptyRotatedSprite(),
+        backplates = PrototypeUtils.EmptyRotatedSprite(),
+        ties = PrototypeUtils.EmptyRotatedSprite(),
+        stone_path = PrototypeUtils.EmptyRotatedSprite()
     }
 end
 
@@ -35,29 +36,29 @@ local invisibleStraightRailBase = {
         curved_rail_horizontal_right_bottom = MakeEmptyRailImages(),
         curved_rail_horizontal_left_bottom = MakeEmptyRailImages(),
         rail_endings = {
-            north = Utils.EmptyRotatedSprite(),
-            north_east = Utils.EmptyRotatedSprite(),
-            east = Utils.EmptyRotatedSprite(),
-            south_east = Utils.EmptyRotatedSprite(),
-            south = Utils.EmptyRotatedSprite(),
-            south_west = Utils.EmptyRotatedSprite(),
-            west = Utils.EmptyRotatedSprite(),
-            north_west = Utils.EmptyRotatedSprite()
+            north = PrototypeUtils.EmptyRotatedSprite(),
+            north_east = PrototypeUtils.EmptyRotatedSprite(),
+            east = PrototypeUtils.EmptyRotatedSprite(),
+            south_east = PrototypeUtils.EmptyRotatedSprite(),
+            south = PrototypeUtils.EmptyRotatedSprite(),
+            south_west = PrototypeUtils.EmptyRotatedSprite(),
+            west = PrototypeUtils.EmptyRotatedSprite(),
+            north_west = PrototypeUtils.EmptyRotatedSprite()
         }
     }
 }
 
 -- Used for the non-entry parts of tunnel portals and for underground tunnel tracks.
-local invisibleStraightRailOnMapTunnel = Utils.DeepCopy(invisibleStraightRailBase)
+local invisibleStraightRailOnMapTunnel = TableUtils.DeepCopy(invisibleStraightRailBase)
 invisibleStraightRailOnMapTunnel.name = "railway_tunnel-invisible_rail-straight-on_map_tunnel"
 invisibleStraightRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
 
-local invisibleCurvedRailBase = Utils.DeepCopy(invisibleStraightRailBase)
+local invisibleCurvedRailBase = TableUtils.DeepCopy(invisibleStraightRailBase)
 invisibleCurvedRailBase.type = "curved-rail"
 invisibleCurvedRailBase.icon = "__base__/graphics/icons/curved-rail.png"
 
 -- Used for the non-entry parts of tunnel portals and for underground tunnel tracks.
-local invisibleCurvedRailOnMapTunnel = Utils.DeepCopy(invisibleCurvedRailBase)
+local invisibleCurvedRailOnMapTunnel = TableUtils.DeepCopy(invisibleCurvedRailBase)
 invisibleCurvedRailOnMapTunnel.name = "railway_tunnel-invisible_rail-curved-on_map_tunnel"
 invisibleCurvedRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
 

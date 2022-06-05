@@ -1,4 +1,4 @@
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 local CommonPrototypeFunctions = require("prototypes.common-prototype-functions")
 
 local refStraightRail = data.raw["straight-rail"]["straight-rail"]
@@ -16,20 +16,20 @@ local internalRailBase = {
 }
 
 -- Used for the rail in the portal areas that are visible.
-local portalRailOnMap = Utils.DeepCopy(internalRailBase)
+local portalRailOnMap = TableUtils.DeepCopy(internalRailBase)
 portalRailOnMap.name = "railway_tunnel-portal_rail-on_map"
 
 -- The crossing rail isn't used to make part of the tunnel itself, but to be a rail crossing the tunnel.
-local crossingRailOnMap = Utils.DeepCopy(internalRailBase)
+local crossingRailOnMap = TableUtils.DeepCopy(internalRailBase)
 crossingRailOnMap.name = "railway_tunnel-crossing_rail-on_map"
 
 -- Not currently used
-local internalRailNotOnMap = Utils.DeepCopy(internalRailBase)
+local internalRailNotOnMap = TableUtils.DeepCopy(internalRailBase)
 internalRailNotOnMap.name = "railway_tunnel-internal_rail-not_on_map"
 table.insert(internalRailNotOnMap.flags, "not-on-map")
 
 -- Not currently used
-local internalRailOnMapTunnel = Utils.DeepCopy(internalRailBase)
+local internalRailOnMapTunnel = TableUtils.DeepCopy(internalRailBase)
 internalRailOnMapTunnel.name = "railway_tunnel-internal_rail-on_map_tunnel"
 internalRailOnMapTunnel.map_color = CommonPrototypeFunctions.TunnelMapColor
 

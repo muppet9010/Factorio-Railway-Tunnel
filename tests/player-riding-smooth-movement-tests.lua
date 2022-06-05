@@ -13,7 +13,8 @@
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
 local Common = require("scripts.common")
-local Utils = require("utility.utils")
+local MathUtils = require("utility.math-utils")
+local TrainUtils = require("utility.train-utils")
 local Colors = require("utility.colors")
 
 ---@class Tests_PRSMT_TrainComposition
@@ -159,7 +160,7 @@ Test.Start = function(testName)
         trainData_currentPosition.x = trainData_currentPosition.x + 1
     end
     local trainData_train = TestFunctions.BuildTrain({x = 2, y = trainDataYPosition}, testScenario.trainCarriageDetails, defines.direction.west, nil, 0.001, trainFuel)
-    local trainData = Utils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, nil, trainData_train.carriages)
+    local trainData = TrainUtils.GetTrainSpeedCalculationData(trainData_train, trainData_train.speed, nil, trainData_train.carriages)
 
     -- Get the train data worked out as its added in a messy way as we need the train data during setup.
     local startingSpeedValue
@@ -229,7 +230,7 @@ Test.Start = function(testName)
     local railCountEntranceEndOfPortal = math.ceil(#testScenario.trainCarriageDetails * 3.5) + 5
     if testScenario.trainStartingSpeed ~= TrainStartingSpeed.none then
         -- Add extra starting distance to cover the trains starting speed's braking distance. So that the trains don't start the test braking into or using the tunnel.
-        local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, startingSpeedValue, 0, 0)
+        local _, stoppingDistance = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, startingSpeedValue, 0, 0)
         railCountEntranceEndOfPortal = railCountEntranceEndOfPortal + math.ceil(stoppingDistance / 2)
     end
 
@@ -252,7 +253,7 @@ Test.Start = function(testName)
     local railCountLeavingEndOfPortal
     if testScenario.leavingTrackCondition == LeavingTrackCondition.clear then
         -- Its a clear exit test then work out the railCountLeavingEndOfPortal length from the built train after building the entrance side of the portal.
-        local _, stoppingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
+        local _, stoppingDistance = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(trainData, trainData.maxSpeed, 0, 0)
         railCountLeavingEndOfPortal = math.ceil(stoppingDistance / 2) + 10 -- This is excessive still as many trains won't be going at max speed when leaving, but I don't know how to simply work out leaving speed from test starting data only.
     elseif testScenario.leavingTrackCondition == LeavingTrackCondition.nearSignal or testScenario.leavingTrackCondition == LeavingTrackCondition.nearStation or testScenario.leavingTrackCondition == LeavingTrackCondition.portalSignal then
         -- Build the shorter rail length plus 30 tiles for a blocking loco if needed. 10 was for regular tests, but the reverse loop tests needs the 30.
@@ -472,12 +473,12 @@ Test.EveryTick_StraightThrough = function(event)
         end
         return
     end
-    local newPlayerXMovementPercentage = Utils.RoundNumberToDecimalPlaces((newPlayerXMovement / testDataBespoke.lastPlayerXMovement) * 100, 0)
+    local newPlayerXMovementPercentage = MathUtils.RoundNumberToDecimalPlaces((newPlayerXMovement / testDataBespoke.lastPlayerXMovement) * 100, 0)
 
     -- Log and check the change in players movement difference for transition from underground to leaving train. Will always be a little erratic as I can't line up 2 independent speeds and positions, so this is just to provide reviewable data.
     if trainLeftThisTick then
         -- A diff between the old and new percentages of 0 is ideal. More or less than 100 indicates that a tick has been exceed.
-        local diffOfPlayerXMovementPercentage = Utils.RoundNumberToDecimalPlaces(((1 / (testDataBespoke.lastPlayerXMovementPercentage / newPlayerXMovementPercentage) - 1) * 100), 0)
+        local diffOfPlayerXMovementPercentage = MathUtils.RoundNumberToDecimalPlaces(((1 / (testDataBespoke.lastPlayerXMovementPercentage / newPlayerXMovementPercentage) - 1) * 100), 0)
         game.print("leaving player difference: " .. tostring(newPlayerXMovementPercentage) .. "%")
         game.print("underground player difference: " .. tostring(testDataBespoke.lastPlayerXMovementPercentage) .. "%")
         game.print("jump in difference: " .. tostring(diffOfPlayerXMovementPercentage) .. "%")

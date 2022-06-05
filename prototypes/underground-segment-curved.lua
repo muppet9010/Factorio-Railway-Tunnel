@@ -1,4 +1,4 @@
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 -- Collision box is off center so that its built on the rail grid and not 1 tile off in 1 direction based upon rotation.
 
@@ -124,7 +124,7 @@ local undergroundSegmentCurvedRemnant = {
 -- Second set of 4 rotations entity.
 
 -- The minining of the flipped part intentionally gives the regular part item as we want the player to only ever have the regular item in their inventory.
-local undergroundSegmentCurvedFlipped = Utils.DeepCopy(undergroundSegmentCurvedRegular)
+local undergroundSegmentCurvedFlipped = TableUtils.DeepCopy(undergroundSegmentCurvedRegular)
 undergroundSegmentCurvedFlipped.name = "railway_tunnel-underground_segment-curved-flipped"
 undergroundSegmentCurvedFlipped.placeable_by = {
     -- The order seems irrelevent in which is returned by Q (smart-pipette) as the item's place_result seems to take priority and thus gives regular part. Can react to the smart-pipette action and give the correct item via script.
@@ -160,7 +160,7 @@ undergroundSegmentCurvedFlipped.picture = {
     }
 }
 
-local undergroundSegmentCurvedFlippedItem = Utils.DeepCopy(undergroundSegmentCurvedRegularItem)
+local undergroundSegmentCurvedFlippedItem = TableUtils.DeepCopy(undergroundSegmentCurvedRegularItem)
 undergroundSegmentCurvedFlippedItem.name = "railway_tunnel-underground_segment-curved-flipped"
 undergroundSegmentCurvedFlippedItem.icon = nil
 undergroundSegmentCurvedFlippedItem.icons = {
@@ -175,7 +175,7 @@ undergroundSegmentCurvedFlippedItem.localised_description = {"item-description.r
 table.insert(undergroundSegmentCurvedFlippedItem.flags, "only-in-cursor")
 table.insert(undergroundSegmentCurvedFlippedItem.flags, "hidden") -- Not in filter lists.
 
-local undergroundSegmentCurvedFlippedTopLayer = Utils.DeepCopy(undergroundSegmentCurvedRegularTopLayer)
+local undergroundSegmentCurvedFlippedTopLayer = TableUtils.DeepCopy(undergroundSegmentCurvedRegularTopLayer)
 undergroundSegmentCurvedFlippedTopLayer.name = "railway_tunnel-underground_segment-curved-flipped-top_layer"
 undergroundSegmentCurvedFlippedTopLayer.picture = {
     north = {

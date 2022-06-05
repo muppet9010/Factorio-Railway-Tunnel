@@ -2,7 +2,7 @@
 --- Requires the utility "constants" file to be populated within the root of the mod.
 
 local Commands = {}
-local Utils = require("utility.utils")
+local BooleanUtils = require("utility.boolean-utils")
 local Constants = require("constants")
 local Colors = require("utility.colors")
 
@@ -274,7 +274,7 @@ Commands._StringToTypedObject = function(inputText)
     if castedText ~= nil then
         return castedText
     end
-    castedText = Utils.ToBoolean(inputText)
+    castedText = BooleanUtils.ToBoolean(inputText)
     if castedText ~= nil then
         return castedText
     end

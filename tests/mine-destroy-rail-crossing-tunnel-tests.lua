@@ -3,7 +3,7 @@
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 -- Internal test types.
 ---@class Tests_MDRCTT_ActionTypes
@@ -70,7 +70,7 @@ Test.Start = function(testName)
     local allBuiltEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 1, y = 1}, testName)
 
     -- Get the crossing tunnel segment
-    local crossingTunnelSegment = Utils.GetTableValueWithInnerKeyValue(allBuiltEntities, "name", "railway_tunnel-underground_segment-straight-rail_crossing", false, false) --- @type LuaEntity
+    local crossingTunnelSegment = TableUtils.GetTableValueWithInnerKeyValue(allBuiltEntities, "name", "railway_tunnel-underground_segment-straight-rail_crossing", false, false) --- @type LuaEntity
 
     -- Get a portal end, any will do
     local portalEnd = placedEntitiesByGroup["railway_tunnel-portal_end"][1]

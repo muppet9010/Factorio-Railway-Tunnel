@@ -1,7 +1,7 @@
 --[[
     A train that has its locomotive facing inwards, so can't path on its own when it emerges from the tunnel. The entrance signal on the exit portal is blocked in the next rail segment. Short train so fully leaves the tunnel before stopping. After the train has fully stopped the blocking wagon is removed so the train can compete its journey.
 ]]
-local Utils = require("utility.utils")
+local PositionUtils = require("utility.position-utils")
 local TestFunctions = require("scripts.test-functions")
 local Test = {}
 
@@ -86,7 +86,7 @@ Test.DestroyBlockingWagon = function(event)
         return
     end
 
-    if Utils.GetDistanceSingleAxis(leadingCarriage.position, testDataBespoke.blockingWagon.position, "y") > 25 then
+    if PositionUtils.GetDistanceSingleAxis(leadingCarriage.position, testDataBespoke.blockingWagon.position, "y") > 25 then
         TestFunctions.TestFailed(testName, "train not stopped at expected position for blocking wagon signal")
         return
     end

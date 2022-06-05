@@ -6,7 +6,8 @@
 local TestManager = {}
 local Events = require("utility.events")
 local EventScheduler = require("utility.event-scheduler")
-local Utils = require("utility.utils")
+local MiscUtils = require("utility.misc-utils")
+local TableUtils = require("utility.table-utils")
 local Colors = require("utility.colors")
 local PlayerAlerts = require("utility.player-alerts")
 
@@ -221,7 +222,7 @@ TestManager.OnStartup = function()
     end
 
     game.speed = TestGameSpeed
-    Utils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
+    MiscUtils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
     -- If option to show train graphics while in portal set the Portal global setting so when new portals are built their graphics match expected. Doesn;t affect existing graphics.
     if ShowTrainGraphicsInPortal then
@@ -253,7 +254,7 @@ TestManager.OnStartup = function()
         WaitForPlayerAtEndOfEachTest = false -- We don't want to pause in this mode.
     end
 
-    if not Utils.IsTableEmpty(global.testManager.testsToRun) then
+    if not TableUtils.IsTableEmpty(global.testManager.testsToRun) then
         -- Only if there are tests do we need to start this loop. Otherwise test world setup is complete.
         EventScheduler.ScheduleEventOnce(game.tick + 120, "TestManager.WaitForPlayerThenRunTests_Scheduled", nil, {firstLoad = true}) -- Have to give it time to chart the revealed area.
     end

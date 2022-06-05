@@ -3,7 +3,7 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 ---@class Tests_TCT_FirstTrain
 local FirstTrain = {
@@ -200,7 +200,7 @@ Test.GenerateTestScenarios = function(testName)
                 for _, secondTrainCarriageColors in pairs(secondTrainCarriageColorsToTest) do
                     -- Work out the second train from the first and the manipulation settings.
                     ---@type Tests_TCT_TrainCarriageShorthand[]
-                    local secondTrainShorthand = Utils.DeepCopy(firstTrainShorthand) -- Start with a clone of the first trains data.
+                    local secondTrainShorthand = TableUtils.DeepCopy(firstTrainShorthand) -- Start with a clone of the first trains data.
                     if secondTrainCarriageOrder == SecondTrainCarriageOrder.reverse then
                         local newSecondTrain = {}
                         for i, carriage in pairs(secondTrainShorthand) do

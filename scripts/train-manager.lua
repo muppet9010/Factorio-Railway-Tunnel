@@ -7,15 +7,18 @@
 --
 
 local TrainManager = {}
-local Utils = require("utility.utils")
+local TrainUtils = require("utility.train-utils")
+local PositionUtils = require("utility.position-utils")
+local MathUtils = require("utility.math-utils")
+local DirectionUtils = require("utility.direction-utils")
 local Events = require("utility.events")
 local Logging = require("utility.logging")
 local EventScheduler = require("utility.event-scheduler")
 local Common = require("scripts.common")
 local TrainManagerRemote = require("scripts.train-manager-remote")
 local TunnelShared = require("scripts.tunnel-shared")
-local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageParts, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageParts, Common.TunnelUsageState, Common.TunnelUsageAction
-local math_abs, math_floor, math_ceil, math_min, math_max = math.abs, math.floor, math.ceil, math.min, math.max
+local TunnelSignalDirection, TunnelUsageChangeReason, TunnelUsageState, TunnelUsageAction = Common.TunnelSignalDirection, Common.TunnelUsageChangeReason, Common.TunnelUsageState, Common.TunnelUsageAction
+local math_abs, math_floor, math_min, math_max = math.abs, math.floor, math.min, math.max
 
 ---@class ManagedTrain
 ---@field id Id @ uniqiue id of this managed train passing through the tunnel.
@@ -29,7 +32,7 @@ local math_abs, math_floor, math_ceil, math_min, math_max = math.abs, math.floor
 ---@field force LuaForce @ The force of the train carriages using the tunnel.
 ---@field trainCachedData TrainCachedData @ Ref to the cached train data. Its populated as we need them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes. This isn't directional and so if the lead carriage is needed it needs to be iterated the right way. Is in effect the currenTrain of the tunnel.
 ---@field trainFacingForwardsToCacheData? boolean|null @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
----@field directionalTrainSpeedCalculationData Utils_TrainSpeedCalculationData @ The TrainSpeedCalculationData from the trainCachedData for the moving direction of this train right now. As the global trainCachedData has it for both facings. Updated during leaving when speed indicates direction change.
+---@field directionalTrainSpeedCalculationData TrainUtils_TrainSpeedCalculationData @ The TrainSpeedCalculationData from the trainCachedData for the moving direction of this train right now. As the global trainCachedData has it for both facings. Updated during leaving when speed indicates direction change.
 ---@field forwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData forwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
 ---@field backwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData backwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
 ---@field surface LuaSurface @ The main world surface that this managed train is on.
@@ -283,7 +286,7 @@ TrainManager.TrainApproachingOngoing = function(managedTrain)
     if not managedTrain.approachingTrainReachedFullSpeed then
         -- If the train hasn't yet reached its full speed then work out the new speed.
 
-        -- Work out the new speed. Copy of Utils.CalculateAcceleratingTrainSpeedForSingleTick() as called a lot.
+        -- Work out the new speed. Copy of TrainUtils.CalculateAcceleratingTrainSpeedForSingleTick() as called a lot.
         local newAbsSpeed = math_min((math_max(0, math_abs(managedTrain.approachingTrainExpectedSpeed) - managedTrain.directionalTrainSpeedCalculationData.trainWeightedFrictionForce) + managedTrain.directionalTrainSpeedCalculationData.locomotiveFuelAccelerationPower) * managedTrain.directionalTrainSpeedCalculationData.trainAirResistanceReductionMultiplier, managedTrain.directionalTrainSpeedCalculationData.maxSpeed)
         if managedTrain.approachingTrainExpectedSpeed == newAbsSpeed then
             -- If the new expected speed is equal to the old expected speed then the train has reached its max speed.
@@ -381,7 +384,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
             - distance from front of leaving train position to the leaving train's entity center. This is the Common.CarriagePlacementDistances - Common.CarriagesOwnOffsetFromOtherConnectedCarriage as the train is palced hard up against the front position and not offset by its inter carriage connection distance.
         These exact values may be affected if the portal train detector entities and front of train placement positions are moved; if changed will need careful review.
     --]]
-    local enteringTrainDistanceToDetector = Utils.GetDistance(enteringTrainLeadCarriage_entity.position, managedTrain.entrancePortal.transitionUsageDetectorPosition)
+    local enteringTrainDistanceToDetector = PositionUtils.GetDistance(enteringTrainLeadCarriage_entity.position, managedTrain.entrancePortal.transitionUsageDetectorPosition)
     local leavingCarriageOffsetFromExitPortal = (Common.CarriagePlacementDistances[enteringTrainLeadCarriage_name] - Common.CarriagesOwnOffsetFromOtherConnectedCarriage[enteringTrainLeadCarriage_name])
     managedTrain.traversalTravelDistance = enteringTrainDistanceToDetector + 2.5 + 3 + managedTrain.tunnel.underground.tilesLength + 6 + managedTrain.exitPortal.trainWaitingAreaTilesLength + 3 - 3 - leavingCarriageOffsetFromExitPortal
 
@@ -431,7 +434,7 @@ TrainManager.TrainEnterTunnel = function(managedTrain, tick)
 
         -- Work out how long it will take to reach the leaving position assuming the train will have a path and be acelerating/full speed on the far side of the tunnel.
         -- Estimate how long it will take to complete the distance and then final speed.
-        local estimatedTicks, trainLeavingSpeedAbsolute = Utils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, managedTrain.traversalTravelDistance)
+        local estimatedTicks, trainLeavingSpeedAbsolute = TrainUtils.EstimateAcceleratingTrainTicksAndFinalSpeedToCoverDistance(managedTrain.directionalTrainSpeedCalculationData, currentAbsSpeed, managedTrain.traversalTravelDistance)
         managedTrain.trainLeavingSpeedAbsolute = trainLeavingSpeedAbsolute
         managedTrain.nonPlayerTrain_traversalStartTick = tick
         managedTrain.nonPlayerTrain_traversalArrivalTick = tick + estimatedTicks
@@ -448,7 +451,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
     local leavingTrain = managedTrain.train
 
     -- Get the braking distance of the underground train at current speed.
-    local _, currentUndergroundTrainBrakingDistance = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute, 0, managedTrain.forcesBrakingBonus)
+    local _, currentUndergroundTrainBrakingDistance = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute, 0, managedTrain.forcesBrakingBonus)
 
     -- Work out if the train needs to brake or not. If the underground train can stop within the tunnel we can save un-needed rail network checks.
     if not managedTrain.playerTrain_brakingOutsideOfTunnel and currentUndergroundTrainBrakingDistance <= managedTrain.playerTrain_traversalDistanceRemaining then
@@ -477,8 +480,8 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
 
             -- Work out how far beyond the portal the train might try to go if accelerating and check this path.
             local currentBreakingDistanceBeyondTunnel = currentUndergroundTrainBrakingDistance - managedTrain.playerTrain_traversalDistanceRemaining
-            local acceleratingDistance = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
-            local _, maximumBrakingSpeed = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, currentBreakingDistanceBeyondTunnel + acceleratingDistance, 0, managedTrain.forcesBrakingBonus)
+            local acceleratingDistance = TrainUtils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
+            local _, maximumBrakingSpeed = TrainUtils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, currentBreakingDistanceBeyondTunnel + acceleratingDistance, 0, managedTrain.forcesBrakingBonus)
 
             -- Set the leaving trains speed to this test speed and handle the unknown direction element. Updates managedTrain.trainMovingForwards for later use.
             TrainManager.SetLeavingTrainSpeedInCorrectDirection(leavingTrain, maximumBrakingSpeed, managedTrain, managedTrain.targetTrainStop)
@@ -510,7 +513,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                     local leavingTrain_path_rails = leavingTrain_path.rails
                     managedTrain.playerTrain_stoppingDistance = leavingTrain_path.total_distance + managedTrain.playerTrain_traversalDistanceRemaining
                     local lastRail = leavingTrain_path_rails[#leavingTrain_path_rails]
-                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.Utils.GetRailEntityLength(lastRail.type, lastRail.direction) -- Remove the last rail's length as we want to stop before this.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - TrainUtils.GetRailEntityLength(lastRail.type, lastRail.direction) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
                 end
@@ -526,7 +529,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
 
                     local signalRail = leavingTrain_signal.get_connected_rails()[1]
                     managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain, managedTrain.targetTrainStop) + managedTrain.playerTrain_traversalDistanceRemaining
-                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - Utils.Utils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
+                    managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - TrainUtils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
                 end
@@ -541,13 +544,13 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
     -- Calculate the new speed based on the stopping distance.
     if managedTrain.playerTrain_stoppingDistance == nil then
         -- Train can accelerate
-        managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
+        managedTrain.playerTrain_currentSpeedAbsolute = TrainUtils.CalculateAcceleratingTrainSpeedForSingleTick(managedTrain.directionalTrainSpeedCalculationData, managedTrain.playerTrain_currentSpeedAbsolute)
     elseif currentUndergroundTrainBrakingDistance < managedTrain.playerTrain_stoppingDistance then
         -- Train can't accelerate as will have to start stopping soon, so just maintain speed.
         managedTrain.playerTrain_currentSpeedAbsolute = managedTrain.playerTrain_currentSpeedAbsolute
     else
         -- Train needs to brake based on braking target distance.
-        managedTrain.playerTrain_currentSpeedAbsolute = Utils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
+        managedTrain.playerTrain_currentSpeedAbsolute = TrainUtils.CalculateBrakingTrainSpeedForSingleTickToStopWithinDistance(managedTrain.playerTrain_currentSpeedAbsolute, managedTrain.playerTrain_stoppingDistance)
     end
 
     -- Make the recorded newSpeed be a multiple of a 256th as this is what the game rounds to. We can then use the stored value normally.
@@ -655,7 +658,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 local train_path_rails = train_path.rails
                 stoppingPointDistance = train_path.total_distance
                 local lastRail = train_path_rails[#train_path_rails]
-                stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(lastRail.type, lastRail.direction) -- Remove the last rail's length as we want to stop before this.
+                stoppingPointDistance = stoppingPointDistance - TrainUtils.GetRailEntityLength(lastRail.type, lastRail.direction) -- Remove the last rail's length as we want to stop before this.
                 scheduleFutureArrival = true
             end
         end
@@ -715,7 +718,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 -- Work out the stopping distance for the train.
                 local signalRail = train_signal.get_connected_rails()[1]
                 stoppingPointDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train, managedTrain.targetTrainStop)
-                stoppingPointDistance = stoppingPointDistance - Utils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
+                stoppingPointDistance = stoppingPointDistance - TrainUtils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
 
                 -- Restore the train to its origional state from the path distance function.
                 TrainManager.SetTrainToAuto(managedTrain.train, managedTrain.targetTrainStop)
@@ -766,17 +769,17 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
         end
 
         -- Work out the speed we should be going when leaving the tunnel to stop at the required location.
-        local _, requiredSpeedAbsoluteAtPortalEnd = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, stoppingPointDistance, 0, currentForcesBrakingBonus)
+        local _, requiredSpeedAbsoluteAtPortalEnd = TrainUtils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, stoppingPointDistance, 0, currentForcesBrakingBonus)
         managedTrain.trainLeavingSpeedAbsolute = requiredSpeedAbsoluteAtPortalEnd
 
         -- Work out how much time and distance in the tunnel it takes to change speed to the required leaving speed.
         local ticksSpentMatchingSpeed, distanceSpentMatchingSpeed
         if managedTrain.traversalInitialSpeedAbsolute < requiredSpeedAbsoluteAtPortalEnd then
             -- Need to accelerate within tunnel up to required speed. The train is accelerating for some of the tunnel trip, but not all of it.
-            ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd)
+            ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = TrainUtils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd)
         elseif managedTrain.traversalInitialSpeedAbsolute > requiredSpeedAbsoluteAtPortalEnd then
             -- Need to brake within tunnel down to required speed.
-            ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd, currentForcesBrakingBonus)
+            ticksSpentMatchingSpeed, distanceSpentMatchingSpeed = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, requiredSpeedAbsoluteAtPortalEnd, currentForcesBrakingBonus)
         else
             -- Train enters and exits the tunnel at an identical speed.
             ticksSpentMatchingSpeed = 0
@@ -791,13 +794,13 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             -- Tunnel distance still to cover. We must start and end at the same speed over this distance, so we will accelerate and brake during it as its the quickest way for a train to cover the distance.
 
             -- The speed we do this at is the starting speed. As this way we accelerate from the faster entering speed as long as possible, then this brakes back to the starting speed. Upon which the already calculated braking to leaving speed takes the train down to the required finish. If we ran this on the leaving speed we would be doing this part slower than needed.
-            local ticksTraversingRemaingDistance = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
+            local ticksTraversingRemaingDistance = TrainUtils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, remainingTunnelDistanceToCover, currentForcesBrakingBonus)
             newArriveTick = managedTrain.nonPlayerTrain_traversalStartTick + ticksSpentMatchingSpeed + ticksTraversingRemaingDistance
         elseif remainingTunnelDistanceToCover < 0 then
             -- Train has to brake over a longer length than the tunnel is. So need to re-calculate the entire tunnel traversal duration, and account for the approaching train being slower than really happened.
 
             -- Get the time the train will spend braking over the tunnels distance and its correct tunnel entering speed.
-            local tunnelBrakingTime, correctTunnelEntranceSpeed = Utils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalTravelDistance, managedTrain.trainLeavingSpeedAbsolute, managedTrain.forcesBrakingBonus)
+            local tunnelBrakingTime, correctTunnelEntranceSpeed = TrainUtils.CalculateBrakingTrainsTimeAndStartingSpeedToBrakeToFinalSpeedOverDistance(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalTravelDistance, managedTrain.trainLeavingSpeedAbsolute, managedTrain.forcesBrakingBonus)
 
             -- Work out how long extra it should have taken the train to reach the tunnel entrance.
             local extraTunnelApproachTicksForCorrectEnteringSpeed
@@ -805,7 +808,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 -- The train was at its full speed when it started its approach and so didn't accelerate at all.
 
                 -- Get how long and distance the approaching train should have been braking for in advance.
-                local correctTunnelApproachTicks, distanceToBrakeForCorrectApproachingSpeed = Utils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, correctTunnelEntranceSpeed, managedTrain.forcesBrakingBonus)
+                local correctTunnelApproachTicks, distanceToBrakeForCorrectApproachingSpeed = TrainUtils.CalculateBrakingTrainTimeAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, managedTrain.traversalInitialSpeedAbsolute, correctTunnelEntranceSpeed, managedTrain.forcesBrakingBonus)
 
                 -- Get how long it took the train to approach at its full speed.
                 local ticksSpentApproachingTunnelAtExcessiveSpeed = math.ceil(distanceToBrakeForCorrectApproachingSpeed / managedTrain.traversalInitialSpeedAbsolute)
@@ -816,10 +819,10 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
                 -- During the train's approach to the tunnel it was accelerating up to the speed it entered the tunnel. Only handles time it should have been braking in its approach. The rest of the approach time isn't modified.
 
                 -- Get how long the train was accelerating from the new correct entrance speed up to the previous entrance speed, and over how much distance. This is how much of the previous approach needs to be accounted for.
-                local ticksSpentIncorrectlyAcceleratingDuringTunnelApproach, distanceCoveredWhileIncorrectlyAcceleratingDuringTunnelApproach = Utils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, correctTunnelEntranceSpeed, managedTrain.traversalInitialSpeedAbsolute)
+                local ticksSpentIncorrectlyAcceleratingDuringTunnelApproach, distanceCoveredWhileIncorrectlyAcceleratingDuringTunnelApproach = TrainUtils.EstimateAcceleratingTrainTicksAndDistanceFromInitialToFinalSpeed(managedTrain.directionalTrainSpeedCalculationData, correctTunnelEntranceSpeed, managedTrain.traversalInitialSpeedAbsolute)
 
                 -- How long should the train have been spent accelerating and braking for it to have covered the excess acceleration distance and have had the correct tunnel entrance and starting speed.
-                local correctTunnelApproachTicks = Utils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, correctTunnelEntranceSpeed, distanceCoveredWhileIncorrectlyAcceleratingDuringTunnelApproach, managedTrain.forcesBrakingBonus)
+                local correctTunnelApproachTicks = TrainUtils.EstimateTrainTicksToCoverDistanceWithSameStartAndEndSpeed(managedTrain.directionalTrainSpeedCalculationData, correctTunnelEntranceSpeed, distanceCoveredWhileIncorrectlyAcceleratingDuringTunnelApproach, managedTrain.forcesBrakingBonus)
 
                 -- How long extra the train would have taken to cover the distance.
                 extraTunnelApproachTicksForCorrectEnteringSpeed = correctTunnelApproachTicks - ticksSpentIncorrectlyAcceleratingDuringTunnelApproach
@@ -1018,7 +1021,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalEntryTrans
         entrancePortalEntryTransitionSignal = entrancePortalEntryTransitionSignal,
         entrancePortal = entrancePortalEntryTransitionSignal.portal,
         tunnel = entrancePortalEntryTransitionSignal.portal.tunnel,
-        trainTravelDirection = Utils.LoopDirectionValue(entrancePortalEntryTransitionSignal.entity.direction + 4),
+        trainTravelDirection = DirectionUtils.LoopDirectionValue(entrancePortalEntryTransitionSignal.entity.direction + 4),
         undergroundTrainHasPlayersRiding = false,
         skipTickCheck = false,
         trainMovingForwards = train_speed > 0
@@ -1127,7 +1130,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
     local enteringTrain, trainCarriagesForwardOrientation = managedTrain.train, managedTrain.trainTravelOrientation
     local targetSurface = managedTrain.surface
     if not managedTrain.trainMovingForwards then
-        trainCarriagesForwardOrientation = Utils.LoopFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
+        trainCarriagesForwardOrientation = MathUtils.LoopFloatValueWithinRangeMaxExclusive(trainCarriagesForwardOrientation + 0.5, 0, 1)
     end
 
     -- Work out which way to iterate down the train's carriage array. Starting with the lead carriage.
@@ -1144,17 +1147,17 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
     local playersInTrain = #enteringTrain.passengers > 0
 
     -- Move the first carriage forwards by its connection distance as theres no train in front. It will be pushed back by its full size and connected distance as part of the looping.
-    nextCarriagePosition = Utils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = 0, y = -Common.CarriagesOwnOffsetFromOtherConnectedCarriage[managedTrain.trainCachedData.carriagesCachedData[minCarriageIndex].prototypeName]}, managedTrain.exitPortal.leavingTrainFrontPosition)
+    nextCarriagePosition = PositionUtils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = 0, y = -Common.CarriagesOwnOffsetFromOtherConnectedCarriage[managedTrain.trainCachedData.carriagesCachedData[minCarriageIndex].prototypeName]}, managedTrain.exitPortal.leavingTrainFrontPosition)
 
     -- Iterate over the carriages and clone them.
-    local refCarriageData  ---@type Utils_TrainCarriageData
+    local refCarriageData  ---@type TrainUtils_TrainCarriageData
     local lastPlacedCarriage  ---@type LuaEntity
     local lastPlacedCarriage_name  ---@type string
     local carriageOrientation, carriage_faceingFrontOfTrain, driver
     local newLeadCarriageUnitNumber  ---@type UnitNumber
     for currentSourceTrainCarriageIndex = minCarriageIndex, maxCarriageIndex, carriageIterator do
         refCarriageData = managedTrain.trainCachedData.carriagesCachedData[currentSourceTrainCarriageIndex]
-        -- Some carriage data will have been cached by Utils.GetTrainSpeedCalculationData() before this function call. With secodanry tunnel use by same train in same direction having all data pre-cached.
+        -- Some carriage data will have been cached by TrainUtils.GetTrainSpeedCalculationData() before this function call. With secodanry tunnel use by same train in same direction having all data pre-cached.
 
         carriage_faceingFrontOfTrain = refCarriageData.faceingFrontOfTrain
         if carriage_faceingFrontOfTrain == nil then
@@ -1169,7 +1172,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
         if carriage_faceingFrontOfTrain then
             carriageOrientation = trainCarriagesForwardOrientation
         else
-            -- Functionality from Utils.LoopFloatValueWithinRangeMaxExclusive()
+            -- Functionality from MathUtils.LoopFloatValueWithinRangeMaxExclusive()
             carriageOrientation = trainCarriagesForwardOrientation + 0.5
             if carriageOrientation >= 1 then
                 carriageOrientation = 0 + (carriageOrientation - 1)
@@ -1223,7 +1226,7 @@ TrainManager.GetNextCarriagePlacementPosition = function(trainOrientation, lastP
     if lastCarriageEntityName ~= nil then
         carriagesDistance = carriagesDistance + Common.CarriagePlacementDistances[lastCarriageEntityName]
     end
-    return Utils.RotateOffsetAroundPosition(trainOrientation, {x = 0, y = carriagesDistance}, lastPosition)
+    return PositionUtils.RotateOffsetAroundPosition(trainOrientation, {x = 0, y = carriagesDistance}, lastPosition)
 end
 
 --- Copy a carriage by cloning it to the new position and handle rotations.
@@ -1248,7 +1251,7 @@ TrainManager.CopyCarriage = function(targetSurface, refCarriage, newPosition, sa
         haveToFlipCarriage = true
     elseif orientationDif == 0.25 or orientationDif == 0.75 then
         -- May end up the correct way, depending on what rotation we want. Factorio rotates positive orientation when equally close.
-        if Utils.LoopOrientationValue(refCarriage.orientation + 0.25) ~= requiredOrientation then
+        if DirectionUtils.LoopOrientationValue(refCarriage.orientation + 0.25) ~= requiredOrientation then
             -- After a positive rounding the carriage isn't going to be facing the right way.
             haveToFlipCarriage = true
         end

@@ -1,6 +1,6 @@
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
-local minedTunnelContainer = Utils.DeepCopy(data.raw["character"]["character"])
+local minedTunnelContainer = TableUtils.DeepCopy(data.raw["character"]["character"])
 minedTunnelContainer.name = "railway_tunnel-mined_train_container"
 minedTunnelContainer.subgroup = "railway_tunnel-tunnel_bits"
 minedTunnelContainer.icon = "__base__/graphics/icons/locomotive.png"

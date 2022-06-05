@@ -1,4 +1,4 @@
-local Utils = require("utility.utils")
+local PrototypeUtils = require("utility.prototype-utils")
 
 --[[
     Use a spidertron as it can only have 1 player in it. So no worry about another player trying to get in accidently.
@@ -19,7 +19,7 @@ data:extend(
             braking_force = 1,
             friction_force = 1,
             energy_per_hit_point = 1,
-            animation = Utils.EmptyRotatedSprite(),
+            animation = PrototypeUtils.EmptyRotatedSprite(),
             automatic_weapon_cycling = false,
             chain_shooting_cooldown_modifier = 0,
             chunk_exploration_radius = 0,
@@ -56,7 +56,7 @@ data:extend(
             type = "simple-entity-with-force",
             name = "railway_tunnel-player_container-military_target",
             subgroup = "railway_tunnel-hidden_player_container",
-            picture = Utils.EmptyRotatedSprite()
+            picture = PrototypeUtils.EmptyRotatedSprite()
         }
     }
 )

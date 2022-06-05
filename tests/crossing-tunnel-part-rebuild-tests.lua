@@ -4,7 +4,7 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 -- Main tunnel is entrance to exit: right to left.
 -- Crossing tunnel is north to south.
@@ -82,8 +82,8 @@ Test.Start = function(testName)
     local allPlacedEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 0, y = 0}, testName)
 
     -- Get the various entities we need. Blueprints are built left to right and all of these are in the same vertical alignment. So we can just read them off in entity built order.
-    local portalSegments = Utils.GetTableValueWithInnerKeyValue(allPlacedEntities, "name", "railway_tunnel-portal_segment-straight", true, false)
-    local tunnelCrossingSegments = Utils.GetTableValueWithInnerKeyValue(allPlacedEntities, "name", "railway_tunnel-underground_segment-straight-tunnel_crossing", true, false)
+    local portalSegments = TableUtils.GetTableValueWithInnerKeyValue(allPlacedEntities, "name", "railway_tunnel-portal_segment-straight", true, false)
+    local tunnelCrossingSegments = TableUtils.GetTableValueWithInnerKeyValue(allPlacedEntities, "name", "railway_tunnel-underground_segment-straight-tunnel_crossing", true, false)
     local portal_main_entrance_innerSegment = portalSegments[7]
     local portal_main_entrance_innerEnd = placedEntitiesByGroup["railway_tunnel-portal_end"][2]
     local portal_crossing_entrance_innerSegment = portalSegments[14]

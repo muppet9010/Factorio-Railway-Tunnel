@@ -3,7 +3,7 @@
 -- Designed on the basis that the mod doesn't need to store references to the GUI Elements it creates and the structures involved with that. As they can all be obtained via the managed storage with the element name and type to improve code readability.
 
 local GuiUtil = {}
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 local GuiActionsClick = require("utility.gui-actions-click")
 local GuiActionsChecked = require("utility.gui-actions-checked")
 local Logging = require("utility.logging")
@@ -148,12 +148,12 @@ GuiUtil.AddElement = function(elementDetails)
                 child.parent = element
                 local childReturnElements = GuiUtil.AddElement(child)
                 if childReturnElements ~= nil then
-                    returnElements = Utils.TableMergeCopies({returnElements, childReturnElements})
+                    returnElements = TableUtils.TableMergeCopies({returnElements, childReturnElements})
                 end
             end
         end
     end
-    if Utils.GetTableNonNilLength(returnElements) then
+    if TableUtils.GetTableNonNilLength(returnElements) then
         return returnElements
     else
         return nil

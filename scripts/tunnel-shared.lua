@@ -1,4 +1,4 @@
-local Utils = require("utility.utils")
+local MiscUtils = require("utility.misc-utils")
 local Colors = require("utility.colors")
 local EventScheduler = require("utility.event-scheduler")
 local PlayerAlerts = require("utility.player-alerts")
@@ -190,7 +190,7 @@ end
 ---@param ghostName string
 ---@param direction defines.direction @ Direction of the entity trying to be placed.
 TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, position, surface, entityName, ghostName, direction)
-    local highlightAudiencePlayer, highlightAudienceForce = Utils.GetPlayerForceFromActioner(placer)
+    local highlightAudiencePlayer, highlightAudienceForce = MiscUtils.GetPlayerForceFromActioner(placer)
 
     -- Get the minimum position from where the attempt as made and then mark out the 4 iterations from that.
     local minX, maxX, minY, maxY
@@ -268,7 +268,7 @@ end
 ---@param surface LuaSurface
 ---@param position MapPosition
 TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface, position)
-    local textAudiencePlayer, textAudienceForce = Utils.GetPlayerForceFromActioner(entityDoingInteraction)
+    local textAudiencePlayer, textAudienceForce = MiscUtils.GetPlayerForceFromActioner(entityDoingInteraction)
     rendering.draw_text {
         text = text,
         surface = surface,

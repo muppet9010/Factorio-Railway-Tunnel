@@ -5,7 +5,7 @@
 ]]
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local PositionUtils = require("utility.position-utils")
 local Common = require("scripts.common")
 local TunnelRailEntityNames = Common.TunnelRailEntityNames
 
@@ -113,13 +113,13 @@ Test.Start = function(testName)
         targetTunnelRailEntities =
             entrancePortalEntryPortalEnd.surface.find_entities_filtered {
             name = TunnelRailEntityNames,
-            position = Utils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -10, y = 0})
+            position = PositionUtils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -10, y = 0})
         }
     elseif testScenario.targetTunnelRail == TargetTunnelRail.entrancePortalBlockingEnd then
         targetTunnelRailEntities =
             entrancePortalEntryPortalEnd.surface.find_entities_filtered {
             name = TunnelRailEntityNames,
-            position = Utils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -46, y = 0})
+            position = PositionUtils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -46, y = 0})
         }
     elseif testScenario.targetTunnelRail == TargetTunnelRail.undergroundSegment then
         targetTunnelRailEntities =
@@ -131,13 +131,13 @@ Test.Start = function(testName)
         targetTunnelRailEntities =
             entrancePortalEntryPortalEnd.surface.find_entities_filtered {
             name = TunnelRailEntityNames,
-            position = Utils.ApplyOffsetToPosition(exitPortalEntryPortalEnd.position, {x = 46, y = 0})
+            position = PositionUtils.ApplyOffsetToPosition(exitPortalEntryPortalEnd.position, {x = 46, y = 0})
         }
     elseif testScenario.targetTunnelRail == TargetTunnelRail.exitPortalMiddle then
         targetTunnelRailEntities =
             exitPortalEntryPortalEnd.surface.find_entities_filtered {
             name = TunnelRailEntityNames,
-            position = Utils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -10, y = 0})
+            position = PositionUtils.ApplyOffsetToPosition(entrancePortalEntryPortalEnd.position, {x = -10, y = 0})
         }
     else
         error("Unsupported testScenario.targetTunnelRail: " .. testScenario.targetTunnelRail)
@@ -227,14 +227,14 @@ Test.EveryTick = function(event)
             -- Train has stopped at a schedule record.
             if testScenario.expectedTunnelStopHandling == ExpectedTunnelStopHandling.endOfTunnel then
                 -- Check its at the end of the exit portal. The train is re-scheduled to this from its random unreachable rail.
-                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.exitPortalEntryPortalEnd.position, {x = 1, y = 0}))
+                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(PositionUtils.ApplyOffsetToPosition(testDataBespoke.exitPortalEntryPortalEnd.position, {x = 1, y = 0}))
                 if atrainAtExitTunnelEntryRail ~= nil then
                     game.print("train pulled to front of tunnel as expected for undergroud rail")
                     testDataBespoke.tunnelRailReached = true
                 end
             elseif testScenario.expectedTunnelStopHandling == ExpectedTunnelStopHandling.targetTunnelRail then
                 -- Check its at the expected rail.
-                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.targetTunnelRailEntity.position, {x = 2, y = 0}))
+                local atrainAtExitTunnelEntryRail = TestFunctions.GetTrainAtPosition(PositionUtils.ApplyOffsetToPosition(testDataBespoke.targetTunnelRailEntity.position, {x = 2, y = 0}))
                 if atrainAtExitTunnelEntryRail ~= nil then
                     game.print("train reached expected ground tunnel rail")
                     testDataBespoke.tunnelRailReached = true
@@ -251,7 +251,7 @@ Test.EveryTick = function(event)
         -- Need to check for when the train reaches the next stop.
         if train.state == defines.train_state.wait_station then
             -- Train has stopped at a schedule record.
-            local atrainAtNextStop = TestFunctions.GetTrainAtPosition(Utils.ApplyOffsetToPosition(testDataBespoke.stationEnd.position, {x = 2, y = 2}))
+            local atrainAtNextStop = TestFunctions.GetTrainAtPosition(PositionUtils.ApplyOffsetToPosition(testDataBespoke.stationEnd.position, {x = 2, y = 2}))
             if atrainAtNextStop ~= nil then
                 -- Train has stopped just before the target station/rail, rather than some random place.
                 TestFunctions.TestCompleted(testName)

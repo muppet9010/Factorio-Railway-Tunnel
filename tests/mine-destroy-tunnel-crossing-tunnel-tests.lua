@@ -3,7 +3,7 @@
 -- Requires and this tests class object.
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 local Common = require("scripts.common")
 
 -- Internal test types.
@@ -74,9 +74,9 @@ Test.Start = function(testName)
     -- Get the segment we will remove.
     local segmentToRemove  --- @type LuaEntity
     if testScenario.segmentToRemove == SegmentToRemove.crossingTunnelSegmentDirect then
-        segmentToRemove = Utils.GetTableValueWithInnerKeyValue(allBuiltEntities, "name", "railway_tunnel-underground_segment-straight-tunnel_crossing", true, false)[2] -- Second down is the middle one.
+        segmentToRemove = TableUtils.GetTableValueWithInnerKeyValue(allBuiltEntities, "name", "railway_tunnel-underground_segment-straight-tunnel_crossing", true, false)[2] -- Second down is the middle one.
     elseif testScenario.segmentToRemove == SegmentToRemove.crossingTunnelSegmentSupporting then
-        segmentToRemove = Utils.GetTableValueWithInnerKeyValue(allBuiltEntities, "name", "railway_tunnel-underground_segment-straight-tunnel_crossing", true, false)[1] -- First down is an edge one.
+        segmentToRemove = TableUtils.GetTableValueWithInnerKeyValue(allBuiltEntities, "name", "railway_tunnel-underground_segment-straight-tunnel_crossing", true, false)[1] -- First down is an edge one.
     else
         error("unsupported segmentToRemove: " .. testScenario.segmentToRemove)
     end

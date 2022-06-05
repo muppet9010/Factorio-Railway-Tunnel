@@ -6,7 +6,7 @@ local Test = {}
 local TestFunctions = require("scripts.test-functions")
 local Common = require("scripts.common")
 local PlayerContainer = require("scripts.player-container")
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 local EventScheduler = require("utility.event-scheduler")
 
 ---@class Tests_PRTET_PlayerController
@@ -256,7 +256,7 @@ Test.GenerateTestScenarios = function(testName)
     else
         -- Do whole test suite.
         playerControllerToTest = PlayerController
-        tunnelStateToTest = Utils.DeepCopy(TunnelState) -- Has to be a copy as we will remove some values from it.
+        tunnelStateToTest = TableUtils.DeepCopy(TunnelState) -- Has to be a copy as we will remove some values from it.
         tickOffsetToTest = TickOffset
     end
 

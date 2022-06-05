@@ -5,7 +5,7 @@
 ]]
 --
 
-local Utils = require("utility.utils")
+local TableUtils = require("utility.table-utils")
 
 local Events = {}
 MOD = MOD or {}
@@ -177,11 +177,11 @@ Events._RegisterEvent = function(eventName, thisFilterName, thisFilterData)
     end
     local eventId  ---@type uint
     local filterData  ---@type table
-    thisFilterData = Utils.DeepCopy(thisFilterData) -- Deepcopy it so if a persisted or shared table is passed in we don't cause changes to source table.
+    thisFilterData = TableUtils.DeepCopy(thisFilterData) -- Deepcopy it so if a persisted or shared table is passed in we don't cause changes to source table.
     if type(eventName) == "number" then
         eventId = eventName
         if thisFilterData ~= nil then
-            if Utils.IsTableEmpty(thisFilterData) then
+            if TableUtils.IsTableEmpty(thisFilterData) then
                 -- filter isn't nil, but has no data, so as this won't register to any filters just drop it.
                 return nil
             end

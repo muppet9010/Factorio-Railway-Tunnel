@@ -6,7 +6,7 @@
 ]]
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Utils = require("utility.utils")
+local PositionUtils = require("utility.position-utils")
 local Common = require("scripts.common")
 
 ---@class Tests_RTSR_TargetTypes
@@ -251,7 +251,7 @@ Test.EveryTick = function(event)
         end
     elseif testScenario.expectedFinalTrainState == FinalTrainStates.pulledToExitPortalEntry then
         -- Train should be sent to the end of the exit portal as no path anywhere else.
-        local trainAtExitPortal = TestFunctions.GetTrainInArea(Utils.CalculateBoundingBoxFromPositionAndRange(testDataBespoke.exitPortalPart.position, 3))
+        local trainAtExitPortal = TestFunctions.GetTrainInArea(PositionUtils.CalculateBoundingBoxFromPositionAndRange(testDataBespoke.exitPortalPart.position, 3))
         if trainAtExitPortal ~= nil then
             -- Train will end up with either Wait Station (reached valid schedule record) or No Schedule (has no valid schedule record in its list) once it reaches end of portal track.
             if trainAtExitPortal.state == defines.train_state.wait_station or trainAtExitPortal.state == defines.train_state.no_schedule then
