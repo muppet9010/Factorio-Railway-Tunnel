@@ -65,8 +65,6 @@ Test.Start = function(testName)
     local testManagerEntry = TestFunctions.GetTestManagerObject(testName)
     local testScenario = Test.TestScenarios[testManagerEntry.runLoopsCount]
 
-    local surface, force = TestFunctions.GetTestSurface(), TestFunctions.GetTestForce()
-
     local blueprint = "0eNq1l01ugzAQhe8ya5BiHH6XlXqKqopIYlFLYJBt2qKIu9dAlCahKYMhK2QM75th7Mf4BPu8ZpXkQkNyAn4ohYLk7QSKZyLNu3u6qRgkwDUrwAGRFt1Ipjz/SpudroVguVuVUqf5jokjtA5wcWTfkJDWsdRRLCuY0K7SZj770FeiXvvugJnjmrMh0n7Q7ERd7Jk0VESMDlSlMgql6AIzqtSBBhKXxAZ05JIdhrmtA5+p5Okw6vO5o3lzM3mI9ttJGF0NRqdh29VgZBrmLyhaOC0fXOS7YIWJuazGeq7nD4r0dhWYt5U+q8Nrv8RHhNAmAVP08ye6BXqTCUWLi2PKYsmOl7NjSzTZLGeHtmwrY3GpLe6hs9TGCGUmS3Md5esOz+wOslSKi+zhpkEYAKE2CVuXdrnfEOtv7S9n2+5kEixnWy9pK9fybI2DRCgbxrjwS83zP32Y/LrTZU90uf3j9vd5/PWX3+BVKV6V4FUJXtVDq5IYr0qfakeIFsHbYvOaU1gfLRriRQO06IwChFhROmOtRM+sKqaosX3jh2mYNys1sTGCRVZiYfpluta5A3MSoNS+SGTUnZvjW38ETK5OnuYRJtWwTCOyDWMv9Km5BFHb/gD2+gK3"
     -- The building bleuprint function returns lists of what it built for easy caching and future reference in the test's execution.
     local allBuiltEntities, placedEntitiesByGroup = TestFunctions.BuildBlueprintFromString(blueprint, {x = 1, y = 1}, testName)

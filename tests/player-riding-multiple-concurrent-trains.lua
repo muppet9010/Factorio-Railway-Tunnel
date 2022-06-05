@@ -2,7 +2,6 @@
 
 local Test = {}
 local TestFunctions = require("scripts.test-functions")
-local Common = require("scripts.common")
 
 ---@class Tests_PRMCT_TrainToRide
 local TrainToRide = {

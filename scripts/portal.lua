@@ -1527,6 +1527,7 @@ Portal.AddTransitionUsageDetectionEntityToPortal = function(portal)
     }
     if transitionUsageDetectorEntity == nil then
         error("Failed to create Portal's transition usage train detection entity")
+        return
     end
     global.portals.transitionUsageDetectorEntityIdToPortal[transitionUsageDetectorEntity.unit_number] = portal
     portal.transitionUsageDetectorEntity = transitionUsageDetectorEntity

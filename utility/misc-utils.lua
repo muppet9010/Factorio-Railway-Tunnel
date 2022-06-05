@@ -1,4 +1,7 @@
---- Random utility functions that don't fit in to any other category.
+--[[
+    Random utility functions that don't fit in to any other category.
+]]
+--
 
 local MiscUtils = {}
 

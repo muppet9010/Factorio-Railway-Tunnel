@@ -105,6 +105,7 @@ PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled = function(event
     local oldVehicle = global.playerContainers.playerTryLeaveVehicle[playerIndex]
     if oldVehicle == nil then
         error("PlayerContainer.OnToggleDrivingInputAfterChangedState_Scheduled() called with no oldVehicle for player. This state should of having the scheduled event, but there being no old vehicle should not be reachable.")
+        return
     end
 
     -- If the old vehicle was destroyed then cancel this. I don't believe this is a reachable state, but just to avoid any crash risk as reproduction would be a nightmare.

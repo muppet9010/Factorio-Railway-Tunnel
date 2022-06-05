@@ -90,6 +90,7 @@ TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
     -- This function can be called either by local event registration or from tunnel-shared event handlder function.
     if diedEntity == nil then
         diedEntity = event.entity
+        ---@cast diedEntity LuaEntity
         if not diedEntity.valid then
             return
         end

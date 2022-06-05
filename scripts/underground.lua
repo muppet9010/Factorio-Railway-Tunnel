@@ -390,11 +390,11 @@ Underground.OnLoad = function()
     MOD.Interfaces.Underground.OnUndergroundSegmentEntityPreMined = Underground.OnUndergroundSegmentEntityPreMined
 end
 
---- Called when an underground segment has been built. Event fitlering is done by calling function.
+--- Called when an underground segment has been built. Event filtering is done by the calling function.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 ---@param builtEntity LuaEntity
 ---@param builtEntity_name string
----@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity.
+---@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity. TODO: I think this fails if a bot builds it as the logic block in TunnelShared.OnBuiltEntity() doesn't specially handle a bot building a fake part like it does a player.
 Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     local placer = MiscUtils.GetActionerFromEvent(event)
@@ -447,7 +447,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
             for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
                 if not railCrossingTrackEntity.can_be_destroyed() then
                     -- Put the old correct entity back and correct whats been done.
-                    TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, surface, oldFastReplacedSegment_RailCrossing.entity_position)
+                    TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, segment.surface, oldFastReplacedSegment_RailCrossing.entity_position)
                     oldFastReplacedSegment_RailCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
                     Underground.RestoreSegmentEntity(oldFastReplacedSegment_RailCrossing)
                     InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_RailCrossing.entity_name, count = 1})
@@ -1000,7 +1000,7 @@ Underground.TunnelCrossingSegment_OnRemovedTunnel = function(thisTunnelCrossingS
     -- Get this segments neighbors. They must exist and be tunnel crossing type segments to reach this function.
     local frontConnectedSegment = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[thisTunnelCrossingSegment.frontExternalCheckSurfacePositionString].segment ---@type TunnelCrossingUndergroundSegment
     local rearConnectedSegment = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[thisTunnelCrossingSegment.rearExternalCheckSurfacePositionString].segment ---@type TunnelCrossingUndergroundSegment
-    local fakeSegment = thisTunnelCrossingSegment.directFakeCrossingSegment
+    local fakeSegment = thisTunnelCrossingSegment.directFakeCrossingSegment ---@type TunnelCrossingFakeUndergroundSegment
 
     -- Update the direct child relationship for the removal of the fake segment object.
     thisTunnelCrossingSegment.directFakeCrossingSegment = nil
@@ -1145,7 +1145,7 @@ Underground.BuildSignalsForSegment = function(segment_RailCrossing)
         -- As a segments own orientation has no bearing on its end of an underground work out which end it is by comparing its 2 positions.
         -- CODE NOTE: The use of Utils to back convert string to position is wasteful, but this will not be frequently called and saves having to re-engineer the whole position string code stack to make this information available here and a lot of extra runtime data updates to allow it.
         ---@typelist MapPosition, MapPosition
-        local tunnelEndPosition, tunnelInnerPosition
+        local tunnelEndPosition, tunnelInnerPosition, _
         if segment_RailCrossing.frontExternalCheckSurfacePositionString == firstNonConnectedExternalSurfacePosition then
             _, tunnelEndPosition = StringUtils.SurfacePositionStringToSurfaceAndPosition(segment_RailCrossing.frontExternalCheckSurfacePositionString)
             _, tunnelInnerPosition = StringUtils.SurfacePositionStringToSurfaceAndPosition(segment_RailCrossing.rearExternalCheckSurfacePositionString)
@@ -1293,7 +1293,7 @@ end
 ---@param minedSegment UndergroundSegment
 Underground.RestoreSegmentEntity = function(minedSegment)
     -- Destroy the old entity after caching its values.
-    local minedSegmentEntity = minedSegment.entity
+    local minedSegmentEntity = minedSegment.entity ---@type LuaEntity
     local minedSegmentEntity_lastUser, minedSegmentEntityId = minedSegmentEntity.last_user, minedSegment.id
     minedSegmentEntity.destroy {raise_destroy = false} -- Destroy it so it can't be mined.
 

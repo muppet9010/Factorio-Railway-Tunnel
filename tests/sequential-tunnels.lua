@@ -102,7 +102,6 @@ Test.EveryTick = function(event)
     -- Get testData object and testName from the event data.
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(testName)
-    local testScenario = testData.testScenario ---@type Tests_ST_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_ST_TestScenarioBespokeData
 
     if testDataBespoke.endTrainStop.get_stopped_train() ~= nil then

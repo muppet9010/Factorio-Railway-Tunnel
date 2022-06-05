@@ -282,6 +282,7 @@ PortalTunnelGui.PopulateMainGuiContents = function(portalPart, playerIndex)
 
     -- Tunnel GUI being shown with 2 portals.
     if tunnel ~= nil then
+        ---@cast thisPortal Portal
         -- Work out portal A and B details. A is left of GUI, B is right.
         ---@typelist Portal, Portal, string, string, string, string
         local portalA, portalB, portalAOrientationText, portalBOrientationText, portalASelectedText, portalBSelectedText

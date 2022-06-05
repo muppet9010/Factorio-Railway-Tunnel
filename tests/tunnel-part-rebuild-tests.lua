@@ -291,6 +291,8 @@ Test.GenerateTestScenarios = function(testName)
     end
 
     -- Work out the combinations of the various types that we will do a test for.
+    ---@typelist integer, integer
+    local numberOfPartsToRemove, sequenceOfPartsToRemove
     for _, partToRemove in pairs(partToRemoveToTest) do
         for _, numberSequenceOfPartsToRemove in pairs(numberSequenceOfPartsToRemoveToTest) do
             for _, rebuildPartOrder in pairs(rebuildPartOrderToTest) do

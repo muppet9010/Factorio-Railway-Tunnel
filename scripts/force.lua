@@ -15,6 +15,7 @@ Force.CreateTunnelForce = function()
     local tunnelForce = game.forces["Railway tunnel internal force"]
     if tunnelForce == nil then
         tunnelForce = game.create_force("Railway tunnel internal force") -- If mod was removed and re-added we can't recreate the force, just reset its settings.
+    ---@cast tunnelForce LuaForce
     end
     tunnelForce.friendly_fire = false
     for _, force in pairs(game.forces) do

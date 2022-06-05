@@ -89,6 +89,7 @@ Test.Start = function(testName)
     local player = game.connected_players[1]
     if player == nil then
         error("No player 1 found to set as driver")
+        return
     end
 
     -- Set the player in the right mode so they have a character as required.
@@ -277,8 +278,7 @@ Test.GenerateTestScenarios = function(testName)
     for _, playerController in pairs(playerControllerToTest) do
         for _, tunnelState in pairs(tunnelStateToTest) do
             for _, tickOffset in pairs(tickOffsetToTest) do
-                ---@class Tests_PRTET_TestScenario
-                local scenario = {
+                scenario = {
                     playerController = playerController,
                     tunnelState = tunnelState,
                     tickOffset = tickOffset

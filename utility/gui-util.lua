@@ -258,12 +258,12 @@ end
 ---@param elementName string
 ---@param elementType string
 GuiUtil.DestroyElementInPlayersReferenceStorage = function(playerIndex, storeName, elementName, elementType)
-    local elementName = GuiUtil.GenerateGuiElementName(elementName, elementType)
-    if global.GUIUtilPlayerElementReferenceStorage ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName] ~= nil then
-        if global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].valid then
-            global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName].destroy()
+    local guiElementName = GuiUtil.GenerateGuiElementName(elementName, elementType)
+    if global.GUIUtilPlayerElementReferenceStorage ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName] ~= nil and global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][guiElementName] ~= nil then
+        if global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][guiElementName].valid then
+            global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][guiElementName].destroy()
         end
-        global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][elementName] = nil
+        global.GUIUtilPlayerElementReferenceStorage[playerIndex][storeName][guiElementName] = nil
     end
 end
 
@@ -369,6 +369,8 @@ end
 --------------------------------------------------------------------------
 -- Custom Objects for use in mutliple public classes
 --------------------------------------------------------------------------
+---@meta
+---@diagnostic disable
 
 --- A table of LuaStyle attribute names and values (key/value) to be applied post element creation (after style). Saves having to capture the added element and then set style attributes one at a time in calling code.
 ---
@@ -420,7 +422,7 @@ end
 
 --------------------------------------------------------------------------
 -- A copy of the the base game's LuaGuiElement.add_param, but without the following attributes as they are included in my parent class; name, style, caption, tooltip.
--- Copied from 1.1.53
+-- Copied from 1.1.58
 --------------------------------------------------------------------------
 
 ---@class UtilityGuiUtil_ElementDetails_LuaGuiElement.add_param
@@ -428,7 +430,7 @@ end
 ---
 ---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
 ---@field type string
----Whether the child element is enabled. Defaults to `true`.
+---Name of the child element.
 ---
 ---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
 ---@field enabled boolean|nil
@@ -440,7 +442,7 @@ end
 ---
 ---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
 ---@field ignored_by_interaction boolean|nil
----[Tags](https://lua-api.factorio.com/latest/Concepts.html#Tags) associated with the child element.
+---Style of the child element.
 ---
 ---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
 ---@field tags Tags|nil
@@ -619,7 +621,7 @@ end
 ---The position the minimap centers on. Defaults to the player's current position.
 ---
 ---[View documentation](https://lua-api.factorio.com/latest/LuaGuiElement.html#LuaGuiElement.add)
----@field position MapPosition<int,int>
+---@field position MapPosition
 ---Applies to **"camera"**: (optional)
 ---The surface that the camera will render. Defaults to the player's current surface.
 ---

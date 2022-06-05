@@ -89,6 +89,7 @@ Test.Start = function(testName)
     local player = game.connected_players[1]
     if player == nil then
         error("No player 1 found to set as driver")
+        return
     end
 
     -- Set the player in the right mode so they have a character as required.

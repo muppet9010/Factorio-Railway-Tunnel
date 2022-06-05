@@ -111,7 +111,7 @@ end
 TrainManager.RegisterTrainApproachingPortalSignal = function(train, train_id, entrancePortalEntryTransitionSignal)
     -- Track special existing ManagedTrain objects for this train id.
     local reversedManagedTrain, committedManagedTrain = nil, nil
-    local newTunnel = entrancePortalEntryTransitionSignal.portal.tunnel
+    local newTunnel = entrancePortalEntryTransitionSignal.portal.tunnel ---@type Tunnel
 
     -- Check if this train is already actively using (entering, traversing) a tunnel.
     local existingActivelyUsingManagedTrain = global.trainManager.activelyUsingTrainIdToManagedTrain[train_id]
@@ -183,6 +183,7 @@ TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, m
         managedTrain.trainReachedPortalTracks = true
         return
     end
+    ---@cast managedTrain ManagedTrain
 
     -- Is a new tunnel usage so do a full handling process.
     managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
@@ -194,8 +195,7 @@ TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, m
 end
 
 --- Every tick loop over each train and process it as required.
----@param event on_tick
-TrainManager.ProcessManagedTrains = function(event)
+TrainManager.ProcessManagedTrains = function()
     -- As we remove managedTrains from this dictionary during looping over it numebric FOR loop isn't a viable option.
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         -- A managedTrain can be put to sleep by some state changes when its known an external/scheduled event will be what wakes them up or terminates them.
@@ -212,7 +212,7 @@ TrainManager.ProcessManagedTrains = function(event)
                 TrainManager.TrainOnPortalTrackOngoing(managedTrain)
             elseif managedTrain.tunnelUsageState == TunnelUsageState.underground then
                 -- Only reason we have to update per tick while travelling underground is if there were players riding it when it started its underground traversal.
-                TrainManager.TrainUndergroundOngoing(managedTrain, event.tick)
+                TrainManager.TrainUndergroundOngoing(managedTrain)
             end
         end
     end
@@ -446,8 +446,7 @@ end
 
 --- Runs each tick for when we need to track a train while underground in detail. Only need to track an ongoing underground train if there is/was a player riding in the train and we need to calculate a smoot train progress and update their position each tick.
 ---@param managedTrain ManagedTrain
----@param tick Tick
-TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
+TrainManager.TrainUndergroundOngoing = function(managedTrain)
     local leavingTrain = managedTrain.train
 
     -- Get the braking distance of the underground train at current speed.
@@ -528,7 +527,7 @@ TrainManager.TrainUndergroundOngoing = function(managedTrain, tick)
                     managedTrain.playerTrain_brakingEntityId = leavingTrain_signal_unitNumber
 
                     local signalRail = leavingTrain_signal.get_connected_rails()[1]
-                    managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain, managedTrain.targetTrainStop) + managedTrain.playerTrain_traversalDistanceRemaining
+                    managedTrain.playerTrain_stoppingDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, leavingTrain) + managedTrain.playerTrain_traversalDistanceRemaining
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - TrainUtils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance - 6 -- The 3 rails that are currently under the lead carriage and can't be braked over.
                     managedTrain.playerTrain_stoppingDistance = managedTrain.playerTrain_stoppingDistance + 3 -- The leaving train has 3 tiles to the end of the portal.
@@ -717,7 +716,7 @@ TrainManager.TrainUndergroundOngoing_Scheduled = function(event)
             if previousBrakingTargetEntityId ~= brakingTargetEntityId then
                 -- Work out the stopping distance for the train.
                 local signalRail = train_signal.get_connected_rails()[1]
-                stoppingPointDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train, managedTrain.targetTrainStop)
+                stoppingPointDistance = TrainManager.GetTrainPathDistanceToRail(signalRail, managedTrain.train)
                 stoppingPointDistance = stoppingPointDistance - TrainUtils.GetRailEntityLength(signalRail.type, signalRail.direction) -- Remove the last rail's length as we want to stop before this.
 
                 -- Restore the train to its origional state from the path distance function.
@@ -996,8 +995,8 @@ end
 ---@param train LuaTrain
 ---@param entrancePortalEntryTransitionSignal PortalTransitionSignal
 ---@param onApproach boolean
----@param upgradeManagedTrain ManagedTrain @ An existing ManagedTrain object that is being updated/overwritten with fresh data.
----@param reversedManagedTrain ManagedTrain @ An existing ManagedTrain object that is reversing after starting to leave the tunnel back in to the tunnel. This new ManagedTrain being created is this new reversal usage of the tunnel.
+---@param upgradeManagedTrain? ManagedTrain @ An existing ManagedTrain object that is being updated/overwritten with fresh data.
+---@param reversedManagedTrain? ManagedTrain @ An existing ManagedTrain object that is reversing after starting to leave the tunnel back in to the tunnel. This new ManagedTrain being created is this new reversal usage of the tunnel.
 ---@return ManagedTrain
 TrainManager.CreateManagedTrainObject = function(train, entrancePortalEntryTransitionSignal, onApproach, upgradeManagedTrain, reversedManagedTrain)
     local train_id = train.id ---@type Id
@@ -1064,7 +1063,7 @@ TrainManager.CreateManagedTrainObject = function(train, entrancePortalEntryTrans
     else
         -- Reserved the tunnel, but not using it yet. Light data capture.
         managedTrain.portalTrackTrainBySignal = false
-        trainReachedPortalTracks = true
+        managedTrain.trainReachedPortalTracks = true
     end
 
     global.trainManager.managedTrains[managedTrain.id] = managedTrain
@@ -1147,7 +1146,7 @@ TrainManager.CloneEnteringTrainToExit = function(managedTrain)
     local playersInTrain = #enteringTrain.passengers > 0
 
     -- Move the first carriage forwards by its connection distance as theres no train in front. It will be pushed back by its full size and connected distance as part of the looping.
-    nextCarriagePosition = PositionUtils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = 0, y = -Common.CarriagesOwnOffsetFromOtherConnectedCarriage[managedTrain.trainCachedData.carriagesCachedData[minCarriageIndex].prototypeName]}, managedTrain.exitPortal.leavingTrainFrontPosition)
+    local nextCarriagePosition = PositionUtils.RotateOffsetAroundPosition(managedTrain.trainTravelOrientation, {x = 0, y = -Common.CarriagesOwnOffsetFromOtherConnectedCarriage[managedTrain.trainCachedData.carriagesCachedData[minCarriageIndex].prototypeName]}, managedTrain.exitPortal.leavingTrainFrontPosition)
 
     -- Iterate over the carriages and clone them.
     local refCarriageData  ---@type TrainUtils_TrainCarriageData
@@ -1512,7 +1511,6 @@ end
 ---@param managedTrain ManagedTrain
 ---@return LuaTrain
 TrainManager.GetCurrentTrain = function(managedTrain)
-    local train  ---@type LuaTrain
     if managedTrain.train ~= nil then
         return managedTrain.train
     else
@@ -1525,9 +1523,8 @@ end
 --- Train must have its state returned to the desired as this test will mess with it.
 ---@param rail LuaEntity
 ---@param train LuaTrain
----@param targetTrainStop LuaEntity
 ---@return double distanceFromTrainToRail
-TrainManager.GetTrainPathDistanceToRail = function(rail, train, targetTrainStop)
+TrainManager.GetTrainPathDistanceToRail = function(rail, train)
     -- Get the trains running state
 
     -- Create a temporary schedule to the signals rail, get the distance and then remove the schedule entry.

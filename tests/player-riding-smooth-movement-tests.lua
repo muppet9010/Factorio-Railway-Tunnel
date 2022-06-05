@@ -427,7 +427,6 @@ end
 Test.EveryTick_StraightThrough = function(event)
     local testName = event.instanceId
     local testData = TestFunctions.GetTestDataObject(testName)
-    local testScenario = testData.testScenario ---@type Tests_PRSMT_TestScenario
     local testDataBespoke = testData.bespoke ---@type Tests_PRSMT_TestScenarioBespokeData
     local tunnelUsageChanges = testData.tunnelUsageChanges
 

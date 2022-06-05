@@ -48,8 +48,8 @@ end
 
 ---@param managedTrainId Id
 ---@param action TunnelUsageAction
----@param changeReason TunnelUsageChangeReason
----@param replacedTunnelUsageId Id
+---@param changeReason? TunnelUsageChangeReason
+---@param replacedTunnelUsageId? Id
 TrainManagerRemote.TunnelUsageChanged = function(managedTrainId, action, changeReason, replacedTunnelUsageId)
     -- Schedule the event to be raised after all trains are handled for this tick. Otherwise events can interupt the mods processes and cause errors.
     -- Don't put the Factorio Lua object references in here yet as they may become invalid by send time and then the event is dropped.

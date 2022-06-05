@@ -586,7 +586,7 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
             -- Going back to real item from flipped fake item.
 
             -- Cancel any traking of real item to fake item for this player.
-            TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.player_index, event.tick)
+            TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.player_index)
 
             -- Discard the fake item (its destroyed automatically on releae from cursor).
             player.clear_cursor()
@@ -658,7 +658,7 @@ TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     -- Check nothing has changed that means we no longer need to do the update.
     -- Note: when the last ite is palced this code would not detect it as the cursor would have been changed to empty. This is caught by the dedicated on entity built.
     if not player_cursorStack.valid_for_read or player_cursorStack.name ~= playersFakePartTrackingData.fakeItemInCursorName then
-        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.instanceId, event.tick)
+        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.instanceId)
         return
     end
 
@@ -681,7 +681,7 @@ TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     else
         -- None left in inventory so remove cursor item and just don't add another check.
         player_cursorStack.clear()
-        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.instanceId, event.tick)
+        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.instanceId)
     end
 end
 
@@ -702,6 +702,7 @@ TunnelShared.FakeTunnelPartBuiltByPlayer = function(event, createdEntity_name)
         else
             -- Player is in normal character mode so this state should be unreachable.
             error("Player " .. event.player_index .. " built a fake (flipped) tunnel part, but they aren't being monitored for any.")
+            return
         end
     end
     if createdEntity_name ~= playersFakePartTrackingData.fakeItemInCursorName then
@@ -723,14 +724,13 @@ TunnelShared.FakeTunnelPartBuiltByPlayer = function(event, createdEntity_name)
         -- The cursor is presently empty and so the last item was just built.
         local playerMainInventory = playersFakePartTrackingData.player.get_inventory(defines.inventory.character_main)
         playerMainInventory.remove({name = playersFakePartTrackingData.realItemInInventoryName, count = 1})
-        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.player_index, event.tick)
+        TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.player_index)
     end
 end
 
 --- Called to stop tracking a player's real tunnel part to fake tunnel part item count.
 ---@param playerIndex Id
----@param currentTick Tick
-TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount = function(playerIndex, currentTick)
+TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount = function(playerIndex)
     global.tunnelShared.playersFakePartTracking[playerIndex] = nil
     EventScheduler.RemoveScheduledOnceEvents("TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerIndex)
 end
