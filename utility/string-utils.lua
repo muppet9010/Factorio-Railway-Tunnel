@@ -15,7 +15,7 @@ end
 --- Split a string on the specified characters. The splitting characters aren't included in the output. The results are trimmed of blank spaces.
 ---@param text string
 ---@param splitCharacters string
----@param returnAsKey? boolean|null @ If nil or false then an array of strings are returned. If true then a table with the string as the keys and the value as boolean true are returned.
+---@param returnAsKey? boolean|nil @ If nil or false then an array of strings are returned. If true then a table with the string as the keys and the value as boolean true are returned.
 ---@return string[]|table<string, True>
 StringUtils.SplitStringOnCharacters = function(text, splitCharacters, returnAsKey)
     local list = {}

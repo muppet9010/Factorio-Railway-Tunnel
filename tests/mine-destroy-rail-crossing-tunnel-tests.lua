@@ -88,7 +88,7 @@ Test.Start = function(testName)
     local testDataBespoke = {
         crossingTunnelSegment = crossingTunnelSegment, ---@type LuaEntity
         portalEnd = portalEnd, ---@type LuaEntity
-        blockingLocomotive = blockingLocomotive ---@type LuaEntity|null
+        blockingLocomotive = blockingLocomotive ---@type LuaEntity|nil
     }
     testData.bespoke = testDataBespoke
 

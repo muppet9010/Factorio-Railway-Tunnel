@@ -159,8 +159,8 @@ end
 ---@param mandatory boolean
 ---@param commandName string @ The ingame commmand name. Used in error messages.
 ---@param argumentName string @ The argument name in its hierachy. Used in error messages.
----@param numberMinLimit? number|null @ An optional minimum allowed value can be specified.
----@param numberMaxLimit? number|null @ An optional maximum allowed value can be specified.
+---@param numberMinLimit? number|nil @ An optional minimum allowed value can be specified.
+---@param numberMaxLimit? number|nil @ An optional maximum allowed value can be specified.
 ---@return boolean argumentValid
 Commands.ParseNumberArgument = function(value, requiredType, mandatory, commandName, argumentName, numberMinLimit, numberMaxLimit)
     -- Check its valid for generic requirements first.
@@ -208,7 +208,7 @@ end
 ---@param mandatory boolean
 ---@param commandName string @ The ingame commmand name. Used in error messages.
 ---@param argumentName string @ The argument name in its hierachy. Used in error messages.
----@param allowedStrings? table<string, any>|null @ A limited array of allowed strings can be specified as a table of string keys with non nil values.
+---@param allowedStrings? table<string, any>|nil @ A limited array of allowed strings can be specified as a table of string keys with non nil values.
 ---@return boolean argumentValid
 Commands.ParseStringArgument = function(value, mandatory, commandName, argumentName, allowedStrings)
     -- Check its valid for generic requirements first.
@@ -237,7 +237,7 @@ end
 ---@param mandatory boolean
 ---@param commandName string @ The ingame commmand name. Used in error messages.
 ---@param argumentName string @ The argument name in its hierachy. Used in error messages.
----@param allowedKeys? table<string, any>|null @ A limited array of allowed keys of the table can be specified as a table of string keys with non nil values.
+---@param allowedKeys? table<string, any>|nil @ A limited array of allowed keys of the table can be specified as a table of string keys with non nil values.
 ---@return boolean argumentValid
 Commands.ParseTableArgument = function(value, mandatory, commandName, argumentName, allowedKeys)
     -- Check its valid for generic requirements first.
@@ -265,7 +265,7 @@ end
 
 --- Internal commands function that returns the input text as its correct type.
 ---@param inputText string
----@return null|number|boolean|table|string typedValue
+---@return nil|number|boolean|table|string typedValue
 Commands._StringToTypedObject = function(inputText)
     if inputText == "nil" then
         return nil

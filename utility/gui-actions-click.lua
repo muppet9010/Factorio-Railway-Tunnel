@@ -38,8 +38,8 @@ end
 ---@param elementName string @ The name of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param elementType string @ The type of the element. Must be unique within mod once elementName and elementType arguments are combined togeather.
 ---@param actionName string @ The actionName of the registered function to be called when the GUI element is clicked.
----@param data? any|null @ Any provided data will be passed through to the actionName's registered function upon the GUI element being clicked.
----@param disabled? boolean|null @ If TRUE then click not registered (for use with GUI templating). Otherwise FALSE or nil will registered normally.
+---@param data? any|nil @ Any provided data will be passed through to the actionName's registered function upon the GUI element being clicked.
+---@param disabled? boolean|nil @ If TRUE then click not registered (for use with GUI templating). Otherwise FALSE or nil will registered normally.
 GuiActionsClick.RegisterGuiForClick = function(elementName, elementType, actionName, data, disabled)
     if elementName == nil or elementType == nil or actionName == nil then
         error("GuiActions.RegisterGuiForClick called with missing arguments")

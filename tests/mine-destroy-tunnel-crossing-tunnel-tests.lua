@@ -109,7 +109,7 @@ Test.Start = function(testName)
     ---@class Tests_MDTCTT_TestScenarioBespokeData
     local testDataBespoke = {
         segmentToRemove = segmentToRemove, ---@type LuaEntity
-        crossingTunnelLocomotive = crossingTunnelLocomotive, ---@type LuaEntity|null
+        crossingTunnelLocomotive = crossingTunnelLocomotive, ---@type LuaEntity|nil
         mainTunnelId = mainTunnelId, ---@type Id
         crossingTunnelId = crossingTunnelId ---@type Id
     }

@@ -180,8 +180,8 @@ end
 
 -- Stringify a table in to a JSON text string. Options to make it pretty printable.
 ---@param targetTable table
----@param name? string|null @ If provided will appear as a "name:JSONData" output.
----@param singleLineOutput? boolean|null @ If provided and true removes all lines and spacing from the output.
+---@param name? string|nil @ If provided will appear as a "name:JSONData" output.
+---@param singleLineOutput? boolean|nil @ If provided and true removes all lines and spacing from the output.
 ---@return string
 TableUtils.TableContentsToJSON = function(targetTable, name, singleLineOutput)
     singleLineOutput = singleLineOutput or false
@@ -263,8 +263,8 @@ end
 
 ---@param theTable table
 ---@param value StringOrNumber
----@param returnMultipleResults? boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList? boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults? boolean|nil @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList? boolean|nil @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return StringOrNumber[] @ table of keys.
 TableUtils.GetTableKeyWithValue = function(theTable, value, returnMultipleResults, isValueAList)
     local keysFound = {}
@@ -291,8 +291,8 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults? boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList? boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults? boolean|nil @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList? boolean|nil @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return StringOrNumber[] @ table of keys.
 TableUtils.GetTableKeyWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local keysFound = {}
@@ -319,8 +319,8 @@ end
 ---@param theTable table
 ---@param innerKey StringOrNumber
 ---@param innerValue StringOrNumber
----@param returnMultipleResults? boolean|null @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
----@param isValueAList? boolean|null @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
+---@param returnMultipleResults? boolean|nil @ Can return a single result (returnMultipleResults = false/nil) or a list of results (returnMultipleResults = true)
+---@param isValueAList? boolean|nil @ Can have innerValue as a string/number (isValueAList = false/nil) or as a list of strings/numbers (isValueAList = true)
 ---@return table[] @ table of values, which must be a table to have an inner key/value.
 TableUtils.GetTableValueWithInnerKeyValue = function(theTable, innerKey, innerValue, returnMultipleResults, isValueAList)
     local valuesFound = {}

@@ -19,13 +19,13 @@ local Underground = {}
 ---@field surface LuaSurface @ The surface this underground object is on.
 ---@field undergroundEndSegments UndergroundEndSegmentObject[] @ Objects with details of the segments at the 2 ends of the underground. Updated every time the underground's segments change.
 ---
----@field tunnel? Tunnel|null @ Ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
+---@field tunnel? Tunnel|nil @ Ref to tunnel object if this underground is part of one. Only established once this underground is part of a valid tunnel.
 
 ---@class UndergroundSegment @ The object attached to a single underground segment's entity, or for a fakeTunnelCrossing segment.
 ---@field typeData UndergroundSegmentTypeData @ Ref to generic data about this type of segment.
 ---@field id UnitNumber|Id @ Unit_number of the placed segment entity, or a sequential Id for fakeTunnelCrossing segments.
----@field entity? LuaEntity|null @ The entity for this segment, or Nil for a fakeTunnelCrossing segment.
----@field entity_name? string|null @ Cache of the segment's entity's name, or Nil for a fakeTunnelCrossing segment.
+---@field entity? LuaEntity|nil @ The entity for this segment, or Nil for a fakeTunnelCrossing segment.
+---@field entity_name? string|nil @ Cache of the segment's entity's name, or Nil for a fakeTunnelCrossing segment.
 ---@field entity_position MapPosition @ Cache of the entity's position.
 ---@field entity_direction defines.direction @ Cache of the entity's direction.
 ---@field entity_orientation RealOrientation @ Cache of the entity's orientation.
@@ -40,13 +40,13 @@ local Underground = {}
 ---@field force LuaForce @ The force this segment object belongs to.
 ---@field underground Underground @ Ref to the parent underground object.
 ---@field surfacePositionString SurfacePositionString @ Used for Fast Replacement to back match to segmentSurfacePositions global object.
----@field beingFastReplacedTick? uint|null @ The tick the segment was marked as being fast replaced or nil.
+---@field beingFastReplacedTick? uint|nil @ The tick the segment was marked as being fast replaced or nil.
 ---@field tilesLength int @ How many tiles this segment is long.
 ---@field nonConnectedExternalSurfacePositions table<SurfacePositionString, SurfacePositionString> @ A table of this segments non connected external positions to check outside of the entity. Always exists, even if not part of a portal.
----@field builtLayerEntity? LuaEntity|null @ The built layer graphical entity that is showings its picture and hiding the main entities once placed. Is always present regardless of tunnel or not.
+---@field builtLayerEntity? LuaEntity|nil @ The built layer graphical entity that is showings its picture and hiding the main entities once placed. Is always present regardless of tunnel or not.
 ---
----@field tunnelRailEntities? table<UnitNumber, LuaEntity>|null @ The invisible rail entities within the tunnel segment that form part of the larger tunnel. Only established once this portal is part of a valid tunnel.
----@field topLayerEntity? LuaEntity|null @ The top layer graphical entity that is showings its picture and hiding the main entities once placed. Only established once this portal is part of a valid tunnel.
+---@field tunnelRailEntities? table<UnitNumber, LuaEntity>|nil @ The invisible rail entities within the tunnel segment that form part of the larger tunnel. Only established once this portal is part of a valid tunnel.
+---@field topLayerEntity? LuaEntity|nil @ The top layer graphical entity that is showings its picture and hiding the main entities once placed. Only established once this portal is part of a valid tunnel.
 
 ---@class StandardUndergroundSegment:UndergroundSegment @ Generic underground segment specific object.
 ---@field trainBlockerEntity LuaEntity @ The entity that stops you building train carriages on underground tunnel track.
@@ -54,13 +54,13 @@ local Underground = {}
 ---@class RailCrossingUndergroundSegment:UndergroundSegment @ Rail crossing underground segment specific object.
 ---@field crossingRailEntities table<UnitNumber, LuaEntity> @ The rail entities that cross the tunnel segment.
 ---
----@field signalEntities? table<UnitNumber, LuaEntity>|null @ The hidden signal entities within the tunnel segment. Only established once this underground segment is part of a valid tunnel.
+---@field signalEntities? table<UnitNumber, LuaEntity>|nil @ The hidden signal entities within the tunnel segment. Only established once this underground segment is part of a valid tunnel.
 
 ---@class TunnelCrossingUndergroundSegment:UndergroundSegment @ Tunnel crossing underground segment specific object.
 ---@field trainBlockerEntity LuaEntity @ The entity that stops you building train carriages on underground tunnel track.
 ---@field tunnelCrossingNeighbors uint @ How many tunnel crossing type segments neighbor this segment. As a straight tunnel crossing needs 2 tunnel crossing neighbors to be complete.
 ---@field tunnelCrossingCompleted boolean @ If the tunnel crossing centered on this segment is complete (has enough valid neighbors).
----@field directFakeCrossingSegment? TunnelCrossingFakeUndergroundSegment|null @ The direct child fake tunnel crossing segment of this real segment. Only exists if this real segment's tunnelCrossingCompleted is TRUE.
+---@field directFakeCrossingSegment? TunnelCrossingFakeUndergroundSegment|nil @ The direct child fake tunnel crossing segment of this real segment. Only exists if this real segment's tunnelCrossingCompleted is TRUE.
 ---@field supportingFakeCrossingSegments table<Id, TunnelCrossingFakeUndergroundSegment> @ Zero or more fake crossing segments that this segment helps exist by contributing to thier direct parent's real segments tunnelCrossingCompleted. So when this segment is one of the required 3 segments for a segment to be tunnelCrossingCompleted, but no the main center one.
 ---@field mainArrowRenderId Id @ The Id of the main arrow render if this segment has this render currently. This goes on top of the main built layer graphics and shows the arrow for the tunnel going WITH this real segment.
 ---@field tunnelCrossingArrowRenderId Id @ The Id of the crossing arrow render if this segment has this render currently. This goes on top of the main built layer graphics and shows the arrow for the tunnel going ACROSS this segment (using fake segment).
@@ -85,8 +85,8 @@ local SegmentSurfacePositionFacing = {["front"] = "front", ["rear"] = "rear", ["
 ---@field name string
 ---@field segmentShape UndergroundSegmentShape
 ---@field segmentType UndergroundSegmentType
----@field tunnelBuiltLayerEntityName? string|null @ The entity to place on top of the real segment entity when its built (no tunnel required). Is used to hide the real segment's graphics once built.
----@field tunnelTopLayerEntityName? string|null @ The entity to place when the tunnel is complete to show the desired completed graphics layer.
+---@field tunnelBuiltLayerEntityName? string|nil @ The entity to place on top of the real segment entity when its built (no tunnel required). Is used to hide the real segment's graphics once built.
+---@field tunnelTopLayerEntityName? string|nil @ The entity to place when the tunnel is complete to show the desired completed graphics layer.
 ---@field tilesLength int @ How many tiles this underground is long.
 ---@field undergroundTracksPositionOffset UndergroundSegmentTrackPositionOffset[] @ The type of underground track and its position offset from the center of the segment when in a 0 orientation.
 ---@field frontInternalPositionOffset MapPosition @ Front internal position as an offset from the segments center when orientated north. Is -0.5 tiles inside the entities border.
@@ -394,7 +394,7 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 ---@param builtEntity LuaEntity
 ---@param builtEntity_name string
----@param segment? UndergroundSegment|null @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity. TODO: I think this fails if a bot builds it as the logic block in TunnelShared.OnBuiltEntity() doesn't specially handle a bot building a fake part like it does a player.
+---@param segment? UndergroundSegment|nil @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity. TODO: I think this fails if a bot builds it as the logic block in TunnelShared.OnBuiltEntity() doesn't specially handle a bot building a fake part like it does a player.
 Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     local placer = MiscUtils.GetActionerFromEvent(event)
@@ -447,11 +447,14 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
             for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
                 if not railCrossingTrackEntity.can_be_destroyed() then
                     -- Put the old correct entity back and correct whats been done.
-                    TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, segment.surface, oldFastReplacedSegment_RailCrossing.entity_position)
                     oldFastReplacedSegment_RailCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
                     Underground.RestoreSegmentEntity(oldFastReplacedSegment_RailCrossing)
-                    InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_RailCrossing.entity_name, count = 1})
-                    InventoryUtils.GetBuilderInventory(placer).insert({name = builtEntity_name, count = 1})
+                    if placer ~= nil then
+                        -- If the placer wasn't a script show message and return items back.
+                        TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, segment.surface, oldFastReplacedSegment_RailCrossing.entity_position)
+                        InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_RailCrossing.entity_name, count = 1})
+                        InventoryUtils.GetBuilderInventory(placer).insert({name = builtEntity_name, count = 1})
+                    end
                     return
                 end
             end
@@ -471,11 +474,14 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                     -- The fake crossing segment has a tunnel that will need checking.
                     if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(fakeCrossingTunnelObject) then
                         -- The crossing tunnel is in-use so undo the removal.
-                        TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_tunnel_fast_replace_blocked_as_in_use"}, oldFastReplacedSegment_TunnelCrossing.surface, oldFastReplacedSegment_TunnelCrossing.entity_position)
                         oldFastReplacedSegment_TunnelCrossing.entity = builtEntity -- Update this entity reference temporarily so that the standard replacement function works as expected.
                         Underground.RestoreSegmentEntity(oldFastReplacedSegment_TunnelCrossing)
-                        InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_TunnelCrossing.entity_name, count = 1})
-                        InventoryUtils.GetBuilderInventory(placer).insert({name = builtEntity_name, count = 1})
+                        if placer ~= nil then
+                            -- If the placer wasn't a script show message and return items back.
+                            TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_tunnel_fast_replace_blocked_as_in_use"}, oldFastReplacedSegment_TunnelCrossing.surface, oldFastReplacedSegment_TunnelCrossing.entity_position)
+                            InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_TunnelCrossing.entity_name, count = 1})
+                            InventoryUtils.GetBuilderInventory(placer).insert({name = builtEntity_name, count = 1})
+                        end
                         return
                     end
                 end
@@ -617,9 +623,9 @@ end
 
 --- Called to process a segment object once it has been created.
 ---@param segment UndergroundSegment
----@param oldFastReplacedSegment? UndergroundSegment|null @ The old segment that has just been fast replaced over IF a fast replacement has occured. If no fast replacement has occured then it's nil.
----@param fastReplacedSegmentOfSameType? boolean|null @ If a fast replacement has occured if it is the same segment type or not. If no fast replacement has occured then it's nil.
----@param placer EntityActioner|null @ Can be nil if nothing new was built.
+---@param oldFastReplacedSegment? UndergroundSegment|nil @ The old segment that has just been fast replaced over IF a fast replacement has occured. If no fast replacement has occured then it's nil.
+---@param fastReplacedSegmentOfSameType? boolean|nil @ If a fast replacement has occured if it is the same segment type or not. If no fast replacement has occured then it's nil.
+---@param placer EntityActioner|nil @ Can be nil if nothing new was built or a script built it.
 Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplacedSegment, fastReplacedSegmentOfSameType, placer)
     ---@typelist StandardUndergroundSegment, RailCrossingUndergroundSegment, TunnelCrossingUndergroundSegment
     local segment_Standard, segment_RailCrossing, segment_TunnelCrossing = segment, segment, segment
@@ -731,7 +737,7 @@ end
 
 --- Check if this segment is next to another segment on either/both sides. If it is create/add to an underground object for them.
 ---@param segment UndergroundSegment
----@param placer EntityActioner|null @ Can be nil if nothing new was built.
+---@param placer EntityActioner|nil @ Can be nil if nothing new was built or a script built it.
 Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
     local firstComplictedConnectedSegment, secondComplictedConnectedSegment = nil, nil
 
@@ -764,31 +770,33 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
                         if foundSegmentPositionObject.segmentsConnectionFacing == SegmentSurfacePositionFacing.front then
                             -- Show warning message to the user.
                             local _, position = StringUtils.SurfacePositionStringToSurfaceAndPosition(checkDetails.internalCheckSurfacePositionString) -- Very rarely called so no harm in it being less effecient. Saves on bigger chanegs to whole data structure just for error message.
-                            local textAudiencePlayer, textAudienceForce = MiscUtils.GetPlayerForceFromActioner(placer)
-                            rendering.draw_text {
-                                text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-1"},
-                                surface = segment.surface,
-                                target = position,
-                                time_to_live = 600,
-                                players = {textAudiencePlayer},
-                                forces = {textAudienceForce},
-                                color = {r = 1, g = 0, b = 0, a = 1},
-                                scale_with_zoom = true,
-                                alignment = "center",
-                                vertical_alignment = "bottom"
-                            }
-                            rendering.draw_text {
-                                text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-2"},
-                                surface = segment.surface,
-                                target = position,
-                                time_to_live = 600,
-                                players = {textAudiencePlayer},
-                                forces = {textAudienceForce},
-                                color = {r = 1, g = 0, b = 0, a = 1},
-                                scale_with_zoom = true,
-                                alignment = "center",
-                                vertical_alignment = "top"
-                            }
+                            if placer ~= nil then
+                                local textAudiencePlayer, textAudienceForce = MiscUtils.GetPlayerForceFromActioner(placer)
+                                rendering.draw_text {
+                                    text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-1"},
+                                    surface = segment.surface,
+                                    target = position,
+                                    time_to_live = 600,
+                                    players = {textAudiencePlayer},
+                                    forces = {textAudienceForce},
+                                    color = {r = 1, g = 0, b = 0, a = 1},
+                                    scale_with_zoom = true,
+                                    alignment = "center",
+                                    vertical_alignment = "bottom"
+                                }
+                                rendering.draw_text {
+                                    text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-2"},
+                                    surface = segment.surface,
+                                    target = position,
+                                    time_to_live = 600,
+                                    players = {textAudiencePlayer},
+                                    forces = {textAudienceForce},
+                                    color = {r = 1, g = 0, b = 0, a = 1},
+                                    scale_with_zoom = true,
+                                    alignment = "center",
+                                    vertical_alignment = "top"
+                                }
+                            end
 
                             -- Clear the found connected part so its the code behaves like nothing valid was found.
                             connectedSegment = nil
@@ -1053,8 +1061,8 @@ end
 
 --- Checks if an underground segment can connect at a free internal connection position. If it can it returns the objects, otherwise nil for all.
 ---@param segmentInternalSurfacePositionString SurfacePositionString
----@return Underground|null underground
----@return UndergroundSegment|null segmentAtOtherEndOfUnderground
+---@return Underground|nil underground
+---@return UndergroundSegment|nil segmentAtOtherEndOfUnderground
 Underground.CanAnUndergroundConnectAtItsInternalPosition = function(segmentInternalSurfacePositionString)
     -- Uses the segment position rather than some underground ends' positions as an underground is never complete to flag these. Also entities can't overlap their internal positions so no risk of getting the wrong object.
     local segmentInternalSurfacePositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[segmentInternalSurfacePositionString]
@@ -1073,8 +1081,8 @@ end
 -- Checks if an underground segment can connect to a portal. Can provide a known portal to ignore, as single entity undergrounds will connect to 2 portals.
 ---@param segment UndergroundSegment
 ---@param portalToIgnore Portal
----@return Portal|null portal
----@return PortalEnd|null endPortalPart
+---@return Portal|nil portal
+---@return PortalEnd|nil endPortalPart
 Underground.CanUndergroundSegmentConnectToAPortal = function(segment, portalToIgnore)
     for _, segmentFreeExternalSurfacePositionString in pairs(segment.nonConnectedExternalSurfacePositions) do
         local portal, endPortalPart = MOD.Interfaces.Portal.CanAPortalConnectAtItsInternalPosition(segmentFreeExternalSurfacePositionString)
@@ -1241,7 +1249,10 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
         for _, railCrossingTrackEntity in pairs(minedSegment_RailCrossing.crossingRailEntities) do
             if not railCrossingTrackEntity.can_be_destroyed() then
                 local miner = MiscUtils.GetActionerFromEvent(event)
-                TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedSegment_RailCrossing.surface, minedSegment_RailCrossing.entity_position)
+                if miner ~= nil then
+                    -- If the miner wasn't a script show message.
+                    TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedSegment_RailCrossing.surface, minedSegment_RailCrossing.entity_position)
+                end
                 Underground.RestoreSegmentEntity(minedSegment_RailCrossing)
                 return
             end
@@ -1264,7 +1275,10 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
                 if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(fakeCrossingTunnelObject) then
                     -- The crossing tunnel is in-use so undo the removal.
                     local miner = MiscUtils.GetActionerFromEvent(event)
-                    TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use"}, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
+                    if miner ~= nil then
+                        -- If the miner wasn't a script show message.
+                        TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use"}, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
+                    end
                     Underground.RestoreSegmentEntity(minedSegment)
                     return
                 end
@@ -1280,7 +1294,10 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
         if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(minedSegment.underground.tunnel) then
             -- The main tunnel is in-use so undo the removal.
             local miner = MiscUtils.GetActionerFromEvent(event)
-            TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedSegment.surface, minedSegment.entity_position)
+            if miner ~= nil then
+                -- If the miner wasn't a script show message.
+                TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedSegment.surface, minedSegment.entity_position)
+            end
             Underground.RestoreSegmentEntity(minedSegment)
         else
             -- Safe to mine the segment.
@@ -1319,8 +1336,8 @@ end
 
 -- Called by other functions when a underground segment entity is removed and thus we need to update the underground for this change.
 ---@param removedSegment UndergroundSegment
----@param killForce? LuaForce|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity|null @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killForce? LuaForce|nil @ Populated if the entity is being removed due to it being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|nil @ Populated if the entity is being removed due to it being killed, otherwise nil.
 Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntity)
     local removedUnderground = removedSegment.underground
 

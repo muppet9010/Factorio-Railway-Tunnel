@@ -105,8 +105,8 @@ end
 ---@param tick Tick
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
----@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData? table|null @ Data table passed back in to the handler function when triggered.
+---@param instanceId? string|nil @ Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData? table|nil @ Data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsOnceEvent = function(tick, testName, eventName, instanceId, eventData)
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
@@ -120,8 +120,8 @@ end
 --- When the event fires the registered function recieves a single UtilityScheduledEvent_CallbackObject argument.
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to trigger.
----@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
----@param eventData? table|null @ Data table passed back in to the handler function when triggered.
+---@param instanceId? string|nil @ Unique id for this scheduled once event. Uses testName if not provided.
+---@param eventData? table|nil @ Data table passed back in to the handler function when triggered.
 TestFunctions.ScheduleTestsEveryTickEvent = function(testName, eventName, instanceId, eventData)
     local completeName = "Test." .. testName .. "." .. eventName
     if instanceId == nil then
@@ -133,7 +133,7 @@ end
 --- Remove any instances of future scheduled once events. To be called from Stop().
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to remove the schedule of.
----@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
+---@param instanceId? string|nil @ Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsOnceEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledOnceEvents(completeName, instanceId)
@@ -142,7 +142,7 @@ end
 --- Remove any instances of future scheduled every tick events. To be called from Stop().
 ---@param testName TestManager_TestName
 ---@param eventName string @ Name of the event to remove the schedule of.
----@param instanceId? string|null @ Unique id for this scheduled once event. Uses testName if not provided.
+---@param instanceId? string|nil @ Unique id for this scheduled once event. Uses testName if not provided.
 TestFunctions.RemoveTestsEveryTickEvent = function(testName, eventName, instanceId)
     local completeName = "Test." .. testName .. "." .. eventName
     EventScheduler.RemoveScheduledEventFromEachTick(completeName, instanceId)
@@ -153,7 +153,7 @@ end
 ---@param eventName defines.events @ The Factorio event to react to.
 ---@param testFunctionName string @ Unique name of this event function handler.
 ---@param testFunction function @ Function to be triggered when the event occurs.
----@param filterData? EventFilter|null @ Factorio event filter to be used.
+---@param filterData? EventFilter|nil @ Factorio event filter to be used.
 TestFunctions.RegisterTestsEventHandler = function(testName, eventName, testFunctionName, testFunction, filterData)
     -- Injects the testName as an attribute on the event data response for use in getting testData within the test function.
     local completeHandlerName = "Test." .. testName .. "." .. testFunctionName
@@ -170,7 +170,7 @@ end
 
 --- Used to apply an optional filter list of keys against a COPY of the full list of key/values. Includes error catching for passing in bad (empty) filter list.
 ---@param fullList table
----@param filterList? table|null
+---@param filterList? table|nil
 ---@return table filteredCopyOfTable
 TestFunctions.ApplySpecificFilterToListByKeyName = function(fullList, filterList)
     if TableUtils.IsTableEmpty(fullList) then
@@ -301,7 +301,7 @@ end
 --- Snpshots can not be compared between tunnel uses if the train has reversed its movement direction. This limitation is required as otherwise some malformed trains can't be distinguished from valid trains.
 ---@param origionalTrainSnapshot TestFunctions_TrainSnapshot @ Origional train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
 ---@param currentTrainSnapshot TestFunctions_TrainSnapshot @ New train's snapshot as obtained by TestFunctions.TESTGetSnapshotOfTrain().
----@param allowPartialCurrentSnapshot? boolean|null @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
+---@param allowPartialCurrentSnapshot? boolean|nil @ Defaults to false. if TRUE the current snapshot can be one end of the origonal train.
 ---@return boolean ifSnapshotsAreIdentical.
 TestFunctions.AreTrainSnapshotsIdentical = function(origionalTrainSnapshot, currentTrainSnapshot, allowPartialCurrentSnapshot)
     -- If we don't allow partial trains then check the carriage counts are the same, as is a simple failure.
@@ -360,7 +360,7 @@ end
 
 ---@class TestFunctions_TrainSpecifiction @ used to specify a trains details in short-hand. Is parsed for usage in to full table by TestFunctions.GetTrainCompositionFromTextualRepresentation().
 ---@field composition TestFunctions_CarriageTextualRepresentation[] @ Ordered front to back of the train.
----@field startingSpeed? double|null @ The speed the train starts at, defaults to 0. This is in relation to the orientation of "Forwards" as defined at the building stage.
+---@field startingSpeed? double|nil @ The speed the train starts at, defaults to 0. This is in relation to the orientation of "Forwards" as defined at the building stage.
 
 --- Works out the train carriage details to be placed from the compositon text.
 ---@param trainSpecification TestFunctions_TrainSpecifiction
@@ -404,9 +404,9 @@ end
 ---@param firstCarriageFrontLocation MapPosition @ The front tip of the lead carriages collision box.
 ---@param carriagesDetails TestFunctions_TrainCarriageDetailsForBulding[] @ The carriages to be built, listed front to back.
 ---@param trainForwardsDirection defines.direction @ Only supports cardinal points.
----@param playerInCarriageNumber? uint|null
----@param startingSpeed? double|null @ This is in relation to the orientation of forwards.
----@param locomotiveFuel? ItemStackIdentification|null @ Fuel put in all "locomotive" typed entities.
+---@param playerInCarriageNumber? uint|nil
+---@param startingSpeed? double|nil @ This is in relation to the orientation of forwards.
+---@param locomotiveFuel? ItemStackIdentification|nil @ Fuel put in all "locomotive" typed entities.
 ---@return LuaTrain
 TestFunctions.BuildTrain = function(firstCarriageFrontLocation, carriagesDetails, trainForwardsDirection, playerInCarriageNumber, startingSpeed, locomotiveFuel)
     local placedCarriage  ---@type LuaEntity
@@ -605,10 +605,10 @@ end
 --- Makes all the train carriages in the provided entity lists unique via color or cargo. Helps make train snapshot comparison easier if every carriage is unique.
 ---
 --- Only needs calling if trains are being built manually/scripted, as TestFunctions.BuildBlueprintFromString() includes it.
----@param locomotives? LuaEntity[]|null
----@param cargoWagons? LuaEntity[]|null
----@param fluidWagons? LuaEntity[]|null
----@param artilleryWagons? LuaEntity[]|null
+---@param locomotives? LuaEntity[]|nil
+---@param cargoWagons? LuaEntity[]|nil
+---@param fluidWagons? LuaEntity[]|nil
+---@param artilleryWagons? LuaEntity[]|nil
 TestFunctions.MakeCarriagesUnique = function(locomotives, cargoWagons, fluidWagons, artilleryWagons)
     local cargoWagonCount, fluidWagonCount, artilleryWagonCount = 0, 0, 0
     if locomotives ~= nil then
@@ -826,7 +826,7 @@ end
 ---@param carriage1 TestFunctions_CarriageSnapshot
 ---@param carriage2 TestFunctions_CarriageSnapshot
 ---@param reversedCarriage2 boolean
----@return string|null differenceFound @ First difference found or nil if the same.
+---@return string|nil differenceFound @ First difference found or nil if the same.
 TestFunctions._DifferenceBetween2CarriageSnapshots = function(carriage1, carriage2, reversedCarriage2)
     if carriage1 == nil then
         return "carriage1 is nil"

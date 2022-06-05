@@ -49,7 +49,7 @@ end
 
 --- Get the builder/miner player/construction robot or nil if script placed.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive|on_pre_player_mined_item|on_robot_pre_mined
----@return EntityActioner placer
+---@return EntityActioner|nil placer
 MiscUtils.GetActionerFromEvent = function(event)
     if event.robot ~= nil then
         -- Construction robots
@@ -63,17 +63,14 @@ MiscUtils.GetActionerFromEvent = function(event)
     end
 end
 
---- Returns either tha player or force for robots from the EntityActioner. If script then returns neither.
+--- Returns either tha player or force for robots from the EntityActioner.
 ---
 --- Useful for passing in to rendering player/force filters or for returning items to them.
 ---@param actioner EntityActioner
----@return LuaPlayer|null
----@return LuaForce|null
+---@return LuaPlayer|nil
+---@return LuaForce|nil
 MiscUtils.GetPlayerForceFromActioner = function(actioner)
-    if actioner == nil then
-        -- Is a script.
-        return nil, nil
-    elseif actioner.is_player() then
+    if actioner.is_player() then
         -- Is a player.
         return actioner, nil
     else
@@ -86,7 +83,7 @@ end
 ---
 --- Should be done locally if called frequently.
 ---@param luaObject LuaBaseClass
----@return LuaBaseClass|null
+---@return LuaBaseClass|nil
 MiscUtils.ReturnValidLuaObjectOrNil = function(luaObject)
     if luaObject == nil or not luaObject.valid then
         return nil

@@ -139,14 +139,14 @@ TunnelShared.IsPlacementOnRailGrid = function(builtEntity, entityType)
 end
 
 ---@param builtEntity LuaEntity
----@param placer EntityActioner
+---@param placer EntityActioner|nil
 ---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
 TunnelShared.UndoInvalidTunnelPartPlacement = function(builtEntity, placer, mine)
     TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, {"message.railway_tunnel-tunnel_part_must_be_on_rail_grid"}, "tunnel part")
 end
 
 ---@param builtEntity LuaEntity
----@param placer EntityActioner
+---@param placer EntityActioner|nil
 ---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
 ---@param highlightValidRailGridPositions boolean @ If to show to the placer valid positions on the rail grid.
 ---@param warningMessageText LocalisedString @ Text shown to the placer

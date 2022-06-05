@@ -358,7 +358,7 @@ end
 
 ---@param position MapPosition
 ---@param boundingBox BoundingBox
----@param safeTiling? boolean|null @ If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
+---@param safeTiling? boolean|nil @ If enabled the boundingbox can be tiled without risk of an entity on the border being in 2 result sets, i.e. for use on each chunk.
 ---@return boolean
 PositionUtils.IsPositionInBoundingBox = function(position, boundingBox, safeTiling)
     if safeTiling == nil or not safeTiling then

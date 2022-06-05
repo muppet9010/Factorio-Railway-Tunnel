@@ -10,10 +10,10 @@ local TrainUtils = require("utility.train-utils")
 ---@field carriagesCachedData TrainUtils_TrainCarriageData[] @ The cached carriage details of the train.
 ---@field leadCarriageUnitNumber UnitNumber @ The carriage unit number of the first carriage in the train, regardless of travelling direction or speed.
 ---@field trainLength double @ How much tunnel space the train takes up.
----@field forwardFacingLocomotiveCount? uint|null @ How many locomotives are facing forwards for the cached carriage data. Only populated when either train speed calculation data is generated.
----@field backwardFacingLocomotiveCount? uint|null @ How many locomotives are facing backwards for the cached carriage data. Only populated when either train speed calculation data is generated.
----@field forwardMovingTrainSpeedCalculationData? TrainUtils_TrainSpeedCalculationData|null @ Only populated when required for the forward movement of this cached train.
----@field backwardMovingTrainSpeedCalculationData? TrainUtils_TrainSpeedCalculationData|null @ Only populated when required for the backwards movement of this cached train.
+---@field forwardFacingLocomotiveCount? uint|nil @ How many locomotives are facing forwards for the cached carriage data. Only populated when either train speed calculation data is generated.
+---@field backwardFacingLocomotiveCount? uint|nil @ How many locomotives are facing backwards for the cached carriage data. Only populated when either train speed calculation data is generated.
+---@field forwardMovingTrainSpeedCalculationData? TrainUtils_TrainSpeedCalculationData|nil @ Only populated when required for the forward movement of this cached train.
+---@field backwardMovingTrainSpeedCalculationData? TrainUtils_TrainSpeedCalculationData|nil @ Only populated when required for the backwards movement of this cached train.
 
 TrainCachedData.CreateGlobals = function()
     global.trainCachedData = global.trainCachedData or {}
@@ -90,7 +90,7 @@ TrainCachedData.OnRollingStockRemoved = function(event, diedEntity)
     -- This function can be called either by local event registration or from tunnel-shared event handlder function.
     if diedEntity == nil then
         diedEntity = event.entity
-        ---@cast diedEntity LuaEntity
+        ---@cast diedEntity -nil
         if not diedEntity.valid then
             return
         end

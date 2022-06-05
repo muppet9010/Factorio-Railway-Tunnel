@@ -19,13 +19,3 @@ EmmyLua Class Definitions
 
 - Fields that are only populated when a certain state of the parent is obtained are separated out together with a "---" line above them. i.e. the constant fields of a portal part, vs its portal membership requiring ones, vs its tunnel requiring ones. Purely to improve class readability at the head of the document, no impact on intellisense.
 - Some large classes have their fields grouped based on functional role only with a "---" line. Purely to improve class readability at the head of the document, no impact on intellisense.
-
-
-
-EmmyLua nil, null and ? for optional things.
---------------------------------------------
-
-- All uses of optional arguments/params/returns/etc should have "?" appended to the end of the name and have "|null" on the end of their field types.
-- While technically some scenarios can support "nil" it's easier to do the same everywhere.
-- "nil" doesn't work for anything other than function returns, so I added "null" as a placeholder.
-- Aliases don't support ?, so can only have "null" set as one of the types.

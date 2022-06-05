@@ -1,6 +1,5 @@
 Now
 ---
-    - Open all of the files and fix any warnings from the increased accuracy of new EmmyLua and LuaCheck. Do as own commit.
     - INLINE TODO on possible error flagged by new EmmyLua strictness checks.
 
     + Allow corners, curves and diagonals with the underground pieces as its just an abstract length to have traversal time calculated for now.

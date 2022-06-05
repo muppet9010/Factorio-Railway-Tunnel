@@ -25,7 +25,7 @@ end
 
 --- Checks the locomtive for its current fuel and returns it's prototype. Checks fuel inventories if nothing is currently burning.
 ---@param locomotive LuaEntity
----@return LuaItemPrototype|null currentFuelPrototype @ Will be nil if there's no current fuel in the locomotive.
+---@return LuaItemPrototype|nil currentFuelPrototype @ Will be nil if there's no current fuel in the locomotive.
 TrainUtils.GetLocomotivesCurrentFuelPrototype = function(locomotive)
     local loco_burner = locomotive.burner
 
@@ -82,9 +82,9 @@ end
 
 ---@class TrainUtils_TrainCarriageData @ Data array of cached details on a train's carriages. Allows only obtaining required data once per carriage. Only populate carriage data when required.
 ---@field entity LuaEntity @ Minimum this must be populated and the functions will populate other details if they are requried during each function's operation.
----@field prototypeType? string|null
----@field prototypeName? string|null
----@field faceingFrontOfTrain? boolean|null @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
+---@field prototypeType? string|nil
+---@field prototypeName? string|nil
+---@field faceingFrontOfTrain? boolean|nil @ If the carriage is facing the front of the train. If true then carriage speed and orientation is the same as the train's.
 
 --- Get the data other Utils functions need for calculating and estimating; a trains future speed, time to cover distance, etc.
 ---
@@ -95,8 +95,8 @@ end
 --- Either trainCarriagesDataArray or train_carriages needs to be provided.
 ---@param train LuaTrain
 ---@param train_speed double @ Must not be 0 (stationary train).
----@param trainCarriagesDataArray? TrainUtils_TrainCarriageData[]|null @ An array of carriage data for this train in the TrainUtils_TrainCarriageData format in the same order as the train's internal carriage order. If provided and it doesn't include the required attribute data on the carriages it will be obtained and added in to the cache table.
----@param train_carriages? LuaEntity[]|null @ If trainCarriagesDataArray isn't provided then the train's carriage array will need to be provided. The required attribute data on each carriage will have to be obtainedm, but not cached or passed out.
+---@param trainCarriagesDataArray? TrainUtils_TrainCarriageData[]|nil @ An array of carriage data for this train in the TrainUtils_TrainCarriageData format in the same order as the train's internal carriage order. If provided and it doesn't include the required attribute data on the carriages it will be obtained and added in to the cache table.
+---@param train_carriages? LuaEntity[]|nil @ If trainCarriagesDataArray isn't provided then the train's carriage array will need to be provided. The required attribute data on each carriage will have to be obtainedm, but not cached or passed out.
 ---@return TrainUtils_TrainSpeedCalculationData trainSpeedCalculationData
 ---@return boolean noFuelFound @ TRUE if no fuel was found in any forward moving locomotive. Generally FALSE is returned when all is normal.
 TrainUtils.GetTrainSpeedCalculationData = function(train, train_speed, trainCarriagesDataArray, train_carriages)
@@ -518,7 +518,7 @@ end
 ---@param trackingTable table @ Reference to an existing table that the function will populate.
 ---@param itemName string
 ---@param itemCount uint
----@return boolean|null @ Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
+---@return boolean|nil @ Returns true when the fuel is a new best and false when its not. Returns nil if the item isn't a fuel type.
 TrainUtils.TrackBestFuelCount = function(trackingTable, itemName, itemCount)
     local itemPrototype = game.item_prototypes[itemName]
     local fuelValue = itemPrototype.fuel_value

@@ -125,15 +125,15 @@ local TestsToRun = {
 --- A configuration object to define which tests should be run.
 ---@class TestManager_TestToRun
 ---@field enabled boolean @ If the test will be run.
----@field notInAllTests? boolean|null @ If TRUE then this test is not automatically included when the "AllTests" global option is enabled. For use by adhoc/non standard test scripts or demo scripts.
+---@field notInAllTests? boolean|nil @ If TRUE then this test is not automatically included when the "AllTests" global option is enabled. For use by adhoc/non standard test scripts or demo scripts.
 ---@field testScript TestManager_TestScript
 
 --- The test's script file as a table of interface and internal functions of this specific test.
 ---@class TestManager_TestScript
----@field RunTime? int|null @ How long the test runs for (ticks) before being failed as un-completed. A nil value will never end unless the test logic completes or fails it. A non ending test is generally only used for demo/ups tests as a normal test will want a desired timeout in case of non action.
----@field RunLoopsMax? int|null @ How many times this tests will be run. For use by tests that have different setups per iteration. If not provided then the test is run 1 time.
+---@field RunTime? int|nil @ How long the test runs for (ticks) before being failed as un-completed. A nil value will never end unless the test logic completes or fails it. A non ending test is generally only used for demo/ups tests as a normal test will want a desired timeout in case of non action.
+---@field RunLoopsMax? int|nil @ How many times this tests will be run. For use by tests that have different setups per iteration. If not provided then the test is run 1 time.
 ---@field OnLoad function @ Anything the test needs registering OnLoad of the mod.
----@field GetTestDisplayName? function|null @ Let the test define its test name per run. For use when RunLoopsMax > 1. If not set then the TestName in the TestToRun object is used from Test Manager configuration.
+---@field GetTestDisplayName? function|nil @ Let the test define its test name per run. For use when RunLoopsMax > 1. If not set then the TestName in the TestToRun object is used from Test Manager configuration.
 ---@field Start function @ Called to start the test.
 ---@field Stop function @ Called when the test is being stopped for any reason.
 
@@ -141,13 +141,13 @@ local TestsToRun = {
 ---@class TestManager_TestData
 ---@field bespoke table<string, any> @ The bespoke test data for only this test will be registered under here.
 ---@field tunnelUsageChanges TestManaged_TunnelUsageChanges @ Only populated upon a tunnel usage change event occuring if recording these has been registered by TestFunctions.RegisterRecordTunnelUsageChanges().
----@field testScenario? table<string, any>|null @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
+---@field testScenario? table<string, any>|nil @ In a multi iteration test its a reference to this test iterations specific TestScenario object. In a single iteration test it will be nil.
 
 --- The Tunnel Usage Change data automatically captured by TestFunctions.RegisterRecordTunnelUsageChanges().
 ---@class TestManaged_TunnelUsageChanges
----@field lastAction? TunnelUsageAction|null @ The last tunnel usage change action reported or nil if none.
----@field lastChangeReason? TunnelUsageChangeReason|null @ The last tunnel usage change reason reported or nil if none.
----@field train? LuaTrain|null @ The train using the tunnel. Will be nil while the train is underground, identified by lastAction being "entered".
+---@field lastAction? TunnelUsageAction|nil @ The last tunnel usage change action reported or nil if none.
+---@field lastChangeReason? TunnelUsageChangeReason|nil @ The last tunnel usage change reason reported or nil if none.
+---@field train? LuaTrain|nil @ The train using the tunnel. Will be nil while the train is underground, identified by lastAction being "entered".
 ---@field actions table<TunnelUsageAction, TestManager_TunnelUsageChangeAction>
 
 --- A list of the tunnel usage change actions and some meta data on them.

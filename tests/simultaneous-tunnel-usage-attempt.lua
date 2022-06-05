@@ -126,7 +126,7 @@ Test.Start = function(testName)
         player = player,
         eastPortalEntryEnd = eastPortalEntryEnd, ---@type LuaEntity
         westPortalEntryEnd = westPortalEntryEnd, ---@type LuaEntity
-        stoppedAlertsStartedTick = nil, ---@type uint|null
+        stoppedAlertsStartedTick = nil, ---@type uint|nil
         trainNamesAlerting = {} ---@type string[] @ Array of the train reference name in the testDataBespoke object.
     }
     testData.bespoke = testDataBespoke

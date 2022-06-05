@@ -26,12 +26,12 @@ local math_abs, math_floor, math_min, math_max = math.abs, math.floor, math.min,
 ---@field skipTickCheck boolean @ If TRUE then the mod doesn't check the train this tick. Used to save checking which state function to call when there is none required for a large portion of the managed train's lifetime.
 ---@field train LuaTrain @ Ref to the train using the tunnel. This will be either the approaching/onPortalTrack train, or once entered the leaving train.
 ---@field trainId Id @ The LuaTrain.id of the train.
----@field trainMovingForwards? boolean|null @ If the train is moving forwards or backwards from its viewpoint. Initially populated when the train enters the portal track or is approaching. Its reset to nil once the train enters the tunnel, so that once it starts to leave the new train have have its direction correctly identified. As the new train may be facing the other direction to the entering one due to Factorio train "front" magic and as it may actually reverse back in to the tunnel at this point.
+---@field trainMovingForwards? boolean|nil @ If the train is moving forwards or backwards from its viewpoint. Initially populated when the train enters the portal track or is approaching. Its reset to nil once the train enters the tunnel, so that once it starts to leave the new train have have its direction correctly identified. As the new train may be facing the other direction to the entering one due to Factorio train "front" magic and as it may actually reverse back in to the tunnel at this point.
 ---@field trainTravelDirection defines.direction @ The cardinal direction the train is heading in. Uses the more granular defines.direction to allow natural comparison to Factorio entity direction attributes. Is the direction in relation to the entry portal.
 ---@field trainTravelOrientation TrainTravelOrientation @ The orientation of the trainTravelDirection.
 ---@field force LuaForce @ The force of the train carriages using the tunnel.
 ---@field trainCachedData TrainCachedData @ Ref to the cached train data. Its populated as we need them. This is kept in sync with the entities of the pre-entering and leaving train's as the tunnelUsageState changes. This isn't directional and so if the lead carriage is needed it needs to be iterated the right way. Is in effect the currenTrain of the tunnel.
----@field trainFacingForwardsToCacheData? boolean|null @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
+---@field trainFacingForwardsToCacheData? boolean|nil @ If the train is moving in the forwards direction in relation to the cached train data. This accounts for if the train has been flipped and/or reversed in comparison to the cache.
 ---@field directionalTrainSpeedCalculationData TrainUtils_TrainSpeedCalculationData @ The TrainSpeedCalculationData from the trainCachedData for the moving direction of this train right now. As the global trainCachedData has it for both facings. Updated during leaving when speed indicates direction change.
 ---@field forwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData forwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
 ---@field backwardsDirectionalTrainSpeedCalculationDataUpdated boolean @ If the trains trainCachedData backwards directionalTrainSpeedCalculationData has been updated for this train usage. If not then it will need its fuel calculating on when next setting as the active directional data for this managed train.
@@ -44,31 +44,31 @@ local math_abs, math_floor, math_min, math_max = math.abs, math.floor, math.min,
 ---@field exitPortalExitSignalIn PortalEntrySignal @ Ref to the entrySignal global object on the rail signal at the entrance of the exit portal for entering trains.
 ---@field tunnel Tunnel @ Ref to the global tunnel object.
 ---
----@field approachingTrainStartedAtFullSpeed? boolean|null @ If the train started approaching the tunnel at full speed. If it did we still have to do the per tick check on its state, but knowledge used by leaving speed calculations.
----@field approachingTrainExpectedSpeed? double|null @ The speed the train should have been going this tick while approaching the tunnel if it wasn't braking. This is a real speed and not absolute. Cleared when the train enters the tunnel.
----@field approachingTrainReachedFullSpeed? boolean|null @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
+---@field approachingTrainStartedAtFullSpeed? boolean|nil @ If the train started approaching the tunnel at full speed. If it did we still have to do the per tick check on its state, but knowledge used by leaving speed calculations.
+---@field approachingTrainExpectedSpeed? double|nil @ The speed the train should have been going this tick while approaching the tunnel if it wasn't braking. This is a real speed and not absolute. Cleared when the train enters the tunnel.
+---@field approachingTrainReachedFullSpeed? boolean|nil @ If the approaching train has reached its full speed already. Cleared when the train enters the tunnel.
 ---@field entranceSignalClosingCarriage LuaEntity @ A blocking carriage added on the entrance portal to keep its entry signals closed when the entering train is cloned to the leaving portal. Reference not cleared when train enters tunnel.
 ---
 ---@field trainReachedPortalTracks boolean @ If the train had reached the portal tracks or not.
----@field portalTrackTrainBySignal? boolean|null @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet. Cleared when the train enters the tunnel.
+---@field portalTrackTrainBySignal? boolean|nil @ If we are tracking the train by the entrance entry signal or if we haven't got to that point yet. Cleared when the train enters the tunnel.
 ---
 ---@field undergroundTrainHasPlayersRiding boolean @ If there are players riding in the underground train at this moment. Can be updated from TRUE to FALSE if all players get out while its underground. In this case the per tick handling of the train will continue.
----@field traversalTravelDistance? double|null @ The length of tunnel the train is travelling through on this traversal. This is the distance for the lead carriage from the entering position to the leaving position.
----@field trainLeavingSpeedAbsolute? double|null @ The absolute speed the train will be set too at the moment it starts leaving the tunnel.
----@field traversalInitialSpeedAbsolute? double|null @ The absolute speed the train was going at when it started its traversal.
----@field dummyTrain? LuaTrain|null @ The dummy train used to keep the train stop reservation alive while the main train is traversing the tunnel.
----@field targetTrainStop? LuaEntity|null @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
+---@field traversalTravelDistance? double|nil @ The length of tunnel the train is travelling through on this traversal. This is the distance for the lead carriage from the entering position to the leaving position.
+---@field trainLeavingSpeedAbsolute? double|nil @ The absolute speed the train will be set too at the moment it starts leaving the tunnel.
+---@field traversalInitialSpeedAbsolute? double|nil @ The absolute speed the train was going at when it started its traversal.
+---@field dummyTrain? LuaTrain|nil @ The dummy train used to keep the train stop reservation alive while the main train is traversing the tunnel.
+---@field targetTrainStop? LuaEntity|nil @ The target train stop entity of this train, needed in case the path gets lost as we only have the station name then. Used when checking bad train states and reversing trains.
 ---@field forcesBrakingBonus double @ The train carriage's braking force bonus at the time the train enters the tunnel.
----@field leavingTrainArtilleryShellsPerCarriageId? table<Id, table<string, uint>>|null @ A table of leaving artillery carriage Ids and their inventory contents table if they had any. Any artillery shell type items in the artiller carriage inventory is noted upon entering the tunnel and remvoed from the carraige. When the train starts leaving the shells are returned. Is to stop the artillery train from shooting at enemies while stopped when travelling underground.
+---@field leavingTrainArtilleryShellsPerCarriageId? table<Id, table<string, uint>>|nil @ A table of leaving artillery carriage Ids and their inventory contents table if they had any. Any artillery shell type items in the artiller carriage inventory is noted upon entering the tunnel and remvoed from the carraige. When the train starts leaving the shells are returned. Is to stop the artillery train from shooting at enemies while stopped when travelling underground.
 ---
----@field nonPlayerTrain_traversalStartTick? Tick|null @ The tick the train started entering the tunnel
----@field nonPlayerTrain_traversalArrivalTick? Tick|null @ The tick the train is currently expected to reach the far end of the tunnel and be restarted.
+---@field nonPlayerTrain_traversalStartTick? Tick|nil @ The tick the train started entering the tunnel
+---@field nonPlayerTrain_traversalArrivalTick? Tick|nil @ The tick the train is currently expected to reach the far end of the tunnel and be restarted.
 ---
----@field playerTrain_traversalDistanceRemaining? double|null @ How much of the tunnel distance the train has left to cover until it emerges.
----@field playerTrain_currentSpeedAbsolute? double|null @ The current speed this tick of the underground train and player containers.
----@field playerTrain_brakingEntityId? UnitNumber|null @ The unit_number of the entity the train is having to brake for.
----@field playerTrain_stoppingDistance? double|null @ How far before the train needs to have stopped. Based on either the current trains stopping point or a cached braking point if the brakingEntityId hasn't changed from previously.
----@field playerTrain_brakingOutsideOfTunnel? boolean|null @ If the underground train had ever started braking outside of the tunnel. As once it starts brakig outside of the tunnel it can not return to blindly accelerating within the tunnel. Is to protect against flip flopping braking distance in/out of the tunnel.
+---@field playerTrain_traversalDistanceRemaining? double|nil @ How much of the tunnel distance the train has left to cover until it emerges.
+---@field playerTrain_currentSpeedAbsolute? double|nil @ The current speed this tick of the underground train and player containers.
+---@field playerTrain_brakingEntityId? UnitNumber|nil @ The unit_number of the entity the train is having to brake for.
+---@field playerTrain_stoppingDistance? double|nil @ How far before the train needs to have stopped. Based on either the current trains stopping point or a cached braking point if the brakingEntityId hasn't changed from previously.
+---@field playerTrain_brakingOutsideOfTunnel? boolean|nil @ If the underground train had ever started braking outside of the tunnel. As once it starts brakig outside of the tunnel it can not return to blindly accelerating within the tunnel. Is to protect against flip flopping braking distance in/out of the tunnel.
 
 ---@alias TrainTravelOrientation "0"|"0.25"|"0.5"|"0.75"
 
@@ -174,7 +174,7 @@ end
 --- If its not pathed to the transition signal then we need to reserve the tunnel now for it. Is like the opposite to a leavingTrain monitoring. Only reached by trains that enter the portal track before their braking distance is the stopping signal or when driven manually. They will claim the signal at a later point (upgrade) and thne that logic will superseed this.
 ---@param trainOnPortalTrack LuaTrain
 ---@param portal Portal
----@param managedTrain? ManagedTrain|null @ Populated if this is an alrady approachingTrain entering the portal tracks.
+---@param managedTrain? ManagedTrain|nil @ Populated if this is an alrady approachingTrain entering the portal tracks.
 TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, managedTrain)
     -- Check if this is a new tunnel usage or part of an existing transition signal reservation.
     if managedTrain ~= nil then
@@ -183,10 +183,10 @@ TrainManager.RegisterTrainOnPortalTrack = function(trainOnPortalTrack, portal, m
         managedTrain.trainReachedPortalTracks = true
         return
     end
-    ---@cast managedTrain ManagedTrain
+    ---@cast managedTrain nil
 
     -- Is a new tunnel usage so do a full handling process.
-    managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false)
+    managedTrain = TrainManager.CreateManagedTrainObject(trainOnPortalTrack, portal.transitionSignals[TunnelSignalDirection.inSignal], false) ---@type ManagedTrain
     managedTrain.tunnelUsageState = TunnelUsageState.portalTrack
 
     MOD.Interfaces.Tunnel.TrainReservedTunnel(managedTrain)
@@ -937,7 +937,7 @@ end
 
 --- Tidy up for the leaving train and propigate state updates.
 ---@param managedTrain ManagedTrain
----@param changeReason? TunnelUsageChangeReason|null
+---@param changeReason? TunnelUsageChangeReason|nil
 TrainManager.ManagedTrainToLeavingState = function(managedTrain, changeReason)
     TrainManager.RemoveDummyTrainRole(managedTrain)
     TrainManager.DestroyEntranceSignalClosingLocomotive(managedTrain)
@@ -970,8 +970,8 @@ TrainManager.UpdateScheduleForTargetRailBeingTunnelRail = function(managedTrain,
 end
 
 ---@param tunnelRemoved Tunnel
----@param killForce? LuaForce|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
----@param killerCauseEntity? LuaEntity|null @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killForce? LuaForce|nil @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
+---@param killerCauseEntity? LuaEntity|nil @ Populated if the tunnel is being removed due to an entity being killed, otherwise nil.
 TrainManager.On_TunnelRemoved = function(tunnelRemoved, killForce, killerCauseEntity)
     for _, managedTrain in pairs(global.trainManager.managedTrains) do
         if managedTrain.tunnel.id == tunnelRemoved.id then
@@ -1087,7 +1087,7 @@ end
 
 ---@param managedTrain ManagedTrain
 ---@param tunnelUsageChangeReason TunnelUsageChangeReason
----@param dontReleaseTunnel? boolean|null @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
+---@param dontReleaseTunnel? boolean|nil @ If true any tunnel reservation isn't released. If false or nil then tunnel is released.
 TrainManager.TerminateTunnelTrip = function(managedTrain, tunnelUsageChangeReason, dontReleaseTunnel)
     TrainManager.RemoveManagedTrainEntry(managedTrain)
 
@@ -1362,7 +1362,7 @@ end
 ---@param train LuaTrain
 ---@param absoluteSpeed double
 ---@param managedTrain ManagedTrain
----@param schedulePathEndStop? LuaEntity|null @ Just pass through the targeted schedule end stop value and if its nil it will be handled.
+---@param schedulePathEndStop? LuaEntity|nil @ Just pass through the targeted schedule end stop value and if its nil it will be handled.
 TrainManager.SetLeavingTrainSpeedInCorrectDirection = function(train, absoluteSpeed, managedTrain, schedulePathEndStop)
     local relativeSpeed = absoluteSpeed -- Updated throughout the function as its found to be wrong.
     local initiallySetForwardsSpeed  ---@type boolean
