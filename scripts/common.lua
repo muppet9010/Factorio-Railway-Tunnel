@@ -3,7 +3,9 @@ local Common = {}
 
 -- Make the entity lists.
 ---@typelist table<string, string>, table<string, string>, table<string, string>, table<string, string>
-Common.PortalEndEntityNames = {["railway_tunnel-portal_end"] = "railway_tunnel-portal_end"}
+Common.PortalEndEntityNames = {
+    ["railway_tunnel-portal_end"] = "railway_tunnel-portal_end"
+}
 Common.PortalSegmentEntityNames = {
     ["railway_tunnel-portal_segment-straight"] = "railway_tunnel-portal_segment-straight",
     ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-regular",

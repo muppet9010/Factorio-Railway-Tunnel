@@ -391,14 +391,15 @@ TunnelShared.OnBuiltEntity = function(event)
 
     local createdEntity_name = createdEntity.name
     if Common.FakeTunnelPartNameToRealTunnelPartName[createdEntity_name] ~= nil and event.player_index ~= nil then
-        -- A fake tunnel part was just build by a player ONLY. This is an edge case as here we do allow calling multiple functions, but this function will never lead to anything becoming invalid.
+        -- A fake tunnel part was just build by a player ONLY. This only handles the player's fake item in hand, it doesn't handle anything to do the the tunnel itself.
+        -- This is an edge case as here we do allow calling multiple functions, but this function will never lead to anything becoming invalid.
         TunnelShared.FakeTunnelPartBuiltByPlayer(event, createdEntity_name)
     end
     if Common.PortalEndAndSegmentEntityNames[createdEntity_name] ~= nil then
         MOD.Interfaces.Portal.OnTunnelPortalPartEntityBuilt(event, createdEntity, createdEntity_name)
         return
     elseif Common.UndergroundSegmentEntityNames[createdEntity_name] ~= nil then
-        MOD.Interfaces.Underground.OnUndergroundSegmentBuilt(event, createdEntity, createdEntity_name, nil)
+        MOD.Interfaces.Underground.OnUndergroundSegmentBuilt(event, createdEntity, createdEntity_name)
         return
     end
 
@@ -685,7 +686,8 @@ TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     end
 end
 
---- Called when a fake tunnel part is built by a player only.
+--- Called when a fake tunnel part is built by a player only. Just manages the Fake item inventory and tracking, doesn't react the tunnel in any way.
+---
 --- This function is not allowed to invalidate any game or cached object within its current calling logic.
 ---@param event on_built_entity
 ---@param createdEntity_name string

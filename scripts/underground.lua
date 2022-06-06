@@ -394,8 +394,7 @@ end
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 ---@param builtEntity LuaEntity
 ---@param builtEntity_name string
----@param segment? UndergroundSegment|nil @ An existing segment object that just needs processing. Used to pass in fake tunnel crossing segments as no entity. TODO: I think this fails if a bot builds it as the logic block in TunnelShared.OnBuiltEntity() doesn't specially handle a bot building a fake part like it does a player.
-Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name, segment)
+Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     local placer = MiscUtils.GetActionerFromEvent(event)
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity, builtEntity_name) then
@@ -408,7 +407,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
 
     -- Make the new base segment object
     local surfacePositionString = StringUtils.FormatSurfacePositionToString(builtEntity_surface_index, builtEntity_position)
-    segment = {
+    local segment = {
         id = builtEntity.unit_number,
         entity = builtEntity,
         entity_name = builtEntity_name,
@@ -636,7 +635,7 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     segment.frontExternalCheckSurfacePositionString = StringUtils.FormatSurfacePositionToString(segment.surface_index, PositionUtils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.frontExternalPositionOffset, segment.entity_position))
     segment.rearExternalCheckSurfacePositionString = StringUtils.FormatSurfacePositionToString(segment.surface_index, PositionUtils.RotateOffsetAroundPosition(segment.entity_orientation, segment.typeData.rearExternalPositionOffset, segment.entity_position))
 
-    -- TODO - TESTING - show the internal connection points
+    -- TESTING - show the internal connection points
     --[[
     rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.frontInternalPosition, surface = segment.surface}
     rendering.draw_circle {color = {1, 1, 0, 1}, radius = 0.25, filled = true, target = segment.rearInternalPosition, surface = segment.surface}
