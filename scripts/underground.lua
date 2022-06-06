@@ -1,5 +1,5 @@
 local Events = require("utility.events")
-local MiscUtils = require("utility.misc-utils")
+local EventUtils = require("utility.event-utils")
 local TableUtils = require("utility.table-utils")
 local TrainUtils = require("utility.train-utils")
 local StringUtils = require("utility.string-utils")
@@ -396,7 +396,7 @@ end
 ---@param builtEntity_name string
 Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
-    local placer = MiscUtils.GetActionerFromEvent(event)
+    local placer = EventUtils.GetActionerFromEvent(event)
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity, builtEntity_name) then
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
@@ -770,7 +770,7 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
                             -- Show warning message to the user.
                             local _, position = StringUtils.SurfacePositionStringToSurfaceAndPosition(checkDetails.internalCheckSurfacePositionString) -- Very rarely called so no harm in it being less effecient. Saves on bigger chanegs to whole data structure just for error message.
                             if placer ~= nil then
-                                local textAudiencePlayer, textAudienceForce = MiscUtils.GetPlayerForceFromActioner(placer)
+                                local textAudiencePlayer, textAudienceForce = EventUtils.GetPlayerOrForceFromEventActioner(placer)
                                 rendering.draw_text {
                                     text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-1"},
                                     surface = segment.surface,
@@ -1193,7 +1193,7 @@ end
 Underground.OnUndergroundSegmentGhostBuilt = function(event, createdEntity, ghostName)
     -- If the ghost was on grid then nothing needs to be done.
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity, ghostName) then
-        local placer = MiscUtils.GetActionerFromEvent(event)
+        local placer = EventUtils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
     end
 end
@@ -1247,7 +1247,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
         local minedSegment_RailCrossing = minedSegment ---@type RailCrossingUndergroundSegment
         for _, railCrossingTrackEntity in pairs(minedSegment_RailCrossing.crossingRailEntities) do
             if not railCrossingTrackEntity.can_be_destroyed() then
-                local miner = MiscUtils.GetActionerFromEvent(event)
+                local miner = EventUtils.GetActionerFromEvent(event)
                 if miner ~= nil then
                     -- If the miner wasn't a script show message.
                     TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedSegment_RailCrossing.surface, minedSegment_RailCrossing.entity_position)
@@ -1273,7 +1273,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
                 -- The fake crossing segment has a tunnel that will need checking.
                 if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(fakeCrossingTunnelObject) then
                     -- The crossing tunnel is in-use so undo the removal.
-                    local miner = MiscUtils.GetActionerFromEvent(event)
+                    local miner = EventUtils.GetActionerFromEvent(event)
                     if miner ~= nil then
                         -- If the miner wasn't a script show message.
                         TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use"}, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
@@ -1292,7 +1292,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
     else
         if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(minedSegment.underground.tunnel) then
             -- The main tunnel is in-use so undo the removal.
-            local miner = MiscUtils.GetActionerFromEvent(event)
+            local miner = EventUtils.GetActionerFromEvent(event)
             if miner ~= nil then
                 -- If the miner wasn't a script show message.
                 TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedSegment.surface, minedSegment.entity_position)

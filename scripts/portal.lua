@@ -1,4 +1,4 @@
-local MiscUtils = require("utility.misc-utils")
+local EventUtils = require("utility.event-utils")
 local TableUtils = require("utility.table-utils")
 local TrainUtils = require("utility.train-utils")
 local StringUtils = require("utility.string-utils")
@@ -237,7 +237,7 @@ end
 Portal.OnTunnelPortalPartEntityBuilt = function(event, builtEntity, builtEntity_name)
     -- Check the placement is on rail grid, if not then undo the placement and stop.
     if not TunnelShared.IsPlacementOnRailGrid(builtEntity, builtEntity_name) then
-        local placer = MiscUtils.GetActionerFromEvent(event)
+        local placer = EventUtils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(builtEntity, placer, true)
         return
     end
@@ -974,7 +974,7 @@ end
 ---@param ghostName string
 Portal.OnTunnelPortalPartGhostBuilt = function(event, createdEntity, ghostName)
     if not TunnelShared.IsPlacementOnRailGrid(createdEntity, ghostName) then
-        local placer = MiscUtils.GetActionerFromEvent(event)
+        local placer = EventUtils.GetActionerFromEvent(event)
         TunnelShared.UndoInvalidTunnelPartPlacement(createdEntity, placer, false)
     end
 end
@@ -997,7 +997,7 @@ Portal.OnPortalPartEntityPreMined = function(event, minedEntity)
     else
         if MOD.Interfaces.Tunnel.AreTunnelsPartsInUse(minedPortal.tunnel) then
             -- Theres an in-use tunnel so undo the removal.
-            local miner = MiscUtils.GetActionerFromEvent(event)
+            local miner = EventUtils.GetActionerFromEvent(event)
             if miner ~= nil then
                 -- Show a message if the builder isn't a script.
                 TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedEntity.surface, minedEntity.position)

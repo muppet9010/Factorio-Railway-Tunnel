@@ -6,7 +6,7 @@
 local TestManager = {}
 local Events = require("utility.events")
 local EventScheduler = require("utility.event-scheduler")
-local MiscUtils = require("utility.misc-utils")
+local GameUtils = require("utility.game-utils")
 local TableUtils = require("utility.table-utils")
 local Colors = require("utility.colors")
 local PlayerAlerts = require("utility.player-alerts")
@@ -222,7 +222,7 @@ TestManager.OnStartup = function()
     end
 
     game.speed = TestGameSpeed
-    MiscUtils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
+    GameUtils.SetStartingMapReveal(500) --Generate tiles around spawn, needed for blueprints to be placed in this area.
 
     -- If option to show train graphics while in portal set the Portal global setting so when new portals are built their graphics match expected. Doesn;t affect existing graphics.
     if ShowTrainGraphicsInPortal then

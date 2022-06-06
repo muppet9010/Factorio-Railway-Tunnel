@@ -3,8 +3,7 @@ local Tunnel = {}
 local TunnelShared = require("scripts.tunnel-shared")
 local Common = require("scripts.common")
 local TunnelRailEntityNames, UndergroundSegmentAndAllPortalEntityNames = Common.TunnelRailEntityNames, Common.UndergroundSegmentAndAllPortalEntityNames
---local RollingStockTypes = Common.RollingStockTypes
-local MiscUtils = require("utility.misc-utils")
+local EventUtils = require("utility.event-utils")
 local PositionUtils = require("utility.position-utils")
 
 ---@class Tunnel @ the tunnel object that managed trains can pass through.
@@ -328,7 +327,7 @@ Tunnel.OnTrainCarriageEntityBuilt = function(event, createdEntity)
         return
     end
 
-    local placer = MiscUtils.GetActionerFromEvent(event)
+    local placer = EventUtils.GetActionerFromEvent(event)
     TunnelShared.UndoInvalidPlacement(createdEntity, placer, true, false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
@@ -370,7 +369,7 @@ Tunnel.OnTrainCarriageGhostBuilt = function(event, createdEntity, createdEntity_
         return
     end
 
-    local placer = MiscUtils.GetActionerFromEvent(event)
+    local placer = EventUtils.GetActionerFromEvent(event)
     TunnelShared.UndoInvalidPlacement(createdEntity, placer, false, false, {"message.railway_tunnel-rolling_stock_blocked_on_tunnel_track"}, "rolling stock")
 end
 
