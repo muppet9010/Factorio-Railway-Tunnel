@@ -90,7 +90,8 @@ Long term feature plans
         - My single train unit mod.
         - Detect any mods that have destroyed train carriages spill contents on the ground. Drop train contents on ground at tunnel portals when a tunnel is destroyed.
         - Check that a player riding a train is still in the player container and that its in the expected position before we telepeort it each tick. If it's not then something has teleported the player and the player container should be destroyed if it still exists. Think my RCON streamer tools. Need to make sure the player can't move the container by driving it as this may falsly trigger this.
-        - Support for mods that enable vehicle grids for train carriages:
+        - Non standard length train carriages, i.e. Yukoi's train mod.
+		- Support for mods that enable vehicle grids for train carriages:
             Transitioning trains will activate abilities as the train part is in manual mode and stopped. This includes artillery wagons automatically opening fire and player roboports sending out construction robots. At present the artillery wagons has been resolved in a simple manner by removing their ammo as will be a very rare case.
             Can give trains a movement bonus from exoskeleton legs that we currently don't account for in Utils train data generation.
             Some thoughts on this and options to resolve:
