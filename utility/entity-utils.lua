@@ -6,28 +6,6 @@
 local EntityUtils = {}
 local PositionUtils = require("utility.position-utils")
 
---- Uses unit number if both support it, otherwise has to compare a lot of attributes to try and work out if they are the same base entity. Assumes the entity won't ever move or change.
----@param entity1 LuaEntity
----@param entity2 LuaEntity
-EntityUtils.Are2EntitiesTheSame = function(entity1, entity2)
-    if not entity1.valid or not entity2.valid then
-        return false
-    end
-    if entity1.unit_number ~= nil and entity2.unit_number ~= nil then
-        if entity1.unit_number == entity2.unit_number then
-            return true
-        else
-            return false
-        end
-    else
-        if entity1.type == entity2.type and entity1.name == entity2.name and entity1.surface.index == entity2.surface.index and entity1.position.x == entity2.position.x and entity1.position.y == entity2.position.y and entity1.force.index == entity2.force.index and entity1.health == entity2.health then
-            return true
-        else
-            return false
-        end
-    end
-end
-
 ---@param surface LuaSurface
 ---@param positionedBoundingBox BoundingBox
 ---@param collisionBoxOnlyEntities boolean
@@ -43,7 +21,7 @@ EntityUtils.ReturnAllObjectsInArea = function(surface, positionedBoundingBox, co
             local entityExcluded = false
             if entitiesExcluded ~= nil and #entitiesExcluded > 0 then
                 for _, excludedEntity in pairs(entitiesExcluded) do
-                    if EntityUtils.Are2EntitiesTheSame(entity, excludedEntity) then
+                    if entity == excludedEntity then
                         entityExcluded = true
                         break
                     end

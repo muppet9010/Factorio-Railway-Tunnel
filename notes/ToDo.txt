@@ -21,6 +21,7 @@ Bugs / Next
 -----------
     - Add the "bad/no" sound that you get for invalid actions for when we show the negative messages to players/undo something they did.
     - Lock crossing tunnels and curved/diagonal tunnel parts behind additional techs. Means can add explanation and seperate tips & tricks to each tier: straight, crossing, curved.
+	- Can compare all Lua objects to see if its the same on just `if object == object` as they return a magic number as what they are. I look to have often got ID's each time in this code to compare, so If I don't need the Id better to store a ref to the lua. Comparing an invalid LuaObject is safe as we are not checking its state or attributes, just its magic number.
 
 
 Features to add/change
