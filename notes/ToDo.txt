@@ -122,6 +122,8 @@ Feature Ideas
     - Look at if tunnel segments (not rail crossing ones) can be built under water. Should be same placement entity, just a differnet graphics entity on top to show the tunnel on the lake bed. If possible have to work out transition point.
     - Request for big power poles to be able to be placed on tunnel entrances to keep tunnels like rail block blurprints (MOJO style). Maybe including big power poles at both ends of the tunnel portal and in the middle with red & green wires between them? Would need to expose wire connection points though. Or have power and red/green wires transmitted through tunnels with just a connection on the entrance of each portal?
     - Diagonal above ground rail crossing horizotnal/vertical tunnel. Would have to be a 8 long tunnel section to get the track to clear the 6 wide tunnel. If the collision box of the crossing was made 0.5~ in from each edge then rails diagonal rails should be placable up to the edge of it. The width doesn't prevent close and spaced double diagonal tracks from being built over a tunnel. Technically some existing entities on the edge would overlap with the mod placed rails, however this is unavoidable to let the player build diagonal rails up to the crossing.
+	- Underground tunnels crossing on diagonals and underground tunnels crossign with mix of diagonal and straight.
+	- Underground tunnels being built under portal parts. Hit the same limits around what types of parts can it cross based on collision box limitations.
 
 
 Known Limitations
