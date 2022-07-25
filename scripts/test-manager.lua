@@ -37,7 +37,7 @@ local PlayerStartingZoom = 0.2 -- Sets players starting zoom level. 1 is default
 local TestGameSpeed = 1 -- The game speed to run the tests at. Default is 1.
 local ContinueTestAfterCompletionSeconds = 3 -- How many seconds each test continues to run after it successfully completes before the next one starts. Intended to make sure the mod has reached a stable state in each test. nil, 0 or greater
 local KeepRunningTest = false -- If enabled the first test run will not stop when successfully completed. Intended for benchmarking or demo loops.
-local ShowTrainGraphicsInPortal = true -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regular player experience set this to FALSE. This only applies to newly built portals and won't affect any existing graphics in a save game.
+local ShowTrainGraphicsInPortal = false -- Makes the portal graphics appear behind the trains so that the trains are visible when TRUE. For regular player experience set this to FALSE. This only applies to newly built portals and won't affect any existing graphics in a save game.
 
 -- Add any new tests in to the table, set "enabled" true/false and the "testScript" path.
 -- There must use "/" in their require paths rather than "." for some Lua reason.

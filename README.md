@@ -14,7 +14,7 @@ Straight tunnels will complete and work.
 Mod Features
 ============
 
-- Trains will natively use tunnels just like any other track, no need to specially path via them.
+- Trains will natively use tunnels just like any other track, no need to specially path via them. Just order a train to go to a station on a far side of a tunnel and the train will use it.
 - Tunnels are built by placing the entrance and exit tunnel portal parts and building underground tunnel parts between them. Special pieces of underground tunnel allow for rail tracks on the surface to cross the tunnel. This module design allows for maximum design flexibility.
 - Tunnels support "bendy" parts for both portal segments and underground types in the form of corner, curve and diagonal parts. They give flexability when building more complicated designs and so its easier to build tunnel portals long enough for trains to fit within. These do unfortunatly have some usage considerations and limitations as detailed under the Usage Notes section.
 - The mod has been designed and optimised to be UPS efficient considering what it is trying to do.
