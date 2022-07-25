@@ -65,3 +65,49 @@ data:extend(
         }
     }
 )
+
+if settings.startup["railway_tunnel-show_curved_tunnel_parts"].value then
+    data:extend(
+        {
+            {
+                type = "recipe",
+                name = "railway_tunnel-underground_segment-corner",
+                enabled = false,
+                ingredients = {
+                    {"concrete", 10},
+                    {"steel-plate", 10},
+                    {"rail", 1}
+                },
+                energy_required = 5,
+                result = "railway_tunnel-underground_segment-corner",
+                result_count = 1
+            },
+            {
+                type = "recipe",
+                name = "railway_tunnel-underground_segment-curved-regular",
+                enabled = false,
+                ingredients = {
+                    {"concrete", 30},
+                    {"steel-plate", 30},
+                    {"rail", 3}
+                },
+                energy_required = 10,
+                result = "railway_tunnel-underground_segment-curved-regular",
+                result_count = 1
+            },
+            {
+                type = "recipe",
+                name = "railway_tunnel-underground_segment-diagonal-regular",
+                enabled = false,
+                ingredients = {
+                    {"concrete", 10},
+                    {"steel-plate", 10},
+                    {"rail", 1}
+                },
+                energy_required = 5,
+                result = "railway_tunnel-underground_segment-diagonal-regular",
+                result_count = 1
+            }
+        }
+    )
+end

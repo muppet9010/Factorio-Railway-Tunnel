@@ -1,13 +1,13 @@
 # Factorio-Railway-Tunnel
 
-BETA MOD
+ALPHA MOD
 =========
 
 Early release of the mod and you can't upgrade to future releases. Use for testing/experimenting only.
-To apply a new mod version to your game you will need to do the below manual upgrade process. I'd advise that an extra safety save of the game is kept before this process is started so you can rollback if needed:
-    - Empty all your tunnels of their trains and save the game (save 1). Take blueprint copies of any tunnel/track designs you wish as they will be removed in the next stage.
-    - Remove the old mod version and load the save (save 1). This will purge your map and game state of old mod entities and data. Save the game again (save 2).
-    - Put the new mod in place and load the save (save 2). Your game is now on the new mod version. Add your tunnels back in and should be good to go.
+
+This is a demonstration release of the mod. At present there are no plans to continue development of the mod. See the Mod Design History section at the end of the file.
+
+All references to curves/bends in tunnels in the game and this readme relate to incomplete feature development. This can be enabled with the mod's startup setting, but these curved tunnels are non functional and are just provided as a demonstration of the building system. Any tunnel built with curves will fail to complete and thus not be usable. This is also why the underground parts of the tunnel have curves and the tunnel portal parts don't.
 
 
 Mod Features
@@ -99,13 +99,25 @@ Debug mode can be enabled/disabled via the command "railway_tunnel_toggle_debug_
 Mod Design History
 ==================
 
+At present the mod has been on pause for many months. This is due to my lack of interest in completing it and my feeling that too much inconvienience has been introduced to resolve the previous UPS issues.
+
 This is technically the second major iteration of this mod. Below is a brief history of this for those curious.
     - The first iteration was developed to beta stage from December 2020 for around 6 months, before being abandoned. Its vision was to mirror base Factorio's train activities while providing the most convenient player experience. This included supporting any length trains moving through a set tunnel portal size. This led to ever growing logic complexity as more use cases and edge cases were discovered. This logic bloat required growing state data and manipulation to be done which led to the mods UPS usage growing steadily. Collective this ground development to a halt in addition to other commitments.
     - In December 2021 I reviewed the mod to decide its future. To resolve both the logic complexity and high UPS impact of iteration 1 the mod was rescoped to the vision of providing automatic train usage through a tunnel with minimal UPS usage in a simple code manner. This rescope led to massive changes throughout the mods logic and some reduction on user experience. A simple example is the move to require a train to be fully within a portal's length to be able to use a tunnel, thus requiring the player to fit in much larger tunnels in their designs. In a megabase scenario this shouldn't be an issue, but to small bases it may be an inconvenience.
 So far iteration 2 of the mod has succeeded in its aim of reducing UPS usage and while it introduces some player inconveniences it has also opened up new opportunities, i.e. curved tunnel and portal parts. Although its development has been rather stop/start and taken multiple times longer than hoped to date.
+
 
 Contributors
 ============
 
 - blahfasel2000 - code contributions to V1 of the mod.
 - justarandomgeek - creator of Factorio Mod Debug plugin for VSCode. Without which this mod would not be possible.
+
+
+Upgrading Alpha Mod
+===================
+
+To apply a new mod version to your game you will need to do the below manual upgrade process. I'd advise that an extra safety save of the game is kept before this process is started so you can rollback if needed:
+    - Empty all your tunnels of their trains and save the game (save 1). Take blueprint copies of any tunnel/track designs you wish as they will be removed in the next stage.
+    - Remove the old mod version and load the save (save 1). This will purge your map and game state of old mod entities and data. Save the game again (save 2).
+    - Put the new mod in place and load the save (save 2). Your game is now on the new mod version. Add your tunnels back in and should be good to go.

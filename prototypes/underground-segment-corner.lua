@@ -99,11 +99,13 @@ local undergroundSegmentCornerTopLayer = {
     render_layer = "tile-transition"
 }
 
-data:extend(
-    {
-        undergroundSegmentCorner,
-        undergroundSegmentCornerRemnant,
-        undergroundSegmentCornerItem,
-        undergroundSegmentCornerTopLayer
-    }
-)
+if settings.startup["railway_tunnel-show_curved_tunnel_parts"].value then
+    data:extend(
+        {
+            undergroundSegmentCorner,
+            undergroundSegmentCornerRemnant,
+            undergroundSegmentCornerItem,
+            undergroundSegmentCornerTopLayer
+        }
+    )
+end

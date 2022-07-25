@@ -40,3 +40,29 @@ data:extend(
         }
     }
 )
+
+if settings.startup["railway_tunnel-show_curved_tunnel_parts"].value then
+    local tunnelTechnology = data.raw["technology"]["railway_tunnel"]
+    table.insert(
+        tunnelTechnology.effects,
+        {
+            type = "unlock-recipe",
+            recipe = "railway_tunnel-underground_segment-corner"
+        }
+    )
+    table.insert(
+        tunnelTechnology.effects,
+        {
+            type = "unlock-recipe",
+            recipe = "railway_tunnel-underground_segment-curved-regular"
+        }
+    )
+
+    table.insert(
+        tunnelTechnology.effects,
+        {
+            type = "unlock-recipe",
+            recipe = "railway_tunnel-underground_segment-diagonal-regular"
+        }
+    )
+end

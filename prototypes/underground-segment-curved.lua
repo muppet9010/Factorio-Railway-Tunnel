@@ -200,14 +200,16 @@ undergroundSegmentCurvedFlippedTopLayer.picture = {
     }
 }
 
-data:extend(
-    {
-        undergroundSegmentCurvedRegular,
-        undergroundSegmentCurvedRegularItem,
-        undergroundSegmentCurvedRegularTopLayer,
-        undergroundSegmentCurvedRemnant,
-        undergroundSegmentCurvedFlipped,
-        undergroundSegmentCurvedFlippedItem,
-        undergroundSegmentCurvedFlippedTopLayer
-    }
-)
+if settings.startup["railway_tunnel-show_curved_tunnel_parts"].value then
+    data:extend(
+        {
+            undergroundSegmentCurvedRegular,
+            undergroundSegmentCurvedRegularItem,
+            undergroundSegmentCurvedRegularTopLayer,
+            undergroundSegmentCurvedRemnant,
+            undergroundSegmentCurvedFlipped,
+            undergroundSegmentCurvedFlippedItem,
+            undergroundSegmentCurvedFlippedTopLayer
+        }
+    )
+end
