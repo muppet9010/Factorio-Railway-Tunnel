@@ -1052,7 +1052,22 @@ Underground.CheckAndHandleTunnelCompleteFromUnderground = function(underground)
             table.insert(endPortalParts, endPortalPart)
         end
     end
+
+    -- If there are 2 portals attached to the underground then the tunnel is complete.
     if #portals == 2 then
+        -- If its an alpha release do additional checks before completing the tunnel.
+        if global.alphaRelease then
+            -- If the tunnel contains corners then don't complete the tunnel as it will just crash on usage.
+            for _, segment in pairs(underground.segments) do
+                if segment.typeData.segmentShape ~= SegmentShape.straight then
+                    TunnelShared.EntityErrorMessage(segment.entity, "Tunnel would be completed, but prevented as curved underground part is included.", underground.surface, endPortalParts[1].entity_position)
+                    TunnelShared.EntityErrorMessage(segment.entity, "Tunnel would be completed, but prevented as curved underground part is included.", underground.surface, endPortalParts[2].entity_position)
+                    return
+                end
+            end
+        end
+
+        -- Complete the tunnel.
         MOD.Interfaces.Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel(endPortalParts)
         MOD.Interfaces.Tunnel.CompleteTunnel(portals, underground)
     end

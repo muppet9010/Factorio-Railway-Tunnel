@@ -687,6 +687,20 @@ Portal.CheckAndHandleTunnelCompleteFromPortal = function(portal)
         if underground ~= nil then
             local foundPortal, foundEndPortalPart = MOD.Interfaces.Underground.CanUndergroundSegmentConnectToAPortal(otherEndSegment, portal)
             if foundPortal ~= nil then
+                -- The tunnel is complete.
+
+                -- If its an alpha release do additional checks before completing the tunnel.
+                if global.alphaRelease then
+                    -- If the tunnel contains corners then don't complete the tunnel as it will just crash on usage.
+                    for _, segment in pairs(underground.segments) do
+                        if segment.typeData.segmentShape ~= SegmentShape.straight then
+                            TunnelShared.EntityErrorMessage(segment.entity, "Tunnel would be completed, but prevented as curved underground part is included.", underground.surface, portalTunnelExternalConnectionSurfacePositionObject.endPortalPart.entity_position)
+                            TunnelShared.EntityErrorMessage(segment.entity, "Tunnel would be completed, but prevented as curved underground part is included.", underground.surface, foundEndPortalPart.entity_position)
+                            return
+                        end
+                    end
+                end
+
                 Portal.PortalPartsAboutToConnectToUndergroundInNewTunnel({portalTunnelExternalConnectionSurfacePositionObject.endPortalPart, foundEndPortalPart})
                 MOD.Interfaces.Tunnel.CompleteTunnel({portal, foundPortal}, underground)
                 return -- Only need to find a valid tunnel once, no point checking after this.

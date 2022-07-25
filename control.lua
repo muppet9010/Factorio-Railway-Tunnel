@@ -18,6 +18,7 @@ local GuiActionsChecked = require("utility.gui-actions-checked")
 
 local function CreateGlobals()
     global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it does some additional state checks so makes code run slower.
+    global.alphaRelease = true -- If enabled then this is an alpha release of the mod and some WIP features will be disabled or blocked from reaching bad/WIP code.
 
     TrainCachedData.CreateGlobals()
     Force.CreateGlobals()
