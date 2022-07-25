@@ -1,5 +1,9 @@
 # Factorio-Railway-Tunnel
 
+
+![Laninding](https://github.com/muppet9010/Factorio-Railway-Tunnel/raw/alpha_release-0.0.8/notes/demo.gif)
+
+
 ALPHA MOD
 =========
 
@@ -9,7 +13,6 @@ At present there are no plans to continue development of the mod. This demonstra
 
 All references to curves/corners/bends seen in-game and in this readme relate to an incomplete feature development. This WIP feature can be enabled with the mod's startup setting, but these curved tunnels are non functional and are just provided as a demonstration of the building system. Any tunnel built with curves will fail to complete and thus not be usable. This is also why the underground parts of the tunnel have curves and the tunnel portal parts don't.
 Straight tunnels will complete and work.
-
 
 Mod Features
 ============
@@ -28,6 +31,7 @@ Usage Notes
 ===========
 
 - Tunnels are composed of 2 complete portals with underground parts connecting them.
+    ![Tunnel Setup](https://raw.githubusercontent.com/muppet9010/Factorio-Railway-Tunnel/alpha_release-0.0.8/notes/explanation.png)
     - A complete portal is made of 2 portal End parts with a number of portal Segments between them. Each portal's segment’s length (end parts not counted) must be long enough for the train when it tries to use the tunnel.
         - When a complete portal is made a tunnel portal graphic will appear with both ends of the portal closed to trains.
     - The underground of the tunnel is made up of a series of underground parts.
