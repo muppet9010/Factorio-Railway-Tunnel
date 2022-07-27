@@ -7,12 +7,13 @@
 ALPHA MOD
 =========
 
-Early release of the mod and you can't upgrade to future releases. Use for demonstration, testing and experimenting only.
+Early release of the mod that should be fully functional. It's still got some key features and mod compatibility outstanding, so intended for demonstration, testing and experimenting purposes.
 
-At present there are no plans to continue development of the mod. This demonstration version is being released to show the concept and as why not. See the Mod Design History section at the end of the file for further detials on this decision.
+At present there are no plans to continue significant development of the mod, however, any very small bugs will be addressed. This demonstration version is being released to show the concept and what has been achieved to date. See the Mod Design History section at the end of the file for further details on this decision.
 
 All references to curves/corners/bends seen in-game and in this readme relate to an incomplete feature development. This WIP feature can be enabled with the mod's startup setting, but these curved tunnels are non functional and are just provided as a demonstration of the building system. Any tunnel built with curves will fail to complete and thus not be usable. This is also why the underground parts of the tunnel have curves and the tunnel portal parts don't.
 Straight tunnels will complete and work.
+
 
 Mod Features
 ============
