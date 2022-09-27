@@ -31,8 +31,8 @@ local Underground = {}
 ---@field entity_orientation RealOrientation @ Cache of the entity's orientation.
 ---@field frontInternalPosition MapPosition @ Used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
 ---@field rearInternalPosition MapPosition @ Used as base to look for other tunnel segments' segmentSurfacePositions global object entries. These are present on each connecting end of the segment 0.5 tile in from its connecting edge center. This is to handle various shapes.
----@field frontInternalSurfacePositionString SurfacePositionString @ Cache of the sement's frontInternalPosition as a SurfacePositionString.
----@field rearInternalSurfacePositionString SurfacePositionString @ Cache of the sement's rearInternalPosition as a SurfacePositionString.
+---@field frontInternalSurfacePositionString SurfacePositionString @ Cache of the segment's frontInternalPosition as a SurfacePositionString.
+---@field rearInternalSurfacePositionString SurfacePositionString @ Cache of the segment's rearInternalPosition as a SurfacePositionString.
 ---@field frontExternalCheckSurfacePositionString SurfacePositionString @ Cache of the front External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
 ---@field rearExternalCheckSurfacePositionString SurfacePositionString @ Cache of the rear External Check position used when looking for connected tunnel parts. Is 1 tiles in front of our facing position, so 0.5 tiles outside the entity border.
 ---@field surface LuaSurface @ The surface this segment object is on.
@@ -58,10 +58,10 @@ local Underground = {}
 
 ---@class TunnelCrossingUndergroundSegment:UndergroundSegment @ Tunnel crossing underground segment specific object.
 ---@field trainBlockerEntity LuaEntity @ The entity that stops you building train carriages on underground tunnel track.
----@field tunnelCrossingNeighbors uint @ How many tunnel crossing type segments neighbor this segment. As a straight tunnel crossing needs 2 tunnel crossing neighbors to be complete.
+---@field tunnelCrossingNeighbors uint @ How many tunnel crossing type segments neighbour this segment. As a straight tunnel crossing needs 2 tunnel crossing neighbors to be complete.
 ---@field tunnelCrossingCompleted boolean @ If the tunnel crossing centered on this segment is complete (has enough valid neighbors).
 ---@field directFakeCrossingSegment? TunnelCrossingFakeUndergroundSegment|nil @ The direct child fake tunnel crossing segment of this real segment. Only exists if this real segment's tunnelCrossingCompleted is TRUE.
----@field supportingFakeCrossingSegments table<Id, TunnelCrossingFakeUndergroundSegment> @ Zero or more fake crossing segments that this segment helps exist by contributing to thier direct parent's real segments tunnelCrossingCompleted. So when this segment is one of the required 3 segments for a segment to be tunnelCrossingCompleted, but no the main center one.
+---@field supportingFakeCrossingSegments table<Id, TunnelCrossingFakeUndergroundSegment> @ Zero or more fake crossing segments that this segment helps exist by contributing to their direct parent's real segments tunnelCrossingCompleted. So when this segment is one of the required 3 segments for a segment to be tunnelCrossingCompleted, but no the main center one.
 ---@field mainArrowRenderId Id @ The Id of the main arrow render if this segment has this render currently. This goes on top of the main built layer graphics and shows the arrow for the tunnel going WITH this real segment.
 ---@field tunnelCrossingArrowRenderId Id @ The Id of the crossing arrow render if this segment has this render currently. This goes on top of the main built layer graphics and shows the arrow for the tunnel going ACROSS this segment (using fake segment).
 
@@ -79,7 +79,7 @@ local Underground = {}
 ---@field segmentsConnectionFacing SegmentSurfacePositionFacing @ Where on the segment this surface position is for.
 
 ---@class SegmentSurfacePositionFacing
-local SegmentSurfacePositionFacing = {["front"] = "front", ["rear"] = "rear", ["center"] = "center"}
+local SegmentSurfacePositionFacing = { ["front"] = "front", ["rear"] = "rear", ["center"] = "center" }
 
 ---@class UndergroundSegmentTypeData @ Generic underground segment type data.
 ---@field name string
@@ -108,7 +108,7 @@ local SegmentShape = {
     straight = "straight", -- Short straight piece for horizontal and vertical.
     diagonal = "diagonal", -- Short diagonal piece.
     curved = "curved", -- The start of a curve, so between Straight and Diagonal.
-    corner = "corner" -- The inner part of a curve that connects 2 curved's togeather to make a 90 degree corner.
+    corner = "corner" -- The inner part of a curve that connects 2 curved's together to make a 90 degree corner.
 }
 
 ---@class UndergroundSegmentType @ The type of the segment part.
@@ -137,14 +137,14 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = { x = 0, y = 0 },
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = 0, y = -0.5},
-        frontExternalPositionOffset = {x = 0, y = -1.5},
-        rearInternalPositionOffset = {x = 0, y = 0.5},
-        rearExternalPositionOffset = {x = 0, y = 1.5}
+        frontInternalPositionOffset = { x = 0, y = -0.5 },
+        frontExternalPositionOffset = { x = 0, y = -1.5 },
+        rearInternalPositionOffset = { x = 0, y = 0.5 },
+        rearExternalPositionOffset = { x = 0, y = 1.5 }
     },
     ---@type RailCrossingUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-straight-rail_crossing"] = {
@@ -156,17 +156,17 @@ local SegmentTypeData = {
         surfaceCrossingRailsPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-crossing_rail-on_map",
-                positionOffset = {x = -2, y = 0},
+                positionOffset = { x = -2, y = 0 },
                 baseDirection = defines.direction.east
             },
             {
                 trackEntityName = "railway_tunnel-crossing_rail-on_map",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = { x = 0, y = 0 },
                 baseDirection = defines.direction.east
             },
             {
                 trackEntityName = "railway_tunnel-crossing_rail-on_map",
-                positionOffset = {x = 2, y = 0},
+                positionOffset = { x = 2, y = 0 },
                 baseDirection = defines.direction.east
             }
         },
@@ -174,14 +174,14 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = { x = 0, y = 0 },
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = 0, y = -0.5},
-        frontExternalPositionOffset = {x = 0, y = -1.5},
-        rearInternalPositionOffset = {x = 0, y = 0.5},
-        rearExternalPositionOffset = {x = 0, y = 1.5}
+        frontInternalPositionOffset = { x = 0, y = -0.5 },
+        frontExternalPositionOffset = { x = 0, y = -1.5 },
+        rearInternalPositionOffset = { x = 0, y = 0.5 },
+        rearExternalPositionOffset = { x = 0, y = 1.5 }
     },
     ---@type TunnelCrossingUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-straight-tunnel_crossing"] = {
@@ -194,14 +194,14 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = { x = 0, y = 0 },
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = 0, y = -0.5},
-        frontExternalPositionOffset = {x = 0, y = -1.5},
-        rearInternalPositionOffset = {x = 0, y = 0.5},
-        rearExternalPositionOffset = {x = 0, y = 1.5}
+        frontInternalPositionOffset = { x = 0, y = -0.5 },
+        frontExternalPositionOffset = { x = 0, y = -1.5 },
+        rearInternalPositionOffset = { x = 0, y = 0.5 },
+        rearExternalPositionOffset = { x = 0, y = 1.5 }
     },
     ---@type TunnelCrossingFakeUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-straight-fake_tunnel_crossing"] = {
@@ -214,24 +214,24 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = -2},
+                positionOffset = { x = 0, y = -2 },
                 baseDirection = defines.direction.north
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 0},
+                positionOffset = { x = 0, y = 0 },
                 baseDirection = defines.direction.north
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = 2},
+                positionOffset = { x = 0, y = 2 },
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = 0, y = -2.5},
-        frontExternalPositionOffset = {x = 0, y = -3.5},
-        rearInternalPositionOffset = {x = 0, y = 2.5},
-        rearExternalPositionOffset = {x = 0, y = 3.5}
+        frontInternalPositionOffset = { x = 0, y = -2.5 },
+        frontExternalPositionOffset = { x = 0, y = -3.5 },
+        rearInternalPositionOffset = { x = 0, y = 2.5 },
+        rearExternalPositionOffset = { x = 0, y = 3.5 }
     },
     ---@type StandardUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-curved-regular"] = {
@@ -240,18 +240,18 @@ local SegmentTypeData = {
         segmentType = SegmentType.standard,
         tunnelBuiltLayerEntityName = nil,
         tunnelTopLayerEntityName = "railway_tunnel-underground_segment-curved-regular-top_layer",
-        tilesLength = TrainUtils.GetRailEntityLength("curved-rail", defines.direction.north) - TrainUtils.GetRailEntityLength("straight-rail", defines.direction.northeast), -- Length is a full curved rail length minus 1 diagonal rail piece. As at each end of a diognal series 1 rail piece will be ignored by the curve rail placement. In a 1 diagonal part tunnel there are no diagonal rails used in the pathing.
+        tilesLength = TrainUtils.GetRailEntityLength("curved-rail", defines.direction.north) - TrainUtils.GetRailEntityLength("straight-rail", defines.direction.northeast), -- Length is a full curved rail length minus 1 diagonal rail piece. As at each end of a diagonal series 1 rail piece will be ignored by the curve rail placement. In a 1 diagonal part tunnel there are no diagonal rails used in the pathing.
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-curved-on_map_tunnel",
-                positionOffset = {x = 0, y = -1},
+                positionOffset = { x = 0, y = -1 },
                 baseDirection = defines.direction.north
             }
         },
-        frontInternalPositionOffset = {x = -0.5, y = -2.5}, -- Diagonal connection
-        frontExternalPositionOffset = {x = -1.5, y = -3.5},
-        rearInternalPositionOffset = {x = 1, y = 2.5}, -- Straight connection
-        rearExternalPositionOffset = {x = 1, y = 3.5}
+        frontInternalPositionOffset = { x = -0.5, y = -2.5 }, -- Diagonal connection
+        frontExternalPositionOffset = { x = -1.5, y = -3.5 },
+        rearInternalPositionOffset = { x = 1, y = 2.5 }, -- Straight connection
+        rearExternalPositionOffset = { x = 1, y = 3.5 }
     },
     ---@type StandardUndergroundSegmentTypeData
     -- This is a copy of the regular curved segment, but some values are flipped. Same type of special considerations however.
@@ -265,14 +265,14 @@ local SegmentTypeData = {
         undergroundTracksPositionOffset = {
             {
                 trackEntityName = "railway_tunnel-invisible_rail-curved-on_map_tunnel",
-                positionOffset = {x = 0, y = -1},
+                positionOffset = { x = 0, y = -1 },
                 baseDirection = defines.direction.northeast
             }
         },
-        frontInternalPositionOffset = {x = 0.5, y = -2.5}, -- Diagonal connection
-        frontExternalPositionOffset = {x = 1.5, y = -3.5},
-        rearInternalPositionOffset = {x = -1, y = 2.5}, -- Straight connection
-        rearExternalPositionOffset = {x = -1, y = 3.5}
+        frontInternalPositionOffset = { x = 0.5, y = -2.5 }, -- Diagonal connection
+        frontExternalPositionOffset = { x = 1.5, y = -3.5 },
+        rearInternalPositionOffset = { x = -1, y = 2.5 }, -- Straight connection
+        rearExternalPositionOffset = { x = -1, y = 3.5 }
     },
     ---@type StandardUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-diagonal-regular"] = {
@@ -286,19 +286,19 @@ local SegmentTypeData = {
             -- The end real rail of each line of diagonal tunnel parts will overlap in to the real curves, but this won't make them invalid, and avoids extra build time logic to remove pointless tracks.
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = -1, y = 0},
+                positionOffset = { x = -1, y = 0 },
                 baseDirection = defines.direction.northeast
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 1, y = 0},
+                positionOffset = { x = 1, y = 0 },
                 baseDirection = defines.direction.southwest
             }
         },
-        frontInternalPositionOffset = {x = -0.5, y = -0.5},
-        frontExternalPositionOffset = {x = -1.5, y = -1.5},
-        rearInternalPositionOffset = {x = 0.5, y = 0.5},
-        rearExternalPositionOffset = {x = 1.5, y = 1.5}
+        frontInternalPositionOffset = { x = -0.5, y = -0.5 },
+        frontExternalPositionOffset = { x = -1.5, y = -1.5 },
+        rearInternalPositionOffset = { x = 0.5, y = 0.5 },
+        rearExternalPositionOffset = { x = 1.5, y = 1.5 }
     },
     ---@type StandardUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-diagonal-flipped"] = {
@@ -312,19 +312,19 @@ local SegmentTypeData = {
             -- The end real rail of each line of diagonal tunnel parts will overlap in to the real curves, but this won't make them invalid, and avoids extra build time logic to remove pointless tracks.
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 1, y = 0},
+                positionOffset = { x = 1, y = 0 },
                 baseDirection = defines.direction.northwest
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = -1, y = 0},
+                positionOffset = { x = -1, y = 0 },
                 baseDirection = defines.direction.southeast
             }
         },
-        frontInternalPositionOffset = {x = 0.5, y = -0.5},
-        frontExternalPositionOffset = {x = 1.5, y = -1.5},
-        rearInternalPositionOffset = {x = -0.5, y = 0.5},
-        rearExternalPositionOffset = {x = -1.5, y = 1.5}
+        frontInternalPositionOffset = { x = 0.5, y = -0.5 },
+        frontExternalPositionOffset = { x = 1.5, y = -1.5 },
+        rearInternalPositionOffset = { x = -0.5, y = 0.5 },
+        rearExternalPositionOffset = { x = -1.5, y = 1.5 }
     },
     ---@type StandardUndergroundSegmentTypeData
     ["railway_tunnel-underground_segment-corner"] = {
@@ -339,24 +339,24 @@ local SegmentTypeData = {
 
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 0, y = -2},
+                positionOffset = { x = 0, y = -2 },
                 baseDirection = defines.direction.northeast
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 2, y = -2},
+                positionOffset = { x = 2, y = -2 },
                 baseDirection = defines.direction.southwest
             },
             {
                 trackEntityName = "railway_tunnel-invisible_rail-straight-on_map_tunnel",
-                positionOffset = {x = 2, y = 0},
+                positionOffset = { x = 2, y = 0 },
                 baseDirection = defines.direction.northeast
             }
         },
-        frontInternalPositionOffset = {x = 0.5, y = -2.5},
-        frontExternalPositionOffset = {x = -0.5, y = -3.5},
-        rearInternalPositionOffset = {x = 2.5, y = -0.5},
-        rearExternalPositionOffset = {x = 3.5, y = 0.5}
+        frontInternalPositionOffset = { x = 0.5, y = -2.5 },
+        frontExternalPositionOffset = { x = -0.5, y = -3.5 },
+        rearInternalPositionOffset = { x = 2.5, y = -0.5 },
+        rearExternalPositionOffset = { x = 3.5, y = 0.5 }
     }
 }
 
@@ -373,7 +373,7 @@ end
 Underground.OnLoad = function()
     local segmentEntityNames_Filter = {}
     for _, name in pairs(UndergroundSegmentEntityNames) do
-        table.insert(segmentEntityNames_Filter, {filter = "name", name = name})
+        table.insert(segmentEntityNames_Filter, { filter = "name", name = name })
     end
     Events.RegisterHandlerEvent(defines.events.on_pre_build, "Underground.OnPreBuild", Underground.OnPreBuild)
 
@@ -426,7 +426,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
     ---@typelist StandardUndergroundSegment, RailCrossingUndergroundSegment, TunnelCrossingUndergroundSegment
     local segment_Standard, segment_RailCrossing, segment_TunnelCrossing = segment, segment, segment
 
-    -- Check if this is a fast replacement and if it is handle eveything special ready for standard built entity function logic later.
+    -- Check if this is a fast replacement and if it is handle everything special ready for standard built entity function logic later.
     -- No global data should be registered in this function before the checks in the fast replace logic as this MAY reverse the build action.
     local oldFastReplacedSegmentByPosition = global.undergrounds.segmentSurfacePositions[surfacePositionString]
     ---@typelist UndergroundSegment, StandardUndergroundSegment, RailCrossingUndergroundSegment, TunnelCrossingUndergroundSegment
@@ -438,7 +438,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
         oldFastReplacedSegment_Standard, oldFastReplacedSegment_RailCrossing, oldFastReplacedSegment_TunnelCrossing = oldFastReplacedSegment, oldFastReplacedSegment, oldFastReplacedSegment
 
         -- Check that this is a valid fast replacement. While the current tunnel won't be affected by it, the extras the old segment provided may be in-use currently and so prevent the replacement.
-        -- If its not undo its building and restore the origional segment back, then return to stop the processing of this new build.
+        -- If its not undo its building and restore the original segment back, then return to stop the processing of this new build.
         if oldFastReplacedSegment.typeData.segmentType == SegmentType.railCrossing then
             -- Check crossing rails can be safely removed.
 
@@ -450,9 +450,9 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                     Underground.RestoreSegmentEntity(oldFastReplacedSegment_RailCrossing)
                     if placer ~= nil then
                         -- If the placer wasn't a script show message and return items back.
-                        TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use"}, segment.surface, oldFastReplacedSegment_RailCrossing.entity_position)
-                        InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_RailCrossing.entity_name, count = 1})
-                        InventoryUtils.GetBuilderInventory(placer).insert({name = builtEntity_name, count = 1})
+                        TunnelShared.EntityErrorMessage(placer, { "message.railway_tunnel-crossing_track_fast_replace_blocked_as_in_use" }, segment.surface, oldFastReplacedSegment_RailCrossing.entity_position)
+                        InventoryUtils.GetBuilderInventory(placer).remove({ name = oldFastReplacedSegment_RailCrossing.entity_name, count = 1 })
+                        InventoryUtils.GetBuilderInventory(placer).insert({ name = builtEntity_name, count = 1 })
                     end
                     return
                 end
@@ -460,7 +460,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
             -- Check crossing tunnel can be safely removed.
 
-            -- Get a list of all fake segments this real segment indirectly and directly supports. It can support multiple fake segments at once, although due to their size more than one can't be used in a crossing tunel at once.
+            -- Get a list of all fake segments this real segment indirectly and directly supports. It can support multiple fake segments at once, although due to their size more than one can't be used in a crossing tunnel at once.
             local fakeCrossingSegments = TableUtils.DeepCopy(oldFastReplacedSegment_TunnelCrossing.supportingFakeCrossingSegments)
             if oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment ~= nil then
                 fakeCrossingSegments[oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment.id] = oldFastReplacedSegment_TunnelCrossing.directFakeCrossingSegment
@@ -477,9 +477,9 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                         Underground.RestoreSegmentEntity(oldFastReplacedSegment_TunnelCrossing)
                         if placer ~= nil then
                             -- If the placer wasn't a script show message and return items back.
-                            TunnelShared.EntityErrorMessage(placer, {"message.railway_tunnel-crossing_tunnel_fast_replace_blocked_as_in_use"}, oldFastReplacedSegment_TunnelCrossing.surface, oldFastReplacedSegment_TunnelCrossing.entity_position)
-                            InventoryUtils.GetBuilderInventory(placer).remove({name = oldFastReplacedSegment_TunnelCrossing.entity_name, count = 1})
-                            InventoryUtils.GetBuilderInventory(placer).insert({name = builtEntity_name, count = 1})
+                            TunnelShared.EntityErrorMessage(placer, { "message.railway_tunnel-crossing_tunnel_fast_replace_blocked_as_in_use" }, oldFastReplacedSegment_TunnelCrossing.surface, oldFastReplacedSegment_TunnelCrossing.entity_position)
+                            InventoryUtils.GetBuilderInventory(placer).remove({ name = oldFastReplacedSegment_TunnelCrossing.entity_name, count = 1 })
+                            InventoryUtils.GetBuilderInventory(placer).insert({ name = builtEntity_name, count = 1 })
                         end
                         return
                     end
@@ -497,23 +497,23 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
         -- Remove the extras for the old part being replaced.
         if oldFastReplacedSegment.typeData.segmentType == SegmentType.standard then
             -- Remove the old train blocker entity.
-            oldFastReplacedSegment_Standard.trainBlockerEntity.destroy {raise_destroy = false}
+            oldFastReplacedSegment_Standard.trainBlockerEntity.destroy { raise_destroy = false }
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.railCrossing then
             -- Remove the old rails.
             for _, railCrossingTrackEntity in pairs(oldFastReplacedSegment_RailCrossing.crossingRailEntities) do
-                railCrossingTrackEntity.destroy {raise_destroy = false}
+                railCrossingTrackEntity.destroy { raise_destroy = false }
             end
             -- Remove the old crossing track signals if there were any (as only added when part of a tunnel).
             if oldFastReplacedSegment_RailCrossing.signalEntities ~= nil then
                 for _, crossingRailSignal in pairs(oldFastReplacedSegment_RailCrossing.signalEntities) do
-                    crossingRailSignal.destroy {raise_destroy = false}
+                    crossingRailSignal.destroy { raise_destroy = false }
                 end
             end
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
             -- Remove the old train blocker entity.
-            oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity.destroy {raise_destroy = false}
+            oldFastReplacedSegment_TunnelCrossing.trainBlockerEntity.destroy { raise_destroy = false }
 
-            -- Update the neighboring segments that this tunnel crossing segment is being removed.
+            -- Update the neighbouring segments that this tunnel crossing segment is being removed.
             Underground.TunnelCrossingSegmentBuiltOrRemoved(oldFastReplacedSegment_TunnelCrossing, false)
 
             -- Tidy up the main and crossing arrows.
@@ -536,9 +536,9 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
             -- Is same type so just claim the old one (may or not exist).
             segment.builtLayerEntity = oldFastReplacedSegment.builtLayerEntity
         else
-            -- Different segment type so remove the old one if it exists, with the new one bein created as part of regular segment creation later.
+            -- Different segment type so remove the old one if it exists, with the new one being created as part of regular segment creation later.
             if oldFastReplacedSegment.builtLayerEntity ~= nil then
-                oldFastReplacedSegment.builtLayerEntity.destroy {raise_destroy = false}
+                oldFastReplacedSegment.builtLayerEntity.destroy { raise_destroy = false }
             end
         end
 
@@ -557,7 +557,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                 Underground.BuildSignalsForSegment(segment_RailCrossing)
             end
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
-            -- The hanlding for the newly placed entity will account for any neighboring segments and arrows. So nothing to do in this specific location.
+            -- The handling for the newly placed entity will account for any neighbouring segments and arrows. So nothing to do in this specific location.
         elseif segment.typeData.segmentType == oldFastReplacedSegment.typeData.segmentType then
             -- Is a fast replace to the same type so just blindly claim the old segment's type extras. As they won't be removed and recreated to avoid waste.
             fastReplacedSegmentOfSameType = true
@@ -581,7 +581,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                 segment_TunnelCrossing.mainArrowRenderId = oldFastReplacedSegment_TunnelCrossing.mainArrowRenderId
                 segment_TunnelCrossing.tunnelCrossingArrowRenderId = oldFastReplacedSegment_TunnelCrossing.tunnelCrossingArrowRenderId
             else
-                error("Unsupported same type underground segment fast repalced over itself: " .. segment.typeData.segmentType)
+                error("Unsupported same type underground segment fast replaced over itself: " .. segment.typeData.segmentType)
             end
         end
 
@@ -602,12 +602,12 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
             if not fastReplacedSegmentOfSameType then
                 -- Remove the old top layer.
                 if oldFastReplacedSegment.topLayerEntity ~= nil and oldFastReplacedSegment.topLayerEntity.valid then
-                    oldFastReplacedSegment.topLayerEntity.destroy {raise_destroy = false}
+                    oldFastReplacedSegment.topLayerEntity.destroy { raise_destroy = false }
                 end
 
                 -- Create the top layer entity that has the desired graphics on it.
                 if segment.typeData.tunnelTopLayerEntityName ~= nil then
-                    segment.topLayerEntity = segment.surface.create_entity {name = segment.typeData.tunnelTopLayerEntityName, position = segment.entity_position, force = segment.force, direction = segment.entity_direction, raise_built = false, create_build_effect_smoke = false}
+                    segment.topLayerEntity = segment.surface.create_entity { name = segment.typeData.tunnelTopLayerEntityName, position = segment.entity_position, force = segment.force, direction = segment.entity_direction, raise_built = false, create_build_effect_smoke = false }
                 end
             end
         end
@@ -622,8 +622,8 @@ end
 
 --- Called to process a segment object once it has been created.
 ---@param segment UndergroundSegment
----@param oldFastReplacedSegment? UndergroundSegment|nil @ The old segment that has just been fast replaced over IF a fast replacement has occured. If no fast replacement has occured then it's nil.
----@param fastReplacedSegmentOfSameType? boolean|nil @ If a fast replacement has occured if it is the same segment type or not. If no fast replacement has occured then it's nil.
+---@param oldFastReplacedSegment? UndergroundSegment|nil @ The old segment that has just been fast replaced over IF a fast replacement has occurred. If no fast replacement has occurred then it's nil.
+---@param fastReplacedSegmentOfSameType? boolean|nil @ If a fast replacement has occurred if it is the same segment type or not. If no fast replacement has occurred then it's nil.
 ---@param placer EntityActioner|nil @ Can be nil if nothing new was built or a script built it.
 Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplacedSegment, fastReplacedSegmentOfSameType, placer)
     ---@typelist StandardUndergroundSegment, RailCrossingUndergroundSegment, TunnelCrossingUndergroundSegment
@@ -675,14 +675,14 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
     if not fastReplacedSegmentOfSameType then
         -- If there's a built entity name for this type then add it.
         if segment.typeData.tunnelBuiltLayerEntityName ~= nil then
-            segment.builtLayerEntity = segment.surface.create_entity {name = segment.typeData.tunnelBuiltLayerEntityName, position = segment.entity_position, direction = segment.entity_direction, force = segment.force, raise_built = false, create_build_effect_smoke = false}
+            segment.builtLayerEntity = segment.surface.create_entity { name = segment.typeData.tunnelBuiltLayerEntityName, position = segment.entity_position, direction = segment.entity_direction, force = segment.force, raise_built = false, create_build_effect_smoke = false }
             segment.builtLayerEntity.destructible = false
         end
 
         -- Type specific extras to add.
         if segment.typeData.segmentType == SegmentType.standard then
             -- Add the train blocker entity.
-            segment_Standard.trainBlockerEntity = segment_Standard.surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = segment_Standard.entity_position, force = segment_Standard.force, raise_built = false, create_build_effect_smoke = false}
+            segment_Standard.trainBlockerEntity = segment_Standard.surface.create_entity { name = "railway_tunnel-train_blocker_2x2", position = segment_Standard.entity_position, force = segment_Standard.force, raise_built = false, create_build_effect_smoke = false }
         elseif segment.typeData.segmentType == SegmentType.railCrossing then
             local railCrossingSegmentTypeData = segment_RailCrossing.typeData ---@type RailCrossingUndergroundSegmentTypeData
 
@@ -690,20 +690,20 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
             segment_RailCrossing.crossingRailEntities = {}
             for _, railPositionOffset in pairs(railCrossingSegmentTypeData.surfaceCrossingRailsPositionOffset) do
                 local railPos = PositionUtils.RotateOffsetAroundPosition(segment_RailCrossing.entity_orientation, railPositionOffset.positionOffset, segment_RailCrossing.entity_position)
-                local placedRail = segment_RailCrossing.surface.create_entity {name = railPositionOffset.trackEntityName, position = railPos, force = segment_RailCrossing.force, direction = DirectionUtils.RotateDirectionByDirection(railPositionOffset.baseDirection, defines.direction.north, segment_RailCrossing.entity_direction), raise_built = false, create_build_effect_smoke = false}
+                local placedRail = segment_RailCrossing.surface.create_entity { name = railPositionOffset.trackEntityName, position = railPos, force = segment_RailCrossing.force, direction = DirectionUtils.RotateDirectionByDirection(railPositionOffset.baseDirection, defines.direction.north, segment_RailCrossing.entity_direction), raise_built = false, create_build_effect_smoke = false }
                 placedRail.destructible = false
                 segment_RailCrossing.crossingRailEntities[placedRail.unit_number] = placedRail
             end
         elseif segment.typeData.segmentType == SegmentType.tunnelCrossing then
             -- Add the train blocker entity.
-            segment_TunnelCrossing.trainBlockerEntity = segment_TunnelCrossing.surface.create_entity {name = "railway_tunnel-train_blocker_2x2", position = segment_TunnelCrossing.entity_position, force = segment_TunnelCrossing.force, raise_built = false, create_build_effect_smoke = false}
+            segment_TunnelCrossing.trainBlockerEntity = segment_TunnelCrossing.surface.create_entity { name = "railway_tunnel-train_blocker_2x2", position = segment_TunnelCrossing.entity_position, force = segment_TunnelCrossing.force, raise_built = false, create_build_effect_smoke = false }
 
             -- Add the default values for tunnel crossing segment.
             segment_TunnelCrossing.tunnelCrossingNeighbors = 0
             segment_TunnelCrossing.tunnelCrossingCompleted = false
             segment_TunnelCrossing.supportingFakeCrossingSegments = {}
 
-            -- Check the neighboring segments for other tunnel crossing type segments.
+            -- Check the neighbouring segments for other tunnel crossing type segments.
             Underground.TunnelCrossingSegmentBuiltOrRemoved(segment_TunnelCrossing, true)
         elseif segment.typeData.segmentType == SegmentType.fakeTunnelCrossing then
             -- Nothing needs creating for a fake tunnel crossing.
@@ -712,9 +712,9 @@ Underground.ProcessNewUndergroundSegmentObject = function(segment, oldFastReplac
         end
     end
 
-    -- Do post activities based on if new segment or fast replacemet.
+    -- Do post activities based on if new segment or fast replacement.
     if oldFastReplacedSegment == nil then
-        -- New segments check if they complete the tunnel and handle approperiately.
+        -- New segments check if they complete the tunnel and handle appropriately.
         Underground.UpdateUndergroundsForNewSegment(segment, placer)
         Underground.CheckAndHandleTunnelCompleteFromUnderground(segment.underground)
 
@@ -738,7 +738,7 @@ end
 ---@param segment UndergroundSegment
 ---@param placer EntityActioner|nil @ Can be nil if nothing new was built or a script built it.
 Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
-    local firstComplictedConnectedSegment, secondComplictedConnectedSegment = nil, nil
+    local firstComplicatedConnectedSegment, secondComplicatedConnectedSegment = nil, nil
 
     -- Check for a connected viable segment in both directions from our segment.
     for facing, checkDetails in pairs(
@@ -757,40 +757,40 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
         local foundSegmentPositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[checkDetails.externalCheckSurfacePositionString]
 
         -- Check that the 2 segments should be allowed to directly connect based on their types.
-        local connectedSegment  ---@type UndergroundSegment
+        local connectedSegment ---@type UndergroundSegment
         if foundSegmentPositionObject ~= nil then
             connectedSegment = foundSegmentPositionObject.segment
 
-            -- CODE NOTE: Only curves need manaul prevention of connection since the move to diagonal internal/external offsets.
+            -- CODE NOTE: Only curves need manual prevention of connection since the move to diagonal internal/external offsets.
             if segment.typeData.segmentShape == SegmentShape.curved then
-                -- A curve can not be allowed to connect on thier diagonal (front) to another curves diagonal (front), despite their internal/external positions lining up for this.
+                -- A curve can not be allowed to connect on their diagonal (front) to another curves diagonal (front), despite their internal/external positions lining up for this.
                 if facing == "front" then
                     if connectedSegment.typeData.segmentShape == SegmentShape.curved then
                         if foundSegmentPositionObject.segmentsConnectionFacing == SegmentSurfacePositionFacing.front then
                             -- Show warning message to the user.
-                            local _, position = StringUtils.SurfacePositionStringToSurfaceAndPosition(checkDetails.internalCheckSurfacePositionString) -- Very rarely called so no harm in it being less effecient. Saves on bigger chanegs to whole data structure just for error message.
+                            local _, position = StringUtils.SurfacePositionStringToSurfaceAndPosition(checkDetails.internalCheckSurfacePositionString) -- Very rarely called so no harm in it being less efficient. Saves on bigger changes to whole data structure just for error message.
                             if placer ~= nil then
                                 local textAudiencePlayer, textAudienceForce = EventUtils.GetPlayerOrForceFromEventActioner(placer)
                                 rendering.draw_text {
-                                    text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-1"},
+                                    text = { "message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-1" },
                                     surface = segment.surface,
                                     target = position,
                                     time_to_live = 600,
-                                    players = {textAudiencePlayer},
-                                    forces = {textAudienceForce},
-                                    color = {r = 1, g = 0, b = 0, a = 1},
+                                    players = { textAudiencePlayer },
+                                    forces = { textAudienceForce },
+                                    color = { r = 1, g = 0, b = 0, a = 1 },
                                     scale_with_zoom = true,
                                     alignment = "center",
                                     vertical_alignment = "bottom"
                                 }
                                 rendering.draw_text {
-                                    text = {"message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-2"},
+                                    text = { "message.railway_tunnel-2_curved_segments_cant_connect_on_diagonal_ends-2" },
                                     surface = segment.surface,
                                     target = position,
                                     time_to_live = 600,
-                                    players = {textAudiencePlayer},
-                                    forces = {textAudienceForce},
-                                    color = {r = 1, g = 0, b = 0, a = 1},
+                                    players = { textAudiencePlayer },
+                                    forces = { textAudienceForce },
+                                    color = { r = 1, g = 0, b = 0, a = 1 },
                                     scale_with_zoom = true,
                                     alignment = "center",
                                     vertical_alignment = "top"
@@ -816,10 +816,10 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
                 Underground.AddSegmentToUnderground(connectedSegment.underground, segment)
             else
                 -- Either we both have undergrounds or neither have undergrounds. Just flag this and review after checking both directions.
-                if firstComplictedConnectedSegment == nil then
-                    firstComplictedConnectedSegment = connectedSegment
+                if firstComplicatedConnectedSegment == nil then
+                    firstComplicatedConnectedSegment = connectedSegment
                 else
-                    secondComplictedConnectedSegment = connectedSegment
+                    secondComplicatedConnectedSegment = connectedSegment
                 end
             end
 
@@ -832,7 +832,7 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
         end
     end
 
-    -- Handle any weird situations where theres lots of undergrounds or none. Note that the scenarios handled are limited based on the logic outcomes of the direction checking logic.
+    -- Handle any weird situations where there's lots of undergrounds or none. Note that the scenarios handled are limited based on the logic outcomes of the direction checking logic.
     -- The logging of complicated segments was based on our state at the time of the comparison. So the second connected segment may have changed our state since we compared to the first connected segment.
     if segment.underground == nil then
         -- We always need an underground, so create one and add anyone else to it.
@@ -848,28 +848,28 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
         }
         global.undergrounds.undergrounds[undergroundId] = underground
         Underground.AddSegmentToUnderground(underground, segment)
-        if firstComplictedConnectedSegment ~= nil then
-            Underground.AddSegmentToUnderground(underground, firstComplictedConnectedSegment)
+        if firstComplicatedConnectedSegment ~= nil then
+            Underground.AddSegmentToUnderground(underground, firstComplicatedConnectedSegment)
         end
-        if secondComplictedConnectedSegment ~= nil then
-            Underground.AddSegmentToUnderground(underground, secondComplictedConnectedSegment)
+        if secondComplicatedConnectedSegment ~= nil then
+            Underground.AddSegmentToUnderground(underground, secondComplicatedConnectedSegment)
         end
     end
-    if firstComplictedConnectedSegment ~= nil then
-        if segment.underground ~= nil and firstComplictedConnectedSegment.underground ~= nil then
+    if firstComplicatedConnectedSegment ~= nil then
+        if segment.underground ~= nil and firstComplicatedConnectedSegment.underground ~= nil then
             -- Us and the one complicated segment both have a underground.
 
             -- If the 2 undergrounds are different then merge them. Use whichever has more segments as new master as this is generally the best one. It can end up that both have the same underground during the connection process and in this case do nothing to the shared underground.
-            if segment.underground.id ~= firstComplictedConnectedSegment.underground.id then
-                if TableUtils.GetTableNonNilLength(segment.underground.segments) >= TableUtils.GetTableNonNilLength(firstComplictedConnectedSegment.underground.segments) then
-                    Underground.MergeUndergroundInToOtherUnderground(firstComplictedConnectedSegment.underground, segment.underground)
+            if segment.underground.id ~= firstComplicatedConnectedSegment.underground.id then
+                if TableUtils.GetTableNonNilLength(segment.underground.segments) >= TableUtils.GetTableNonNilLength(firstComplicatedConnectedSegment.underground.segments) then
+                    Underground.MergeUndergroundInToOtherUnderground(firstComplicatedConnectedSegment.underground, segment.underground)
                 else
-                    Underground.MergeUndergroundInToOtherUnderground(segment.underground, firstComplictedConnectedSegment.underground)
+                    Underground.MergeUndergroundInToOtherUnderground(segment.underground, firstComplicatedConnectedSegment.underground)
                 end
             end
-        elseif segment.underground ~= nil and firstComplictedConnectedSegment.underground == nil then
-            -- We have an underground now and the other complicated connnected segment doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
-            Underground.AddSegmentToUnderground(segment.underground, firstComplictedConnectedSegment)
+        elseif segment.underground ~= nil and firstComplicatedConnectedSegment.underground == nil then
+            -- We have an underground now and the other complicated connected segment doesn't. We may have obtained one since the initial comparison. Just add them to ours now.
+            Underground.AddSegmentToUnderground(segment.underground, firstComplicatedConnectedSegment)
         else
             -- If a situation should be ignored add it explicitly.
             error("unexpected scenario")
@@ -877,7 +877,7 @@ Underground.UpdateUndergroundsForNewSegment = function(segment, placer)
     end
 
     -- Just loop over the underground segments and find the ones with spare connection points. These are the ends.
-    -- There is a more effecient but more complicated way to do this, ignore this until it shows as a noticable UPS waste. Same more complicated scneario could be applied to when an underground or portal has an entity removed from it.
+    -- There is a more efficient but more complicated way to do this, ignore this until it shows as a noticeable UPS waste. Same more complicated scenario could be applied to when an underground or portal has an entity removed from it.
     local underground = segment.underground
     underground.undergroundEndSegments = {}
     for _, thisSegment in pairs(underground.segments) do
@@ -938,7 +938,7 @@ end
 --- Called when a tunnel crossing segment type has had its neighbors updated. Can be for when
 ---@param tunnelCrossingSegment TunnelCrossingUndergroundSegment
 Underground.TunnelCrossingSegmentsNeighborsUpdated = function(tunnelCrossingSegment)
-    -- Check this segments neighbor count and react based on old and new state.
+    -- Check this segments neighbour count and react based on old and new state.
     if tunnelCrossingSegment.tunnelCrossingNeighbors == 2 then
         -- This tunnel crossing is complete.
         if not tunnelCrossingSegment.tunnelCrossingCompleted then
@@ -989,7 +989,7 @@ Underground.TunnelCrossingSegment_OnCompletedTunnel = function(thisTunnelCrossin
     fakeSegment.directParentTunnelCrossingSegment = thisTunnelCrossingSegment
     thisTunnelCrossingSegment.directFakeCrossingSegment = fakeSegment
 
-    -- Update the neighboring real segments so they know they are contributing to the fake segment and the fake segment to know its supporting parents.
+    -- Update the neighbouring real segments so they know they are contributing to the fake segment and the fake segment to know its supporting parents.
     frontConnectedSegment.supportingFakeCrossingSegments[fakeSegment.id] = fakeSegment
     rearConnectedSegment.supportingFakeCrossingSegments[fakeSegment.id] = fakeSegment
     fakeSegment.supportingParentTunnelCrossingSegments = {
@@ -1012,7 +1012,7 @@ Underground.TunnelCrossingSegment_OnRemovedTunnel = function(thisTunnelCrossingS
     -- Update the direct child relationship for the removal of the fake segment object.
     thisTunnelCrossingSegment.directFakeCrossingSegment = nil
 
-    -- Update the neighboring real segments so they know the fake segment they were contributing to is gone.
+    -- Update the neighbouring real segments so they know the fake segment they were contributing to is gone.
     frontConnectedSegment.supportingFakeCrossingSegments[fakeSegment.id] = nil
     rearConnectedSegment.supportingFakeCrossingSegments[fakeSegment.id] = nil
 
@@ -1082,7 +1082,7 @@ Underground.CanAnUndergroundConnectAtItsInternalPosition = function(segmentInter
     local segmentInternalSurfacePositionObject = global.undergrounds.segmentInternalConnectionSurfacePositionStrings[segmentInternalSurfacePositionString]
     if segmentInternalSurfacePositionObject ~= nil then
         local underground = segmentInternalSurfacePositionObject.segment.underground
-        local otherEndSegment  ---@type UndergroundSegment
+        local otherEndSegment ---@type UndergroundSegment
         if underground.undergroundEndSegments[1].segment.id == segmentInternalSurfacePositionObject.segment.id then
             otherEndSegment = underground.undergroundEndSegments[2].segment
         else
@@ -1122,7 +1122,7 @@ Underground.On_PreTunnelCompleted = function(underground)
         -- Create the top layer entity that has the desired graphics on it.
         local tunnelTopLayerEntityName = segment.typeData.tunnelTopLayerEntityName
         if tunnelTopLayerEntityName ~= nil then
-            segment.topLayerEntity = segment.surface.create_entity {name = tunnelTopLayerEntityName, position = segment.entity_position, force = segment.force, direction = segment.entity_direction, raise_built = false, create_build_effect_smoke = false}
+            segment.topLayerEntity = segment.surface.create_entity { name = tunnelTopLayerEntityName, position = segment.entity_position, force = segment.force, direction = segment.entity_direction, raise_built = false, create_build_effect_smoke = false }
         end
     end
 end
@@ -1150,7 +1150,7 @@ Underground.BuildUndergroundRailForSegment = function(segment)
     segment.tunnelRailEntities = {}
     for _, trackPositionOffset in pairs(segment.typeData.undergroundTracksPositionOffset) do
         local railPos = PositionUtils.RotateOffsetAroundPosition(segment.entity_orientation, trackPositionOffset.positionOffset, segment.entity_position)
-        local placedRail = segment.surface.create_entity {name = trackPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = DirectionUtils.RotateDirectionByDirection(trackPositionOffset.baseDirection, defines.direction.north, segment.entity_direction), raise_built = false, create_build_effect_smoke = false}
+        local placedRail = segment.surface.create_entity { name = trackPositionOffset.trackEntityName, position = railPos, force = segment.force, direction = DirectionUtils.RotateDirectionByDirection(trackPositionOffset.baseDirection, defines.direction.north, segment.entity_direction), raise_built = false, create_build_effect_smoke = false }
         placedRail.destructible = false
         segment.tunnelRailEntities[placedRail.unit_number] = placedRail
     end
@@ -1162,7 +1162,7 @@ Underground.BuildSignalsForSegment = function(segment_RailCrossing)
     -- Check if we should skip building signals for this segment. This only happens when its the end segment in an underground and is on the east/south end, as its signals would clash with the portals signals and are un-required.
     local firstNonConnectedExternalSurfacePosition = next(segment_RailCrossing.nonConnectedExternalSurfacePositions)
     if firstNonConnectedExternalSurfacePosition ~= nil then
-        -- Theres a non-connected end of this segment so it must be at the end of an underground and thus requires checking.
+        -- There's a non-connected end of this segment so it must be at the end of an underground and thus requires checking.
 
         -- As a segments own orientation has no bearing on its end of an underground work out which end it is by comparing its 2 positions.
         -- CODE NOTE: The use of Utils to back convert string to position is wasteful, but this will not be frequently called and saves having to re-engineer the whole position string code stack to make this information available here and a lot of extra runtime data updates to allow it.
@@ -1179,7 +1179,7 @@ Underground.BuildSignalsForSegment = function(segment_RailCrossing)
         if segment_RailCrossing.entity_orientation == 0 or segment_RailCrossing.entity_orientation == 0.5 then
             -- North/South segment.
             if tunnelEndPosition.y > tunnelInnerPosition.y then
-                -- The non conencted end is south, so this is at the south end of the underground.
+                -- The non connected end is south, so this is at the south end of the underground.
                 return
             end
         else
@@ -1191,12 +1191,12 @@ Underground.BuildSignalsForSegment = function(segment_RailCrossing)
         end
     end
 
-    for _, orientationModifier in pairs({0, 4}) do
+    for _, orientationModifier in pairs({ 0, 4 }) do
         local signalDirection = DirectionUtils.LoopDirectionValue(segment_RailCrossing.entity_direction + orientationModifier)
         local orientation = signalDirection / 8
         -- They snap to be on the east/south side of this segment as we try to build them on its center line and Factorio defaults to positive x/y over negative x/y.
-        local position = PositionUtils.RotateOffsetAroundPosition(orientation, {x = -1.5, y = 0}, segment_RailCrossing.entity_position)
-        local placedSignal = segment_RailCrossing.surface.create_entity {name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment_RailCrossing.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false}
+        local position = PositionUtils.RotateOffsetAroundPosition(orientation, { x = -1.5, y = 0 }, segment_RailCrossing.entity_position)
+        local placedSignal = segment_RailCrossing.surface.create_entity { name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment_RailCrossing.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false }
         segment_RailCrossing.signalEntities[placedSignal.unit_number] = placedSignal
     end
 end
@@ -1265,7 +1265,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
                 local miner = EventUtils.GetActionerFromEvent(event)
                 if miner ~= nil then
                     -- If the miner wasn't a script show message.
-                    TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-crossing_track_mining_blocked_as_in_use"}, minedSegment_RailCrossing.surface, minedSegment_RailCrossing.entity_position)
+                    TunnelShared.EntityErrorMessage(miner, { "message.railway_tunnel-crossing_track_mining_blocked_as_in_use" }, minedSegment_RailCrossing.surface, minedSegment_RailCrossing.entity_position)
                 end
                 Underground.RestoreSegmentEntity(minedSegment_RailCrossing)
                 return
@@ -1275,7 +1275,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
         -- If there's a fake tunnel crossing segment related to this real segment we need to check this. This function will check this real segment's own tunnel if present later.
         local minedSegment_TunnelCrossing = minedSegment ---@type TunnelCrossingUndergroundSegment
 
-        -- Get a list of all fake segments this real segment indirectly and directly supports. It can support multiple fake segments at once, although due to their size more than one can't be used in a crossing tunel at once.
+        -- Get a list of all fake segments this real segment indirectly and directly supports. It can support multiple fake segments at once, although due to their size more than one can't be used in a crossing tunnel at once.
         local fakeCrossingSegments = TableUtils.DeepCopy(minedSegment_TunnelCrossing.supportingFakeCrossingSegments)
         if minedSegment_TunnelCrossing.directFakeCrossingSegment ~= nil then
             fakeCrossingSegments[minedSegment_TunnelCrossing.directFakeCrossingSegment.id] = minedSegment_TunnelCrossing.directFakeCrossingSegment
@@ -1291,7 +1291,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
                     local miner = EventUtils.GetActionerFromEvent(event)
                     if miner ~= nil then
                         -- If the miner wasn't a script show message.
-                        TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use"}, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
+                        TunnelShared.EntityErrorMessage(miner, { "message.railway_tunnel-tunnel_part_mining_blocked_as_crossing_tunnel_in_use" }, minedSegment_TunnelCrossing.surface, minedSegment_TunnelCrossing.entity_position)
                     end
                     Underground.RestoreSegmentEntity(minedSegment)
                     return
@@ -1310,7 +1310,7 @@ Underground.OnUndergroundSegmentEntityPreMined = function(event, minedEntity)
             local miner = EventUtils.GetActionerFromEvent(event)
             if miner ~= nil then
                 -- If the miner wasn't a script show message.
-                TunnelShared.EntityErrorMessage(miner, {"message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use"}, minedSegment.surface, minedSegment.entity_position)
+                TunnelShared.EntityErrorMessage(miner, { "message.railway_tunnel-tunnel_part_mining_blocked_as_tunnel_in_use" }, minedSegment.surface, minedSegment.entity_position)
             end
             Underground.RestoreSegmentEntity(minedSegment)
         else
@@ -1326,10 +1326,10 @@ Underground.RestoreSegmentEntity = function(minedSegment)
     -- Destroy the old entity after caching its values.
     local minedSegmentEntity = minedSegment.entity ---@type LuaEntity
     local minedSegmentEntity_lastUser, minedSegmentEntityId = minedSegmentEntity.last_user, minedSegment.id
-    minedSegmentEntity.destroy {raise_destroy = false} -- Destroy it so it can't be mined.
+    minedSegmentEntity.destroy { raise_destroy = false } -- Destroy it so it can't be mined.
 
     -- Create the new entity and update the old segment object with it.
-    local newSegmentEntity = minedSegment.surface.create_entity {name = minedSegment.entity_name, position = minedSegment.entity_position, direction = minedSegment.entity_direction, force = minedSegment.force, player = minedSegmentEntity_lastUser, raise_built = false, create_build_effect_smoke = false}
+    local newSegmentEntity = minedSegment.surface.create_entity { name = minedSegment.entity_name, position = minedSegment.entity_position, direction = minedSegment.entity_direction, force = minedSegment.force, player = minedSegmentEntity_lastUser, raise_built = false, create_build_effect_smoke = false }
     newSegmentEntity.rotatable = false
     minedSegment.entity = newSegmentEntity
     minedSegment.id = newSegmentEntity.unit_number
@@ -1364,20 +1364,20 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
 
     -- Remove a built layer entity if it exists.
     if removedSegment.builtLayerEntity ~= nil then
-        removedSegment.builtLayerEntity.destroy {raise_destroy = false}
+        removedSegment.builtLayerEntity.destroy { raise_destroy = false }
     end
 
     -- The standard extras the object had created without needing to be part of a tunnel need removing.
     if removedSegment.typeData.segmentType == SegmentType.standard then
         local removedSegment_Standard = removedSegment ---@type StandardUndergroundSegment
-        removedSegment_Standard.trainBlockerEntity.destroy {raise_destroy = false}
+        removedSegment_Standard.trainBlockerEntity.destroy { raise_destroy = false }
     elseif removedSegment.typeData.segmentType == SegmentType.railCrossing then
         -- Remove anything on the crossing rails and the rails. If this function has been reached any mining checks have already happened.
         local removedSegment_RailCrossing = removedSegment ---@type RailCrossingUndergroundSegment
         for _, crossingRailEntity in pairs(removedSegment_RailCrossing.crossingRailEntities) do
             if crossingRailEntity.valid then
                 TrainUtils.DestroyCarriagesOnRailEntity(crossingRailEntity, killForce, killerCauseEntity, removedSegment_RailCrossing.surface)
-                if not crossingRailEntity.destroy {raise_destroy = false} then
+                if not crossingRailEntity.destroy { raise_destroy = false } then
                     error("removedSegment.crossingRailEntities rail failed to be removed")
                 end
             end
@@ -1386,9 +1386,9 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
         local removedSegment_TunnelCrossing = removedSegment ---@type TunnelCrossingUndergroundSegment
 
         -- Remove the train blocker.
-        removedSegment_TunnelCrossing.trainBlockerEntity.destroy {raise_destroy = false}
+        removedSegment_TunnelCrossing.trainBlockerEntity.destroy { raise_destroy = false }
 
-        -- Check the neighboring segments for other tunnel crossing type segments.
+        -- Check the neighbouring segments for other tunnel crossing type segments.
         Underground.TunnelCrossingSegmentBuiltOrRemoved(removedSegment_TunnelCrossing, false)
 
         -- Tidy up the main and crossing arrows.
@@ -1416,8 +1416,8 @@ Underground.EntityRemoved = function(removedSegment, killForce, killerCauseEntit
     removedUnderground.segments[removedSegment.id] = nil
     global.undergrounds.undergrounds[removedUnderground.id] = nil
 
-    -- As we don't know the underground's segment makeup we will just disolve the underground and recreate new one(s) by checking each remaining segment. This is a bit crude, but can be reviewed if UPS impactful.
-    -- Make each underground segment forget its parent and relevent state data so they are all ready to re-merge in to new undergrounds later.
+    -- As we don't know the underground's segment makeup we will just dissolve the underground and recreate new one(s) by checking each remaining segment. This is a bit crude, but can be reviewed if UPS impactful.
+    -- Make each underground segment forget its parent and relevant state data so they are all ready to re-merge in to new undergrounds later.
     for _, loopingUndergroundSegment in pairs(removedUnderground.segments) do
         loopingUndergroundSegment.underground = nil
         loopingUndergroundSegment.nonConnectedExternalSurfacePositions = {}
@@ -1437,7 +1437,7 @@ Underground.On_TunnelRemoved = function(underground)
     for _, segment in pairs(underground.segments) do
         for _, railEntity in pairs(segment.tunnelRailEntities) do
             if railEntity.valid then
-                railEntity.destroy {raise_destroy = false}
+                railEntity.destroy { raise_destroy = false }
             end
         end
         segment.tunnelRailEntities = nil
@@ -1446,7 +1446,7 @@ Underground.On_TunnelRemoved = function(underground)
             local segment_RailCrossing = segment ---@type RailCrossingUndergroundSegment
             for _, signalEntity in pairs(segment_RailCrossing.signalEntities) do
                 if signalEntity.valid then
-                    signalEntity.destroy {raise_destroy = false}
+                    signalEntity.destroy { raise_destroy = false }
                 end
             end
             segment_RailCrossing.signalEntities = nil
@@ -1461,7 +1461,7 @@ Underground.On_TunnelRemoved = function(underground)
         end
 
         if segment.topLayerEntity ~= nil and segment.topLayerEntity.valid then
-            segment.topLayerEntity.destroy {raise_destroy = false}
+            segment.topLayerEntity.destroy { raise_destroy = false }
         end
         segment.topLayerEntity = nil
     end
@@ -1475,7 +1475,7 @@ Underground.TunnelCrossingSegment_MainTunnelChanged = function(tunnelCrossingSeg
         -- Should be an arrow, add one if missing.
         if tunnelCrossingSegment.mainArrowRenderId == nil then
             tunnelCrossingSegment.mainArrowRenderId =
-                rendering.draw_sprite {
+            rendering.draw_sprite {
                 sprite = "railway_tunnel-underground_segment-straight-tunnel_crossing-main_arrow",
                 render_layer = 27, -- One layer above the tile transition layer that the tunnelTopLayerEntityName uses.
                 target = tunnelCrossingSegment.entity_position,
@@ -1511,7 +1511,7 @@ Underground.TunnelCrossingSegment_CrossingTunnelChanged = function(tunnelCrossin
         -- Should be a crossing arrow so add one if it doesn't exist.
         if tunnelCrossingSegment.tunnelCrossingArrowRenderId == nil then
             tunnelCrossingSegment.tunnelCrossingArrowRenderId =
-                rendering.draw_sprite {
+            rendering.draw_sprite {
                 sprite = "railway_tunnel-underground_segment-straight-tunnel_crossing-crossing_arrow",
                 render_layer = 27, -- One layer above the tile transition layer that the tunnelTopLayerEntityName uses.
                 target = tunnelCrossingSegment.entity_position,
@@ -1532,7 +1532,7 @@ end
 ---@param event on_entity_died|script_raised_destroy
 ---@param diedEntity LuaEntity
 Underground.OnUndergroundSegmentEntityDied = function(event, diedEntity)
-    -- Check its a previously successfully built entity. Just incase something destroys the entity before its made a global entry.
+    -- Check its a previously successfully built entity. Just in case something destroys the entity before its made a global entry.
     local segment = global.undergrounds.segments[diedEntity.unit_number]
     if segment == nil then
         return
