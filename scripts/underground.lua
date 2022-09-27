@@ -987,11 +987,6 @@ Underground.TunnelCrossingSegment_OnCompletedTunnel = function(thisTunnelCrossin
     }
     global.undergrounds.nextFakeSegmentIdNumber = global.undergrounds.nextFakeSegmentIdNumber + 1
 
-    -- Add the hidden signals for this tunnel crossing area.
-    fakeSegment.signalEntities = {}
-    -- TODO: this needs to only be generated for fake parts that are in a completed tunnel. At present a fake part is generated for every 3 sequential crossing parts, and then the other tunnel is established through one of these fakes, blocking access to the others.
-    --Underground.BuildSignalsForFakeUndergroundSegment(fakeSegment)
-
     -- Update the direct parent/child relationship for the fake and real segment objects.
     fakeSegment.directParentTunnelCrossingSegment = thisTunnelCrossingSegment
     thisTunnelCrossingSegment.directFakeCrossingSegment = fakeSegment

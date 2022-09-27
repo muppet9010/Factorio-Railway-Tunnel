@@ -97,14 +97,6 @@ Mod compatibility is extremely limited in this Alpha release. As such individual
 - Any mod that moves or removes entities from the map without raising notification events is not supported.
 
 
-Known Bugs
-==========
-
-At present there are the below known issues. They aren't simple to resolve and as this mod isn't being actively worked on are just being listed for now.
-
-- When using the special parts that allow tunnels to cross other tunnels there are missing internal signals within the tunnel. This cause normal rail track crossing the tunnel to flash in an unhappy state. The fix is to add extra above ground crossing rails and everything functions as expected. See this discussion for details and example of the fix: https://mods.factorio.com/mod/railway_tunnel/discussion/6329c6dce6834447f0d0b0b8
-
-
 Editor Mode
 ===========
 
