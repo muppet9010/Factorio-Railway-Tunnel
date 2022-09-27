@@ -1,6 +1,5 @@
 Alpha Release Bugs / Changes
 ----------------------------
-- Somehow someone managed to try and drive a train through on manual and hit an intentional hard error. Sounds like normal usage somehow: https://mods.factorio.com/mod/railway_tunnel/discussion/632b6800df5c9f6473cfe23f
 
 
 
