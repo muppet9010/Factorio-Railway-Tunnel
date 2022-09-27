@@ -21,8 +21,8 @@ Common.UndergroundSegmentEntityNames = {
     ["railway_tunnel-underground_segment-diagonal-flipped"] = "railway_tunnel-underground_segment-diagonal-flipped",
     ["railway_tunnel-underground_segment-corner"] = "railway_tunnel-underground_segment-corner"
 }
-Common.PortalEndAndSegmentEntityNames = TableUtils.TableMergeCopies({Common.PortalEndEntityNames, Common.PortalSegmentEntityNames}) ---@type table<string, string>
-Common.UndergroundSegmentAndAllPortalEntityNames = TableUtils.TableMergeCopies({Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames}) ---@type table<string, string>
+Common.PortalEndAndSegmentEntityNames = TableUtils.TableMergeCopies({ Common.PortalEndEntityNames, Common.PortalSegmentEntityNames }) ---@type table<string, string>
+Common.UndergroundSegmentAndAllPortalEntityNames = TableUtils.TableMergeCopies({ Common.UndergroundSegmentEntityNames, Common.PortalEndAndSegmentEntityNames }) ---@type table<string, string>
 Common.RealTunnelPartNameToFakeTunnelPartName = {
     ["railway_tunnel-underground_segment-curved-regular"] = "railway_tunnel-underground_segment-curved-flipped",
     ["railway_tunnel-portal_segment-curved-regular"] = "railway_tunnel-portal_segment-curved-flipped",

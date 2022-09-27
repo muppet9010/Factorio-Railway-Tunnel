@@ -1,5 +1,8 @@
 Alpha Release Bugs / Changes
 ----------------------------
+- Underground crossing tunnel part needs signals adding to it. https://mods.factorio.com/mod/railway_tunnel/discussion/6329c6dce6834447f0d0b0b8
+- Picker Dollies incompatibility can be replaced with remote interface calls.
+- Somehow someone managed to try and drive a train through on manual and hit an intentional hard error. Never heard back from them how they did it: https://mods.factorio.com/mod/railway_tunnel/discussion/632b6800df5c9f6473cfe23f
 
 
 
@@ -95,6 +98,8 @@ Long term feature plans
         - Mods that add custom powered locomotives. The current acceleration logic is from the wiki, but Utils.GetTrainSpeedCalculationData() locomotiveAccelerationPower doesn't account for non default max_power of loco. Test later and should be simple enough to fix by comparing to default loco max_power value. The current hardcoded value of 10 is for the default loco attribute value of 600kW.
         - My single train unit mod.
         - Detect any mods that have destroyed train carriages spill contents on the ground. Drop train contents on ground at tunnel portals when a tunnel is destroyed.
+        - Don't support any mod with custom carriages as we can't get te length of connected carriages via API at present. Wherever we use Common.CarriagePlacementDistances or Common.CarriageConnectedLengths or Common.CarriagesOwnOffsetFromOtherConnectedCarriage or Common.CarriagesCollisionBoxLength. Could get the details in the data stage and save in to a prototype, then access at runtime. Missing API request: https://forums.factorio.com/viewtopic.php?p=498501
+        - Mods that affect collision masks of rails and signals. Both Cargo Ships and Space Exploration do it.  https://mods.factorio.com/mod/railway_tunnel/discussion/632a6b20c205ff73837b1393   and   https://mods.factorio.com/mod/railway_tunnel/discussion/630157e958c9f22d9c355b3e.
         - Check that a player riding a train is still in the player container and that its in the expected position before we teleport it each tick. If it's not then something has teleported the player and the player container should be destroyed if it still exists. Think my RCON streamer tools. Need to make sure the player can't move the container by driving it as this may falsely trigger this.
         - Non standard length train carriages, i.e. Yukoi's train mod.
 		- Support for mods that enable vehicle grids for train carriages:

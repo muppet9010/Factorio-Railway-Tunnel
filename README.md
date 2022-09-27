@@ -1,13 +1,21 @@
 # Factorio-Railway-Tunnel
 
+A railway tunnel so trains can cross under each other. ALPHA MOD - Early release and mod won't upgrade to future versions. Use for testing/experimenting only.
 
-![Usage Demo](https://github.com/muppet9010/Factorio-Railway-Tunnel/raw/alpha_release-0.0.8/notes/demo.gif)
+
+![Usage Demo](https://github.com/muppet9010/Factorio-Railway-Tunnel/raw/alpha_release/notes/demo.gif)
+
+
+Do not use with other mods that add/change train carriages and locomotives; or add/change anything to do with track entities.
+==========
+
+----------------
 
 
 ALPHA MOD
 =========
 
-Early release of the mod that should be fully functional. It's still got some key features missing and isn't compatible with any other mods. Intended for demonstration, testing and experimenting purposes.
+Early release of the mod that should be fully functional. It's still got some key features missing and isn't compatible with any other mods that add new train or carriage types. Intended for demonstration, testing and experimenting purposes.
 
 At present there are no plans to continue significant development of the mod, however, any very small bugs may be addressed. This demonstration version is being released to show the concept and what has been achieved to date. See the Mod Design History section at the end of the file for further details on this decision.
 
