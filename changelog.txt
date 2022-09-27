@@ -1,10 +1,10 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.0.9
-Date: 2022-xx-xx
+Date: 2022-09-28
   Features:
-    - Alpha version.
+    - Manually driven trains (never supported) in to the entrance of tunnels will be blocked nicely. The train will be stopped and text warning shown to the player; same as non-fuelled trains are. Rather than getting a hard crash with an intentional error as before. However, manually driven trains hitting the inner end of portals or other weird situations, will still intentionally hard error as the later code won't handle it.
   Changes:
-    - Picker Dollies is now supported.
+    - Picker Dollies is now supported and so not blocked.
   Bugfixes:
     - Crossing underground tunnels have missing signals in now. https://mods.factorio.com/mod/railway_tunnel/discussion/6329c6dce6834447f0d0b0b8
   Info:

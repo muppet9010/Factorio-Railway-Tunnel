@@ -1337,7 +1337,25 @@ Portal.OnPortalEntryTrainDetectorEntityDied = function(event, diedEntity)
     -- Train has a player in it so we assume its being actively driven. Can only detect if player input is being entered right now, not the players intention.
     if #train.passengers ~= 0 then
         -- Future support for player driven train will expand this logic as needed. This state shouldn't be reachable at present.
-        error("suspected player driving train")
+        if global.trainManager.activelyUsingTrainIdToManagedTrain[train_id] == nil and global.trainManager.leavingTrainIdToManagedTrain[train_id] == nil then
+            -- Train hasn't started using the tunnel yet, so we can do a nice message.
+            train.speed = 0
+            Portal.AddEnteringTrainUsageDetectionEntityToPortal(portal, false, true)
+            rendering.draw_text {
+                text = { "message.railway_tunnel-manual_trains_cant_use_tunnels" },
+                surface = portal.tunnel.surface,
+                target = portal.entryPortalEnd.entity,
+                time_to_live = 300,
+                forces = { portal.force },
+                color = { r = 1, g = 0, b = 0, a = 1 },
+                scale_with_zoom = true,
+                alignment = "center",
+                vertical_alignment = "bottom"
+            }
+        else
+            -- Player is in some odd state, like inside the portal track and then took manual control. if we don;t error here other parts of the code will error as we don;t support this.
+            error("suspected player driving train in weird situation")
+        end
         return
     end
 
@@ -1510,6 +1528,7 @@ Portal.OnPortalTransitionTrainDetectorEntityDied = function(event, diedEntity)
     if #train.passengers ~= 0 then
         -- Future support for player driven train will expand this logic as needed. This state shouldn't be reachable at present.
         error("suspected player driving train")
+        -- Can't handle this via a nice error message as the situation is unrecoverable with current code.
         return
     end
 
