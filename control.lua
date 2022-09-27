@@ -15,6 +15,7 @@ local TrainCachedData = require("scripts.train-cached-data")
 local PortalTunnelGui = require("scripts.portal-tunnel-gui")
 local GuiActionsClick = require("utility.gui-actions-click")
 local GuiActionsChecked = require("utility.gui-actions-checked")
+local Common = require("scripts.common")
 
 local function CreateGlobals()
     global.debugRelease = global.debugRelease or false -- If set to TRUE (test-manager or command) it does some additional state checks so makes code run slower.
@@ -79,14 +80,17 @@ local function OnLoad()
         function()
             if global.debugRelease then
                 global.debugRelease = false
-                game.print({"message.railway_tunnel-debug_changed", {"message.railway_tunnel-Disabled"}})
+                game.print({ "message.railway_tunnel-debug_changed", { "message.railway_tunnel-Disabled" } })
             else
                 global.debugRelease = true
-                game.print({"message.railway_tunnel-debug_changed", {"message.railway_tunnel-Enabled"}})
+                game.print({ "message.railway_tunnel-debug_changed", { "message.railway_tunnel-Enabled" } })
             end
         end,
         true
     )
+
+    -- Call external mod compatibility remote interfaces.
+    Common.PickerDolliesCompatibility()
 
     -- Call the module's OnLoad functions.
     TrainCachedData.OnLoad()
@@ -127,7 +131,7 @@ PlayerAlerts.RegisterPlayerAlerts()
 GuiActionsClick.MonitorGuiClickActions()
 GuiActionsChecked.MonitorGuiCheckedActions()
 
--- Mod wide function interface table creation. Means EmmyLua can support it and saves on UPS cost of old Interface function middelayer.
+-- Mod wide function interface table creation. Means EmmyLua can support it and saves on UPS cost of old Interface function middle layer.
 ---@class InternalInterfaces
 MOD.Interfaces = MOD.Interfaces or {} ---@type table<string, function>
 --[[

@@ -6,7 +6,7 @@ A railway tunnel so trains can cross under each other. ALPHA MOD - Early release
 ![Usage Demo](https://github.com/muppet9010/Factorio-Railway-Tunnel/raw/alpha_release/notes/demo.gif)
 
 
-Do not use with other mods that add/change train carriages and locomotives; or add/change anything to do with track entities.
+Does not work with other mods that add or change train carriages, locomotives or any other track related entity.
 ==========
 
 ----------------
@@ -89,12 +89,12 @@ There are certain limitations of the mod which have been chosen over alternative
 Mod Compatibility
 =================
 
-At present the mod isn't tested or supported with any mods that add custom train carriages or interferes with the rail tunnel entities in any way.
-Notes on generic mod compatibility:
-    - Any mod that moves or removes entities from the map without raising notification events is not supported.
+Mod compatibility is extremely limited in this Alpha release. As such individual mods are not listed as incompatible, but any train or rail related mod is likely incompatible.
 
-Blacklisted mods:
-    - Picker Dollies - lets the player move entities randomly and life is too short to try and undo all the damage it could do.
+- Any mod that adds custom train carriages or changes the vanilla ones is incompatible.
+- Any mod that adds rails or signals or changes the the vanilla ones is incompatible.
+- Any mod that interferes with the rail tunnel entities in any way is incompatible.
+- Any mod that moves or removes entities from the map without raising notification events is not supported.
 
 
 Editor Mode

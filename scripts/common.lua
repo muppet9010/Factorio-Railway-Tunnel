@@ -152,4 +152,17 @@ Common.TunnelUsageChangeReason = {
     invalidTrain = "invalidTrain"
 }
 
+-- Blacklist every custom entity we add from being movable by Dollies Picker.
+Common.PickerDolliesCompatibility = function()
+    if remote.interfaces["PickerDollies"] then
+        if remote.interfaces["PickerDollies"]["add_blacklist_name"] then
+            for entityName in pairs(Common.UndergroundSegmentAndAllPortalEntityNames) do
+                remote.call("PickerDollies", "add_blacklist_name", entityName)
+            end
+        else
+            error("Picker Dollies mod present, but we can't blacklist this version from moving Railway Tunnel parts")
+        end
+    end
+end
+
 return Common

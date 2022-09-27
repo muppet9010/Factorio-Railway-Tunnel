@@ -4,6 +4,7 @@ Date: 2022-xx-xx
   Features:
     - Alpha version.
   Changes:
+    - Picker Dollies is now supported.
   Bugfixes:
   Info:
     - Added some more explicit error messages in.
