@@ -6,6 +6,7 @@ Date: 2022-xx-xx
   Changes:
     - Picker Dollies is now supported.
   Bugfixes:
+    - Crossing underground tunnels have missing signals in now. https://mods.factorio.com/mod/railway_tunnel/discussion/6329c6dce6834447f0d0b0b8
   Info:
     - Added some more explicit error messages in.
     - Updated ReadMe and notes.

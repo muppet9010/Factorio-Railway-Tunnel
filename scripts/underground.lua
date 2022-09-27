@@ -68,6 +68,8 @@ local Underground = {}
 ---@class TunnelCrossingFakeUndergroundSegment:UndergroundSegment @ A fake tunnel crossing segment that's going across a real Tunnel crossing segment.
 ---@field directParentTunnelCrossingSegment TunnelCrossingUndergroundSegment @ The real tunnel crossing segment this fake segment is the direct child of. So the ones its centered on and requires to be tunnelCrossingCompleted.
 ---@field supportingParentTunnelCrossingSegments table<Id, TunnelCrossingUndergroundSegment> @ The real tunnel crossing segments this fake segment is supported by. So the ones that support the direct parent having tunnelCrossingCompleted.
+---
+---@field signalEntities? table<UnitNumber, LuaEntity>|nil @ The hidden signal entities within the tunnel segment. Only established once this underground segment is part of a valid tunnel. These signals cover both tunnels under the fake segment. This is safe as the fake segment is removed when either tunnel is broken as that's how the fake parts are managed; and in this case there's no secondary tunnel for the first tunnel to connect to any more.
 
 ---@class UndergroundEndSegmentObject @ Details of a segment at the end of an underground.
 ---@field segment UndergroundSegment
@@ -554,7 +556,7 @@ Underground.OnUndergroundSegmentBuilt = function(event, builtEntity, builtEntity
                 segment_RailCrossing.rearExternalCheckSurfacePositionString = StringUtils.FormatSurfacePositionToString(segment_RailCrossing.surface_index, PositionUtils.RotateOffsetAroundPosition(segment_RailCrossing.entity_orientation, segment_RailCrossing.typeData.rearExternalPositionOffset, segment_RailCrossing.entity_position))
 
                 segment_RailCrossing.signalEntities = {}
-                Underground.BuildSignalsForSegment(segment_RailCrossing)
+                Underground.BuildSignalsForRailCrossingSegment(segment_RailCrossing)
             end
         elseif oldFastReplacedSegment.typeData.segmentType == SegmentType.tunnelCrossing then
             -- The handling for the newly placed entity will account for any neighbouring segments and arrows. So nothing to do in this specific location.
@@ -935,7 +937,7 @@ Underground.TunnelCrossingSegmentBuiltOrRemoved = function(tunnelCrossingSegment
     Underground.TunnelCrossingSegmentsNeighborsUpdated(tunnelCrossingSegment)
 end
 
---- Called when a tunnel crossing segment type has had its neighbors updated. Can be for when
+--- Called when a tunnel crossing segment type has had its neighbors updated.
 ---@param tunnelCrossingSegment TunnelCrossingUndergroundSegment
 Underground.TunnelCrossingSegmentsNeighborsUpdated = function(tunnelCrossingSegment)
     -- Check this segments neighbour count and react based on old and new state.
@@ -984,6 +986,11 @@ Underground.TunnelCrossingSegment_OnCompletedTunnel = function(thisTunnelCrossin
         nonConnectedExternalSurfacePositions = {}
     }
     global.undergrounds.nextFakeSegmentIdNumber = global.undergrounds.nextFakeSegmentIdNumber + 1
+
+    -- Add the hidden signals for this tunnel crossing area.
+    fakeSegment.signalEntities = {}
+    -- TODO: this needs to only be generated for fake parts that are in a completed tunnel. At present a fake part is generated for every 3 sequential crossing parts, and then the other tunnel is established through one of these fakes, blocking access to the others.
+    --Underground.BuildSignalsForFakeUndergroundSegment(fakeSegment)
 
     -- Update the direct parent/child relationship for the fake and real segment objects.
     fakeSegment.directParentTunnelCrossingSegment = thisTunnelCrossingSegment
@@ -1116,7 +1123,7 @@ Underground.On_PreTunnelCompleted = function(underground)
         if segment.typeData.segmentType == SegmentType.railCrossing then
             local segment_RailCrossing = segment ---@type RailCrossingUndergroundSegment
             segment_RailCrossing.signalEntities = {}
-            Underground.BuildSignalsForSegment(segment_RailCrossing)
+            Underground.BuildSignalsForRailCrossingSegment(segment_RailCrossing)
         end
 
         -- Create the top layer entity that has the desired graphics on it.
@@ -1136,6 +1143,11 @@ Underground.On_PostTunnelCompleted = function(underground)
             Underground.TunnelCrossingSegment_MainTunnelChanged(segment)
         elseif segment.typeData.segmentType == SegmentType.fakeTunnelCrossing then
             local segment_FakeTunnelCrossing = segment ---@type TunnelCrossingFakeUndergroundSegment
+
+            -- Add the hidden signals for this tunnel crossing area.
+            segment_FakeTunnelCrossing.signalEntities = {}
+            Underground.BuildSignalsForFakeUndergroundSegment(segment_FakeTunnelCrossing)
+
             Underground.TunnelCrossingSegment_CrossingTunnelChanged(segment_FakeTunnelCrossing.directParentTunnelCrossingSegment)
             for _, supportingTunnelCrossingSegment in pairs(segment_FakeTunnelCrossing.supportingParentTunnelCrossingSegments) do
                 Underground.TunnelCrossingSegment_CrossingTunnelChanged(supportingTunnelCrossingSegment)
@@ -1158,7 +1170,7 @@ end
 
 --- Builds crossing rail signals for the segment and caches them to the segment. Only called if this segment is part of a valid tunnel.
 ---@param segment_RailCrossing RailCrossingUndergroundSegment
-Underground.BuildSignalsForSegment = function(segment_RailCrossing)
+Underground.BuildSignalsForRailCrossingSegment = function(segment_RailCrossing)
     -- Check if we should skip building signals for this segment. This only happens when its the end segment in an underground and is on the east/south end, as its signals would clash with the portals signals and are un-required.
     local firstNonConnectedExternalSurfacePosition = next(segment_RailCrossing.nonConnectedExternalSurfacePositions)
     if firstNonConnectedExternalSurfacePosition ~= nil then
@@ -1198,6 +1210,52 @@ Underground.BuildSignalsForSegment = function(segment_RailCrossing)
         local position = PositionUtils.RotateOffsetAroundPosition(orientation, { x = -1.5, y = 0 }, segment_RailCrossing.entity_position)
         local placedSignal = segment_RailCrossing.surface.create_entity { name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment_RailCrossing.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false }
         segment_RailCrossing.signalEntities[placedSignal.unit_number] = placedSignal
+    end
+end
+
+--- Called when a fake underground crossing has been created and we need to add signals for it.
+---@param segment_fakeUnderground TunnelCrossingFakeUndergroundSegment
+Underground.BuildSignalsForFakeUndergroundSegment = function(segment_fakeUnderground)
+    -- Can just add the signals based off the fake segment for both tunnels.
+
+    local signalDetails = {
+        ---@class TunnelCrossingFakeUndergroundSegment_SignalDetail
+        {
+            -- Fake Tunnel - North West
+            positionOffset = { x = -1.5, y = -1.5 }, ---@type MapPosition
+            orientationModifier = 2 ---@type uint
+        },
+        {
+            -- Fake Tunnel - South West
+            positionOffset = { x = -1.5, y = 1.5 },
+            orientationModifier = 6
+        },
+        {
+            -- Fake Tunnel - North East
+            positionOffset = { x = 1.5, y = -1.5 },
+            orientationModifier = 2
+        },
+        {
+            -- Fake Tunnel - South East
+            positionOffset = { x = 1.5, y = 1.5 },
+            orientationModifier = 6
+        },
+        {
+            -- Real Tunnel - West
+            positionOffset = { x = -1.5, y = -0.5 },
+            orientationModifier = 0
+        },
+        {
+            -- Real Tunnel - East
+            positionOffset = { x = 1.5, y = -0.5 },
+            orientationModifier = 4
+        }
+    }
+    for _, signalDetail in pairs(signalDetails) do
+        local signalDirection = DirectionUtils.LoopDirectionValue(segment_fakeUnderground.entity_direction + signalDetail.orientationModifier)
+        local position = PositionUtils.RotateOffsetAroundPosition(segment_fakeUnderground.entity_direction / 8, signalDetail.positionOffset, segment_fakeUnderground.entity_position)
+        local placedSignal = segment_fakeUnderground.surface.create_entity { name = "railway_tunnel-invisible_signal-not_on_map", position = position, force = segment_fakeUnderground.force, direction = signalDirection, raise_built = false, create_build_effect_smoke = false }
+        segment_fakeUnderground.signalEntities[placedSignal.unit_number] = placedSignal
     end
 end
 
@@ -1454,6 +1512,12 @@ Underground.On_TunnelRemoved = function(underground)
             Underground.TunnelCrossingSegment_MainTunnelChanged(segment)
         elseif segment.typeData.segmentType == SegmentType.fakeTunnelCrossing then
             local segment_FakeTunnelCrossing = segment ---@type TunnelCrossingFakeUndergroundSegment
+            for _, signalEntity in pairs(segment_FakeTunnelCrossing.signalEntities) do
+                if signalEntity.valid then
+                    signalEntity.destroy { raise_destroy = false }
+                end
+            end
+            segment_FakeTunnelCrossing.signalEntities = nil
             Underground.TunnelCrossingSegment_CrossingTunnelChanged(segment_FakeTunnelCrossing.directParentTunnelCrossingSegment)
             for _, supportingTunnelCrossingSegment in pairs(segment_FakeTunnelCrossing.supportingParentTunnelCrossingSegments) do
                 Underground.TunnelCrossingSegment_CrossingTunnelChanged(supportingTunnelCrossingSegment)

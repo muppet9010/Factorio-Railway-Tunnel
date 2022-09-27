@@ -1,6 +1,6 @@
 Alpha Release Bugs / Changes
 ----------------------------
-- Underground crossing tunnel part needs signals adding to it. https://mods.factorio.com/mod/railway_tunnel/discussion/6329c6dce6834447f0d0b0b8
+- Underground crossing tunnel part needs signals adding to it. Listed as known issue with reference to player fix for now in readme. This is a pain to fix as needs some smarts on adding all of the needed signals and linking together, plus testing. Code is partly added, but it needs very selective adding, and ot just for every fake segment. https://mods.factorio.com/mod/railway_tunnel/discussion/6329c6dce6834447f0d0b0b8
 - Somehow someone managed to try and drive a train through on manual and hit an intentional hard error. Sounds like normal usage somehow: https://mods.factorio.com/mod/railway_tunnel/discussion/632b6800df5c9f6473cfe23f
 
 
