@@ -383,7 +383,7 @@ Tunnel.OnPlayerRotatedEntity = function(event)
     end
     -- Reverse the rotation so other code logic still works. Also would mess up the graphics if not reversed.
     rotatedEntity.direction = event.previous_direction
-    TunnelShared.EntityErrorMessage(game.get_player(event.player_index), { "message.railway_tunnel-dont_rotate_tunnel_parts" }, rotatedEntity.surface, rotatedEntity.position) -- cspell:disable-line
+    TunnelShared.EntityErrorMessage(game.get_player(event.player_index), { "message.railway_tunnel-do_not_rotate_tunnel_parts" }, rotatedEntity.surface, rotatedEntity.position)
 end
 
 -- Checks if the train can fit within the tunnel's max allowed length.

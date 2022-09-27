@@ -23,7 +23,7 @@ TunnelShared.OnLoad = function()
     EventScheduler.RegisterScheduledEventType("TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled)
 
     -------------------------------------------------------------------------------------
-    -- Shared event handlers to reduce duplicated relevence checking across many modules.
+    -- Shared event handlers to reduce duplicated relevance checking across many modules.
     -------------------------------------------------------------------------------------
 
     -- OnBuiltEntity type events
@@ -31,24 +31,24 @@ TunnelShared.OnLoad = function()
     local onBuiltEntityFilter = {}
     -- Portal
     for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
-        table.insert(onBuiltEntityFilter, {filter = "name", name = name})
+        table.insert(onBuiltEntityFilter, { filter = "name", name = name })
     end
     for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
-        table.insert(onBuiltEntityFilter, {filter = "ghost_name", name = name})
+        table.insert(onBuiltEntityFilter, { filter = "ghost_name", name = name })
     end
     -- Underground
     for _, name in pairs(Common.UndergroundSegmentEntityNames) do
-        table.insert(onBuiltEntityFilter, {filter = "name", name = name})
+        table.insert(onBuiltEntityFilter, { filter = "name", name = name })
     end
     for _, name in pairs(Common.UndergroundSegmentEntityNames) do
-        table.insert(onBuiltEntityFilter, {filter = "ghost_name", name = name})
+        table.insert(onBuiltEntityFilter, { filter = "ghost_name", name = name })
     end
     -- Tunnel
-    table.insert(onBuiltEntityFilter, {filter = "rolling-stock"}) -- Just gets real entities, not ghosts.
-    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "locomotive"})
-    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "cargo-wagon"})
-    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "fluid-wagon"})
-    table.insert(onBuiltEntityFilter, {filter = "ghost_type", type = "artillery-wagon"})
+    table.insert(onBuiltEntityFilter, { filter = "rolling-stock" }) -- Just gets real entities, not ghosts.
+    table.insert(onBuiltEntityFilter, { filter = "ghost_type", type = "locomotive" })
+    table.insert(onBuiltEntityFilter, { filter = "ghost_type", type = "cargo-wagon" })
+    table.insert(onBuiltEntityFilter, { filter = "ghost_type", type = "fluid-wagon" })
+    table.insert(onBuiltEntityFilter, { filter = "ghost_type", type = "artillery-wagon" })
     -- Register Events
     Events.RegisterHandlerEvent(defines.events.on_built_entity, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
     Events.RegisterHandlerEvent(defines.events.on_robot_built_entity, "TunnelShared.OnBuiltEntity", TunnelShared.OnBuiltEntity, onBuiltEntityFilter)
@@ -60,17 +60,17 @@ TunnelShared.OnLoad = function()
     local onDiedEntityFilter = {}
     -- Portal
     for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
-        table.insert(onDiedEntityFilter, {filter = "name", name = name})
+        table.insert(onDiedEntityFilter, { filter = "name", name = name })
     end
-    table.insert(onDiedEntityFilter, {filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1"})
-    table.insert(onDiedEntityFilter, {filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1"})
+    table.insert(onDiedEntityFilter, { filter = "name", name = "railway_tunnel-portal_entry_train_detector_1x1" })
+    table.insert(onDiedEntityFilter, { filter = "name", name = "railway_tunnel-portal_transition_train_detector_1x1" })
     -- Underground
     for _, name in pairs(Common.UndergroundSegmentEntityNames) do
-        table.insert(onDiedEntityFilter, {filter = "name", name = name})
+        table.insert(onDiedEntityFilter, { filter = "name", name = name })
     end
     -- Train Cached Data
     for _, rollingStockType in pairs(Common.RollingStockTypes) do
-        table.insert(onDiedEntityFilter, {filter = "type", type = rollingStockType})
+        table.insert(onDiedEntityFilter, { filter = "type", type = rollingStockType })
     end
     Events.RegisterHandlerEvent(defines.events.on_entity_died, "TunnelShared.OnDiedEntity", TunnelShared.OnDiedEntity, onDiedEntityFilter)
     Events.RegisterHandlerEvent(defines.events.script_raised_destroy, "TunnelShared.OnDiedEntity", TunnelShared.OnDiedEntity, onDiedEntityFilter)
@@ -80,11 +80,11 @@ TunnelShared.OnLoad = function()
     local onPreMinedEntityFilter = {}
     -- Portal
     for _, name in pairs(Common.PortalEndAndSegmentEntityNames) do
-        table.insert(onPreMinedEntityFilter, {filter = "name", name = name})
+        table.insert(onPreMinedEntityFilter, { filter = "name", name = name })
     end
     -- Underground
     for _, name in pairs(Common.UndergroundSegmentEntityNames) do
-        table.insert(onPreMinedEntityFilter, {filter = "name", name = name})
+        table.insert(onPreMinedEntityFilter, { filter = "name", name = name })
     end
     Events.RegisterHandlerEvent(defines.events.on_pre_player_mined_item, "TunnelShared.OnPreMinedEntity", TunnelShared.OnPreMinedEntity, onPreMinedEntityFilter)
     Events.RegisterHandlerEvent(defines.events.on_robot_pre_mined, "TunnelShared.OnPreMinedEntity", TunnelShared.OnPreMinedEntity, onPreMinedEntityFilter)
@@ -142,7 +142,7 @@ end
 ---@param placer EntityActioner|nil
 ---@param mine boolean @ If to mine and return the item to the placer, or just destroy it.
 TunnelShared.UndoInvalidTunnelPartPlacement = function(builtEntity, placer, mine)
-    TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, {"message.railway_tunnel-tunnel_part_must_be_on_rail_grid"}, "tunnel part")
+    TunnelShared.UndoInvalidPlacement(builtEntity, placer, mine, true, { "message.railway_tunnel-tunnel_part_must_be_on_rail_grid" }, "tunnel part")
 end
 
 ---@param builtEntity LuaEntity
@@ -164,21 +164,21 @@ TunnelShared.UndoInvalidPlacement = function(builtEntity, placer, mine, highligh
                 result = placer.mine_entity(builtEntity, true)
             else
                 -- Is construction bot
-                result = builtEntity.mine({inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true})
+                result = builtEntity.mine({ inventory = placer.get_inventory(defines.inventory.robot_cargo), force = true, raise_destroyed = false, ignore_minable = true })
             end
             if result ~= true then
                 error("couldn't mine invalidly placed " .. errorEntityNameText .. " entity")
             end
         else
-            builtEntity.destroy {raise_destroy = false}
+            builtEntity.destroy { raise_destroy = false }
         end
         if highlightValidRailGridPositions then
             TunnelShared.HighlightValidPlacementPositionsOnRailGrid(placer, position, surface, entityName, ghostName, direction)
         end
     else
         local builtEntity_position = builtEntity.position
-        builtEntity.destroy {raise_destroy = false}
-        game.print({"message.railway_tunnel-invalid_placement_by_script", errorEntityNameText, tostring(builtEntity_position.x), tostring(builtEntity_position.y)}, Colors.red)
+        builtEntity.destroy { raise_destroy = false }
+        game.print({ "message.railway_tunnel-invalid_placement_by_script", errorEntityNameText, tostring(builtEntity_position.x), tostring(builtEntity_position.y) }, Colors.red)
     end
 end
 
@@ -250,14 +250,14 @@ TunnelShared.HighlightValidPlacementPositionsOnRailGrid = function(placer, posit
     local validHighlightSprite, invalidHighlightSprite = "railway_tunnel-valid_placement_highlight", "railway_tunnel-invalid_placement_highlight"
     for x = minX, maxX, 2 do
         for y = minY, maxY, 2 do
-            local thisPlacementPosition = {x = x, y = y}
+            local thisPlacementPosition = { x = x, y = y }
             local thisHighlightSprite
-            if surface.can_place_entity {name = entityName, inner_name = ghostName, position = thisPlacementPosition, direction = direction, force = placer.force, build_check_type = defines.build_check_type.manual_ghost, forced = true} then
+            if surface.can_place_entity { name = entityName, inner_name = ghostName, position = thisPlacementPosition, direction = direction, force = placer.force, build_check_type = defines.build_check_type.manual_ghost, forced = true } then
                 thisHighlightSprite = validHighlightSprite
             else
                 thisHighlightSprite = invalidHighlightSprite
             end
-            rendering.draw_sprite {sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = {highlightAudiencePlayer}, forces = {highlightAudienceForce}}
+            rendering.draw_sprite { sprite = thisHighlightSprite, target = thisPlacementPosition, surface = surface, time_to_live = 300, players = { highlightAudiencePlayer }, forces = { highlightAudienceForce } }
         end
     end
 end
@@ -274,9 +274,9 @@ TunnelShared.EntityErrorMessage = function(entityDoingInteraction, text, surface
         surface = surface,
         target = position,
         time_to_live = 180,
-        players = {textAudiencePlayer},
-        forces = {textAudienceForce},
-        color = {r = 1, g = 0, b = 0, a = 1},
+        players = { textAudiencePlayer },
+        forces = { textAudienceForce },
+        color = { r = 1, g = 0, b = 0, a = 1 },
         scale_with_zoom = true,
         alignment = "center",
         vertical_alignment = "bottom"
@@ -290,7 +290,7 @@ end
 TunnelShared.StopTrainOnEntityCollision = function(train, train_id, currentTick)
     train.manual_mode = true
     train.speed = 0
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.SetTrainToManual_Scheduled", train_id, {train = train})
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.SetTrainToManual_Scheduled", train_id, { train = train })
 end
 
 --- Set the train to manual.
@@ -302,7 +302,7 @@ TunnelShared.SetTrainToManual_Scheduled = function(event)
     end
 end
 
---- Train can't enter the portal so stop it, set it to manual and alert the players. This stops the train the following tick if Facotrio engine decides to restart it.
+--- Train can't enter the portal so stop it, set it to manual and alert the players. This stops the train the following tick if Factorio engine decides to restart it.
 ---@param train LuaTrain
 ---@param train_id Id
 ---@param alertEntity LuaEntity
@@ -313,7 +313,7 @@ TunnelShared.StopTrainFromEnteringTunnel = function(train, train_id, alertEntity
     TunnelShared.AlertOnTrain(train, train_id, alertEntity, alertEntity.force, currentTick, message)
 end
 
---- Alerts the player to a train via onscreen text and alert icon.
+--- Alerts the player to a train via on screen text and alert icon.
 ---@param train LuaTrain
 ---@param train_id Id
 ---@param alertEntity LuaEntity
@@ -326,18 +326,18 @@ TunnelShared.AlertOnTrain = function(train, train_id, alertEntity, forceToSeeAle
         surface = alertEntity.surface,
         target = alertEntity,
         time_to_live = 300,
-        forces = {forceToSeeAlert},
-        color = {r = 1, g = 0, b = 0, a = 1},
+        forces = { forceToSeeAlert },
+        color = { r = 1, g = 0, b = 0, a = 1 },
         scale_with_zoom = true,
         alignment = "center",
         vertical_alignment = "bottom"
     }
 
     -- Add the alert for the tunnel force.
-    local alertId = PlayerAlerts.AddCustomAlertToForce(forceToSeeAlert, train_id, alertEntity, {type = "virtual", name = "railway_tunnel"}, message, true)
+    local alertId = PlayerAlerts.AddCustomAlertToForce(forceToSeeAlert, train_id, alertEntity, { type = "virtual", name = "railway_tunnel" }, message, true)
 
     -- Setup a schedule to detect when the train is either moving or changed (not valid LuaTrain) and the alert can be removed.
-    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", train_id, {train = train, alertEntity = alertEntity, alertId = alertId, force = forceToSeeAlert})
+    EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled", train_id, { train = train, alertEntity = alertEntity, alertId = alertId, force = forceToSeeAlert })
 end
 
 --- Checks a train until it is no longer stopped and then removes the alert associated with it.
@@ -371,7 +371,7 @@ TunnelShared.CheckIfAlertingTrainStillStopped_Scheduled = function(event)
     end
 end
 
---- Merged event handler to call the approperiate module function. More UPS effecient than other options and allows smart function calling based on known context.
+--- Merged event handler to call the appropriate module function. More UPS efficient than other options and allows smart function calling based on known context.
 ---@param event on_built_entity|on_robot_built_entity|script_raised_built|script_raised_revive
 TunnelShared.OnBuiltEntity = function(event)
     local createdEntity = event.created_entity or event.entity
@@ -420,7 +420,7 @@ TunnelShared.OnBuiltEntity = function(event)
     error("some function should have been called")
 end
 
---- Merged event handler to call the approperiate module function. More UPS effecient than other options and allows smart function calling based on known context.
+--- Merged event handler to call the appropriate module function. More UPS efficient than other options and allows smart function calling based on known context.
 ---@param event on_entity_died|script_raised_destroy
 TunnelShared.OnDiedEntity = function(event)
     local diedEntity = event.entity
@@ -455,7 +455,7 @@ TunnelShared.OnDiedEntity = function(event)
     error("some function should have been called")
 end
 
---- Merged event handler to call the approperiate module function. More UPS effecient than other options and allows smart function calling based on known context.
+--- Merged event handler to call the appropriate module function. More UPS efficient than other options and allows smart function calling based on known context.
 ---@param event on_pre_player_mined_item|on_robot_pre_mined
 TunnelShared.OnPreMinedEntity = function(event)
     local minedEntity = event.entity
@@ -495,7 +495,7 @@ end
 --- We only react if it's an item of one of the fake/real tunnel parts (not hovering over an entity). Or its a blueprint that contains a fake/real tunnel part.
 ---@param event CustomInputEvent
 TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
-    -- Always react to the player pressing the button and check if an approperiate item is in the cursor. If its not then nothing is done.
+    -- Always react to the player pressing the button and check if an appropriate item is in the cursor. If its not then nothing is done.
     -- CODE DEV: Doing it purely by player cursor rather than by the event's selected prototype data means if a tunnel part is in the cursor and the player has their cursor on an entity (selected) then we still flip the item in the cursor.
 
     local player = game.get_player(event.player_index)
@@ -507,9 +507,9 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
         -- No real item in hand, check for a ghost in cursor.
         ghostItemInHand = player.cursor_ghost
 
-        -- Check if theres an item prototype as a ghost in hand.
+        -- Check if there's an item prototype as a ghost in hand.
         if ghostItemInHand == nil then
-            -- Theres nothing in the players cursor so nothing to do.
+            -- There's nothing in the players cursor so nothing to do.
             return
         end
 
@@ -527,15 +527,15 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
         for fakeAndRealTunnelPartName in pairs(Common.FakeAndRealTunnelPartNames) do
             if bpContents[fakeAndRealTunnelPartName] ~= nil then
                 -- I can't find a way to deal with flipping blueprints with fake/real rails in them or blocking it, so just show a message for now.
-                -- CODE DEV: would have to handle the current player (non game state) of the BP having been flipped, but the game state of the BP not being flipped. So can't win with changing the BP entities between regular/flipped. If I change the cursor in hand in this event the origional BP is remebered locally as still having been flipped, thus breaking it. I can't consume this event as I can't trigger a players local BP flip via API. I also can't add an non flippable entity to the BP at this point as the flip has already been approved. Only way to stop is to have the base type of this entity as one that can't be flipped, which looks to be either something with a 2 fluid boxes or an off center fluid box (i.e. chemical plant), or a mining drill with an off center output (like burner mining drill).
+                -- CODE DEV: would have to handle the current player (non game state) of the BP having been flipped, but the game state of the BP not being flipped. So can't win with changing the BP entities between regular/flipped. If I change the cursor in hand in this event the original BP is remembered locally as still having been flipped, thus breaking it. I can't consume this event as I can't trigger a players local BP flip via API. I also can't add an non flippable entity to the BP at this point as the flip has already been approved. Only way to stop is to have the base type of this entity as one that can't be flipped, which looks to be either something with a 2 fluid boxes or an off center fluid box (i.e. chemical plant), or a mining drill with an off center output (like burner mining drill).
                 rendering.draw_text(
                     {
-                        text = {"message.railway_tunnel-blueprint_with_fakereal_tunnel_part_warning-1"},
+                        text = { "message.railway_tunnel-blueprint_with_fake_real_tunnel_part_warning-1" },
                         surface = player.surface,
                         target = event.cursor_position,
                         color = Colors.red,
                         time_to_live = 900,
-                        players = {player},
+                        players = { player },
                         scale_with_zoom = true,
                         alignment = "center",
                         vertical_alignment = "bottom"
@@ -543,12 +543,12 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
                 )
                 rendering.draw_text(
                     {
-                        text = {"message.railway_tunnel-blueprint_with_fakereal_tunnel_part_warning-2"},
+                        text = { "message.railway_tunnel-blueprint_with_fake_real_tunnel_part_warning-2" },
                         surface = player.surface,
                         target = event.cursor_position,
                         color = Colors.red,
                         time_to_live = 900,
-                        players = {player},
+                        players = { player },
                         scale_with_zoom = true,
                         alignment = "center",
                         vertical_alignment = "top"
@@ -586,16 +586,16 @@ TunnelShared.OnFlipBlueprintHorizontalInput = function(event)
         else
             -- Going back to real item from flipped fake item.
 
-            -- Cancel any traking of real item to fake item for this player.
+            -- Cancel any tracking of real item to fake item for this player.
             TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.player_index)
 
-            -- Discard the fake item (its destroyed automatically on releae from cursor).
+            -- Discard the fake item (its destroyed automatically on release from cursor).
             player.clear_cursor()
 
             -- Set a real item stack to the cursor from the player's inventory.
             local regularItemStack, regularItemStackIndex = player.get_inventory(defines.inventory.character_main).find_item_stack(newPartName)
             itemInHand.swap_stack(regularItemStack)
-            player.hand_location = {inventory = defines.inventory.character_main, slot = regularItemStackIndex}
+            player.hand_location = { inventory = defines.inventory.character_main, slot = regularItemStackIndex }
         end
         return
     end
@@ -607,7 +607,7 @@ end
 --- Called when a player presses the G key to try and vertically flip something (blueprint or curved rail in vanilla). Runs before the game handles the event and does its action based on what event(s) are bound to the key.
 ---
 --- Can't do the flip and reverse rotation on an item in cursor as can't rotate players cursor. So calls the horizontal flip function to still change between the regular and flipped items and to ensure if its a BP in hand that the failed flip message is shown.
---- Does mean that the can not disconnect rolling stock message is shown by the game in some cases, but this keeps the logic simple and players would generally use the main flip anyways (F) as next to rotate (R).
+--- Does mean that the can not disconnect rolling stock message is shown by the game in some cases, but this keeps the logic simple and players would generally use the main flip (F) anyway as it's next to rotate (R).
 ---@param event CustomInputEvent
 TunnelShared.OnFlipBlueprintVerticalInput = function(event)
     TunnelShared.OnFlipBlueprintHorizontalInput(event)
@@ -621,17 +621,17 @@ end
 ---@param currentTick Tick
 ---@param playerId Id
 TunnelShared.SwapCursorFromRealTunnelPartToFakeTunnelPart = function(player, realItemInInventoryName, fakeItemInCursorName, playerCursorStack, currentTick, playerId)
-    -- Return the real item to the inventory. means theres no "hand" icon in the inventory from this point on as the item in cursor will never be returned there.
+    -- Return the real item to the inventory. means there's no "hand" icon in the inventory from this point on as the item in cursor will never be returned there.
     player.clear_cursor()
 
     -- Set the fake item to the cursor at the correct starting count.
     local realItemCountInInventory = player.get_item_count(realItemInInventoryName)
     if realItemCountInInventory == 0 then
-        -- Theres none of this item in the inventory so set the cursor to be a ghost item and stop processing.
+        -- There's none of this item in the inventory so set the cursor to be a ghost item and stop processing.
         player.cursor_ghost = fakeItemInCursorName
         return
     end
-    playerCursorStack.set_stack({name = fakeItemInCursorName, count = realItemCountInInventory})
+    playerCursorStack.set_stack({ name = fakeItemInCursorName, count = realItemCountInInventory })
 
     --- Start tracking a fake item in the cursor to the real item in a player's inventory.
     ---@type PlayersFakePartTracking
@@ -642,14 +642,14 @@ TunnelShared.SwapCursorFromRealTunnelPartToFakeTunnelPart = function(player, rea
         fakeItemInCursorName = fakeItemInCursorName,
         cursorCount = playerCursorStack.count -- Get once set as this will account for the max stack size.
     }
-    -- If theres no schedule already for this player then schedule it. 2 swaps can be done in the same tick when the game is paused, but they may be for different items. So we always replace the old ones data, but don't schedule a new event as it would be a duplicate for the player Id.
+    -- If there's no schedule already for this player then schedule it. 2 swaps can be done in the same tick when the game is paused, but they may be for different items. So we always replace the old ones data, but don't schedule a new event as it would be a duplicate for the player Id.
     if global.tunnelShared.playersFakePartTracking[playerId] == nil then
         EventScheduler.ScheduleEventOnce(currentTick + 1, "TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled", playerId)
     end
     global.tunnelShared.playersFakePartTracking[playerId] = playersFakePartTrackingData
 end
 
---- Called every tick to update the fake cursor item count with the real count from the players inventory. This is to catch any non player building actions that lead to a reducution in the item in the player's inventory.
+--- Called every tick to update the fake cursor item count with the real count from the players inventory. This is to catch any non player building actions that lead to a reduction in the item in the player's inventory.
 ---@param event UtilityScheduledEvent_CallbackObject
 TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     -- CODE NOTE: Does a simple code solution of just checking the players inventory every tick rather than trying to track every way the count could be reduced. Not convinced I could track every reduction method and the length and player count this will be active for should be very low at any given time.
@@ -657,7 +657,7 @@ TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     local playersFakePartTrackingData = global.tunnelShared.playersFakePartTracking[event.instanceId]
     local player_cursorStack = playersFakePartTrackingData.player.cursor_stack
     -- Check nothing has changed that means we no longer need to do the update.
-    -- Note: when the last ite is palced this code would not detect it as the cursor would have been changed to empty. This is caught by the dedicated on entity built.
+    -- Note: when the last item is placed this code would not detect it as the cursor would have been changed to empty. This is caught by the dedicated on entity built.
     if not player_cursorStack.valid_for_read or player_cursorStack.name ~= playersFakePartTrackingData.fakeItemInCursorName then
         TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.instanceId)
         return
@@ -668,7 +668,7 @@ TunnelShared.TrackingPlayersRealToFakeItemCount_Scheduled = function(event)
     -- Remove any removed cursor item count from from the inventories items. This could be as built via script or some other way the fake item has been removed from the players cursor without the player doing a manual building action. Is edge case protection.
     local currentCursorCount = player_cursorStack.count
     if currentCursorCount < playersFakePartTrackingData.cursorCount then
-        playerMainInventory.remove({name = playersFakePartTrackingData.realItemInInventoryName, count = playersFakePartTrackingData.cursorCount - currentCursorCount})
+        playerMainInventory.remove({ name = playersFakePartTrackingData.realItemInInventoryName, count = playersFakePartTrackingData.cursorCount - currentCursorCount })
         playersFakePartTrackingData.cursorCount = currentCursorCount
     end
 
@@ -713,11 +713,11 @@ TunnelShared.FakeTunnelPartBuiltByPlayer = function(event, createdEntity_name)
 
     local player_cursorStack = playersFakePartTrackingData.player.cursor_stack
     if player_cursorStack.valid_for_read then
-        -- Theres still some count in the cursor so handle it.
+        -- There's still some count in the cursor so handle it.
         local currentCursorCount = player_cursorStack.count
         if currentCursorCount < playersFakePartTrackingData.cursorCount then
             local playerMainInventory = playersFakePartTrackingData.player.get_inventory(defines.inventory.character_main)
-            playerMainInventory.remove({name = playersFakePartTrackingData.realItemInInventoryName, count = playersFakePartTrackingData.cursorCount - currentCursorCount})
+            playerMainInventory.remove({ name = playersFakePartTrackingData.realItemInInventoryName, count = playersFakePartTrackingData.cursorCount - currentCursorCount })
             playersFakePartTrackingData.cursorCount = currentCursorCount
         else
             error("Player " .. event.player_index .. " built a " .. createdEntity_name .. ", but their cursor count is NOT less than their last known count.")
@@ -725,7 +725,7 @@ TunnelShared.FakeTunnelPartBuiltByPlayer = function(event, createdEntity_name)
     else
         -- The cursor is presently empty and so the last item was just built.
         local playerMainInventory = playersFakePartTrackingData.player.get_inventory(defines.inventory.character_main)
-        playerMainInventory.remove({name = playersFakePartTrackingData.realItemInInventoryName, count = 1})
+        playerMainInventory.remove({ name = playersFakePartTrackingData.realItemInInventoryName, count = 1 })
         TunnelShared.CancelTrackingPlayersRealTunnelPartToFakeTunnelPartItemCount(event.player_index)
     end
 end
